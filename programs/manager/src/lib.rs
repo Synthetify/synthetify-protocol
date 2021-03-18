@@ -6,7 +6,7 @@ const TOKEN_DECIMALS: u8 = 6;
 
 #[program]
 pub mod manager {
-    use std::borrow::BorrowMut;
+    use std::{borrow::BorrowMut, convert::TryInto};
 
     use super::*;
     #[state]
@@ -27,13 +27,15 @@ pub mod manager {
             self.admin = admin;
             Ok(())
         }
-        pub fn create_asset_list(
+
+        pub fn create_list(
             &mut self,
-            ctx: Context<CreateAssetList>,
+            ctx: Context<InitializeAssetsList>,
             collateral_token: Pubkey,
             collateral_token_feed: Pubkey,
             usd_token: Pubkey,
         ) -> Result<()> {
+            msg!("Hellooo");
             if !self.admin.eq(ctx.accounts.signer.key) {
                 return Err(ErrorCode::Unauthorized.into());
             }
@@ -41,7 +43,7 @@ pub mod manager {
                 decimals: TOKEN_DECIMALS,
                 asset_address: usd_token,
                 feed_address: Pubkey::default(), // unused
-                last_update: std::u64::MAX, // we dont update usd price
+                last_update: std::u64::MAX,      // we dont update usd price
                 price: 1 * 10u128.pow(4),
                 supply: 0,
             };
@@ -54,29 +56,48 @@ pub mod manager {
                 supply: 0,
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
+            ctx.accounts.assets_list.initialized = true;
             Ok(())
         }
+    }
+    pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
+        let assets_list = &mut ctx.accounts.assets_list;
+        assets_list.initialized = false;
+        let default_asset = Asset::default();
+
+        assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
+        msg!("{:?}", assets_list.assets);
+        Ok(())
     }
 }
 #[derive(Accounts)]
 pub struct New {}
 #[derive(Accounts)]
 pub struct Initialize {}
+
 #[derive(Accounts)]
-pub struct CreateAssetList<'info> {
+pub struct CreateAssetsList<'info> {
+    #[account(init)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub rent: Sysvar<'info, Rent>,
+}
+#[derive(Accounts)]
+pub struct InitializeAssetsList<'info> {
     #[account(signer)]
     pub signer: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
 }
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Asset {
-    pub feed_address: Pubkey,
-    pub asset_address: Pubkey,
-    pub price: u128,
-    pub supply: u128,
-    pub decimals: u8,
-    pub last_update: u64,
+    pub feed_address: Pubkey,  // 32
+    pub asset_address: Pubkey, // 32
+    pub price: u128,           // 16
+    pub supply: u128,          // 16
+    pub decimals: u8,          // 1
+    pub last_update: u64,      // 8
 }
+// This will need 13 + x*105 bytes for each asset
 #[account]
 pub struct AssetsList {
     pub initialized: bool,
