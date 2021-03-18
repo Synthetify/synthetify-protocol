@@ -1,0 +1,23 @@
+{
+  "extends": ["prettier", "standard"],
+  "plugins": ["prettier", "mocha"],
+  "rules": {
+    "prettier/prettier": ["error"]
+  },
+  "parserOptions": {
+    "ecmaVersion": 2017
+  },
+  "env": {
+    "es6": true
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.js"],
+      "env": {
+        "mocha": true
+      },
+      "plugins": ["mocha"],
+      "rules": {}
+    }
+  ]
+}
