@@ -2,8 +2,6 @@
 
 use anchor_lang::prelude::*;
 
-const TOKEN_DECIMALS: u8 = 6;
-
 #[program]
 pub mod manager {
     use std::{borrow::BorrowMut, convert::TryInto};
@@ -40,7 +38,7 @@ pub mod manager {
                 return Err(ErrorCode::Unauthorized.into());
             }
             let usd_asset = Asset {
-                decimals: TOKEN_DECIMALS,
+                decimals: 6,
                 asset_address: usd_token,
                 feed_address: Pubkey::default(), // unused
                 last_update: std::u64::MAX,      // we dont update usd price
@@ -48,12 +46,12 @@ pub mod manager {
                 supply: 0,
             };
             let collateral_asset = Asset {
-                decimals: TOKEN_DECIMALS,
+                decimals: 6,
                 asset_address: collateral_token,
                 feed_address: collateral_token_feed,
                 last_update: 0,
                 price: 0,
-                supply: 0,
+                supply: 0, // unused
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
             ctx.accounts.assets_list.initialized = true;
