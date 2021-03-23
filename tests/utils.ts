@@ -10,14 +10,15 @@ interface ICreateToken {
   connection: Connection
   payer: Account
   mintAuthority: PublicKey
+  decimals?: number 
 }
-export const createToken = async ({ connection, payer, mintAuthority }: ICreateToken) => {
+export const createToken = async ({ connection, payer, mintAuthority, decimals = 6 }: ICreateToken) => {
   const token = await Token.createMint(
     connection,
     payer,
     mintAuthority,
     null,
-    8,
+    decimals,
     TokenInstructions.TOKEN_PROGRAM_ID
   )
   return token
