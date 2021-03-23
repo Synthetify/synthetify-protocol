@@ -7,6 +7,10 @@ import { assert, expect } from 'chai'
 import { createPriceFeed, createToken, sleep } from './utils'
 import { O_TRUNC } from 'constants'
 
+const MAX_U64 = new BN('ffffffffffffffff', 16);
+const USDT_VALUE_U64 = new BN(10000);
+const ZERO_U64 = new BN(0);
+
 describe('manager', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
@@ -22,16 +26,18 @@ describe('manager', () => {
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   it('Initialize', async () => {
-    // Add your test here.
+    const initTokensDecimals = 6
     collateralToken = await createToken({
       connection,
       payer: wallet,
-      mintAuthority: wallet.publicKey
+      mintAuthority: wallet.publicKey,
+      decimals: 6
     })
     usdToken = await createToken({
       connection,
       payer: wallet,
-      mintAuthority: wallet.publicKey
+      mintAuthority: wallet.publicKey,
+      decimals: 6
     })
     collateralTokenFeed = await createPriceFeed({
       admin: oracleAdmin,
@@ -72,6 +78,40 @@ describe('manager', () => {
 
     const assetsListData = await managerProgram.account.assetsList(assetsList)
     console.log(assetsListData)
+
+          // Length should be 2
+          assert.ok(assetsListData.assets.length === 2)
+
+          // Collatera token checks
+
+          // Check feed address
+          assert.ok(assetsListData.assets[assetsListData.assets.length-1].feedAddress.equals(collateralTokenFeed))
+    
+          // Check token address
+          assert.ok(assetsListData.assets[assetsListData.assets.length-1].assetAddress.equals(collateralToken.publicKey))
+      
+          // Check decimals
+          assert.ok(assetsListData.assets[assetsListData.assets.length-1].decimals === initTokensDecimals)
+    
+          // // Check asset limit
+          assert.ok(assetsListData.assets[assetsListData.assets.length-1].maxSupply.eq(MAX_U64))
+
+          // Check price
+          assert.ok(assetsListData.assets[assetsListData.assets.length-1].price.eq(ZERO_U64))
+
+          // USD token checks
+
+          // Check token address
+          assert.ok(assetsListData.assets[0].assetAddress.equals(usdToken.publicKey))
+      
+          // Check decimals
+          assert.ok(assetsListData.assets[0].decimals === initTokensDecimals)
+    
+          // Check asset limit
+          assert.ok(assetsListData.assets[0].maxSupply.eq(MAX_U64))
+
+          // Check price
+          assert.ok(assetsListData.assets[0].price.eq(USDT_VALUE_U64))
   })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
@@ -118,6 +158,9 @@ describe('manager', () => {
 
       // // Check asset limit
       assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].maxSupply.eq(newAssetLimit))
+
+      // Check price
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].price.eq(ZERO_U64))
     })
     it('Should not add new asset ', async () => {
       const newAssetDecimals = 8
