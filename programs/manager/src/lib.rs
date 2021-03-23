@@ -44,6 +44,7 @@ pub mod manager {
                 last_update: std::u64::MAX,      // we dont update usd price
                 price: 1 * 10u128.pow(4),
                 supply: 0,
+                max_supply: std::u64::MAX, // no limit for usd asset
             };
             let collateral_asset = Asset {
                 decimals: 6,
@@ -52,6 +53,7 @@ pub mod manager {
                 last_update: 0,
                 price: 0,
                 supply: 0, // unused
+                max_supply: std::u64::MAX, // no limit for collateral asset
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
             ctx.accounts.assets_list.initialized = true;
@@ -63,6 +65,7 @@ pub mod manager {
             new_asset_feed_address: Pubkey,
             new_asset_address: Pubkey,
             new_asset_decimals: u8,
+            new_asset_max_supply: u64,
         ) -> Result<()> {
             msg!("Add new asset");
             if !self.admin.eq(ctx.accounts.signer.key) {
@@ -75,6 +78,7 @@ pub mod manager {
                 last_update: 0,
                 price: 0,
                 supply: 0,
+                max_supply: new_asset_max_supply,
             };
 
             ctx.accounts.assets_list.assets.push(new_asset);
@@ -122,12 +126,14 @@ pub struct AddNewAsset<'info> {
 pub struct Asset {
     pub feed_address: Pubkey,  // 32
     pub asset_address: Pubkey, // 32
-    pub price: u128,           // 16
-    pub supply: u128,          // 16
+    pub price: u64,           // 8
+    pub supply: u64,          // 8
     pub decimals: u8,          // 1
     pub last_update: u64,      // 8
+    pub max_supply: u64,       // 8
+
 }
-// This will need 13 + x*105 bytes for each asset
+// This will need 13 + x*97 bytes for each asset
 #[account]
 pub struct AssetsList {
     pub initialized: bool,
