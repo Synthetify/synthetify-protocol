@@ -53,8 +53,8 @@ describe('manager', () => {
       },
       signers: [assetListAccount],
       instructions: [
-        // 223 allows for 3 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 105 + 13)
+        // 291 allows for 3 assets
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 13)
       ]
     })
     await managerProgram.state.rpc.createList(
@@ -75,6 +75,7 @@ describe('manager', () => {
   })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
+      const newAssetLimit = new BN(3 * 1e4)
       const newAssetDecimals = 8
       const newToken = await createToken({
         connection,
@@ -90,7 +91,7 @@ describe('manager', () => {
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
   
-      await managerProgram.state.rpc.addNewAsset(newTokenFeed, newToken.publicKey, newAssetDecimals, {
+      await managerProgram.state.rpc.addNewAsset(newTokenFeed, newToken.publicKey, newAssetDecimals, newAssetLimit, {
         accounts: {
           signer: assetsAdmin.publicKey,
           assetsList: assetsList
@@ -113,10 +114,14 @@ describe('manager', () => {
       assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].assetAddress.equals(newToken.publicKey))
   
       // Check decimals
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].decimals == newAssetDecimals)
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].decimals === newAssetDecimals)
+
+      // // Check asset limit
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].maxSupply.eq(newAssetLimit))
     })
     it('Should not add new asset ', async () => {
       const newAssetDecimals = 8
+      const newAssetLimit = new BN(3 * 1e4)
       const newToken = await createToken({
         connection,
         payer: wallet,
@@ -137,6 +142,7 @@ describe('manager', () => {
           newTokenFeed,
           newToken.publicKey,
           newAssetDecimals,
+          newAssetLimit,
           {
             accounts: {
               signer: assetsAdmin.publicKey,

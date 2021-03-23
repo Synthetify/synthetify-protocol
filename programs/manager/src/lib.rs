@@ -42,7 +42,7 @@ pub mod manager {
                 asset_address: usd_token,
                 feed_address: Pubkey::default(), // unused
                 last_update: std::u64::MAX,      // we dont update usd price
-                price: 1 * 10u128.pow(4),
+                price: 1 * 10u64.pow(4),
                 supply: 0,
                 max_supply: std::u64::MAX, // no limit for usd asset
             };
