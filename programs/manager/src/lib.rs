@@ -57,6 +57,29 @@ pub mod manager {
             ctx.accounts.assets_list.initialized = true;
             Ok(())
         }
+        pub fn add_new_asset(
+            &mut self,
+            ctx: Context<AddNewAsset>,
+            new_asset_feed_address: Pubkey,
+            new_asset_address: Pubkey,
+            new_asset_decimals: u8,
+        ) -> Result<()> {
+            msg!("Add new asset");
+            if !self.admin.eq(ctx.accounts.signer.key) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            let new_asset = Asset {
+                decimals: new_asset_decimals,
+                asset_address: new_asset_address,
+                feed_address: new_asset_feed_address,
+                last_update: 0,
+                price: 0,
+                supply: 0,
+            };
+
+            ctx.accounts.assets_list.assets.push(new_asset);
+            Ok(())
+        }
     }
     pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
         let assets_list = &mut ctx.accounts.assets_list;
@@ -86,6 +109,15 @@ pub struct InitializeAssetsList<'info> {
     #[account(mut)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
 }
+
+#[derive(Accounts)]
+pub struct AddNewAsset<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Asset {
     pub feed_address: Pubkey,  // 32
