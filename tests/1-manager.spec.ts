@@ -53,8 +53,8 @@ describe('manager', () => {
       },
       signers: [assetListAccount],
       instructions: [
-        // 223 allows for 5 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 5 * 105 + 13)
+        // 223 allows for 3 assets
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 105 + 13)
       ]
     })
     await managerProgram.state.rpc.createList(
@@ -74,7 +74,7 @@ describe('manager', () => {
     console.log(assetsListData)
   })
   describe('#add_new_asset()', async () => {
-    it('Add new asset ', async () => {
+    it('Should add new asset ', async () => {
       const newAssetDecimals = 8
       const newToken = await createToken({
         connection,
@@ -114,6 +114,41 @@ describe('manager', () => {
   
       // Check decimals
       assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].decimals == newAssetDecimals)
+    })
+    it('Should not add new asset ', async () => {
+      const newAssetDecimals = 8
+      const newToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: wallet.publicKey,
+        decimals: newAssetDecimals
+      })
+      const newTokenFeed = await createPriceFeed({
+        admin: oracleAdmin,
+        oracleProgram,
+        initPrice: new BN(2 * 1e4)
+      })
+
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+  
+      let err = null
+      try {
+        await managerProgram.state.rpc.addNewAsset(
+          newTokenFeed,
+          newToken.publicKey,
+          newAssetDecimals,
+          {
+            accounts: {
+              signer: assetsAdmin.publicKey,
+              assetsList: assetsList
+            },
+            signers: [assetsAdmin]
+          }
+        )
+      } catch (error){
+        err = error
+      }
+      assert.isNotNull(err)
     })
   })
 
