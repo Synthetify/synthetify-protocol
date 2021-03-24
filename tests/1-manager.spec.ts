@@ -4,7 +4,7 @@ import { State } from '@project-serum/anchor/dist/rpc'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
-import { createPriceFeed, createToken, sleep, ORACLE_ADMIN, ASSETS_MANAGER_ADMIN } from '../tests/utils'
+import { createPriceFeed, createToken, sleep, ORACLE_ADMIN, ASSETS_MANAGER_ADMIN } from './utils'
 import { O_TRUNC } from 'constants'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16);

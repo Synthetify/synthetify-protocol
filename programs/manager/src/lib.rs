@@ -84,6 +84,31 @@ pub mod manager {
             ctx.accounts.assets_list.assets.push(new_asset);
             Ok(())
         }
+        pub fn set_max_supply(
+            &mut self,
+            ctx: Context<SetMaxSupply>,
+            asset_address: Pubkey,
+            new_max_supply: u64,
+        ) -> Result<()> {
+            if !self.admin.eq(ctx.accounts.signer.key) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+
+            let asset = ctx
+                .accounts
+                .assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.asset_address == asset_address)
+                .unwrap();
+
+            if asset.supply > new_max_supply {
+                return Err(ErrorCode::InvalidMaxSupply.into());
+            }
+
+            asset.max_supply = new_max_supply;
+            Ok(())
+        }
     }
     pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
         let assets_list = &mut ctx.accounts.assets_list;
@@ -121,6 +146,14 @@ pub struct AddNewAsset<'info> {
     pub assets_list: ProgramAccount<'info, AssetsList>,
 }
 
+#[derive(Accounts)]
+pub struct SetMaxSupply<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Asset {
     pub feed_address: Pubkey,  // 32
@@ -144,4 +177,6 @@ pub enum ErrorCode {
     ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
+    #[msg("New max supply is lower than asset current supply")]
+    InvalidMaxSupply
 }
