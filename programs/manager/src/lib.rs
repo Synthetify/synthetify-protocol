@@ -87,7 +87,6 @@ pub mod manager {
         let default_asset = Asset::default();
 
         assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
-        msg!("{:?}", assets_list.assets);
         Ok(())
     }
 }

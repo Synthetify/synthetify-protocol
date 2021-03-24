@@ -4,7 +4,7 @@ import { State } from '@project-serum/anchor/dist/rpc'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
-import { createPriceFeed, createToken, sleep } from './utils'
+import { createPriceFeed, createToken, sleep, ORACLE_ADMIN, ASSETS_MANAGER_ADMIN } from '../tests/utils'
 import { O_TRUNC } from 'constants'
 
 describe('manager', () => {
@@ -15,8 +15,6 @@ describe('manager', () => {
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
-  const oracleAdmin = wallet.publicKey
-  const assetsAdmin = new Account()
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -34,19 +32,19 @@ describe('manager', () => {
       mintAuthority: wallet.publicKey
     })
     collateralTokenFeed = await createPriceFeed({
-      admin: oracleAdmin,
+      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
       initPrice: new BN(2 * 1e4)
     })
 
     await managerProgram.state.rpc.new()
-    await managerProgram.state.rpc.initialize(assetsAdmin.publicKey)
+    await managerProgram.state.rpc.initialize(ASSETS_MANAGER_ADMIN.publicKey)
     const state = await managerProgram.state()
-    assert.ok(state.admin.equals(assetsAdmin.publicKey))
+    assert.ok(state.admin.equals(ASSETS_MANAGER_ADMIN.publicKey))
 
     const assetListAccount = new Account()
     assetsList = assetListAccount.publicKey
-    await managerProgram.rpc.createAssetsList(144, {
+    await managerProgram.rpc.createAssetsList(30, {
       accounts: {
         assetsList: assetListAccount.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY
@@ -54,7 +52,7 @@ describe('manager', () => {
       signers: [assetListAccount],
       instructions: [
         // 223 allows for 5 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 144 * 105 + 13)
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 30 * 105 + 13)
       ]
     })
     await managerProgram.state.rpc.createList(
@@ -63,10 +61,10 @@ describe('manager', () => {
       usdToken.publicKey,
       {
         accounts: {
-          signer: assetsAdmin.publicKey,
+          signer: ASSETS_MANAGER_ADMIN.publicKey,
           assetsList: assetsList
         },
-        signers: [assetsAdmin]
+        signers: [ASSETS_MANAGER_ADMIN]
       }
     )
 
@@ -83,7 +81,7 @@ describe('manager', () => {
         decimals: newAssetDecimals
       })
       const newTokenFeed = await createPriceFeed({
-        admin: oracleAdmin,
+        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
         initPrice: new BN(2 * 1e4)
       })
@@ -96,10 +94,10 @@ describe('manager', () => {
         newAssetDecimals,
         {
           accounts: {
-            signer: assetsAdmin.publicKey,
+            signer: ASSETS_MANAGER_ADMIN.publicKey,
             assetsList: assetsList
           },
-          signers: [assetsAdmin]
+          signers: [ASSETS_MANAGER_ADMIN]
         }
       )
 

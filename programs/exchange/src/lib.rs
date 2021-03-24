@@ -16,36 +16,27 @@ pub mod exchange {
         pub collateral_shares: u64,
         pub collateral_token: Pubkey,
         pub collateral_account: Pubkey,
-        pub assets_list_address: Pubkey,
-        pub collateralization_level: u16, // in % should range from 300%-1000%
-        pub max_delay: u16,               // max blocks of delay 100 blocks ~ 1 min
+        pub assets_list: Pubkey,
+        pub collateralization_level: u32, // in % should range from 300%-1000%
+        pub max_delay: u32,               // max blocks of delay 100 blocks ~ 1 min
         pub fee: u8,                      // in basis points 30 ~ 0.3%
     }
     impl InternalState {
-        pub fn new(
-            _ctx: Context<New>,
-            admin: Pubkey,
-            program_signer: Pubkey,
-            nonce: u8,
-            collateral_token: Pubkey,
-            collateral_account: Pubkey,
-            assets_list_address: Pubkey,
-        ) -> Result<Self> {
+        pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
             Ok(Self {
-                admin: admin,
-                program_signer: program_signer,
+                admin: *ctx.accounts.admin.key,
+                program_signer: *ctx.accounts.program_signer.key,
                 nonce: nonce,
                 debt_shares: 0u64,
                 collateral_shares: 0u64,
-                collateral_token: collateral_token,
-                collateral_account: collateral_account,
-                assets_list_address: assets_list_address,
+                collateral_token: *ctx.accounts.collateral_token.key,
+                collateral_account: *ctx.accounts.collateral_account.key,
+                assets_list: *ctx.accounts.assets_list.key,
                 collateralization_level: 1000,
                 max_delay: 10,
                 fee: 30,
             })
         }
-
     }
     // pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
     //     let assets_list = &mut ctx.accounts.assets_list;
@@ -58,31 +49,34 @@ pub mod exchange {
     // }
 }
 #[derive(Accounts)]
-pub struct New {}
-
-#[derive(Accounts)]
-pub struct AddNewAsset<'info> {
-    #[account(signer)]
-    pub signer: AccountInfo<'info>,
-    #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+pub struct New<'info> {
+    pub admin: AccountInfo<'info>,
+    pub collateral_token: AccountInfo<'info>,
+    pub collateral_account: AccountInfo<'info>,
+    pub assets_list: AccountInfo<'info>,
+    pub program_signer: AccountInfo<'info>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
-pub struct Asset {
-    pub feed_address: Pubkey,  // 32
-    pub asset_address: Pubkey, // 32
-    pub price: u128,           // 16
-    pub supply: u128,          // 16
-    pub decimals: u8,          // 1
-    pub last_update: u64,      // 8
-}
+// #[derive(Accounts)]
+// pub struct AddNewAsset<'info> {
+//     pub signer: AccountInfo<'info>,
+//     pub collateral_token: AccountInfo<'info>,
+//     pub collateral_account: AccountInfo<'info>,
+//     pub assets_list: AccountInfo<'info>,
+//     pub program_signer: AccountInfo<'info>,
+// }
+
+// #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+// pub struct Asset {
+//     pub feed_address: Pubkey,  // 32
+//     pub asset_address: Pubkey, // 32
+//     pub price: u128,           // 16
+//     pub supply: u128,          // 16
+//     pub decimals: u8,          // 1
+//     pub last_update: u64,      // 8
+// }
 // This will need 13 + x*105 bytes for each asset
-#[account]
-pub struct AssetsList {
-    pub initialized: bool,
-    pub assets: Vec<Asset>,
-}
+
 #[error]
 pub enum ErrorCode {
     #[msg("Your error message")]
