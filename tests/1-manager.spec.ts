@@ -46,7 +46,7 @@ describe('manager', () => {
 
     const assetListAccount = new Account()
     assetsList = assetListAccount.publicKey
-    await managerProgram.rpc.createAssetsList(2, {
+    await managerProgram.rpc.createAssetsList(144, {
       accounts: {
         assetsList: assetListAccount.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY
@@ -54,7 +54,7 @@ describe('manager', () => {
       signers: [assetListAccount],
       instructions: [
         // 223 allows for 5 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 5 * 105 + 13)
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 144 * 105 + 13)
       ]
     })
     await managerProgram.state.rpc.createList(
@@ -89,14 +89,19 @@ describe('manager', () => {
       })
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
-  
-      await managerProgram.state.rpc.addNewAsset(newTokenFeed, newToken.publicKey, newAssetDecimals, {
-        accounts: {
-          signer: assetsAdmin.publicKey,
-          assetsList: assetsList
-        },
-        signers: [assetsAdmin],
-      })
+
+      await managerProgram.state.rpc.addNewAsset(
+        newTokenFeed,
+        newToken.publicKey,
+        newAssetDecimals,
+        {
+          accounts: {
+            signer: assetsAdmin.publicKey,
+            assetsList: assetsList
+          },
+          signers: [assetsAdmin]
+        }
+      )
 
       const afterAssetList = await managerProgram.account.assetsList(assetsList)
 
@@ -107,14 +112,22 @@ describe('manager', () => {
       assert.ok(beforeAssetList.assets.length + 1 == afterAssetList.assets.length)
 
       // Check feed address
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].feedAddress.equals(newTokenFeed))
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newTokenFeed)
+      )
 
       // Check token address
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].assetAddress.equals(newToken.publicKey))
-  
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].assetAddress.equals(
+          newToken.publicKey
+        )
+      )
+
       // Check decimals
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].decimals == newAssetDecimals)
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].decimals == newAssetDecimals
+      )
+      console.log(await connection.getProgramAccounts(managerProgram.programId))
     })
   })
-
 })
