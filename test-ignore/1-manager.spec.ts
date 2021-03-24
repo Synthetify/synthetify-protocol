@@ -50,7 +50,7 @@ describe('manager', () => {
 
     const assetListAccount = new Account()
     assetsList = assetListAccount.publicKey
-    await managerProgram.rpc.createAssetsList(30, {
+    await managerProgram.rpc.createAssetsList(3, {
       accounts: {
         assetsList: assetListAccount.publicKey,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY
@@ -75,8 +75,6 @@ describe('manager', () => {
     )
 
     const assetsListData = await managerProgram.account.assetsList(assetsList)
-    console.log(assetsListData)
-
           // Length should be 2
           assert.ok(assetsListData.assets.length === 2)
 
@@ -131,16 +129,13 @@ describe('manager', () => {
   
       await managerProgram.state.rpc.addNewAsset(newTokenFeed, newToken.publicKey, newAssetDecimals, newAssetLimit, {
         accounts: {
-          signer: assetsAdmin.publicKey,
+          signer: ASSETS_MANAGER_ADMIN.publicKey,
           assetsList: assetsList
         },
-        signers: [assetsAdmin],
+        signers: [ASSETS_MANAGER_ADMIN],
       })
 
       const afterAssetList = await managerProgram.account.assetsList(assetsList)
-
-      console.log(beforeAssetList)
-      console.log(afterAssetList)
 
       // Length should be increased by 1
       assert.ok(beforeAssetList.assets.length + 1 == afterAssetList.assets.length)
@@ -176,7 +171,7 @@ describe('manager', () => {
         decimals: newAssetDecimals
       })
       const newTokenFeed = await createPriceFeed({
-        admin: oracleAdmin,
+        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
         initPrice: new BN(2 * 1e4)
       })
@@ -192,10 +187,10 @@ describe('manager', () => {
           newAssetLimit,
           {
             accounts: {
-              signer: assetsAdmin.publicKey,
+              signer: ASSETS_MANAGER_ADMIN.publicKey,
               assetsList: assetsList
             },
-            signers: [assetsAdmin]
+            signers: [ASSETS_MANAGER_ADMIN]
           }
         )
       } catch (error){

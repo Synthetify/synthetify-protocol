@@ -75,7 +75,9 @@ export const createAssetsList = async ({
   try { // IF we test without previous tests
     await managerProgram.state.rpc.new()
     await managerProgram.state.rpc.initialize(assetsAdmin.publicKey)
-  } catch (error) {}
+  } catch (error) {
+    console.log('Dont worry about above error! ')
+  }
 
   const usdToken = await createToken({
     connection,
@@ -93,7 +95,7 @@ export const createAssetsList = async ({
     instructions: [
       await managerProgram.account.assetsList.createInstruction(
         assetListAccount,
-        assetsSize * 105 + 13
+        assetsSize * 97 + 13
       )
     ]
   })

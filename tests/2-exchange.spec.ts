@@ -12,7 +12,7 @@ import {
   ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN
-} from './utils'
+} from '../tests/utils'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
