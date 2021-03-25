@@ -7,9 +7,9 @@ import { assert, expect } from 'chai'
 import { createPriceFeed, createToken, sleep, ORACLE_ADMIN, ASSETS_MANAGER_ADMIN } from './utils'
 import { O_TRUNC } from 'constants'
 
-const MAX_U64 = new BN('ffffffffffffffff', 16);
-const USDT_VALUE_U64 = new BN(10000);
-const ZERO_U64 = new BN(0);
+const MAX_U64 = new BN('ffffffffffffffff', 16)
+const USDT_VALUE_U64 = new BN(10000)
+const ZERO_U64 = new BN(0)
 
 describe('manager', () => {
   const provider = anchor.Provider.local()
@@ -75,39 +75,49 @@ describe('manager', () => {
     )
 
     const assetsListData = await managerProgram.account.assetsList(assetsList)
-          // Length should be 2
-          assert.ok(assetsListData.assets.length === 2)
+    // Length should be 2
+    assert.ok(assetsListData.assets.length === 2)
 
-          // Collatera token checks
+    // Collatera token checks
 
-          // Check feed address
-          assert.ok(assetsListData.assets[assetsListData.assets.length-1].feedAddress.equals(collateralTokenFeed))
-    
-          // Check token address
-          assert.ok(assetsListData.assets[assetsListData.assets.length-1].assetAddress.equals(collateralToken.publicKey))
-      
-          // Check decimals
-          assert.ok(assetsListData.assets[assetsListData.assets.length-1].decimals === initTokensDecimals)
-    
-          // // Check asset limit
-          assert.ok(assetsListData.assets[assetsListData.assets.length-1].maxSupply.eq(MAX_U64))
+    // Check feed address
+    assert.ok(
+      assetsListData.assets[assetsListData.assets.length - 1].feedAddress.equals(
+        collateralTokenFeed
+      )
+    )
 
-          // Check price
-          assert.ok(assetsListData.assets[assetsListData.assets.length-1].price.eq(ZERO_U64))
+    // Check token address
+    assert.ok(
+      assetsListData.assets[assetsListData.assets.length - 1].assetAddress.equals(
+        collateralToken.publicKey
+      )
+    )
 
-          // USD token checks
+    // Check decimals
+    assert.ok(
+      assetsListData.assets[assetsListData.assets.length - 1].decimals === initTokensDecimals
+    )
 
-          // Check token address
-          assert.ok(assetsListData.assets[0].assetAddress.equals(usdToken.publicKey))
-      
-          // Check decimals
-          assert.ok(assetsListData.assets[0].decimals === initTokensDecimals)
-    
-          // Check asset limit
-          assert.ok(assetsListData.assets[0].maxSupply.eq(MAX_U64))
+    // // Check asset limit
+    assert.ok(assetsListData.assets[assetsListData.assets.length - 1].maxSupply.eq(MAX_U64))
 
-          // Check price
-          assert.ok(assetsListData.assets[0].price.eq(USDT_VALUE_U64))
+    // Check price
+    assert.ok(assetsListData.assets[assetsListData.assets.length - 1].price.eq(ZERO_U64))
+
+    // USD token checks
+
+    // Check token address
+    assert.ok(assetsListData.assets[0].assetAddress.equals(usdToken.publicKey))
+
+    // Check decimals
+    assert.ok(assetsListData.assets[0].decimals === initTokensDecimals)
+
+    // Check asset limit
+    assert.ok(assetsListData.assets[0].maxSupply.eq(MAX_U64))
+
+    // Check price
+    assert.ok(assetsListData.assets[0].price.eq(USDT_VALUE_U64))
   })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
@@ -126,14 +136,20 @@ describe('manager', () => {
       })
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
-  
-      await managerProgram.state.rpc.addNewAsset(newTokenFeed, newToken.publicKey, newAssetDecimals, newAssetLimit, {
-        accounts: {
-          signer: ASSETS_MANAGER_ADMIN.publicKey,
-          assetsList: assetsList
-        },
-        signers: [ASSETS_MANAGER_ADMIN],
-      })
+
+      await managerProgram.state.rpc.addNewAsset(
+        newTokenFeed,
+        newToken.publicKey,
+        newAssetDecimals,
+        newAssetLimit,
+        {
+          accounts: {
+            signer: ASSETS_MANAGER_ADMIN.publicKey,
+            assetsList: assetsList
+          },
+          signers: [ASSETS_MANAGER_ADMIN]
+        }
+      )
 
       const afterAssetList = await managerProgram.account.assetsList(assetsList)
 
@@ -153,13 +169,15 @@ describe('manager', () => {
       )
 
       // Check decimals
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].decimals === newAssetDecimals)
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].decimals === newAssetDecimals
+      )
 
-      // // Check asset limit
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].maxSupply.eq(newAssetLimit))
+      // Check asset limit
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
 
       // Check price
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length-1].price.eq(ZERO_U64))
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].price.eq(ZERO_U64))
     })
     it('Should not add new asset ', async () => {
       const newAssetDecimals = 8
@@ -177,7 +195,7 @@ describe('manager', () => {
       })
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
-  
+
       let err = null
       try {
         await managerProgram.state.rpc.addNewAsset(
@@ -193,10 +211,57 @@ describe('manager', () => {
             signers: [ASSETS_MANAGER_ADMIN]
           }
         )
-      } catch (error){
+      } catch (error) {
         err = error
       }
       assert.isNotNull(err)
+    })
+  })
+  describe('#set_max_supply()', async () => {
+    const newAssetLimit = new BN(4 * 1e4)
+
+    it('Error should be throwed while setting new max supply', async () => {
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+
+      const errMessage = 'No asset with such address was found'
+
+      try {
+        await managerProgram.state.rpc.setMaxSupply(new Account().publicKey, newAssetLimit, {
+          accounts: {
+            signer: ASSETS_MANAGER_ADMIN.publicKey,
+            assetsList: assetsList
+          },
+          signers: [ASSETS_MANAGER_ADMIN]
+        })
+        assert.ok(false)
+      } catch (err) {
+        // Check err message
+        assert.ok(err.msg === errMessage)
+      }
+
+      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+
+      assert.notOk(
+        afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit)
+      )
+    })
+    it('New max supply should be set', async () => {
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+
+      await managerProgram.state.rpc.setMaxSupply(beforeAsset.assetAddress, newAssetLimit, {
+        accounts: {
+          signer: ASSETS_MANAGER_ADMIN.publicKey,
+          assetsList: assetsList
+        },
+        signers: [ASSETS_MANAGER_ADMIN]
+      })
+
+      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+
+      console.log(afterAssetList)
+      assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
     })
   })
 })

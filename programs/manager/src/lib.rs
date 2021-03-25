@@ -52,7 +52,7 @@ pub mod manager {
                 feed_address: collateral_token_feed,
                 last_update: 0,
                 price: 0,
-                supply: 0, // unused
+                supply: 0,                 // unused
                 max_supply: std::u64::MAX, // no limit for collateral asset
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
@@ -99,14 +99,12 @@ pub mod manager {
                 .assets_list
                 .assets
                 .iter_mut()
-                .find(|x| x.asset_address == asset_address)
-                .unwrap();
+                .find(|x| x.asset_address == asset_address);
 
-            if asset.supply > new_max_supply {
-                return Err(ErrorCode::InvalidMaxSupply.into());
+            match asset {
+                Some(asset) => asset.max_supply = new_max_supply,
+                None => return Err(ErrorCode::NoAssetFound.into()),
             }
-
-            asset.max_supply = new_max_supply;
             Ok(())
         }
     }
@@ -158,12 +156,11 @@ pub struct SetMaxSupply<'info> {
 pub struct Asset {
     pub feed_address: Pubkey,  // 32
     pub asset_address: Pubkey, // 32
-    pub price: u64,           // 8
-    pub supply: u64,          // 8
+    pub price: u64,            // 8
+    pub supply: u64,           // 8
     pub decimals: u8,          // 1
     pub last_update: u64,      // 8
     pub max_supply: u64,       // 8
-
 }
 // This will need 13 + x*97 bytes for each asset
 #[account]
@@ -177,6 +174,6 @@ pub enum ErrorCode {
     ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
-    #[msg("New max supply is lower than asset current supply")]
-    InvalidMaxSupply
+    #[msg("No asset with such address was found")]
+    NoAssetFound,
 }
