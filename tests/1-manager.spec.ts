@@ -184,7 +184,6 @@ describe('manager', () => {
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
 
-      let err = null
       try {
         await managerProgram.state.rpc.addNewAsset(
           newTokenFeed,
@@ -199,10 +198,10 @@ describe('manager', () => {
             signers: [ASSETS_MANAGER_ADMIN]
           }
         )
+        assert.ok(false)
       } catch (error) {
-        err = error
+        assert.ok(true)
       }
-      assert.isNotNull(err)
     })
   })
   describe('#set_max_supply()', async () => {
