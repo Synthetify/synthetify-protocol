@@ -6,6 +6,7 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
+export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -72,7 +73,8 @@ export const createAssetsList = async ({
   wallet,
   assetsSize = 30
 }: ICreateAssetsList) => {
-  try { // IF we test without previous tests
+  try {
+    // IF we test without previous tests
     await managerProgram.state.rpc.new()
     await managerProgram.state.rpc.initialize(assetsAdmin.publicKey)
   } catch (error) {

@@ -1,7 +1,7 @@
 #![feature(proc_macro_hygiene)]
 
 use anchor_lang::prelude::*;
-
+use oracle::PriceFeed;
 #[program]
 pub mod manager {
     use std::{borrow::BorrowMut, convert::TryInto};
@@ -116,11 +116,34 @@ pub mod manager {
         assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
         Ok(())
     }
+    pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> ProgramResult {
+        for oracle_account in ctx.remaining_accounts {
+            let price_feed: CpiAccount<PriceFeed> = CpiAccount::try_from(oracle_account)?;
+            let feed_address = oracle_account.key;
+            let asset = ctx
+                .accounts
+                .assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.feed_address == *feed_address);
+            match asset {
+                Some(asset) => asset.price = price_feed.price,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            }
+        }
+
+        Ok(())
+    }
 }
 #[derive(Accounts)]
 pub struct New {}
 #[derive(Accounts)]
 pub struct Initialize {}
+#[derive(Accounts)]
+pub struct SetAssetsPrices<'info> {
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+}
 
 #[derive(Accounts)]
 pub struct CreateAssetsList<'info> {

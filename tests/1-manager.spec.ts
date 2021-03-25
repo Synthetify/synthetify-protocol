@@ -4,7 +4,14 @@ import { State } from '@project-serum/anchor/dist/rpc'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
-import { createPriceFeed, createToken, sleep, ORACLE_ADMIN, ASSETS_MANAGER_ADMIN } from './utils'
+import {
+  createPriceFeed,
+  createToken,
+  sleep,
+  ORACLE_ADMIN,
+  ASSETS_MANAGER_ADMIN,
+  DEFAULT_PUBLIC_KEY
+} from './utils'
 import { O_TRUNC } from 'constants'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
@@ -23,8 +30,8 @@ describe('manager', () => {
   let usdToken: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
-  it('Initialize', async () => {
-    const initTokensDecimals = 6
+
+  before(async () => {
     collateralToken = await createToken({
       connection,
       payer: wallet,
@@ -45,11 +52,10 @@ describe('manager', () => {
 
     await managerProgram.state.rpc.new()
     await managerProgram.state.rpc.initialize(ASSETS_MANAGER_ADMIN.publicKey)
-    const state = await managerProgram.state()
-    assert.ok(state.admin.equals(ASSETS_MANAGER_ADMIN.publicKey))
 
     const assetListAccount = new Account()
     assetsList = assetListAccount.publicKey
+
     await managerProgram.rpc.createAssetsList(3, {
       accounts: {
         assetsList: assetListAccount.publicKey,
@@ -61,6 +67,7 @@ describe('manager', () => {
         await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 13)
       ]
     })
+
     await managerProgram.state.rpc.createList(
       collateralToken.publicKey,
       collateralTokenFeed,
@@ -73,45 +80,51 @@ describe('manager', () => {
         signers: [ASSETS_MANAGER_ADMIN]
       }
     )
+  })
+  it('Initialize', async () => {
+    const initTokensDecimals = 6
+
+    const state = await managerProgram.state()
+    assert.ok(state.admin.equals(ASSETS_MANAGER_ADMIN.publicKey))
 
     const assetsListData = await managerProgram.account.assetsList(assetsList)
     // Length should be 2
     assert.ok(assetsListData.assets.length === 2)
 
-    const lastAsset = assetsListData.assets[assetsListData.assets.length - 1]
+    const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
 
     // Collatera token checks
 
     // Check feed address
-    assert.ok(lastAsset.feedAddress.equals(collateralTokenFeed))
+    assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
 
     // Check token address
-    assert.ok(lastAsset.assetAddress.equals(collateralToken.publicKey))
+    assert.ok(collateralAsset.assetAddress.equals(collateralToken.publicKey))
 
     // Check decimals
-    assert.ok(lastAsset.decimals === initTokensDecimals)
+    assert.ok(collateralAsset.decimals === initTokensDecimals)
 
     // // Check asset limit
-    assert.ok(lastAsset.maxSupply.eq(MAX_U64))
+    assert.ok(collateralAsset.maxSupply.eq(MAX_U64))
 
     // Check price
-    assert.ok(lastAsset.price.eq(ZERO_U64))
+    assert.ok(collateralAsset.price.eq(ZERO_U64))
 
-    const firstAccount = assetsListData.assets[0]
+    const usdAsset = assetsListData.assets[0]
 
     // USD token checks
 
     // Check token address
-    assert.ok(firstAccount.assetAddress.equals(usdToken.publicKey))
+    assert.ok(usdAsset.assetAddress.equals(usdToken.publicKey))
 
     // Check decimals
-    assert.ok(firstAccount.decimals === initTokensDecimals)
+    assert.ok(usdAsset.decimals === initTokensDecimals)
 
     // Check asset limit
-    assert.ok(firstAccount.maxSupply.eq(MAX_U64))
+    assert.ok(usdAsset.maxSupply.eq(MAX_U64))
 
     // Check price
-    assert.ok(firstAccount.price.eq(USDT_VALUE_U64))
+    assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
   })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
@@ -248,6 +261,37 @@ describe('manager', () => {
       const afterAssetList = await managerProgram.account.assetsList(assetsList)
 
       assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
+    })
+  })
+  describe('#set_assets_prices()', async () => {
+    it('Should change prices', async () => {
+      const newPrice = new BN(6 * 1e4)
+      const assetListBefore = await managerProgram.account.assetsList(assetsList)
+
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+
+      await oracleProgram.rpc.setPrice(newPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+
+      await managerProgram.rpc.setAssetsPrices({
+        remainingAccounts: feedAddresses,
+        accounts: {
+          assetsList: assetsList
+        }
+      })
+      const assetList = await managerProgram.account.assetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      assert.ok(collateralAsset.price.eq(newPrice))
     })
   })
 })
