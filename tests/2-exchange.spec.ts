@@ -12,7 +12,7 @@ import {
   ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN
-} from '../tests/utils'
+} from './utils'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -71,5 +71,8 @@ describe('exchange', () => {
   it('Initialize', async () => {
     const state = await exchangeProgram.state()
     console.log(state)
+
+    // Check exchange admin
+    assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
   })
 })
