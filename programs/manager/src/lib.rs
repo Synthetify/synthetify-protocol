@@ -52,7 +52,7 @@ pub mod manager {
                 feed_address: collateral_token_feed,
                 last_update: 0,
                 price: 0,
-                supply: 0, // unused
+                supply: 0,                 // unused
                 max_supply: std::u64::MAX, // no limit for collateral asset
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
@@ -82,6 +82,29 @@ pub mod manager {
             };
 
             ctx.accounts.assets_list.assets.push(new_asset);
+            Ok(())
+        }
+        pub fn set_max_supply(
+            &mut self,
+            ctx: Context<SetMaxSupply>,
+            asset_address: Pubkey,
+            new_max_supply: u64,
+        ) -> Result<()> {
+            if !self.admin.eq(ctx.accounts.signer.key) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+
+            let asset = ctx
+                .accounts
+                .assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.asset_address == asset_address);
+
+            match asset {
+                Some(asset) => asset.max_supply = new_max_supply,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            }
             Ok(())
         }
     }
@@ -121,16 +144,23 @@ pub struct AddNewAsset<'info> {
     pub assets_list: ProgramAccount<'info, AssetsList>,
 }
 
+#[derive(Accounts)]
+pub struct SetMaxSupply<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Asset {
     pub feed_address: Pubkey,  // 32
     pub asset_address: Pubkey, // 32
-    pub price: u64,           // 8
-    pub supply: u64,          // 8
+    pub price: u64,            // 8
+    pub supply: u64,           // 8
     pub decimals: u8,          // 1
     pub last_update: u64,      // 8
     pub max_supply: u64,       // 8
-
 }
 // This will need 13 + x*97 bytes for each asset
 #[account]
@@ -144,4 +174,6 @@ pub enum ErrorCode {
     ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
+    #[msg("No asset with such address was found")]
+    NoAssetFound,
 }
