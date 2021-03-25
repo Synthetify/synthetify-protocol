@@ -38,15 +38,16 @@ pub mod exchange {
             })
         }
     }
-    // pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
-    //     let assets_list = &mut ctx.accounts.assets_list;
-    //     assets_list.initialized = false;
-    //     let default_asset = Asset::default();
-
-    //     assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
-    //     msg!("{:?}", assets_list.assets.len());
-    //     Ok(())
-    // }
+    pub fn create_exchange_account(
+        ctx: Context<CreateExchangeAccount>,
+        owner: Pubkey,
+    ) -> ProgramResult {
+        let exchange_account = &mut ctx.accounts.exchange_account;
+        exchange_account.owner = owner;
+        exchange_account.debt_shares = 0;
+        exchange_account.collateral_shares = 0;
+        Ok(())
+    }
 }
 #[derive(Accounts)]
 pub struct New<'info> {
@@ -56,27 +57,18 @@ pub struct New<'info> {
     pub assets_list: AccountInfo<'info>,
     pub program_signer: AccountInfo<'info>,
 }
-
-// #[derive(Accounts)]
-// pub struct AddNewAsset<'info> {
-//     pub signer: AccountInfo<'info>,
-//     pub collateral_token: AccountInfo<'info>,
-//     pub collateral_account: AccountInfo<'info>,
-//     pub assets_list: AccountInfo<'info>,
-//     pub program_signer: AccountInfo<'info>,
-// }
-
-// #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
-// pub struct Asset {
-//     pub feed_address: Pubkey,  // 32
-//     pub asset_address: Pubkey, // 32
-//     pub price: u128,           // 16
-//     pub supply: u128,          // 16
-//     pub decimals: u8,          // 1
-//     pub last_update: u64,      // 8
-// }
-// This will need 13 + x*105 bytes for each asset
-
+#[derive(Accounts)]
+pub struct CreateExchangeAccount<'info> {
+    #[account(init)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub rent: Sysvar<'info, Rent>,
+}
+#[account]
+pub struct ExchangeAccount {
+    pub owner: Pubkey,
+    pub debt_shares: u64,
+    pub collateral_shares: u64,
+}
 #[error]
 pub enum ErrorCode {
     #[msg("Your error message")]
