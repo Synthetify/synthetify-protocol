@@ -1,12 +1,16 @@
 import { BN, Program } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
-import { Token } from '@solana/spl-token'
+import { Token, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
 
+export const tou64 = (amount) => {
+  // eslint-disable-next-line new-cap
+  return new u64(amount.toString())
+}
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -72,7 +76,8 @@ export const createAssetsList = async ({
   wallet,
   assetsSize = 30
 }: ICreateAssetsList) => {
-  try { // IF we test without previous tests
+  try {
+    // IF we test without previous tests
     await managerProgram.state.rpc.new()
     await managerProgram.state.rpc.initialize(assetsAdmin.publicKey)
   } catch (error) {

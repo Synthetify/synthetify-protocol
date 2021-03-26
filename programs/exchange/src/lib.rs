@@ -1,10 +1,15 @@
 #![feature(proc_macro_hygiene)]
 
+mod math;
+
 use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
+
+    use crate::math::get_collateral_shares;
 
     use super::*;
     #[state]
@@ -37,6 +42,23 @@ pub mod exchange {
                 fee: 30,
             })
         }
+        pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
+            let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
+            // Transfer token
+            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            let result = token::transfer(cpi_ctx, amount);
+            let new_shares = get_collateral_shares(
+                &exchange_collateral_balance,
+                &amount,
+                &self.collateral_shares,
+            );
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            exchange_account.collateral_shares += new_shares;
+            self.collateral_shares += new_shares;
+            Ok(())
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
@@ -62,6 +84,28 @@ pub struct CreateExchangeAccount<'info> {
     #[account(init)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     pub rent: Sysvar<'info, Rent>,
+}
+#[derive(Accounts)]
+pub struct Deposit<'info> {
+    #[account(mut)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    #[account(mut)]
+    pub collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    pub token_program: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &Deposit<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.user_collateral_account.to_account_info(),
+            to: accounts.collateral_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 #[account]
 pub struct ExchangeAccount {
