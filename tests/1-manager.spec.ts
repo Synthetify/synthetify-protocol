@@ -17,6 +17,8 @@ import { O_TRUNC } from 'constants'
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(10000)
 const ZERO_U64 = new BN(0)
+const errMessage = 'No asset with such address was found'
+const initCollateralOraclePrice = new BN(2 * 1e4)
 
 describe('manager', () => {
   const provider = anchor.Provider.local()
@@ -224,8 +226,6 @@ describe('manager', () => {
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
 
-      const errMessage = 'No asset with such address was found'
-
       try {
         await managerProgram.state.rpc.setMaxSupply(new Account().publicKey, newAssetLimit, {
           accounts: {
@@ -264,6 +264,42 @@ describe('manager', () => {
     })
   })
   describe('#set_assets_prices()', async () => {
+    it('Should not change prices', async () => {
+      const newPrice = new BN(6 * 1e4)
+      const assetListBefore = await managerProgram.account.assetsList(assetsList)
+
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+
+      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+
+      await oracleProgram.rpc.setPrice(newPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+
+      console.log(feedAddresses)
+      try {
+        await managerProgram.rpc.setAssetsPrices({
+          remainingAccounts: feedAddresses,
+          accounts: {
+            assetsList: assetsList
+          }
+        })
+        assert.ok(false)
+      } catch (err) {}
+      const assetList = await managerProgram.account.assetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check not changed price
+      assert.ok(collateralAsset.price.eq(ZERO_U64))
+    })
     it('Should change prices', async () => {
       const newPrice = new BN(6 * 1e4)
       const assetListBefore = await managerProgram.account.assetsList(assetsList)
