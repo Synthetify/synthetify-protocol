@@ -67,7 +67,6 @@ pub mod manager {
             new_asset_decimals: u8,
             new_asset_max_supply: u64,
         ) -> Result<()> {
-            msg!("Add new asset");
             if !self.admin.eq(ctx.accounts.signer.key) {
                 return Err(ErrorCode::Unauthorized.into());
             }

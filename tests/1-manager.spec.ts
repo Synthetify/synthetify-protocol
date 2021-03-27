@@ -10,7 +10,11 @@ import {
   sleep,
   ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
-  DEFAULT_PUBLIC_KEY
+  DEFAULT_PUBLIC_KEY,
+  createAssetsList,
+  ICreateAssetsList,
+  IAddNewAssets,
+  addNewAssets
 } from './utils'
 import { O_TRUNC } from 'constants'
 
@@ -132,46 +136,32 @@ describe('manager', () => {
     it('Should add new asset ', async () => {
       const newAssetLimit = new BN(3 * 1e4)
       const newAssetDecimals = 8
-      const newToken = await createToken({
+      const addNewAssetParams: IAddNewAssets = {
         connection,
-        payer: wallet,
-        mintAuthority: wallet.publicKey,
-        decimals: newAssetDecimals
-      })
-      const newTokenFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
+        wallet,
         oracleProgram,
-        initPrice: new BN(2 * 1e4)
-      })
+        managerProgram,
+        assetsList,
+        newAssetDecimals,
+        newAssetLimit
+      }
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
 
-      await managerProgram.state.rpc.addNewAsset(
-        newTokenFeed,
-        newToken.publicKey,
-        newAssetDecimals,
-        newAssetLimit,
-        {
-          accounts: {
-            signer: ASSETS_MANAGER_ADMIN.publicKey,
-            assetsList: assetsList
-          },
-          signers: [ASSETS_MANAGER_ADMIN]
-        }
-      )
+      const newAssets = await addNewAssets(addNewAssetParams)
 
       const afterAssetList = await managerProgram.account.assetsList(assetsList)
 
       const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
 
       // Length should be increased by 1
-      assert.ok(beforeAssetList.assets.length + 1 == afterAssetList.assets.length)
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
 
       // Check feed address
-      assert.ok(newAsset.feedAddress.equals(newTokenFeed))
+      assert.ok(newAsset.feedAddress.equals(newAssets[0].feedAddress))
 
       // Check token address
-      assert.ok(newAsset.assetAddress.equals(newToken.publicKey))
+      assert.ok(newAsset.assetAddress.equals(newAssets[0].assetAddress))
 
       // Check decimals
       assert.ok(newAsset.decimals === newAssetDecimals)
@@ -185,34 +175,21 @@ describe('manager', () => {
     it('Should not add new asset ', async () => {
       const newAssetDecimals = 8
       const newAssetLimit = new BN(3 * 1e4)
-      const newToken = await createToken({
+
+      const addNewAssetParams: IAddNewAssets = {
         connection,
-        payer: wallet,
-        mintAuthority: wallet.publicKey,
-        decimals: newAssetDecimals
-      })
-      const newTokenFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
+        wallet,
         oracleProgram,
-        initPrice: new BN(2 * 1e4)
-      })
+        managerProgram,
+        assetsList,
+        newAssetDecimals,
+        newAssetLimit
+      }
 
       const beforeAssetList = await managerProgram.account.assetsList(assetsList)
 
       try {
-        await managerProgram.state.rpc.addNewAsset(
-          newTokenFeed,
-          newToken.publicKey,
-          newAssetDecimals,
-          newAssetLimit,
-          {
-            accounts: {
-              signer: ASSETS_MANAGER_ADMIN.publicKey,
-              assetsList: assetsList
-            },
-            signers: [ASSETS_MANAGER_ADMIN]
-          }
-        )
+        await addNewAssets(addNewAssetParams)
         assert.ok(false)
       } catch (error) {
         assert.ok(true)
@@ -264,8 +241,8 @@ describe('manager', () => {
     })
   })
   describe('#set_assets_prices()', async () => {
+    const newPrice = new BN(6 * 1e4)
     it('Should not change prices', async () => {
-      const newPrice = new BN(6 * 1e4)
       const assetListBefore = await managerProgram.account.assetsList(assetsList)
 
       const feedAddresses = assetListBefore.assets
@@ -284,7 +261,6 @@ describe('manager', () => {
         signers: [ORACLE_ADMIN]
       })
 
-      console.log(feedAddresses)
       try {
         await managerProgram.rpc.setAssetsPrices({
           remainingAccounts: feedAddresses,
@@ -301,7 +277,6 @@ describe('manager', () => {
       assert.ok(collateralAsset.price.eq(ZERO_U64))
     })
     it('Should change prices', async () => {
-      const newPrice = new BN(6 * 1e4)
       const assetListBefore = await managerProgram.account.assetsList(assetsList)
 
       const feedAddresses = assetListBefore.assets
@@ -335,6 +310,70 @@ describe('manager', () => {
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+    it.only('Test 30 assets', async () => {
+      const anotherPrice = new BN(8 * 1e4)
+      const assetsListSize = 30
+      const createAssetsListParams: ICreateAssetsList = {
+        managerProgram,
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        collateralToken,
+        collateralTokenFeed,
+        connection,
+        wallet,
+        assetsSize: assetsListSize
+      }
+
+      const newAssetsList = await createAssetsList(createAssetsListParams)
+
+      const newAssetLimit = new BN(3 * 1e4)
+      const newAssetDecimals = 8
+      const addNewAssetParams: IAddNewAssets = {
+        connection,
+        wallet,
+        oracleProgram,
+        managerProgram,
+        assetsList: newAssetsList,
+        newAssetDecimals,
+        newAssetLimit,
+        newAssetsNumber: assetsListSize - 2 // Collateral and usd
+      }
+
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+
+      const newAssets = await addNewAssets(addNewAssetParams)
+
+      const assetListBefore = await managerProgram.account.assetsList(newAssetsList)
+
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+
+      await oracleProgram.rpc.setPrice(anotherPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+
+      await managerProgram.rpc.setAssetsPrices({
+        remainingAccounts: feedAddresses,
+        accounts: {
+          assetsList: newAssetsList,
+          clock: SYSVAR_CLOCK_PUBKEY
+        }
+      })
+      const assetList = await managerProgram.account.assetsList(newAssetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check assets list lenght
+      assert.ok(assetList.assets.length === assetsListSize)
+
+      // Check new price
+      assert.ok(collateralAsset.price.eq(anotherPrice))
     })
   })
 })
