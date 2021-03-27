@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor'
 import { BN, Program } from '@project-serum/anchor'
 import { State } from '@project-serum/anchor/dist/rpc'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
+import { Account, PublicKey, SYSVAR_RENT_PUBKEY, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
 import {
   createPriceFeed,
@@ -318,16 +318,23 @@ describe('manager', () => {
         signers: [ORACLE_ADMIN]
       })
 
+      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+
       await managerProgram.rpc.setAssetsPrices({
         remainingAccounts: feedAddresses,
         accounts: {
-          assetsList: assetsList
+          assetsList: assetsList,
+          clock: SYSVAR_CLOCK_PUBKEY
         }
       })
       const assetList = await managerProgram.account.assetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
+      // Check new price
       assert.ok(collateralAsset.price.eq(newPrice))
+
+      // Check last_update new value
+      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
   })
 })

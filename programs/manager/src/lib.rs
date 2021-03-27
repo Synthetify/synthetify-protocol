@@ -127,7 +127,10 @@ pub mod manager {
                 .iter_mut()
                 .find(|x| x.feed_address == *feed_address);
             match asset {
-                Some(asset) => asset.price = price_feed.price,
+                Some(asset) => {
+                    asset.price = price_feed.price;
+                    asset.last_update = ctx.accounts.clock.slot;
+                }
                 None => return Err(ErrorCode::NoAssetFound.into()),
             }
         }
@@ -143,6 +146,7 @@ pub struct Initialize {}
 pub struct SetAssetsPrices<'info> {
     #[account(mut)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
