@@ -311,7 +311,7 @@ describe('manager', () => {
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
-    it.only('Test 30 assets', async () => {
+    it('Test 30 assets', async () => {
       const anotherPrice = new BN(8 * 1e4)
       const assetsListSize = 30
       const createAssetsListParams: ICreateAssetsList = {
