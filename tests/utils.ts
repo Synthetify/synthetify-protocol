@@ -6,6 +6,7 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
+export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
@@ -58,7 +59,7 @@ export const createPriceFeed = async ({
   })
   return collateralTokenFeed.publicKey
 }
-interface ICreateAssetsList {
+export interface ICreateAssetsList {
   managerProgram: Program
   assetsAdmin: Account
   collateralTokenFeed: PublicKey
@@ -66,6 +67,20 @@ interface ICreateAssetsList {
   connection: Connection
   wallet: Account
   assetsSize?: number
+}
+export type AddNewAssetResult = {
+  assetAddress: PublicKey
+  feedAddress: PublicKey
+}
+export interface IAddNewAssets {
+  managerProgram: Program
+  oracleProgram: Program
+  connection: Connection
+  wallet: Account
+  assetsList: PublicKey
+  newAssetDecimals: number
+  newAssetLimit: BN
+  newAssetsNumber?: number
 }
 export const createAssetsList = async ({
   managerProgram,
@@ -117,4 +132,48 @@ export const createAssetsList = async ({
     }
   )
   return assetsList
+}
+export const addNewAssets = async ({
+  connection,
+  wallet,
+  oracleProgram,
+  managerProgram,
+  assetsList,
+  newAssetDecimals,
+  newAssetLimit,
+  newAssetsNumber = 1
+}: IAddNewAssets) => {
+  let newAssetsResults = []
+  for (var newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
+    const newToken = await createToken({
+      connection,
+      payer: wallet,
+      mintAuthority: wallet.publicKey,
+      decimals: newAssetDecimals
+    })
+    const newTokenFeed = await createPriceFeed({
+      admin: ORACLE_ADMIN.publicKey,
+      oracleProgram,
+      initPrice: new BN(2 * 1e4)
+    })
+
+    await managerProgram.state.rpc.addNewAsset(
+      newTokenFeed,
+      newToken.publicKey,
+      newAssetDecimals,
+      newAssetLimit,
+      {
+        accounts: {
+          signer: ASSETS_MANAGER_ADMIN.publicKey,
+          assetsList: assetsList
+        },
+        signers: [ASSETS_MANAGER_ADMIN]
+      }
+    )
+    newAssetsResults.push({
+      assetAddress: newToken.publicKey,
+      feedAddress: newTokenFeed
+    })
+  }
+  return newAssetsResults
 }
