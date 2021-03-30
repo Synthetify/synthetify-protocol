@@ -31,13 +31,17 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
     Ok(debt as u64)
 }
 
-// pub fn calculate_user_debt_in_usd(user_account: &UserAccount, debt: u64, debt_shares: u64) -> u64 {
-//     if debt_shares == 0 {
-//         return 0;
-//     }
-//     let user_debt = debt as u128 * user_account.shares as u128 / debt_shares as u128;
-//     return user_debt as u64;
-// }
+pub fn calculate_user_debt_in_usd(
+    user_account: &ExchangeAccount,
+    debt: u64,
+    debt_shares: u64,
+) -> u64 {
+    if debt_shares == 0 {
+        return 0;
+    }
+    let user_debt = debt as u128 * user_account.debt_shares as u128 / debt_shares as u128;
+    return user_debt as u64;
+}
 
 #[cfg(test)]
 mod tests {
@@ -246,5 +250,41 @@ mod tests {
         let result = calculate_debt(&assets, slot, 0);
         // println!("{:?}", result);
         assert!(result.is_err());
+    }
+    #[test]
+    fn test_calculate_user_debt() {
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 100,
+                owner: Pubkey::default(),
+                collateral_shares: 1,
+            };
+            let debt = 4400_162356;
+
+            let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
+            assert_eq!(result, 356_577176)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 1525783,
+                owner: Pubkey::default(),
+                collateral_shares: 1,
+            };
+            let debt = 932210931_726361;
+
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 115210)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 9234567898765432,
+                owner: Pubkey::default(),
+                collateral_shares: 1,
+            };
+            let debt = 526932210931_726361;
+
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 394145294459_835460)
+        }
     }
 }
