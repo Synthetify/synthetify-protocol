@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::*;
 use manager::Asset;
 
@@ -41,6 +43,33 @@ pub fn calculate_user_debt_in_usd(
     }
     let user_debt = debt as u128 * user_account.debt_shares as u128 / debt_shares as u128;
     return user_debt as u64;
+}
+
+pub fn calculate_amount_mint_in_usd(mint_asset: &Asset, amount: u64) -> u64 {
+    let mint_amount_in_usd = mint_asset.price as u128 * amount as u128
+        / 10u128.pow((mint_asset.decimals + ORACLE_OFFSET - ACCURACY).into());
+    return mint_amount_in_usd as u64;
+}
+
+pub fn calculate_max_user_debt_in_usd(
+    collateral_asset: &Asset,
+    collateralization_level: u32,
+    exchange_account: &ExchangeAccount,
+) -> u64 {
+    let user_max_debt = collateral_asset.price as u128 * exchange_account.collateral_shares as u128
+        / 10u128.pow((collateral_asset.decimals + ORACLE_OFFSET - ACCURACY).into());
+    return (user_max_debt * 100 / collateralization_level as u128)
+        .try_into()
+        .unwrap();
+}
+
+pub fn calculate_new_shares(shares: u64, debt: u64, minted_amount_usd: u64) -> u64 {
+    if shares == 0u64 {
+        return 10u64.pow(8);
+    }
+    let new_shares = (shares as u128 * minted_amount_usd as u128) / debt as u128;
+
+    return new_shares as u64;
 }
 
 #[cfg(test)]

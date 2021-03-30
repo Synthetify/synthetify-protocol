@@ -4,12 +4,14 @@ mod math;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
+use manager::{Asset, AssetsList};
+use math::*;
 
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
-    use crate::math::get_collateral_shares;
+    use crate::math::{calculate_debt, get_collateral_shares};
 
     use super::*;
     #[state]
@@ -59,6 +61,47 @@ pub mod exchange {
             self.collateral_shares += new_shares;
             Ok(())
         }
+        pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
+            let mint_token_adddress = ctx.accounts.mint.key;
+            if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
+                return Err(ErrorCode::NotSyntheticUsd.into());
+            }
+            let assets = &mut ctx.accounts.assets_list.assets;
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            let slot = ctx.accounts.clock.slot;
+            let total_debt =
+                calculate_debt(&ctx.accounts.assets_list.assets, slot, self.max_delay).unwrap();
+
+            let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
+
+            let collateral_asset = assets[1];
+
+            let mint_asset = assets
+                .iter_mut()
+                .find(|x| x.asset_address == *mint_token_adddress)
+                .unwrap();
+
+            let amount_mint_usd = calculate_amount_mint_in_usd(&mint_asset, amount);
+            let max_user_debt = calculate_max_user_debt_in_usd(
+                &collateral_asset,
+                self.collateralization_level,
+                exchange_account,
+            );
+            if max_user_debt - user_debt < amount_mint_usd {
+                return Err(ErrorCode::MintLimit.into());
+            }
+            let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount_mint_usd);
+            msg!("mint {}", 1234);
+
+            self.debt_shares += new_shares;
+            exchange_account.debt_shares += new_shares;
+            mint_asset.supply += amount;
+            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::mint_to(cpi_ctx, amount);
+            Ok(())
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
@@ -84,6 +127,33 @@ pub struct CreateExchangeAccount<'info> {
     #[account(init)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     pub rent: Sysvar<'info, Rent>,
+}
+#[derive(Accounts)]
+pub struct Mint<'info> {
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub mint: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    #[account(mut, has_one = owner)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub clock: Sysvar<'info, Clock>,
+    #[account(signer)]
+    owner: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &Mint<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.mint.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 #[derive(Accounts)]
 pub struct Deposit<'info> {
@@ -119,4 +189,10 @@ pub enum ErrorCode {
     ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
+    #[msg("Not synthetic USD asset")]
+    NotSyntheticUsd,
+    #[msg("Oracle price is outdated")]
+    OutdatedOracle,
+    #[msg("Mint limit met")]
+    MintLimit,
 }
