@@ -18,3 +18,4 @@ default = []
 anchor-lang = "0.3.0"
 anchor-spl = '0.3.0'
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
+manager = { path = "../manager", features = ["cpi"] }
