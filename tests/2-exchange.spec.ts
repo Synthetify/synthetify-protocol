@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor'
 import { BN, Program } from '@project-serum/anchor'
 import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Account, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
+import { Account, PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
 import {
   createAssetsList,
@@ -12,7 +12,9 @@ import {
   ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
-  tou64
+  tou64,
+  createAccountWithCollateral,
+  DEFAULT_PUBLIC_KEY
 } from './utils'
 
 describe('exchange', () => {
@@ -52,7 +54,7 @@ describe('exchange', () => {
       mintAuthority: CollateralTokenMinter.publicKey
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
-    assetsList = await createAssetsList({
+    const data = await createAssetsList({
       exchangeAuthority,
       assetsAdmin: ASSETS_MANAGER_ADMIN,
       collateralToken,
@@ -61,6 +63,8 @@ describe('exchange', () => {
       managerProgram,
       wallet
     })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
     await exchangeProgram.state.rpc.new(nonce, {
       accounts: {
         admin: EXCHANGE_ADMIN.publicKey,
@@ -279,6 +283,59 @@ describe('exchange', () => {
       } catch (err) {
         assert.ok(true)
       }
+    })
+  })
+  describe('#mint()', async () => {
+    it.only('Mint with zero debt', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchangeProgram,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const assetListData = await managerProgram.account.assetsList(assetsList)
+
+      const feedAddresses = assetListData.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+      await managerProgram.rpc.setAssetsPrices({
+        remainingAccounts: feedAddresses,
+        accounts: {
+          assetsList: assetsList,
+          clock: SYSVAR_CLOCK_PUBKEY
+        }
+      })
+      const usdMintAmount = new BN(1e6)
+      const txMint = exchangeProgram.state.rpc.mint(usdMintAmount, {
+        accounts: {
+          authority: exchangeAuthority,
+          mint: usdToken.publicKey,
+          to: usdTokenAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
+          exchangeAccount: exchangeAccount,
+          owner: accountOwner.publicKey,
+          assetsList: assetsList,
+          managerProgram: managerProgram.programId
+        },
+        signers: [accountOwner]
+      })
+      await txMint
+
+      // TODO: Disable simulation for txMint
+      // await Promise.all([txUpdateOracle, txMint])
+      const userUsdAccountInfo = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdAccountInfo.amount.eq(usdMintAmount))
     })
   })
 })

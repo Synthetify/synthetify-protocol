@@ -348,6 +348,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "manager",
  "spl-token",
 ]
 
@@ -468,6 +469,7 @@ name = "manager"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "oracle",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 import { BN, Program } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
-import { Token, u64 } from '@solana/spl-token'
+import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 
 export const ORACLE_ADMIN = new Account()
@@ -104,7 +104,7 @@ export const createAssetsList = async ({
   const usdToken = await createToken({
     connection,
     payer: wallet,
-    mintAuthority: wallet.publicKey
+    mintAuthority: exchangeAuthority
   })
   const assetListAccount = new Account()
   const assetsList = assetListAccount.publicKey
@@ -134,7 +134,7 @@ export const createAssetsList = async ({
       signers: [assetsAdmin]
     }
   )
-  return assetsList
+  return { assetsList, usdToken }
 }
 export const addNewAssets = async ({
   connection,
@@ -179,4 +179,78 @@ export const addNewAssets = async ({
     })
   }
   return newAssetsResults
+}
+
+const newAccountWithLamports = async (connection, lamports = 1e10) => {
+  const account = new Account()
+
+  let retries = 30
+  await connection.requestAirdrop(account.publicKey, lamports)
+  for (;;) {
+    await sleep(500)
+    // eslint-disable-next-line eqeqeq
+    if (lamports == (await connection.getBalance(account.publicKey))) {
+      return account
+    }
+    if (--retries <= 0) {
+      break
+    }
+  }
+  throw new Error(`Airdrop of ${lamports} failed`)
+}
+export interface IAccountWithCollaterac {
+  exchangeProgram: Program
+  collateralTokenMintAuthority: PublicKey
+  collateralAccount: PublicKey
+  exchangeAuthority: PublicKey
+  collateralToken: Token
+  amount: BN
+}
+export const createAccountWithCollateral = async ({
+  exchangeProgram,
+  collateralTokenMintAuthority,
+  collateralToken,
+  collateralAccount,
+  exchangeAuthority,
+  amount
+}: IAccountWithCollaterac) => {
+  const accountOwner = await newAccountWithLamports(exchangeProgram.provider.connection)
+  const exchangeAccount = new Account()
+  await exchangeProgram.rpc.createExchangeAccount(accountOwner.publicKey, {
+    accounts: {
+      exchangeAccount: exchangeAccount.publicKey,
+      rent: SYSVAR_RENT_PUBKEY
+    },
+    signers: [exchangeAccount],
+    // Auto allocate memory
+    instructions: [await exchangeProgram.account.exchangeAccount.createInstruction(exchangeAccount)]
+  })
+  const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+  await collateralToken.mintTo(
+    userCollateralTokenAccount,
+    collateralTokenMintAuthority,
+    [],
+    tou64(amount)
+  )
+  await exchangeProgram.state.rpc.deposit(amount, {
+    accounts: {
+      collateralAccount: collateralAccount,
+      userCollateralAccount: userCollateralTokenAccount,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      exchangeAuthority: exchangeAuthority,
+      exchangeAccount: exchangeAccount.publicKey
+    },
+    signers: [accountOwner],
+    instructions: [
+      Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+    ]
+  })
+  return { accountOwner, exchangeAccount: exchangeAccount.publicKey, userCollateralTokenAccount }
 }

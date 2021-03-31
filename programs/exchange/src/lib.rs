@@ -4,7 +4,7 @@ mod math;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
-use manager::{Asset, AssetsList};
+use manager::{Asset, AssetsList, SetAssetSupply};
 use math::*;
 
 #[program]
@@ -66,20 +66,16 @@ pub mod exchange {
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
-            let assets = &mut ctx.accounts.assets_list.assets;
+            let assets = &ctx.accounts.assets_list.assets;
             let exchange_account = &mut ctx.accounts.exchange_account;
             let slot = ctx.accounts.clock.slot;
-            let total_debt =
-                calculate_debt(&ctx.accounts.assets_list.assets, slot, self.max_delay).unwrap();
+            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
 
-            let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
+            let user_debt =
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
 
-            let collateral_asset = assets[1];
-
-            let mint_asset = assets
-                .iter_mut()
-                .find(|x| x.asset_address == *mint_token_adddress)
-                .unwrap();
+            let mint_asset = &assets[0];
+            let collateral_asset = &assets[1];
 
             let amount_mint_usd = calculate_amount_mint_in_usd(&mint_asset, amount);
             let max_user_debt = calculate_max_user_debt_in_usd(
@@ -91,13 +87,22 @@ pub mod exchange {
                 return Err(ErrorCode::MintLimit.into());
             }
             let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount_mint_usd);
-            msg!("mint {}", 1234);
-
-            self.debt_shares += new_shares;
-            exchange_account.debt_shares += new_shares;
-            mint_asset.supply += amount;
             let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
             let signer = &[&seeds[..]];
+            let cpi_program = ctx.accounts.manager_program.clone();
+            let cpi_accounts = SetAssetSupply {
+                assets_list: ctx.accounts.assets_list.clone().into(),
+                exchange_authority: ctx.accounts.authority.clone().into(),
+            };
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
+            manager::cpi::set_asset_supply(
+                cpi_ctx,
+                mint_asset.asset_address,
+                mint_asset.supply + amount,
+            );
+            self.debt_shares += new_shares;
+            exchange_account.debt_shares += new_shares;
+
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::mint_to(cpi_ctx, amount);
             Ok(())
@@ -131,18 +136,19 @@ pub struct CreateExchangeAccount<'info> {
 #[derive(Accounts)]
 pub struct Mint<'info> {
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: CpiAccount<'info, AssetsList>,
     pub authority: AccountInfo<'info>,
     #[account(mut)]
     pub mint: AccountInfo<'info>,
     #[account(mut)]
     pub to: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+    pub manager_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     pub clock: Sysvar<'info, Clock>,
     #[account(signer)]
-    owner: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
     fn from(accounts: &Mint<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {

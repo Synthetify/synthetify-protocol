@@ -15,7 +15,7 @@ import {
   ICreateAssetsList,
   IAddNewAssets,
   addNewAssets
-} from './utils'
+} from '../tests/utils'
 import { O_TRUNC } from 'constants'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
