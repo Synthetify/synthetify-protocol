@@ -53,6 +53,7 @@ describe('exchange', () => {
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     assetsList = await createAssetsList({
+      exchangeAuthority,
       assetsAdmin: ASSETS_MANAGER_ADMIN,
       collateralToken,
       collateralTokenFeed,

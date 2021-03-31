@@ -29,11 +29,11 @@ pub mod manager {
         pub fn create_list(
             &mut self,
             ctx: Context<InitializeAssetsList>,
+            exchange_authority: Pubkey,
             collateral_token: Pubkey,
             collateral_token_feed: Pubkey,
             usd_token: Pubkey,
         ) -> Result<()> {
-            msg!("Hellooo");
             if !self.admin.eq(ctx.accounts.signer.key) {
                 return Err(ErrorCode::Unauthorized.into());
             }
@@ -57,6 +57,7 @@ pub mod manager {
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
             ctx.accounts.assets_list.initialized = true;
+            ctx.accounts.assets_list.exchange_authority = exchange_authority;
             Ok(())
         }
         pub fn add_new_asset(
@@ -115,6 +116,20 @@ pub mod manager {
         assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
         Ok(())
     }
+    pub fn set_asset_supply(
+        ctx: Context<SetAssetSupply>,
+        asset_address: Pubkey,
+        new_supply: u64,
+    ) -> ProgramResult {
+        let assets_list = &mut ctx.accounts.assets_list;
+        let asset = assets_list
+            .assets
+            .iter_mut()
+            .find(|x| x.asset_address == asset_address)
+            .unwrap();
+        asset.supply = new_supply;
+        Ok(())
+    }
     pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> ProgramResult {
         for oracle_account in ctx.remaining_accounts {
             let price_feed: CpiAccount<PriceFeed> = CpiAccount::try_from(oracle_account)?;
@@ -141,6 +156,13 @@ pub mod manager {
 pub struct New {}
 #[derive(Accounts)]
 pub struct Initialize {}
+#[derive(Accounts)]
+pub struct SetAssetSupply<'info> {
+    #[account(mut,has_one=exchange_authority)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+    #[account(signer)]
+    pub exchange_authority: AccountInfo<'info>,
+}
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
     #[account(mut)]
@@ -188,10 +210,11 @@ pub struct Asset {
     pub last_update: u64,      // 8
     pub max_supply: u64,       // 8
 }
-// This will need 13 + x*97 bytes for each asset
+// This will need 45 + x*97 bytes for each asset
 #[account]
 pub struct AssetsList {
     pub initialized: bool,
+    pub exchange_authority: Pubkey,
     pub assets: Vec<Asset>,
 }
 #[error]

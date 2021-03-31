@@ -23,6 +23,7 @@ const USDT_VALUE_U64 = new BN(10000)
 const ZERO_U64 = new BN(0)
 const errMessage = 'No asset with such address was found'
 const initCollateralOraclePrice = new BN(2 * 1e4)
+const exchangeAuthorityAccount = new Account()
 
 describe('manager', () => {
   const provider = anchor.Provider.local()
@@ -70,11 +71,12 @@ describe('manager', () => {
       signers: [assetListAccount],
       instructions: [
         // 291 allows for 3 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 13)
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 45)
       ]
     })
 
     await managerProgram.state.rpc.createList(
+      exchangeAuthorityAccount.publicKey,
       collateralToken.publicKey,
       collateralTokenFeed,
       usdToken.publicKey,
@@ -96,6 +98,8 @@ describe('manager', () => {
     const assetsListData = await managerProgram.account.assetsList(assetsList)
     // Length should be 2
     assert.ok(assetsListData.assets.length === 2)
+    // Authority of list
+    assert.ok(assetsListData.exchangeAuthority.equals(exchangeAuthorityAccount.publicKey))
 
     const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
 
@@ -131,6 +135,61 @@ describe('manager', () => {
 
     // Check price
     assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
+  })
+  describe('#set_asset_supply()', async () => {
+    it('Should change asset supply', async () => {
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAsset = beforeAssetList.assets[0]
+
+      const newSupply = beforeAsset.supply.add(new BN(12345678))
+      await managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
+        accounts: {
+          assetsList: assetsList,
+          exchangeAuthority: exchangeAuthorityAccount.publicKey
+        },
+        signers: [exchangeAuthorityAccount]
+      })
+      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+      const afterAsset = afterAssetList.assets[0]
+      // Check new supply
+      assert.ok(afterAsset.supply.eq(newSupply))
+    })
+    it('Should fail with wrong signer', async () => {
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAsset = beforeAssetList.assets[0]
+
+      const newSupply = beforeAsset.supply.add(new BN(12345678))
+      try {
+        await managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
+          accounts: {
+            assetsList: assetsList,
+            exchangeAuthority: exchangeAuthorityAccount.publicKey
+          },
+          signers: [new Account()]
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
+    it('Should fail if asset not found', async () => {
+      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAsset = beforeAssetList.assets[0]
+
+      const newSupply = beforeAsset.supply.add(new BN(12345678))
+      try {
+        await managerProgram.rpc.setAssetSupply(new Account().publicKey, newSupply, {
+          accounts: {
+            assetsList: assetsList,
+            exchangeAuthority: exchangeAuthorityAccount.publicKey
+          },
+          signers: [exchangeAuthorityAccount]
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
   })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
@@ -315,6 +374,7 @@ describe('manager', () => {
       const anotherPrice = new BN(8 * 1e4)
       const assetsListSize = 30
       const createAssetsListParams: ICreateAssetsList = {
+        exchangeAuthority: exchangeAuthorityAccount.publicKey,
         managerProgram,
         assetsAdmin: ASSETS_MANAGER_ADMIN,
         collateralToken,

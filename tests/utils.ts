@@ -63,6 +63,7 @@ export interface ICreateAssetsList {
   managerProgram: Program
   assetsAdmin: Account
   collateralTokenFeed: PublicKey
+  exchangeAuthority: PublicKey
   collateralToken: Token
   connection: Connection
   wallet: Account
@@ -89,6 +90,7 @@ export const createAssetsList = async ({
   collateralTokenFeed,
   connection,
   wallet,
+  exchangeAuthority,
   assetsSize = 30
 }: ICreateAssetsList) => {
   try {
@@ -115,11 +117,12 @@ export const createAssetsList = async ({
     instructions: [
       await managerProgram.account.assetsList.createInstruction(
         assetListAccount,
-        assetsSize * 97 + 13
+        assetsSize * 97 + 45
       )
     ]
   })
   await managerProgram.state.rpc.createList(
+    exchangeAuthority,
     collateralToken.publicKey,
     collateralTokenFeed,
     usdToken.publicKey,
