@@ -1,5 +1,5 @@
 import { Network } from './network'
-import idl from '../../target/idl/manager.json'
+import idl from './idl/manager.json'
 import { Idl, Program, Provider, web3, Wallet } from '@project-serum/anchor'
 
 export class Manager {

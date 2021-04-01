@@ -1,0 +1,278 @@
+{
+  "version": "0.0.0",
+  "name": "manager",
+  "instructions": [
+    {
+      "name": "createAssetsList",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "length",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "setAssetSupply",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "assetAddress",
+          "type": "publicKey"
+        },
+        {
+          "name": "newSupply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setAssetsPrices",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "state": {
+    "struct": {
+      "name": "InternalState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "publicKey"
+          },
+          {
+            "name": "initialized",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    "methods": [
+      {
+        "name": "new",
+        "accounts": [],
+        "args": []
+      },
+      {
+        "name": "initialize",
+        "accounts": [],
+        "args": [
+          {
+            "name": "admin",
+            "type": "publicKey"
+          }
+        ]
+      },
+      {
+        "name": "createList",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "exchangeAuthority",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralToken",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralTokenFeed",
+            "type": "publicKey"
+          },
+          {
+            "name": "usdToken",
+            "type": "publicKey"
+          }
+        ]
+      },
+      {
+        "name": "addNewAsset",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "newAssetFeedAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newAssetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newAssetDecimals",
+            "type": "u8"
+          },
+          {
+            "name": "newAssetMaxSupply",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "setMaxSupply",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newMaxSupply",
+            "type": "u64"
+          }
+        ]
+      }
+    ]
+  },
+  "accounts": [
+    {
+      "name": "AssetsList",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "exchangeAuthority",
+            "type": "publicKey"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": "Asset"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "Asset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feedAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "lastUpdate",
+            "type": "u64"
+          },
+          {
+            "name": "maxSupply",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 100,
+      "name": "ErrorType",
+      "msg": "Your error message"
+    },
+    {
+      "code": 101,
+      "name": "Unauthorized",
+      "msg": "You are not admin"
+    },
+    {
+      "code": 102,
+      "name": "NoAssetFound",
+      "msg": "No asset with such address was found"
+    }
+  ],
+  "metadata": {
+    "address": "5QLbXJmb7FKCvcYAxGABNWGqp5L8RmjhmgjgaRQBPUvw"
+  }
+}

@@ -2,10 +2,12 @@
   "name": "synthetify-sdk",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "author": "Norbert Bodziony",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "prebuild": "cp -r ../target/idl ./src",
     "build": "tsc"
   },
   "keywords": [],

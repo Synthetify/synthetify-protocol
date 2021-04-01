@@ -1,9 +1,11 @@
 import * as anchor from '@project-serum/anchor'
-import { BN, Program } from '@project-serum/anchor'
+import { Program } from '@project-serum/anchor'
 import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { Account, PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
+import { BN } from '@synthetify/sdk'
+
 import {
   createAssetsList,
   createPriceFeed,

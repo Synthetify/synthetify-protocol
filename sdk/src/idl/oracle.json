@@ -1,0 +1,73 @@
+{
+  "version": "0.0.0",
+  "name": "oracle",
+  "instructions": [
+    {
+      "name": "create",
+      "accounts": [
+        {
+          "name": "priceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "admin",
+          "type": "publicKey"
+        },
+        {
+          "name": "initialPrice",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setPrice",
+      "accounts": [
+        {
+          "name": "priceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PriceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "publicKey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "address": "3LRYZCkGdEYRL9YE1a3e6RYSw48jhuQEWhB8jPRZi2Qj"
+  }
+}

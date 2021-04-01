@@ -1,0 +1,263 @@
+{
+  "version": "0.0.0",
+  "name": "exchange",
+  "instructions": [
+    {
+      "name": "createExchangeAccount",
+      "accounts": [
+        {
+          "name": "exchangeAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "owner",
+          "type": "publicKey"
+        }
+      ]
+    }
+  ],
+  "state": {
+    "struct": {
+      "name": "InternalState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "publicKey"
+          },
+          {
+            "name": "programSigner",
+            "type": "publicKey"
+          },
+          {
+            "name": "nonce",
+            "type": "u8"
+          },
+          {
+            "name": "debtShares",
+            "type": "u64"
+          },
+          {
+            "name": "collateralShares",
+            "type": "u64"
+          },
+          {
+            "name": "collateralToken",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "assetsList",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralizationLevel",
+            "type": "u32"
+          },
+          {
+            "name": "maxDelay",
+            "type": "u32"
+          },
+          {
+            "name": "fee",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    "methods": [
+      {
+        "name": "new",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "collateralToken",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "collateralAccount",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "programSigner",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "nonce",
+            "type": "u8"
+          }
+        ]
+      },
+      {
+        "name": "deposit",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "collateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userCollateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "mint",
+        "accounts": [
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "authority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "mint",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "to",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "managerProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    ]
+  },
+  "accounts": [
+    {
+      "name": "ExchangeAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "debtShares",
+            "type": "u64"
+          },
+          {
+            "name": "collateralShares",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 100,
+      "name": "ErrorType",
+      "msg": "Your error message"
+    },
+    {
+      "code": 101,
+      "name": "Unauthorized",
+      "msg": "You are not admin"
+    },
+    {
+      "code": 102,
+      "name": "NotSyntheticUsd",
+      "msg": "Not synthetic USD asset"
+    },
+    {
+      "code": 103,
+      "name": "OutdatedOracle",
+      "msg": "Oracle price is outdated"
+    },
+    {
+      "code": 104,
+      "name": "MintLimit",
+      "msg": "Mint limit met"
+    }
+  ],
+  "metadata": {
+    "address": "CV325gyczLDCkfSz89wA4sw2Nj74PkBnXs3DE9GPzDKT"
+  }
+}
