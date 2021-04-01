@@ -1,0 +1,19 @@
+{
+  "name": "synthetify-sdk",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "author": "Norbert Bodziony",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.2.3",
+    "@project-serum/anchor": "^0.3.0",
+    "@project-serum/serum": "^0.13.26",
+    "@solana/spl-token": "^0.1.1"
+  }
+}
