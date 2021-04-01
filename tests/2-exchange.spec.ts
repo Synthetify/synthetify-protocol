@@ -308,14 +308,14 @@ describe('exchange', () => {
         .map((asset) => {
           return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
         })
-      await managerProgram.rpc.setAssetsPrices({
+      const txUpdateOracle = managerProgram.rpc.setAssetsPrices({
         remainingAccounts: feedAddresses,
         accounts: {
           assetsList: assetsList,
           clock: SYSVAR_CLOCK_PUBKEY
         }
       })
-      const usdMintAmount = new BN(1e6)
+      const usdMintAmount = new BN(20 * 1e6)
       const txMint = exchangeProgram.state.rpc.mint(usdMintAmount, {
         accounts: {
           authority: exchangeAuthority,
@@ -328,12 +328,10 @@ describe('exchange', () => {
           assetsList: assetsList,
           managerProgram: managerProgram.programId
         },
-        signers: [accountOwner]
+        signers: [accountOwner],
+        options: { skipPreflight: true }
       })
-      await txMint
-
-      // TODO: Disable simulation for txMint
-      // await Promise.all([txUpdateOracle, txMint])
+      await Promise.all([txUpdateOracle, txMint])
       const userUsdAccountInfo = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdAccountInfo.amount.eq(usdMintAmount))
     })

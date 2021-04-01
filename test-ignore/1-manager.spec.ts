@@ -384,8 +384,8 @@ describe('manager', () => {
         assetsSize: assetsListSize
       }
 
-      const newAssetsList = await createAssetsList(createAssetsListParams)
-
+      const data = await createAssetsList(createAssetsListParams)
+      const newAssetsList = data.assetsList
       const newAssetLimit = new BN(3 * 1e4)
       const newAssetDecimals = 8
       const addNewAssetParams: IAddNewAssets = {
