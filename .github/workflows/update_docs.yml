@@ -3,19 +3,21 @@ name: Update docs
 on:
   push:
     branches:
-      - master
-    paths:
-      - docs/**
+      - test
+    # paths:
+    #   - docs/**
 
 jobs:
   upload:
     runs-on: ubuntu-latest
-    env:
-      working-directory: ./docs
+    defaults:
+      run:
+        working-directory: ./docs
     steps:
       - uses: actions/checkout@v1
       - name: install
         run: npm install
+        working-directory: ./docs
       - name: build
         run: npm run build
         env:
