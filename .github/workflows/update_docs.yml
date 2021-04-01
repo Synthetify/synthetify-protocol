@@ -10,10 +10,10 @@ on:
 jobs:
   upload:
     runs-on: ubuntu-latest
+    env:
+      working-directory: ./docs
     steps:
       - uses: actions/checkout@v1
-      - name: cd
-        run: cd docs
       - name: install
         run: npm install
       - name: build
