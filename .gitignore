@@ -9,3 +9,8 @@ target
     node_modules
 node_modules
 .anchor
+
+# Ignore docs production 
+docs/build
+.docusaurus
+.cache-loader
