@@ -20,6 +20,7 @@ jobs:
           override: true
       - name: install solana
         run: |
+          cargo install build-bpf
           sudo apt-get install -y pkg-config build-essential libudev-dev
           sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
