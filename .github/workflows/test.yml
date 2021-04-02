@@ -15,12 +15,11 @@ jobs:
         with:
           component: clippy
       - name: install
-        run: npm install
-        run: sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
-        run: npm install -g mocha
-        run: npm install -g ts-mocha
-        run: npm install -g @project-serum/anchor
-        run: sudo apt-get install -y pkg-config build-essential libudev-dev
-        run: cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
-
-  
+        run: |
+          npm install
+          sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
+          npm install -g mocha
+          npm install -g ts-mocha
+          npm install -g @project-serum/anchor
+          sudo apt-get install -y pkg-config build-essential libudev-dev
+          cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
