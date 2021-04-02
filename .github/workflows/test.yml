@@ -29,6 +29,8 @@ jobs:
           solana-keygen new
       - name: install
         run: |
+          which cargo
+          cargo build-bpf 
           npm install
           cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
       - name: build programs
