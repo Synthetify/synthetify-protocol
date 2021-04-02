@@ -86,11 +86,6 @@
       {
         "name": "new",
         "accounts": [],
-        "args": []
-      },
-      {
-        "name": "initialize",
-        "accounts": [],
         "args": [
           {
             "name": "admin",
@@ -273,6 +268,6 @@
     }
   ],
   "metadata": {
-    "address": "5QLbXJmb7FKCvcYAxGABNWGqp5L8RmjhmgjgaRQBPUvw"
+    "address": "HJbtbxGPmYoeRXuZMzQMDz5wCkz72Y4obSGRyvHLPphx"
   }
 }

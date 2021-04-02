@@ -4,7 +4,7 @@ import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { Account, PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
 import { assert, expect } from 'chai'
-import { BN } from '@synthetify/sdk'
+import { BN, Manager, Network } from '@synthetify/sdk'
 
 import {
   createAssetsList,
@@ -24,6 +24,7 @@ describe('exchange', () => {
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
   const managerProgram = anchor.workspace.Manager as Program
+  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
 
   const oracleProgram = anchor.workspace.Oracle as Program
 
@@ -62,7 +63,7 @@ describe('exchange', () => {
       collateralToken,
       collateralTokenFeed,
       connection,
-      managerProgram,
+      manager,
       wallet
     })
     assetsList = data.assetsList
@@ -288,7 +289,7 @@ describe('exchange', () => {
     })
   })
   describe('#mint()', async () => {
-    it.only('Mint with zero debt', async () => {
+    it('Mint with zero debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,
@@ -303,20 +304,15 @@ describe('exchange', () => {
         amount: collateralAmount
       })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-      const assetListData = await managerProgram.account.assetsList(assetsList)
+      const assetListData = await manager.getAssetsList(assetsList)
 
       const feedAddresses = assetListData.assets
         .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
         .map((asset) => {
           return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
         })
-      const txUpdateOracle = managerProgram.rpc.setAssetsPrices({
-        remainingAccounts: feedAddresses,
-        accounts: {
-          assetsList: assetsList,
-          clock: SYSVAR_CLOCK_PUBKEY
-        }
-      })
+
+      const txUpdateOracle = manager.updatePrices(assetsList)
       const usdMintAmount = new BN(20 * 1e6)
       const txMint = exchangeProgram.state.rpc.mint(usdMintAmount, {
         accounts: {
@@ -328,7 +324,7 @@ describe('exchange', () => {
           exchangeAccount: exchangeAccount,
           owner: accountOwner.publicKey,
           assetsList: assetsList,
-          managerProgram: managerProgram.programId
+          managerProgram: manager.programId
         },
         signers: [accountOwner],
         options: { skipPreflight: true }

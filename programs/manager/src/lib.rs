@@ -13,17 +13,11 @@ pub mod manager {
         pub initialized: bool,
     }
     impl InternalState {
-        pub fn new(_ctx: Context<New>) -> Result<Self> {
+        pub fn new(_ctx: Context<New>, admin: Pubkey) -> Result<Self> {
             Ok(Self {
-                admin: Pubkey::default(),
+                admin: admin,
                 initialized: false,
             })
-        }
-
-        pub fn initialize(&mut self, _ctx: Context<Initialize>, admin: Pubkey) -> Result<()> {
-            self.initialized = true;
-            self.admin = admin;
-            Ok(())
         }
 
         pub fn create_list(
@@ -154,8 +148,6 @@ pub mod manager {
 }
 #[derive(Accounts)]
 pub struct New {}
-#[derive(Accounts)]
-pub struct Initialize {}
 #[derive(Accounts)]
 pub struct SetAssetSupply<'info> {
     #[account(mut,has_one=exchange_authority)]

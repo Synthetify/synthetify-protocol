@@ -2,6 +2,7 @@ import { BN, Program } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
+import { Manager } from '@synthetify/sdk'
 
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
@@ -60,7 +61,7 @@ export const createPriceFeed = async ({
   return collateralTokenFeed.publicKey
 }
 export interface ICreateAssetsList {
-  managerProgram: Program
+  manager: Manager
   assetsAdmin: Account
   collateralTokenFeed: PublicKey
   exchangeAuthority: PublicKey
@@ -74,7 +75,7 @@ export type AddNewAssetResult = {
   feedAddress: PublicKey
 }
 export interface IAddNewAssets {
-  managerProgram: Program
+  manager: Manager
   oracleProgram: Program
   connection: Connection
   wallet: Account
@@ -84,7 +85,7 @@ export interface IAddNewAssets {
   newAssetsNumber?: number
 }
 export const createAssetsList = async ({
-  managerProgram,
+  manager,
   assetsAdmin,
   collateralToken,
   collateralTokenFeed,
@@ -95,8 +96,7 @@ export const createAssetsList = async ({
 }: ICreateAssetsList) => {
   try {
     // IF we test without previous tests
-    await managerProgram.state.rpc.new()
-    await managerProgram.state.rpc.initialize(assetsAdmin.publicKey)
+    await manager.init(assetsAdmin.publicKey)
   } catch (error) {
     console.log('Dont worry about above error! ')
   }
@@ -106,41 +106,23 @@ export const createAssetsList = async ({
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetListAccount = new Account()
-  const assetsList = assetListAccount.publicKey
-  await managerProgram.rpc.createAssetsList(assetsSize, {
-    accounts: {
-      assetsList: assetListAccount.publicKey,
-      rent: SYSVAR_RENT_PUBKEY
-    },
-    signers: [assetListAccount],
-    instructions: [
-      await managerProgram.account.assetsList.createInstruction(
-        assetListAccount,
-        assetsSize * 97 + 45
-      )
-    ]
-  })
-  await managerProgram.state.rpc.createList(
-    exchangeAuthority,
-    collateralToken.publicKey,
+  const assetsList = await manager.createAssetsList(assetsSize)
+
+  await manager.initializeAssetsList({
+    assetsAdmin,
+    assetsList,
+    collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
-    usdToken.publicKey,
-    {
-      accounts: {
-        signer: assetsAdmin.publicKey,
-        assetsList: assetsList
-      },
-      signers: [assetsAdmin]
-    }
-  )
+    exchangeAuthority,
+    usdToken: usdToken.publicKey
+  })
   return { assetsList, usdToken }
 }
 export const addNewAssets = async ({
   connection,
   wallet,
   oracleProgram,
-  managerProgram,
+  manager,
   assetsList,
   newAssetDecimals,
   newAssetLimit,
@@ -160,19 +142,14 @@ export const addNewAssets = async ({
       initPrice: new BN(2 * 1e4)
     })
 
-    await managerProgram.state.rpc.addNewAsset(
-      newTokenFeed,
-      newToken.publicKey,
-      newAssetDecimals,
-      newAssetLimit,
-      {
-        accounts: {
-          signer: ASSETS_MANAGER_ADMIN.publicKey,
-          assetsList: assetsList
-        },
-        signers: [ASSETS_MANAGER_ADMIN]
-      }
-    )
+    await manager.addNewAsset({
+      assetsAdmin: ASSETS_MANAGER_ADMIN,
+      assetsList,
+      maxSupply: newAssetLimit,
+      tokenAddress: newToken.publicKey,
+      tokenDecimals: newAssetDecimals,
+      tokenFeed: newTokenFeed
+    })
     newAssetsResults.push({
       assetAddress: newToken.publicKey,
       feedAddress: newTokenFeed

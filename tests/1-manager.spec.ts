@@ -1,9 +1,16 @@
 import * as anchor from '@project-serum/anchor'
 import { BN, Program } from '@project-serum/anchor'
-import { State } from '@project-serum/anchor/dist/rpc'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, SYSVAR_RENT_PUBKEY, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js'
+import {
+  Account,
+  PublicKey,
+  SYSVAR_RENT_PUBKEY,
+  SYSVAR_CLOCK_PUBKEY,
+  sendAndConfirmTransaction,
+  Transaction
+} from '@solana/web3.js'
 import { assert, expect } from 'chai'
+import { Manager } from '@synthetify/sdk'
 import {
   createPriceFeed,
   createToken,
@@ -15,8 +22,8 @@ import {
   ICreateAssetsList,
   IAddNewAssets,
   addNewAssets
-} from '../tests/utils'
-import { O_TRUNC } from 'constants'
+} from './utils'
+import { Network } from '@synthetify/sdk/lib/network'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(10000)
@@ -30,7 +37,7 @@ describe('manager', () => {
   const connection = provider.connection
   const managerProgram = anchor.workspace.Manager as Program
   const oracleProgram = anchor.workspace.Oracle as Program
-
+  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
   let collateralToken: Token
@@ -57,45 +64,24 @@ describe('manager', () => {
       initPrice: new BN(2 * 1e4)
     })
 
-    await managerProgram.state.rpc.new()
-    await managerProgram.state.rpc.initialize(ASSETS_MANAGER_ADMIN.publicKey)
+    await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
 
-    const assetListAccount = new Account()
-    assetsList = assetListAccount.publicKey
-
-    await managerProgram.rpc.createAssetsList(3, {
-      accounts: {
-        assetsList: assetListAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY
-      },
-      signers: [assetListAccount],
-      instructions: [
-        // 291 allows for 3 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 45)
-      ]
-    })
-
-    await managerProgram.state.rpc.createList(
-      exchangeAuthorityAccount.publicKey,
-      collateralToken.publicKey,
+    assetsList = await manager.createAssetsList(3)
+    await manager.initializeAssetsList({
+      assetsList,
       collateralTokenFeed,
-      usdToken.publicKey,
-      {
-        accounts: {
-          signer: ASSETS_MANAGER_ADMIN.publicKey,
-          assetsList: assetsList
-        },
-        signers: [ASSETS_MANAGER_ADMIN]
-      }
-    )
+      collateralToken: collateralToken.publicKey,
+      assetsAdmin: ASSETS_MANAGER_ADMIN,
+      exchangeAuthority: exchangeAuthorityAccount.publicKey,
+      usdToken: usdToken.publicKey
+    })
   })
   it('Initialize', async () => {
     const initTokensDecimals = 6
-
-    const state = await managerProgram.state()
+    const state = await manager.getState()
     assert.ok(state.admin.equals(ASSETS_MANAGER_ADMIN.publicKey))
 
-    const assetsListData = await managerProgram.account.assetsList(assetsList)
+    const assetsListData = await manager.getAssetsList(assetsList)
     // Length should be 2
     assert.ok(assetsListData.assets.length === 2)
     // Authority of list
@@ -138,24 +124,23 @@ describe('manager', () => {
   })
   describe('#set_asset_supply()', async () => {
     it('Should change asset supply', async () => {
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
-      await managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
-        accounts: {
-          assetsList: assetsList,
-          exchangeAuthority: exchangeAuthorityAccount.publicKey
-        },
-        signers: [exchangeAuthorityAccount]
+      await manager.setAssetSupply({
+        assetsList,
+        assetAddress: beforeAsset.assetAddress,
+        newSupply,
+        exchangeAuthority: exchangeAuthorityAccount
       })
-      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+      const afterAssetList = await manager.getAssetsList(assetsList)
       const afterAsset = afterAssetList.assets[0]
       // Check new supply
       assert.ok(afterAsset.supply.eq(newSupply))
     })
     it('Should fail with wrong signer', async () => {
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
@@ -173,17 +158,16 @@ describe('manager', () => {
       }
     })
     it('Should fail if asset not found', async () => {
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
       try {
-        await managerProgram.rpc.setAssetSupply(new Account().publicKey, newSupply, {
-          accounts: {
-            assetsList: assetsList,
-            exchangeAuthority: exchangeAuthorityAccount.publicKey
-          },
-          signers: [exchangeAuthorityAccount]
+        await manager.setAssetSupply({
+          assetsList,
+          assetAddress: new Account().publicKey,
+          newSupply,
+          exchangeAuthority: exchangeAuthorityAccount
         })
         assert.ok(false)
       } catch (error) {
@@ -199,17 +183,17 @@ describe('manager', () => {
         connection,
         wallet,
         oracleProgram,
-        managerProgram,
+        manager,
         assetsList,
         newAssetDecimals,
         newAssetLimit
       }
 
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
 
       const newAssets = await addNewAssets(addNewAssetParams)
 
-      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+      const afterAssetList = await manager.getAssetsList(assetsList)
 
       const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
 
@@ -239,13 +223,13 @@ describe('manager', () => {
         connection,
         wallet,
         oracleProgram,
-        managerProgram,
+        manager,
         assetsList,
         newAssetDecimals,
         newAssetLimit
       }
 
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
 
       try {
         await addNewAssets(addNewAssetParams)
@@ -259,16 +243,12 @@ describe('manager', () => {
     const newAssetLimit = new BN(4 * 1e4)
 
     it('Error should be throwed while setting new max supply', async () => {
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
-      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-
       try {
-        await managerProgram.state.rpc.setMaxSupply(new Account().publicKey, newAssetLimit, {
-          accounts: {
-            signer: ASSETS_MANAGER_ADMIN.publicKey,
-            assetsList: assetsList
-          },
-          signers: [ASSETS_MANAGER_ADMIN]
+        await manager.setAssetMaxSupply({
+          assetAddress: new Account().publicKey,
+          assetsAdmin: ASSETS_MANAGER_ADMIN,
+          assetsList,
+          newMaxSupply: newAssetLimit
         })
         assert.ok(false)
       } catch (err) {
@@ -276,25 +256,23 @@ describe('manager', () => {
         assert.ok(err.msg === errMessage)
       }
 
-      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+      const afterAssetList = await manager.getAssetsList(assetsList)
 
       assert.notOk(
         afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit)
       )
     })
     it('New max supply should be set', async () => {
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
+      const beforeAssetList = await manager.getAssetsList(assetsList)
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-
-      await managerProgram.state.rpc.setMaxSupply(beforeAsset.assetAddress, newAssetLimit, {
-        accounts: {
-          signer: ASSETS_MANAGER_ADMIN.publicKey,
-          assetsList: assetsList
-        },
-        signers: [ASSETS_MANAGER_ADMIN]
+      await manager.setAssetMaxSupply({
+        assetAddress: beforeAsset.assetAddress,
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        newMaxSupply: newAssetLimit
       })
 
-      const afterAssetList = await managerProgram.account.assetsList(assetsList)
+      const afterAssetList = await manager.getAssetsList(assetsList)
 
       assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
     })
@@ -302,7 +280,7 @@ describe('manager', () => {
   describe('#set_assets_prices()', async () => {
     const newPrice = new BN(6 * 1e4)
     it('Should not change prices', async () => {
-      const assetListBefore = await managerProgram.account.assetsList(assetsList)
+      const assetListBefore = await manager.getAssetsList(assetsList)
 
       const feedAddresses = assetListBefore.assets
         .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
@@ -329,20 +307,14 @@ describe('manager', () => {
         })
         assert.ok(false)
       } catch (err) {}
-      const assetList = await managerProgram.account.assetsList(assetsList)
+      const assetList = await manager.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
       // Check not changed price
       assert.ok(collateralAsset.price.eq(ZERO_U64))
     })
     it('Should change prices', async () => {
-      const assetListBefore = await managerProgram.account.assetsList(assetsList)
-
-      const feedAddresses = assetListBefore.assets
-        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-        .map((asset) => {
-          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-        })
+      const assetListBefore = await manager.getAssetsList(assetsList)
 
       await oracleProgram.rpc.setPrice(newPrice, {
         accounts: {
@@ -354,14 +326,9 @@ describe('manager', () => {
 
       const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
-      await managerProgram.rpc.setAssetsPrices({
-        remainingAccounts: feedAddresses,
-        accounts: {
-          assetsList: assetsList,
-          clock: SYSVAR_CLOCK_PUBKEY
-        }
-      })
-      const assetList = await managerProgram.account.assetsList(assetsList)
+      await manager.updatePrices(assetsList)
+
+      const assetList = await manager.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
       // Check new price
@@ -375,7 +342,7 @@ describe('manager', () => {
       const assetsListSize = 30
       const createAssetsListParams: ICreateAssetsList = {
         exchangeAuthority: exchangeAuthorityAccount.publicKey,
-        managerProgram,
+        manager,
         assetsAdmin: ASSETS_MANAGER_ADMIN,
         collateralToken,
         collateralTokenFeed,
@@ -392,24 +359,14 @@ describe('manager', () => {
         connection,
         wallet,
         oracleProgram,
-        managerProgram,
+        manager,
         assetsList: newAssetsList,
         newAssetDecimals,
         newAssetLimit,
         newAssetsNumber: assetsListSize - 2 // Collateral and usd
       }
 
-      const beforeAssetList = await managerProgram.account.assetsList(assetsList)
-
-      const newAssets = await addNewAssets(addNewAssetParams)
-
-      const assetListBefore = await managerProgram.account.assetsList(newAssetsList)
-
-      const feedAddresses = assetListBefore.assets
-        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-        .map((asset) => {
-          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-        })
+      await addNewAssets(addNewAssetParams)
 
       await oracleProgram.rpc.setPrice(anotherPrice, {
         accounts: {
@@ -419,14 +376,8 @@ describe('manager', () => {
         signers: [ORACLE_ADMIN]
       })
 
-      await managerProgram.rpc.setAssetsPrices({
-        remainingAccounts: feedAddresses,
-        accounts: {
-          assetsList: newAssetsList,
-          clock: SYSVAR_CLOCK_PUBKEY
-        }
-      })
-      const assetList = await managerProgram.account.assetsList(newAssetsList)
+      await manager.updatePrices(newAssetsList)
+      const assetList = await manager.getAssetsList(newAssetsList)
       const collateralAsset = assetList.assets[1]
 
       // Check assets list lenght
