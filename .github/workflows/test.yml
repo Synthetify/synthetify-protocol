@@ -29,6 +29,8 @@ jobs:
           solana-keygen new
       - name: install
         run: |
+          solana --version
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           which cargo
           cargo build-bpf 
           npm install
