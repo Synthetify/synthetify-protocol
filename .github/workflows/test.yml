@@ -29,14 +29,13 @@ jobs:
           solana-keygen new
       - name: install
         run: |
-          solana --version
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          which cargo
-          cargo build-bpf 
           npm install
           cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
       - name: build programs
-        run: anchor build
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build
 
       - name: build sdk
         run: |
@@ -44,4 +43,6 @@ jobs:
           npm run build
         working-directory: ./sdk
       - name: test
-        run: anchor test
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          anchor test
