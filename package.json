@@ -11,7 +11,9 @@
     "@project-serum/serum": "^0.13.26",
     "@solana/spl-token": "^0.1.1",
     "@solana/web3.js": "^0.91.3",
-    "binance-api-node": "^0.10.30"
+    "binance-api-node": "^0.10.30",
+    "mocha": "^8.3.2",
+    "ts-mocha": "^8.0.0"
   },
   "devDependencies": {
     "eslint": "^7.19.0",
