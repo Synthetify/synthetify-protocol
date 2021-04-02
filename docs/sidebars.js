@@ -3,9 +3,7 @@ module.exports = {
     {
       type: 'category',
       label: 'Synthetify docs',
-      items: [
-        'getting-started',
-      ],
-    },
-  ],
-};
+      items: ['introduction']
+    }
+  ]
+}

@@ -14,21 +14,21 @@ module.exports = {
       title: 'Synthetify',
       logo: {
         alt: 'Synthetify Logo',
-        src: 'img/logo.png',
+        src: 'img/logo.png'
       },
       items: [
         {
           to: 'docs/',
           activeBasePath: 'docs',
           label: 'Docs',
-          position: 'left',
+          position: 'left'
         },
         {
           href: 'https://github.com/Synthetify',
           label: 'GitHub',
-          position: 'right',
-        },
-      ],
+          position: 'right'
+        }
+      ]
     },
     footer: {
       style: 'dark',
@@ -37,36 +37,36 @@ module.exports = {
           title: 'Docs',
           items: [
             {
-              label: 'Getting Started',
-              to: 'docs/',
-            },
-          ],
+              label: 'Introduction',
+              to: 'docs/'
+            }
+          ]
         },
         {
           title: 'Community',
           items: [
             {
               label: 'Discord',
-              href: 'https://discord.com/invite/EDrf437',
+              href: 'https://discord.com/invite/EDrf437'
             },
             {
               label: 'Twitter',
-              href: 'https://twitter.com/synthetify',
-            },
-          ],
+              href: 'https://twitter.com/synthetify'
+            }
+          ]
         },
         {
           title: 'More',
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/Synthetify',
-            },
-          ],
-        },
+              href: 'https://github.com/Synthetify'
+            }
+          ]
+        }
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Synthetify | Built with Docusaurus.`,
-    },
+      copyright: `Copyright © ${new Date().getFullYear()} Synthetify | Built with Docusaurus.`
+    }
   },
   presets: [
     [
@@ -74,12 +74,12 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://synthetify.io/',
+          editUrl: 'https://synthetify.io/'
         },
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
-        },
-      },
-    ],
-  ],
-};
+          customCss: require.resolve('./src/css/custom.css')
+        }
+      }
+    ]
+  ]
+}
