@@ -18,11 +18,14 @@ jobs:
           toolchain: nightly
           component: clippy
           override: true
+      - name: install solana
+        run: |
+          sudo apt-get install -y pkg-config build-essential libudev-dev
+          sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
+          solana --version
       - name: install
         run: |
           npm install
-          sudo apt-get install -y pkg-config build-essential libudev-dev
-          sh -c "$(curl -sSfL https://release.solana.com/v1.5.14/install)"
           cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
       - name: build programs
         run: anchor build
