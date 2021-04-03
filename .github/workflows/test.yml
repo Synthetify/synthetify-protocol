@@ -21,8 +21,6 @@ jobs:
           toolchain: nightly
           override: true
       - name: install global mocha
-        env:
-          NPM_CONFIG_PREFIX: '~/.npm-global'
         run: |
           npm install -g mocha
           npm install -g ts-mocha
