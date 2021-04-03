@@ -3,11 +3,14 @@ import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
+import { AssetsList } from '@synthetify/sdk/lib/manager'
 
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
+export const ORACLE_OFFSET = 4
+export const ACCURACY = 6
 
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
@@ -15,6 +18,15 @@ export const tou64 = (amount) => {
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+export const calculateDebt = (assetsList: AssetsList) => {
+  return assetsList.assets.reduce(
+    (acc, asset) =>
+      acc.add(
+        asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+      ),
+    new BN(0)
+  )
 }
 interface ICreateToken {
   connection: Connection

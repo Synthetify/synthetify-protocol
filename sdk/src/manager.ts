@@ -35,7 +35,7 @@ export class Manager {
   public async getState() {
     return (await this.program.state()) as { admin: web3.PublicKey; initialized: boolean }
   }
-  public async getAssetsList(assetsList: web3.PublicKey): Promise<IAssetsList> {
+  public async getAssetsList(assetsList: web3.PublicKey): Promise<AssetsList> {
     return await this.program.account.assetsList(assetsList)
   }
   public async createAssetsList(size: number) {
@@ -61,7 +61,7 @@ export class Manager {
     collateralTokenFeed,
     exchangeAuthority,
     usdToken
-  }: IInitializeAssetList) {
+  }: InitializeAssetList) {
     // @ts-expect-error
     return await this.program.state.rpc.createList(
       exchangeAuthority,
@@ -82,7 +82,7 @@ export class Manager {
     exchangeAuthority,
     assetAddress,
     newSupply
-  }: ISetAssetSupply) {
+  }: SetAssetSupply) {
     return await this.program.rpc.setAssetSupply(assetAddress, newSupply, {
       accounts: {
         assetsList: assetsList,
@@ -96,7 +96,7 @@ export class Manager {
     assetsAdmin,
     assetAddress,
     newMaxSupply
-  }: ISetAssetMaxSupply) {
+  }: SetAssetMaxSupply) {
     // @ts-expect-error
     return await this.program.state.rpc.setMaxSupply(assetAddress, newMaxSupply, {
       accounts: {
@@ -113,7 +113,7 @@ export class Manager {
     tokenAddress,
     tokenDecimals,
     tokenFeed
-  }: IAddNewAsset) {
+  }: AddNewAsset) {
     // @ts-expect-error
     return await this.program.state.rpc.addNewAsset(
       tokenFeed,
@@ -160,7 +160,7 @@ export class Manager {
     })) as web3.TransactionInstruction
   }
 }
-export interface IInitializeAssetList {
+export interface InitializeAssetList {
   exchangeAuthority: web3.PublicKey
   collateralToken: web3.PublicKey
   collateralTokenFeed: web3.PublicKey
@@ -168,7 +168,7 @@ export interface IInitializeAssetList {
   assetsAdmin: web3.Account
   assetsList: web3.PublicKey
 }
-export interface IAsset {
+export interface Asset {
   feedAddress: web3.PublicKey
   assetAddress: web3.PublicKey
   price: BN
@@ -177,24 +177,24 @@ export interface IAsset {
   maxSupply: BN
   decimals: number
 }
-export interface IAssetsList {
+export interface AssetsList {
   exchangeAuthority: web3.PublicKey
   initialized: boolean
-  assets: Array<IAsset>
+  assets: Array<Asset>
 }
-export interface ISetAssetSupply {
+export interface SetAssetSupply {
   assetAddress: web3.PublicKey
   assetsList: web3.PublicKey
   exchangeAuthority: web3.Account
   newSupply: BN
 }
-export interface ISetAssetMaxSupply {
+export interface SetAssetMaxSupply {
   assetAddress: web3.PublicKey
   assetsList: web3.PublicKey
   assetsAdmin: web3.Account
   newMaxSupply: BN
 }
-export interface IAddNewAsset {
+export interface AddNewAsset {
   tokenFeed: web3.PublicKey
   tokenAddress: web3.PublicKey
   assetsList: web3.PublicKey

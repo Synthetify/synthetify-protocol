@@ -22,7 +22,10 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
-  DEFAULT_PUBLIC_KEY
+  DEFAULT_PUBLIC_KEY,
+  ORACLE_OFFSET,
+  ACCURACY,
+  calculateDebt
 } from './utils'
 
 describe('exchange', () => {
@@ -257,7 +260,7 @@ describe('exchange', () => {
     })
   })
   describe('#mint()', async () => {
-    it('Mint with zero debt', async () => {
+    it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,
@@ -285,8 +288,109 @@ describe('exchange', () => {
         usdToken: usdToken.publicKey,
         signers: [accountOwner]
       })
-      const userUsdAccountInfo = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdAccountInfo.amount.eq(usdMintAmount))
+      // Increase user debt
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.eq(usdMintAmount))
+
+      // Increase exchange debt
+      const exchangeStateAfter = await exchange.getState()
+      assert.ok(exchangeStateAfter.debtShares.eq(usdMintAmount))
+
+      // Increase asset supply
+      const assetsListAfter = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListAfter.assets[0].supply.eq(usdMintAmount))
+
+      // Increase user xusd balance
+      const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdAccountAfter.amount.eq(usdMintAmount))
+    })
+    it('Mint #2', async () => {
+      const collateralAmount = new BN(200 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      const exchangeStateBefore = await exchange.getState()
+      const assetsListBefore = await manager.getAssetsList(assetsList)
+      const oldDebt = calculateDebt(assetsListBefore)
+      const usdMintAmount = new BN(10 * 1e6)
+      await exchange.updateAndMint({
+        amount: usdMintAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner]
+      })
+
+      // Increase user debt
+      // newShares = shares*mintedAmount/oldDebt
+      const newShares = exchangeStateBefore.debtShares.mul(usdMintAmount).div(oldDebt)
+
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.eq(newShares))
+
+      // Increase exchange debt
+      const exchangeStateAfter = await exchange.getState()
+      assert.ok(exchangeStateAfter.debtShares.eq(exchangeStateBefore.debtShares.add(newShares)))
+
+      // Increase asset supply
+      const assetsListAfter = await manager.getAssetsList(assetsList)
+      assert.ok(
+        assetsListAfter.assets[0].supply.eq(assetsListBefore.assets[0].supply.add(usdMintAmount))
+      )
+
+      // Increase user xusd balance
+      const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdAccountAfter.amount.eq(usdMintAmount))
+    })
+    it('Mint over limit', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      // Max is collateralAmount*price/10 -> 20*1e6
+      const usdMintAmount = new BN(20 * 1e6).add(new BN(1))
+      try {
+        await exchange.updateAndMint({
+          amount: usdMintAmount,
+          assetsList,
+          exchangeAccount,
+          exchangeAuthority,
+          managerProgram: manager.programId,
+          owner: accountOwner.publicKey,
+          to: usdTokenAccount,
+          usdToken: usdToken.publicKey,
+          signers: [accountOwner]
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
     })
   })
 })
