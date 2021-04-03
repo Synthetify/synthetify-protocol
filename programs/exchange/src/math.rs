@@ -65,7 +65,7 @@ pub fn calculate_max_user_debt_in_usd(
 
 pub fn calculate_new_shares(shares: u64, debt: u64, minted_amount_usd: u64) -> u64 {
     if shares == 0u64 {
-        return 10u64.pow(8);
+        return minted_amount_usd;
     }
     let new_shares = (shares as u128 * minted_amount_usd as u128) / debt as u128;
 
