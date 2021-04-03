@@ -24,6 +24,7 @@ jobs:
         run: |
           npm install -g mocha
           npm install -g ts-mocha
+          npm install -g typescript
           ts-mocha -h
       - name: install solana
         run: |
