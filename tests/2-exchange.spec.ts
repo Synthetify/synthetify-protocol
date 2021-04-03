@@ -63,12 +63,14 @@ describe('exchange', () => {
       oracleProgram,
       initPrice: new BN(2 * 1e4)
     })
+
     collateralToken = await createToken({
       connection,
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
+
     const data = await createAssetsList({
       exchangeAuthority,
       assetsAdmin: ASSETS_MANAGER_ADMIN,
@@ -272,22 +274,24 @@ describe('exchange', () => {
 
       const txUpdateOracle = manager.updatePrices(assetsList)
       const usdMintAmount = new BN(20 * 1e6)
-      const txMint = exchangeProgram.state.rpc.mint(usdMintAmount, {
-        accounts: {
-          authority: exchangeAuthority,
-          mint: usdToken.publicKey,
-          to: usdTokenAccount,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          clock: anchor.web3.SYSVAR_CLOCK_PUBKEY,
-          exchangeAccount: exchangeAccount,
-          owner: accountOwner.publicKey,
-          assetsList: assetsList,
-          managerProgram: manager.programId
-        },
-        signers: [accountOwner],
-        options: { skipPreflight: true }
+      const mintIx = await exchange.mintInstruction({
+        amount: usdMintAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        usdToken: usdToken.publicKey
       })
-      await Promise.all([txUpdateOracle, txMint])
+      await Promise.all([
+        txUpdateOracle,
+        await signAndSend(new Transaction().add(mintIx), [wallet, accountOwner], connection, {
+          commitment: 'recent',
+          preflightCommitment: 'recent',
+          skipPreflight: true
+        })
+      ])
       const userUsdAccountInfo = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdAccountInfo.amount.eq(usdMintAmount))
     })

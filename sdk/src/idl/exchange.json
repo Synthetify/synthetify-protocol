@@ -159,12 +159,12 @@
             "isSigner": false
           },
           {
-            "name": "authority",
+            "name": "exchangeAuthority",
             "isMut": false,
             "isSigner": false
           },
           {
-            "name": "mint",
+            "name": "usdToken",
             "isMut": true,
             "isSigner": false
           },
@@ -258,6 +258,6 @@
     }
   ],
   "metadata": {
-    "address": "49WPrmbcYVkdYKfqkqmoNL2qxYgQf4QWaYHKxPgZmZ8f"
+    "address": "Br8hePQ9u5GqMi3zFo4fZBCfESAz1Zj7CNfLtB4P2QHS"
   }
 }

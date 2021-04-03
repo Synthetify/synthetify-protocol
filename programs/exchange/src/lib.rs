@@ -62,7 +62,7 @@ pub mod exchange {
             Ok(())
         }
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
-            let mint_token_adddress = ctx.accounts.mint.key;
+            let mint_token_adddress = ctx.accounts.usd_token.key;
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
@@ -92,7 +92,7 @@ pub mod exchange {
             let cpi_program = ctx.accounts.manager_program.clone();
             let cpi_accounts = SetAssetSupply {
                 assets_list: ctx.accounts.assets_list.clone().into(),
-                exchange_authority: ctx.accounts.authority.clone().into(),
+                exchange_authority: ctx.accounts.exchange_authority.clone().into(),
             };
             let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
             manager::cpi::set_asset_supply(
@@ -137,9 +137,9 @@ pub struct CreateExchangeAccount<'info> {
 pub struct Mint<'info> {
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
-    pub authority: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub mint: AccountInfo<'info>,
+    pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub to: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
@@ -153,9 +153,9 @@ pub struct Mint<'info> {
 impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
     fn from(accounts: &Mint<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
-            mint: accounts.mint.to_account_info(),
+            mint: accounts.usd_token.to_account_info(),
             to: accounts.to.to_account_info(),
-            authority: accounts.authority.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)

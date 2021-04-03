@@ -3,11 +3,12 @@ import idl from './idl/exchange.json'
 import { BN, Idl, Program, Provider, web3, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { DEFAULT_PUBLIC_KEY } from './utils'
-import { TOKEN_PROGRAM_ID } from '@project-serum/serum/lib/token-instructions'
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
 
 export class Exchange {
   connection: web3.Connection
   network: Network
+  wallet: IWallet
   programId: web3.PublicKey
   idl: Idl = idl as Idl
   program: Program
@@ -20,6 +21,7 @@ export class Exchange {
   ) {
     this.connection = connection
     this.network = network
+    this.wallet = wallet
     // This will be unused
     const provider = new Provider(connection, wallet, opts || Provider.defaultOptions())
     if (network === Network.LOCAL) {
@@ -85,12 +87,40 @@ export class Exchange {
       }
     })) as web3.TransactionInstruction
   }
+  public async mintInstruction({
+    amount,
+    exchangeAccount,
+    exchangeAuthority,
+    assetsList,
+    managerProgram,
+    owner,
+    usdToken,
+    to
+  }: MintInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.mint(amount, {
+      accounts: {
+        exchangeAuthority: exchangeAuthority,
+        usdToken: usdToken,
+        to: to,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        owner: owner,
+        assetsList: assetsList,
+        managerProgram: managerProgram
+      }
+    }) as web3.TransactionInstruction)
+  }
 }
 export interface MintInstruction {
   exchangeAccount: web3.PublicKey
-  collateralAccount: web3.PublicKey
-  userCollateralAccount: web3.PublicKey
+  assetsList: web3.PublicKey
+  usdToken: web3.PublicKey
   exchangeAuthority: web3.PublicKey
+  owner: web3.PublicKey
+  to: web3.PublicKey
+  managerProgram: web3.PublicKey
   amount: BN
 }
 export interface DepositInstruction {
