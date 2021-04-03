@@ -2,9 +2,15 @@ import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Account, PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from '@solana/web3.js'
+import {
+  Account,
+  PublicKey,
+  SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
+  Transaction
+} from '@solana/web3.js'
 import { assert, expect } from 'chai'
-import { BN, Manager, Network } from '@synthetify/sdk'
+import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
@@ -25,6 +31,12 @@ describe('exchange', () => {
   const exchangeProgram = anchor.workspace.Exchange as Program
   const managerProgram = anchor.workspace.Manager as Program
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
+  const exchange = new Exchange(
+    connection,
+    Network.LOCAL,
+    provider.wallet,
+    exchangeProgram.programId
+  )
 
   const oracleProgram = anchor.workspace.Oracle as Program
 
@@ -68,18 +80,17 @@ describe('exchange', () => {
     })
     assetsList = data.assetsList
     usdToken = data.usdToken
-    await exchangeProgram.state.rpc.new(nonce, {
-      accounts: {
-        admin: EXCHANGE_ADMIN.publicKey,
-        collateralToken: collateralToken.publicKey,
-        collateralAccount: collateralAccount,
-        assetsList: assetsList,
-        programSigner: programSigner.publicKey
-      }
+    await exchange.init({
+      admin: EXCHANGE_ADMIN.publicKey,
+      assetsList,
+      collateralAccount,
+      collateralToken: collateralToken.publicKey,
+      nonce,
+      programSigner: programSigner.publicKey
     })
   })
   it('Initialize', async () => {
-    const state = await exchangeProgram.state()
+    const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.programSigner.equals(programSigner.publicKey))
@@ -95,21 +106,10 @@ describe('exchange', () => {
     assert.ok(state.collateralShares.eq(new BN(0)))
   })
   it('Account Creation', async () => {
-    const exchangeAccount = new Account()
     const accountOwner = new Account().publicKey
-    await exchangeProgram.rpc.createExchangeAccount(accountOwner, {
-      accounts: {
-        exchangeAccount: exchangeAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY
-      },
-      signers: [exchangeAccount],
-      instructions: [
-        await exchangeProgram.account.exchangeAccount.createInstruction(exchangeAccount)
-      ]
-    })
-    const userExchangeAccount = await exchangeProgram.account.exchangeAccount(
-      exchangeAccount.publicKey
-    )
+    const exchangeAccount = await exchange.createExchangeAccount(accountOwner)
+
+    const userExchangeAccount = await exchange.getExchangeAccount(exchangeAccount)
     // Owner of account
     assert.ok(userExchangeAccount.owner.equals(accountOwner))
     // Initial values
@@ -118,18 +118,8 @@ describe('exchange', () => {
   })
   describe('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
-      const exchangeAccount = new Account()
       const accountOwner = new Account()
-      await exchangeProgram.rpc.createExchangeAccount(accountOwner.publicKey, {
-        accounts: {
-          exchangeAccount: exchangeAccount.publicKey,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY
-        },
-        signers: [exchangeAccount],
-        instructions: [
-          await exchangeProgram.account.exchangeAccount.createInstruction(exchangeAccount)
-        ]
-      })
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
       const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
@@ -144,54 +134,41 @@ describe('exchange', () => {
       )
       // No previous deposits
       assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
-
-      await exchangeProgram.state.rpc.deposit(amount, {
-        accounts: {
-          exchangeAccount: exchangeAccount.publicKey,
-          collateralAccount: collateralAccount,
-          userCollateralAccount: userCollateralTokenAccount,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          exchangeAuthority: exchangeAuthority
-        },
-        signers: [accountOwner],
-        instructions: [
-          Token.createApproveInstruction(
-            collateralToken.programId,
-            userCollateralTokenAccount,
-            exchangeAuthority,
-            accountOwner.publicKey,
-            [],
-            tou64(amount)
-          )
-        ]
+      const depositIx = await exchange.depositInstruction({
+        amount,
+        collateralAccount,
+        exchangeAccount,
+        exchangeAuthority,
+        userCollateralAccount: userCollateralTokenAccount
       })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await signAndSend(
+        new Transaction().add(approveIx).add(depositIx),
+        [wallet, accountOwner],
+        connection
+      )
       const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
         collateralAccount
       )
       // Increase by deposited amount
       assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
 
-      const userExchangeAccountAfter = await exchangeProgram.account.exchangeAccount(
-        exchangeAccount.publicKey
-      )
+      const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       // First deposit create same amount of shares as deposit amount
       assert.ok(userExchangeAccountAfter.collateralShares.eq(amount))
-      const state = await exchangeProgram.state()
+      const state = await exchange.getState()
       assert.ok(state.collateralShares.eq(amount))
     })
     it('Deposit collateral next', async () => {
-      const exchangeAccount = new Account()
       const accountOwner = new Account()
-      await exchangeProgram.rpc.createExchangeAccount(accountOwner.publicKey, {
-        accounts: {
-          exchangeAccount: exchangeAccount.publicKey,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY
-        },
-        signers: [exchangeAccount],
-        instructions: [
-          await exchangeProgram.account.exchangeAccount.createInstruction(exchangeAccount)
-        ]
-      })
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
       const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
@@ -200,28 +177,28 @@ describe('exchange', () => {
       const exchangeCollateralTokenAccountInfoBefore = await collateralToken.getAccountInfo(
         collateralAccount
       )
-      const stateBefore = await exchangeProgram.state()
+      const stateBefore = await exchange.getState()
 
-      await exchangeProgram.state.rpc.deposit(amount, {
-        accounts: {
-          exchangeAccount: exchangeAccount.publicKey,
-          collateralAccount: collateralAccount,
-          userCollateralAccount: userCollateralTokenAccount,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          exchangeAuthority: exchangeAuthority
-        },
-        signers: [accountOwner],
-        instructions: [
-          Token.createApproveInstruction(
-            collateralToken.programId,
-            userCollateralTokenAccount,
-            exchangeAuthority,
-            accountOwner.publicKey,
-            [],
-            tou64(amount)
-          )
-        ]
+      const depositIx = await exchange.depositInstruction({
+        amount,
+        collateralAccount,
+        exchangeAccount,
+        exchangeAuthority,
+        userCollateralAccount: userCollateralTokenAccount
       })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await signAndSend(
+        new Transaction().add(approveIx).add(depositIx),
+        [wallet, accountOwner],
+        connection
+      )
       const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
         collateralAccount
       )
@@ -232,63 +209,51 @@ describe('exchange', () => {
         )
       )
 
-      const userExchangeAccountAfter = await exchangeProgram.account.exchangeAccount(
-        exchangeAccount.publicKey
-      )
+      const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       const createdShares = amount
         .mul(stateBefore.collateralShares)
         .div(exchangeCollateralTokenAccountInfoBefore.amount)
       // First deposit create same amount of shares as deposit amount
       assert.ok(userExchangeAccountAfter.collateralShares.eq(createdShares))
-      const state = await exchangeProgram.state()
+      const state = await exchange.getState()
       assert.ok(state.collateralShares.eq(stateBefore.collateralShares.add(createdShares)))
     })
     it('Deposit more than allowance', async () => {
-      const exchangeAccount = new Account()
       const accountOwner = new Account()
-      await exchangeProgram.rpc.createExchangeAccount(accountOwner.publicKey, {
-        accounts: {
-          exchangeAccount: exchangeAccount.publicKey,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY
-        },
-        signers: [exchangeAccount],
-        instructions: [
-          await exchangeProgram.account.exchangeAccount.createInstruction(exchangeAccount)
-        ]
-      })
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
       const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
       await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
 
       try {
-        await exchangeProgram.state.rpc.deposit(amount.mul(new BN(2)), {
-          accounts: {
-            exchangeAccount: exchangeAccount.publicKey,
-            collateralAccount: collateralAccount,
-            userCollateralAccount: userCollateralTokenAccount,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            exchangeAuthority: exchangeAuthority
-          },
-          signers: [accountOwner],
-          instructions: [
-            Token.createApproveInstruction(
-              collateralToken.programId,
-              userCollateralTokenAccount,
-              exchangeAuthority,
-              accountOwner.publicKey,
-              [],
-              tou64(amount)
-            )
-          ]
+        const depositIx = await exchange.depositInstruction({
+          amount: amount.mul(new BN(2)),
+          collateralAccount,
+          exchangeAccount,
+          exchangeAuthority,
+          userCollateralAccount: userCollateralTokenAccount
         })
+        const approveIx = Token.createApproveInstruction(
+          collateralToken.programId,
+          userCollateralTokenAccount,
+          exchangeAuthority,
+          accountOwner.publicKey,
+          [],
+          tou64(amount)
+        )
+        await signAndSend(
+          new Transaction().add(approveIx).add(depositIx),
+          [wallet, accountOwner],
+          connection
+        )
         assert.ok(false)
       } catch (err) {
         assert.ok(true)
       }
     })
   })
-  describe('#mint()', async () => {
+  describe.only('#mint()', async () => {
     it('Mint with zero debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
@@ -304,13 +269,6 @@ describe('exchange', () => {
         amount: collateralAmount
       })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-      const assetListData = await manager.getAssetsList(assetsList)
-
-      const feedAddresses = assetListData.assets
-        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-        .map((asset) => {
-          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-        })
 
       const txUpdateOracle = manager.updatePrices(assetsList)
       const usdMintAmount = new BN(20 * 1e6)

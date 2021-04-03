@@ -3,7 +3,6 @@ import idl from './idl/manager.json'
 import { BN, Idl, Program, Provider, web3 } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { DEFAULT_PUBLIC_KEY } from './utils'
-
 export class Manager {
   connection: web3.Connection
   network: Network
