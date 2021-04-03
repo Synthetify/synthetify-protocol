@@ -144,6 +144,21 @@ export class Manager {
       }
     })
   }
+  public async updatePricesInstruction(assetsList: web3.PublicKey) {
+    const assetsListData = await this.getAssetsList(assetsList)
+    const feedAddresses = assetsListData.assets
+      .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+      .map((asset) => {
+        return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+      })
+    return (await this.program.instruction.setAssetsPrices({
+      remainingAccounts: feedAddresses,
+      accounts: {
+        assetsList: assetsList,
+        clock: web3.SYSVAR_CLOCK_PUBKEY
+      }
+    })) as web3.TransactionInstruction
+  }
 }
 export interface IInitializeAssetList {
   exchangeAuthority: web3.PublicKey

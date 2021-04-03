@@ -35,6 +35,7 @@ describe('exchange', () => {
     connection,
     Network.LOCAL,
     provider.wallet,
+    manager,
     exchangeProgram.programId
   )
 
@@ -255,7 +256,7 @@ describe('exchange', () => {
       }
     })
   })
-  describe.only('#mint()', async () => {
+  describe('#mint()', async () => {
     it('Mint with zero debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
@@ -266,15 +267,14 @@ describe('exchange', () => {
         collateralAccount,
         collateralToken,
         exchangeAuthority,
-        exchangeProgram,
+        exchange,
         collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
         amount: collateralAmount
       })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
-      const txUpdateOracle = manager.updatePrices(assetsList)
       const usdMintAmount = new BN(20 * 1e6)
-      const mintIx = await exchange.mintInstruction({
+      await exchange.updateAndMint({
         amount: usdMintAmount,
         assetsList,
         exchangeAccount,
@@ -282,16 +282,9 @@ describe('exchange', () => {
         managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
-        usdToken: usdToken.publicKey
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner]
       })
-      await Promise.all([
-        txUpdateOracle,
-        await signAndSend(new Transaction().add(mintIx), [wallet, accountOwner], connection, {
-          commitment: 'recent',
-          preflightCommitment: 'recent',
-          skipPreflight: true
-        })
-      ])
       const userUsdAccountInfo = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdAccountInfo.amount.eq(usdMintAmount))
     })

@@ -13,7 +13,6 @@ export const signAndSend = async (
     opts?.commitment || Provider.defaultOptions().commitment
   )
   tx.recentBlockhash = blockhash.blockhash
-  console.log(signers)
   tx.partialSign(...signers)
   const rawTx = tx.serialize()
   return await web3.sendAndConfirmRawTransaction(
