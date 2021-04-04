@@ -117,6 +117,17 @@ export class Exchange {
       }
     }) as web3.TransactionInstruction)
   }
+  private async processOperations(txs: web3.Transaction[]) {
+    const blockhash = await this.connection.getRecentBlockhash(
+      this.opts?.commitment || Provider.defaultOptions().commitment
+    )
+    txs.forEach((tx) => {
+      tx.feePayer = this.wallet.publicKey
+      tx.recentBlockhash = blockhash.blockhash
+    })
+    this.wallet.signAllTransactions(txs)
+    return txs
+  }
   public async updateAndMint({
     amount,
     exchangeAccount,
@@ -141,27 +152,14 @@ export class Exchange {
     })
     const updateTx = new web3.Transaction().add(updateIx)
     const mintTx = new web3.Transaction().add(mintIx)
-    updateTx.feePayer = this.wallet.publicKey
-    mintTx.feePayer = this.wallet.publicKey
-
-    const blockhash = await this.connection.getRecentBlockhash(
-      this.opts?.commitment || Provider.defaultOptions().commitment
+    const txs = await this.processOperations([updateTx, mintTx])
+    txs[1].partialSign(...signers)
+    const promisesTx = txs.map((tx) =>
+      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+        skipPreflight: true
+      })
     )
-    updateTx.recentBlockhash = blockhash.blockhash
-    mintTx.recentBlockhash = blockhash.blockhash
-    this.wallet.signAllTransactions([updateTx, mintTx])
-    signers.forEach((signer) => {
-      mintTx.partialSign(signer)
-    })
-    const promiseUpdateTx = web3.sendAndConfirmRawTransaction(
-      this.connection,
-      updateTx.serialize(),
-      this.opts || Provider.defaultOptions()
-    )
-    const promiseMintTx = web3.sendAndConfirmRawTransaction(this.connection, mintTx.serialize(), {
-      skipPreflight: true
-    })
-    return Promise.all([promiseUpdateTx, promiseMintTx])
+    return Promise.all(promisesTx)
   }
 }
 export interface UpdateAndMint {
