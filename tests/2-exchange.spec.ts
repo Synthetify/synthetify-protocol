@@ -34,13 +34,7 @@ describe('exchange', () => {
   const exchangeProgram = anchor.workspace.Exchange as Program
   const managerProgram = anchor.workspace.Manager as Program
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
-  const exchange = new Exchange(
-    connection,
-    Network.LOCAL,
-    provider.wallet,
-    manager,
-    exchangeProgram.programId
-  )
+  let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Oracle as Program
 
@@ -86,6 +80,16 @@ describe('exchange', () => {
     })
     assetsList = data.assetsList
     usdToken = data.usdToken
+
+    // @ts-expect-error
+    exchange = new Exchange(
+      connection,
+      Network.LOCAL,
+      provider.wallet,
+      manager,
+      exchangeAuthority,
+      exchangeProgram.programId
+    )
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
@@ -94,6 +98,14 @@ describe('exchange', () => {
       nonce,
       programSigner: programSigner.publicKey
     })
+    exchange = await Exchange.build(
+      connection,
+      Network.LOCAL,
+      provider.wallet,
+      manager,
+      exchangeAuthority,
+      exchangeProgram.programId
+    )
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -142,9 +154,7 @@ describe('exchange', () => {
       assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
       const depositIx = await exchange.depositInstruction({
         amount,
-        collateralAccount,
         exchangeAccount,
-        exchangeAuthority,
         userCollateralAccount: userCollateralTokenAccount
       })
       const approveIx = Token.createApproveInstruction(
@@ -187,9 +197,7 @@ describe('exchange', () => {
 
       const depositIx = await exchange.depositInstruction({
         amount,
-        collateralAccount,
         exchangeAccount,
-        exchangeAuthority,
         userCollateralAccount: userCollateralTokenAccount
       })
       const approveIx = Token.createApproveInstruction(
@@ -235,9 +243,7 @@ describe('exchange', () => {
       try {
         const depositIx = await exchange.depositInstruction({
           amount: amount.mul(new BN(2)),
-          collateralAccount,
           exchangeAccount,
-          exchangeAuthority,
           userCollateralAccount: userCollateralTokenAccount
         })
         const approveIx = Token.createApproveInstruction(
@@ -259,8 +265,8 @@ describe('exchange', () => {
       }
     })
   })
-  describe('#mint()', async () => {
-    it('Mint #1', async () => {
+  describe.only('#mint()', async () => {
+    it.only('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,
@@ -279,15 +285,10 @@ describe('exchange', () => {
       const usdMintAmount = new BN(20 * 1e6)
       await exchange.mint({
         amount: usdMintAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
-        usdToken: usdToken.publicKey,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
       // Increase user debt
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
@@ -327,15 +328,10 @@ describe('exchange', () => {
       const usdMintAmount = new BN(10 * 1e6)
       await exchange.mint({
         amount: usdMintAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
-        usdToken: usdToken.publicKey,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
 
       // Increase user debt
@@ -380,15 +376,10 @@ describe('exchange', () => {
       try {
         await exchange.mint({
           amount: usdMintAmount,
-          assetsList,
           exchangeAccount,
-          exchangeAuthority,
-          managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
-          usdToken: usdToken.publicKey,
-          signers: [accountOwner],
-          collateralAccount
+          signers: [accountOwner]
         })
         assert.ok(false)
       } catch (error) {
@@ -426,14 +417,10 @@ describe('exchange', () => {
       const withdrawAmount = new BN(20 * 1e6)
       await exchange.withdraw({
         amount: withdrawAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
       // amount_to_shares amount * all_shares  / full_amount ;
       const burned_shares = withdrawAmount
@@ -496,14 +483,10 @@ describe('exchange', () => {
       const withdrawAmount = collateralAmount
       await exchange.withdraw({
         amount: withdrawAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
       // amount_to_shares amount * all_shares  / full_amount ;
       const burned_shares = withdrawAmount
@@ -553,14 +536,10 @@ describe('exchange', () => {
       try {
         await exchange.withdraw({
           amount: withdrawAmount,
-          assetsList,
           exchangeAccount,
-          exchangeAuthority,
-          managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
-          signers: [accountOwner],
-          collateralAccount
+          signers: [accountOwner]
         })
         assert.ok(false)
       } catch (err) {
@@ -591,27 +570,18 @@ describe('exchange', () => {
       const usdMintAmount = new BN(10 * 1e6)
       await exchange.mint({
         amount: usdMintAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
-        usdToken: usdToken.publicKey,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
       const withdrawAmount = new BN(50 * 1e6)
       await exchange.withdraw({
         amount: withdrawAmount,
-        assetsList,
         exchangeAccount,
-        exchangeAuthority,
-        managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        signers: [accountOwner],
-        collateralAccount
+        signers: [accountOwner]
       })
       const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
         userCollateralTokenAccount
@@ -621,14 +591,10 @@ describe('exchange', () => {
       try {
         await exchange.withdraw({
           amount: new BN(1),
-          assetsList,
           exchangeAccount,
-          exchangeAuthority,
-          managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
-          signers: [accountOwner],
-          collateralAccount
+          signers: [accountOwner]
         })
         assert.ok(false)
       } catch (error) {

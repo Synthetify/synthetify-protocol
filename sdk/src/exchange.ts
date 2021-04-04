@@ -4,7 +4,7 @@ import { BN, Idl, Program, Provider, web3, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { DEFAULT_PUBLIC_KEY, signAndSend } from './utils'
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Manager } from './manager'
+import { AssetsList, Manager } from './manager'
 
 export class Exchange {
   connection: web3.Connection
@@ -12,14 +12,19 @@ export class Exchange {
   manager: Manager
   wallet: IWallet
   programId: web3.PublicKey
+  exchangeAuthority: web3.PublicKey
   idl: Idl = idl as Idl
   program: Program
+  state: ExchangeState
   opts?: web3.ConfirmOptions
-  public constructor(
+  assetsList: AssetsList
+
+  private constructor(
     connection: web3.Connection,
     network: Network,
     wallet: IWallet,
     manager: Manager,
+    exchangeAuthority?: web3.PublicKey,
     programId?: web3.PublicKey,
     opts?: web3.ConfirmOptions
   ) {
@@ -31,11 +36,34 @@ export class Exchange {
     const provider = new Provider(connection, wallet, opts || Provider.defaultOptions())
     if (network === Network.LOCAL) {
       this.programId = programId
+      this.exchangeAuthority = exchangeAuthority
       this.program = new Program(idl as Idl, programId, provider)
     } else {
       // We will add it once we deploy
       throw new Error('Not supported')
     }
+  }
+  public static async build(
+    connection: web3.Connection,
+    network: Network,
+    wallet: IWallet,
+    manager: Manager,
+    exchangeAuthority?: web3.PublicKey,
+    programId?: web3.PublicKey,
+    opts?: web3.ConfirmOptions
+  ) {
+    const instance = new Exchange(
+      connection,
+      network,
+      wallet,
+      manager,
+      exchangeAuthority,
+      programId,
+      opts
+    )
+    await instance.getState()
+    instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
+    return instance
   }
   public async init({
     admin,
@@ -57,7 +85,9 @@ export class Exchange {
     })
   }
   public async getState() {
-    return (await this.program.state()) as ExchangeState
+    const state = (await this.program.state()) as ExchangeState
+    this.state = state
+    return state
   }
   public async getExchangeAccount(exchangeAccount: web3.PublicKey) {
     return (await this.program.account.exchangeAccount(exchangeAccount)) as ExchangeAccount
@@ -76,71 +106,50 @@ export class Exchange {
   }
   public async depositInstruction({
     amount,
-    collateralAccount,
     exchangeAccount,
-    exchangeAuthority,
     userCollateralAccount
   }: DepositInstruction) {
     // @ts-expect-error
     return (await this.program.state.instruction.deposit(amount, {
       accounts: {
         exchangeAccount: exchangeAccount,
-        collateralAccount: collateralAccount,
+        collateralAccount: this.state.collateralAccount,
         userCollateralAccount: userCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAuthority: exchangeAuthority
+        exchangeAuthority: this.exchangeAuthority
       }
     })) as web3.TransactionInstruction
   }
-  public async withdrawInstruction({
-    amount,
-    exchangeAccount,
-    exchangeAuthority,
-    assetsList,
-    managerProgram,
-    owner,
-    to,
-    collateralAccount
-  }: WithdrawInstruction) {
+  public async withdrawInstruction({ amount, exchangeAccount, owner, to }: WithdrawInstruction) {
     // @ts-expect-error
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
-        exchangeAuthority: exchangeAuthority,
+        exchangeAuthority: this.exchangeAuthority,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: assetsList,
-        managerProgram: managerProgram,
-        collateralAccount: collateralAccount
+        assetsList: this.state.assetsList,
+        managerProgram: this.programId,
+        collateralAccount: this.state.collateralAccount
       }
     }) as web3.TransactionInstruction)
   }
-  public async mintInstruction({
-    amount,
-    exchangeAccount,
-    exchangeAuthority,
-    assetsList,
-    managerProgram,
-    owner,
-    usdToken,
-    to,
-    collateralAccount
-  }: MintInstruction) {
+  public async mintInstruction({ amount, exchangeAccount, owner, to }: MintInstruction) {
     // @ts-expect-error
     return await (this.program.state.instruction.mint(amount, {
       accounts: {
-        exchangeAuthority: exchangeAuthority,
-        usdToken: usdToken,
+        exchangeAuthority: this.exchangeAuthority,
+        usdToken: this.assetsList.assets[0],
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: assetsList,
-        managerProgram: managerProgram,
-        collateralAccount: collateralAccount
+        assetsList: this.state.assetsList,
+        managerProgram: this.manager.programId,
+        collateralAccount: this.state.collateralAccount
       }
     }) as web3.TransactionInstruction)
   }
@@ -155,29 +164,13 @@ export class Exchange {
     this.wallet.signAllTransactions(txs)
     return txs
   }
-  public async mint({
-    amount,
-    exchangeAccount,
-    exchangeAuthority,
-    assetsList,
-    managerProgram,
-    owner,
-    usdToken,
-    to,
-    signers,
-    collateralAccount
-  }: Mint) {
-    const updateIx = await this.manager.updatePricesInstruction(assetsList)
+  public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
     const mintIx = await this.mintInstruction({
       amount,
-      assetsList,
       exchangeAccount,
-      exchangeAuthority,
-      managerProgram,
       owner,
-      to,
-      usdToken,
-      collateralAccount
+      to
     })
     const updateTx = new web3.Transaction().add(updateIx)
     const mintTx = new web3.Transaction().add(mintIx)
@@ -190,27 +183,13 @@ export class Exchange {
     )
     return Promise.all(promisesTx)
   }
-  public async withdraw({
-    amount,
-    exchangeAccount,
-    exchangeAuthority,
-    assetsList,
-    managerProgram,
-    owner,
-    to,
-    signers,
-    collateralAccount
-  }: Withdraw) {
-    const updateIx = await this.manager.updatePricesInstruction(assetsList)
+  public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       amount,
-      assetsList,
       exchangeAccount,
-      exchangeAuthority,
-      managerProgram,
       owner,
-      to,
-      collateralAccount
+      to
     })
     const updateTx = new web3.Transaction().add(updateIx)
     const withdrawTx = new web3.Transaction().add(withdrawIx)
@@ -226,53 +205,33 @@ export class Exchange {
 }
 export interface Mint {
   exchangeAccount: web3.PublicKey
-  assetsList: web3.PublicKey
-  usdToken: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey
-  managerProgram: web3.PublicKey
-  collateralAccount: web3.PublicKey
   amount: BN
   signers?: Array<web3.Account>
 }
 export interface Withdraw {
   exchangeAccount: web3.PublicKey
-  assetsList: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey
-  managerProgram: web3.PublicKey
-  collateralAccount: web3.PublicKey
   amount: BN
   signers?: Array<web3.Account>
 }
 export interface MintInstruction {
   exchangeAccount: web3.PublicKey
-  assetsList: web3.PublicKey
-  usdToken: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey
-  managerProgram: web3.PublicKey
-  collateralAccount: web3.PublicKey
   amount: BN
 }
 export interface WithdrawInstruction {
   exchangeAccount: web3.PublicKey
-  assetsList: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey
-  managerProgram: web3.PublicKey
-  collateralAccount: web3.PublicKey
   amount: BN
 }
 export interface DepositInstruction {
   exchangeAccount: web3.PublicKey
-  collateralAccount: web3.PublicKey
   userCollateralAccount: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
   amount: BN
 }
 export interface Init {
