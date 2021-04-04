@@ -277,7 +277,7 @@ describe('exchange', () => {
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
       const usdMintAmount = new BN(20 * 1e6)
-      await exchange.updateAndMint({
+      await exchange.mint({
         amount: usdMintAmount,
         assetsList,
         exchangeAccount,
@@ -325,7 +325,7 @@ describe('exchange', () => {
       const assetsListBefore = await manager.getAssetsList(assetsList)
       const oldDebt = calculateDebt(assetsListBefore)
       const usdMintAmount = new BN(10 * 1e6)
-      await exchange.updateAndMint({
+      await exchange.mint({
         amount: usdMintAmount,
         assetsList,
         exchangeAccount,
@@ -378,7 +378,7 @@ describe('exchange', () => {
       // Max is collateralAmount*price/10 -> 20*1e6
       const usdMintAmount = new BN(20 * 1e6).add(new BN(1))
       try {
-        await exchange.updateAndMint({
+        await exchange.mint({
           amount: usdMintAmount,
           assetsList,
           exchangeAccount,
@@ -424,7 +424,7 @@ describe('exchange', () => {
       )
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
       const withdrawAmount = new BN(20 * 1e6)
-      await exchange.updateAndWithdraw({
+      await exchange.withdraw({
         amount: withdrawAmount,
         assetsList,
         exchangeAccount,
@@ -432,7 +432,6 @@ describe('exchange', () => {
         managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        usdToken: usdToken.publicKey,
         signers: [accountOwner],
         collateralAccount
       })
@@ -495,7 +494,7 @@ describe('exchange', () => {
       )
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
       const withdrawAmount = collateralAmount
-      await exchange.updateAndWithdraw({
+      await exchange.withdraw({
         amount: withdrawAmount,
         assetsList,
         exchangeAccount,
@@ -503,7 +502,6 @@ describe('exchange', () => {
         managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        usdToken: usdToken.publicKey,
         signers: [accountOwner],
         collateralAccount
       })
@@ -553,7 +551,7 @@ describe('exchange', () => {
 
       const withdrawAmount = collateralAmount.add(new BN(1000000))
       try {
-        await exchange.updateAndWithdraw({
+        await exchange.withdraw({
           amount: withdrawAmount,
           assetsList,
           exchangeAccount,
@@ -561,7 +559,6 @@ describe('exchange', () => {
           managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
-          usdToken: usdToken.publicKey,
           signers: [accountOwner],
           collateralAccount
         })
@@ -592,7 +589,7 @@ describe('exchange', () => {
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
       // We can mint max 20 * 1e6
       const usdMintAmount = new BN(10 * 1e6)
-      await exchange.updateAndMint({
+      await exchange.mint({
         amount: usdMintAmount,
         assetsList,
         exchangeAccount,
@@ -605,7 +602,7 @@ describe('exchange', () => {
         collateralAccount
       })
       const withdrawAmount = new BN(50 * 1e6)
-      await exchange.updateAndWithdraw({
+      await exchange.withdraw({
         amount: withdrawAmount,
         assetsList,
         exchangeAccount,
@@ -613,7 +610,6 @@ describe('exchange', () => {
         managerProgram: manager.programId,
         owner: accountOwner.publicKey,
         to: userCollateralTokenAccount,
-        usdToken: usdToken.publicKey,
         signers: [accountOwner],
         collateralAccount
       })
@@ -623,7 +619,7 @@ describe('exchange', () => {
       assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
       // We cant withdraw anymore
       try {
-        await exchange.updateAndWithdraw({
+        await exchange.withdraw({
           amount: new BN(1),
           assetsList,
           exchangeAccount,
@@ -631,7 +627,6 @@ describe('exchange', () => {
           managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
-          usdToken: usdToken.publicKey,
           signers: [accountOwner],
           collateralAccount
         })

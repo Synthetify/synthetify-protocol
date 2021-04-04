@@ -155,7 +155,7 @@ export class Exchange {
     this.wallet.signAllTransactions(txs)
     return txs
   }
-  public async updateAndMint({
+  public async mint({
     amount,
     exchangeAccount,
     exchangeAuthority,
@@ -166,7 +166,7 @@ export class Exchange {
     to,
     signers,
     collateralAccount
-  }: UpdateAndMint) {
+  }: Mint) {
     const updateIx = await this.manager.updatePricesInstruction(assetsList)
     const mintIx = await this.mintInstruction({
       amount,
@@ -190,7 +190,7 @@ export class Exchange {
     )
     return Promise.all(promisesTx)
   }
-  public async updateAndWithdraw({
+  public async withdraw({
     amount,
     exchangeAccount,
     exchangeAuthority,
@@ -200,7 +200,7 @@ export class Exchange {
     to,
     signers,
     collateralAccount
-  }: UpdateAndMint) {
+  }: Withdraw) {
     const updateIx = await this.manager.updatePricesInstruction(assetsList)
     const withdrawIx = await this.withdrawInstruction({
       amount,
@@ -224,7 +224,7 @@ export class Exchange {
     return Promise.all(promisesTx)
   }
 }
-export interface UpdateAndMint {
+export interface Mint {
   exchangeAccount: web3.PublicKey
   assetsList: web3.PublicKey
   usdToken: web3.PublicKey
@@ -236,7 +236,7 @@ export interface UpdateAndMint {
   amount: BN
   signers?: Array<web3.Account>
 }
-export interface UpdateAndWithdraw {
+export interface Withdraw {
   exchangeAccount: web3.PublicKey
   assetsList: web3.PublicKey
   exchangeAuthority: web3.PublicKey

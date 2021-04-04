@@ -310,12 +310,12 @@
     {
       "code": 104,
       "name": "MintLimit",
-      "msg": "Mint limit met"
+      "msg": "Mint limit"
     },
     {
       "code": 105,
       "name": "WithdrawLimit",
-      "msg": "Withdraw limit met"
+      "msg": "Withdraw limit"
     },
     {
       "code": 106,
@@ -324,6 +324,6 @@
     }
   ],
   "metadata": {
-    "address": "6nN2qoTuaModcmEnY9ZWTREF7jjh5FsJHQKFqw5iNoKb"
+    "address": "51TJzc2JPfWggEDLrhkipPhuRn3KEUyntidvYi5JLySd"
   }
 }
