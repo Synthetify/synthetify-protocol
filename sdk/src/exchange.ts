@@ -141,7 +141,7 @@ export class Exchange {
     return await (this.program.state.instruction.mint(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0],
+        usdToken: this.assetsList.assets[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
         clock: web3.SYSVAR_CLOCK_PUBKEY,
