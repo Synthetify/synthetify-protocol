@@ -259,7 +259,7 @@ describe('exchange', () => {
       }
     })
   })
-  describe('#mint()', async () => {
+  describe.only('#mint()', async () => {
     it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
@@ -286,7 +286,8 @@ describe('exchange', () => {
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
         usdToken: usdToken.publicKey,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        collateralAccount
       })
       // Increase user debt
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
@@ -333,7 +334,8 @@ describe('exchange', () => {
         owner: accountOwner.publicKey,
         to: usdTokenAccount,
         usdToken: usdToken.publicKey,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        collateralAccount
       })
 
       // Increase user debt
@@ -385,7 +387,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
           usdToken: usdToken.publicKey,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          collateralAccount
         })
         assert.ok(false)
       } catch (error) {

@@ -45,6 +45,15 @@ pub mod exchange {
             })
         }
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
+            if !ctx
+                .accounts
+                .collateral_account
+                .to_account_info()
+                .key
+                .eq(&self.collateral_account)
+            {
+                return Err(ErrorCode::CollateralAccountError.into());
+            }
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             // Transfer token
             let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
@@ -63,8 +72,16 @@ pub mod exchange {
         }
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
             let mint_token_adddress = ctx.accounts.usd_token.key;
+            let collateral_account = &ctx.accounts.collateral_account;
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
                 return Err(ErrorCode::NotSyntheticUsd.into());
+            }
+            if !collateral_account
+                .to_account_info()
+                .key
+                .eq(&self.collateral_account)
+            {
+                return Err(ErrorCode::CollateralAccountError.into());
             }
             let assets = &ctx.accounts.assets_list.assets;
             let exchange_account = &mut ctx.accounts.exchange_account;
@@ -78,10 +95,15 @@ pub mod exchange {
             let collateral_asset = &assets[1];
 
             let amount_mint_usd = calculate_amount_mint_in_usd(&mint_asset, amount);
+            let collateral_amount = calculate_user_collateral_in_token(
+                exchange_account.collateral_shares,
+                self.collateral_shares,
+                collateral_account.amount,
+            );
             let max_user_debt = calculate_max_user_debt_in_usd(
                 &collateral_asset,
                 self.collateralization_level,
-                exchange_account,
+                collateral_amount,
             );
             if max_user_debt - user_debt < amount_mint_usd {
                 return Err(ErrorCode::MintLimit.into());
@@ -105,6 +127,58 @@ pub mod exchange {
 
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::mint_to(cpi_ctx, amount);
+            Ok(())
+        }
+        pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+            let collateral_account = &ctx.accounts.collateral_account;
+            if !collateral_account
+                .to_account_info()
+                .key
+                .eq(&self.collateral_account)
+            {
+                return Err(ErrorCode::CollateralAccountError.into());
+            }
+            let slot = ctx.accounts.clock.slot;
+            let assets = &ctx.accounts.assets_list.assets;
+            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
+
+            let exchange_account = &mut ctx.accounts.exchange_account;
+
+            let user_debt =
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+
+            let collateral_asset = &assets[1];
+
+            let collateral_amount = calculate_user_collateral_in_token(
+                exchange_account.collateral_shares,
+                self.collateral_shares,
+                collateral_account.amount,
+            );
+            let max_user_debt = calculate_max_user_debt_in_usd(
+                &collateral_asset,
+                self.collateralization_level,
+                collateral_amount,
+            );
+            let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
+                &max_user_debt,
+                &user_debt,
+                &self.collateralization_level,
+            );
+            let max_withdrawable =
+                calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+            if max_withdrawable < amount {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
+            let shares_to_burn =
+                amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
+            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+
+            self.collateral_shares -= shares_to_burn;
+            exchange_account.collateral_shares -= shares_to_burn;
+
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::transfer(cpi_ctx, amount);
             Ok(())
         }
     }
@@ -134,6 +208,33 @@ pub struct CreateExchangeAccount<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut)]
+    pub assets_list: CpiAccount<'info, AssetsList>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub to: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    #[account(mut, has_one = owner)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub clock: Sysvar<'info, Clock>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &Withdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.collateral_account.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
 pub struct Mint<'info> {
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
@@ -149,6 +250,7 @@ pub struct Mint<'info> {
     pub clock: Sysvar<'info, Clock>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
+    pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
     fn from(accounts: &Mint<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
@@ -201,4 +303,8 @@ pub enum ErrorCode {
     OutdatedOracle,
     #[msg("Mint limit met")]
     MintLimit,
+    #[msg("Withdraw limit met")]
+    WithdrawLimit,
+    #[msg("Invalid collateral_account")]
+    CollateralAccountError,
 }

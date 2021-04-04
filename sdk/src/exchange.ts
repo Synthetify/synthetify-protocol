@@ -100,7 +100,8 @@ export class Exchange {
     managerProgram,
     owner,
     usdToken,
-    to
+    to,
+    collateralAccount
   }: MintInstruction) {
     // @ts-expect-error
     return await (this.program.state.instruction.mint(amount, {
@@ -113,7 +114,8 @@ export class Exchange {
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: assetsList,
-        managerProgram: managerProgram
+        managerProgram: managerProgram,
+        collateralAccount: collateralAccount
       }
     }) as web3.TransactionInstruction)
   }
@@ -137,7 +139,8 @@ export class Exchange {
     owner,
     usdToken,
     to,
-    signers
+    signers,
+    collateralAccount
   }: UpdateAndMint) {
     const updateIx = await this.manager.updatePricesInstruction(assetsList)
     const mintIx = await this.mintInstruction({
@@ -148,7 +151,8 @@ export class Exchange {
       managerProgram,
       owner,
       to,
-      usdToken
+      usdToken,
+      collateralAccount
     })
     const updateTx = new web3.Transaction().add(updateIx)
     const mintTx = new web3.Transaction().add(mintIx)
@@ -170,6 +174,7 @@ export interface UpdateAndMint {
   owner: web3.PublicKey
   to: web3.PublicKey
   managerProgram: web3.PublicKey
+  collateralAccount: web3.PublicKey
   amount: BN
   signers?: Array<web3.Account>
 }
@@ -181,6 +186,7 @@ export interface MintInstruction {
   owner: web3.PublicKey
   to: web3.PublicKey
   managerProgram: web3.PublicKey
+  collateralAccount: web3.PublicKey
   amount: BN
 }
 export interface DepositInstruction {

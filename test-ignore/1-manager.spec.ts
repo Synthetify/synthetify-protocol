@@ -22,7 +22,7 @@ import {
   ICreateAssetsList,
   IAddNewAssets,
   addNewAssets
-} from './utils'
+} from '../tests/utils'
 import { Network } from '@synthetify/sdk/lib/network'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)

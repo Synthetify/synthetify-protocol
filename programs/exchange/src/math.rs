@@ -54,9 +54,9 @@ pub fn calculate_amount_mint_in_usd(mint_asset: &Asset, amount: u64) -> u64 {
 pub fn calculate_max_user_debt_in_usd(
     collateral_asset: &Asset,
     collateralization_level: u32,
-    exchange_account: &ExchangeAccount,
+    collateral_amount: u64,
 ) -> u64 {
-    let user_max_debt = collateral_asset.price as u128 * exchange_account.collateral_shares as u128
+    let user_max_debt = collateral_asset.price as u128 * collateral_amount as u128
         / 10u128.pow((collateral_asset.decimals + ORACLE_OFFSET - ACCURACY).into());
     return (user_max_debt * 100 / collateralization_level as u128)
         .try_into()
@@ -70,6 +70,37 @@ pub fn calculate_new_shares(shares: u64, debt: u64, minted_amount_usd: u64) -> u
     let new_shares = (shares as u128 * minted_amount_usd as u128) / debt as u128;
 
     return new_shares as u64;
+}
+pub fn calculate_max_withdraw_in_usd(
+    max_user_debt_in_usd: &u64,
+    user_debt_in_usd: &u64,
+    collateralization_level: &u32,
+) -> u64 {
+    if max_user_debt_in_usd < user_debt_in_usd {
+        return 0;
+    }
+    return ((max_user_debt_in_usd - user_debt_in_usd) * *collateralization_level as u64) / 100;
+}
+pub fn calculate_user_collateral_in_token(
+    user_collateral_shares: u64,
+    collateral_shares: u64,
+    balance: u64,
+) -> u64 {
+    if user_collateral_shares == 0 {
+        return 0;
+    }
+    let tokens = user_collateral_shares as u128 * balance as u128 / collateral_shares as u128;
+    return tokens as u64;
+}
+pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
+    // collateral and usd have same number of decimals
+    let tokens = user_max_withdraw_in_usd as u128 * 10u128.pow(ORACLE_OFFSET.into())
+        / collateral_asset.price as u128;
+    return tokens as u64;
+}
+pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
+    let shares = amount as u128 * all_shares as u128 / full_amount as u128;
+    return shares as u64;
 }
 
 #[cfg(test)]
@@ -314,6 +345,40 @@ mod tests {
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
             assert_eq!(result, 394145294459_835460)
+        }
+    }
+    #[test]
+    fn test_calculate_user_collateral_in_token() {
+        {
+            let result = calculate_user_collateral_in_token(10, 100, 100);
+            assert_eq!(result, 10)
+        }
+        {
+            let result = calculate_user_collateral_in_token(
+                1_000_000 * 10u64.pow(6),
+                100_000_000 * 10u64.pow(6),
+                100_000_000 * 10u64.pow(6),
+            );
+            assert_eq!(result, 1_000_000 * 10u64.pow(6))
+        }
+    }
+    #[test]
+    fn test_calculate_max_withdrawable() {
+        {
+            let asset = Asset {
+                decimals: 6,
+                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                ..Default::default()
+            };
+            let result = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
+            assert_eq!(result, 50 * 10u64.pow(6))
+        }
+    }
+    #[test]
+    fn test_amount_to_shares() {
+        {
+            let result = amount_to_shares(10, 100, 10);
+            assert_eq!(result, 1)
         }
     }
 }
