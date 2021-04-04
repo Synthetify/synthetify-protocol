@@ -259,7 +259,7 @@ describe('exchange', () => {
       }
     })
   })
-  describe.only('#mint()', async () => {
+  describe('#mint()', async () => {
     it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
@@ -386,6 +386,251 @@ describe('exchange', () => {
           managerProgram: manager.programId,
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
+          usdToken: usdToken.publicKey,
+          signers: [accountOwner],
+          collateralAccount
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
+  })
+  describe('#withdraw()', async () => {
+    it('withdraw with no debt', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const exchangeStateBefore = await exchange.getState()
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+
+      const exchangeCollateralBalanceBefore = (
+        await collateralToken.getAccountInfo(collateralAccount)
+      ).amount
+
+      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      const withdrawAmount = new BN(20 * 1e6)
+      await exchange.updateAndWithdraw({
+        amount: withdrawAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: userCollateralTokenAccount,
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner],
+        collateralAccount
+      })
+      // amount_to_shares amount * all_shares  / full_amount ;
+      const burned_shares = withdrawAmount
+        .mul(exchangeStateBefore.collateralShares)
+        .div(exchangeCollateralBalanceBefore)
+
+      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+
+      const exchangeCollateralBalanceAfter = (
+        await collateralToken.getAccountInfo(collateralAccount)
+      ).amount
+
+      assert.ok(
+        exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
+      )
+
+      const exchangeStateAfter = await exchange.getState()
+
+      assert.ok(
+        exchangeStateAfter.collateralShares.eq(
+          exchangeStateBefore.collateralShares.sub(burned_shares)
+        )
+      )
+
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(
+        exchangeAccountAfter.collateralShares.eq(
+          exchangeAccountBefore.collateralShares.sub(burned_shares)
+        )
+      )
+    })
+    it('withdraw fully', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const exchangeStateBefore = await exchange.getState()
+
+      const exchangeCollateralBalanceBefore = (
+        await collateralToken.getAccountInfo(collateralAccount)
+      ).amount
+
+      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      const withdrawAmount = collateralAmount
+      await exchange.updateAndWithdraw({
+        amount: withdrawAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: userCollateralTokenAccount,
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner],
+        collateralAccount
+      })
+      // amount_to_shares amount * all_shares  / full_amount ;
+      const burned_shares = withdrawAmount
+        .mul(exchangeStateBefore.collateralShares)
+        .div(exchangeCollateralBalanceBefore)
+
+      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+
+      const exchangeCollateralBalanceAfter = (
+        await collateralToken.getAccountInfo(collateralAccount)
+      ).amount
+
+      assert.ok(
+        exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
+      )
+
+      const exchangeStateAfter = await exchange.getState()
+
+      assert.ok(
+        exchangeStateAfter.collateralShares.eq(
+          exchangeStateBefore.collateralShares.sub(burned_shares)
+        )
+      )
+
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.collateralShares.eq(new BN(0)))
+    })
+    it('withdraw over limit', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const withdrawAmount = collateralAmount.add(new BN(1000000))
+      try {
+        await exchange.updateAndWithdraw({
+          amount: withdrawAmount,
+          assetsList,
+          exchangeAccount,
+          exchangeAuthority,
+          managerProgram: manager.programId,
+          owner: accountOwner.publicKey,
+          to: userCollateralTokenAccount,
+          usdToken: usdToken.publicKey,
+          signers: [accountOwner],
+          collateralAccount
+        })
+        assert.ok(false)
+      } catch (err) {
+        assert.ok(true)
+      }
+    })
+    it('withdraw with debt', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      // We can mint max 20 * 1e6
+      const usdMintAmount = new BN(10 * 1e6)
+      await exchange.updateAndMint({
+        amount: usdMintAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner],
+        collateralAccount
+      })
+      const withdrawAmount = new BN(50 * 1e6)
+      await exchange.updateAndWithdraw({
+        amount: withdrawAmount,
+        assetsList,
+        exchangeAccount,
+        exchangeAuthority,
+        managerProgram: manager.programId,
+        owner: accountOwner.publicKey,
+        to: userCollateralTokenAccount,
+        usdToken: usdToken.publicKey,
+        signers: [accountOwner],
+        collateralAccount
+      })
+      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+      // We cant withdraw anymore
+      try {
+        await exchange.updateAndWithdraw({
+          amount: new BN(1),
+          assetsList,
+          exchangeAccount,
+          exchangeAuthority,
+          managerProgram: manager.programId,
+          owner: accountOwner.publicKey,
+          to: userCollateralTokenAccount,
           usdToken: usdToken.publicKey,
           signers: [accountOwner],
           collateralAccount

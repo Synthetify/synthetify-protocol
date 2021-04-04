@@ -92,6 +92,31 @@ export class Exchange {
       }
     })) as web3.TransactionInstruction
   }
+  public async withdrawInstruction({
+    amount,
+    exchangeAccount,
+    exchangeAuthority,
+    assetsList,
+    managerProgram,
+    owner,
+    to,
+    collateralAccount
+  }: WithdrawInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.withdraw(amount, {
+      accounts: {
+        exchangeAuthority: exchangeAuthority,
+        to: to,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        owner: owner,
+        assetsList: assetsList,
+        managerProgram: managerProgram,
+        collateralAccount: collateralAccount
+      }
+    }) as web3.TransactionInstruction)
+  }
   public async mintInstruction({
     amount,
     exchangeAccount,
@@ -165,6 +190,39 @@ export class Exchange {
     )
     return Promise.all(promisesTx)
   }
+  public async updateAndWithdraw({
+    amount,
+    exchangeAccount,
+    exchangeAuthority,
+    assetsList,
+    managerProgram,
+    owner,
+    to,
+    signers,
+    collateralAccount
+  }: UpdateAndMint) {
+    const updateIx = await this.manager.updatePricesInstruction(assetsList)
+    const withdrawIx = await this.withdrawInstruction({
+      amount,
+      assetsList,
+      exchangeAccount,
+      exchangeAuthority,
+      managerProgram,
+      owner,
+      to,
+      collateralAccount
+    })
+    const updateTx = new web3.Transaction().add(updateIx)
+    const withdrawTx = new web3.Transaction().add(withdrawIx)
+    const txs = await this.processOperations([updateTx, withdrawTx])
+    txs[1].partialSign(...signers)
+    const promisesTx = txs.map((tx) =>
+      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+        skipPreflight: true
+      })
+    )
+    return Promise.all(promisesTx)
+  }
 }
 export interface UpdateAndMint {
   exchangeAccount: web3.PublicKey
@@ -178,10 +236,31 @@ export interface UpdateAndMint {
   amount: BN
   signers?: Array<web3.Account>
 }
+export interface UpdateAndWithdraw {
+  exchangeAccount: web3.PublicKey
+  assetsList: web3.PublicKey
+  exchangeAuthority: web3.PublicKey
+  owner: web3.PublicKey
+  to: web3.PublicKey
+  managerProgram: web3.PublicKey
+  collateralAccount: web3.PublicKey
+  amount: BN
+  signers?: Array<web3.Account>
+}
 export interface MintInstruction {
   exchangeAccount: web3.PublicKey
   assetsList: web3.PublicKey
   usdToken: web3.PublicKey
+  exchangeAuthority: web3.PublicKey
+  owner: web3.PublicKey
+  to: web3.PublicKey
+  managerProgram: web3.PublicKey
+  collateralAccount: web3.PublicKey
+  amount: BN
+}
+export interface WithdrawInstruction {
+  exchangeAccount: web3.PublicKey
+  assetsList: web3.PublicKey
   exchangeAuthority: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey

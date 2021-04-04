@@ -301,9 +301,9 @@ pub enum ErrorCode {
     NotSyntheticUsd,
     #[msg("Oracle price is outdated")]
     OutdatedOracle,
-    #[msg("Mint limit met")]
+    #[msg("Mint limit")]
     MintLimit,
-    #[msg("Withdraw limit met")]
+    #[msg("Withdraw limit")]
     WithdrawLimit,
     #[msg("Invalid collateral_account")]
     CollateralAccountError,

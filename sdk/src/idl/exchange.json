@@ -225,11 +225,6 @@
             "isSigner": false
           },
           {
-            "name": "collateralToken",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "collateralAccount",
             "isMut": true,
             "isSigner": false
@@ -321,9 +316,14 @@
       "code": 105,
       "name": "WithdrawLimit",
       "msg": "Withdraw limit met"
+    },
+    {
+      "code": 106,
+      "name": "CollateralAccountError",
+      "msg": "Invalid collateral_account"
     }
   ],
   "metadata": {
-    "address": "428X1v5zkzq5DgyQ83UYLJUKgiBEpFpf2GFkJ4efKAaB"
+    "address": "6nN2qoTuaModcmEnY9ZWTREF7jjh5FsJHQKFqw5iNoKb"
   }
 }
