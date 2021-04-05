@@ -381,4 +381,16 @@ mod tests {
             assert_eq!(result, 1)
         }
     }
+    #[test]
+    fn test_calculate_max_user_debt_in_usd() {
+        {
+            let asset = Asset {
+                decimals: 6,
+                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                ..Default::default()
+            };
+            let result = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
+            assert_eq!(result, 20_000_000)
+        }
+    }
 }

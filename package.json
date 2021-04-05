@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:full": "anchor test tests/manager.spec.ts && anchor test tests/exchange.spec.ts",
+    "test:manager": "anchor test tests/manager.spec.ts",
+    "test:exchange": " anchor test tests/exchange.spec.ts",
+    "build": "cd sdk && npm run build"
   },
   "author": "Norbert Bodziony",
   "dependencies": {
