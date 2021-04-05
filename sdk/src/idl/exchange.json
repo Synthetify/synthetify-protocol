@@ -322,8 +322,5 @@
       "name": "CollateralAccountError",
       "msg": "Invalid collateral_account"
     }
-  ],
-  "metadata": {
-    "address": "URJGyxsrX5o3Kje5wUR5NNYqVkLAUQL9PFSHYy3TX8E"
-  }
+  ]
 }

@@ -15,5 +15,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.3.0"
-oracle= { path = "../oracle", features = ["cpi"] }
+anchor-lang = "0.4.0"
+oracle = { path = "../oracle", features = ["cpi"] }

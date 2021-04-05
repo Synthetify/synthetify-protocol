@@ -265,8 +265,8 @@ describe('exchange', () => {
       }
     })
   })
-  describe.only('#mint()', async () => {
-    it.only('Mint #1', async () => {
+  describe('#mint()', async () => {
+    it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,

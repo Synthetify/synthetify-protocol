@@ -175,7 +175,7 @@ export class Exchange {
     const updateTx = new web3.Transaction().add(updateIx)
     const mintTx = new web3.Transaction().add(mintIx)
     const txs = await this.processOperations([updateTx, mintTx])
-    txs[1].partialSign(...signers)
+    signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
       web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
@@ -194,7 +194,7 @@ export class Exchange {
     const updateTx = new web3.Transaction().add(updateIx)
     const withdrawTx = new web3.Transaction().add(withdrawIx)
     const txs = await this.processOperations([updateTx, withdrawTx])
-    txs[1].partialSign(...signers)
+    signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
       web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
