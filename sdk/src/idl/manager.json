@@ -266,8 +266,5 @@
       "name": "NoAssetFound",
       "msg": "No asset with such address was found"
     }
-  ],
-  "metadata": {
-    "address": "FycPa7Y7ZonvwLjRz14VKnxynYzHuYPjw3WX4GJP9r1W"
-  }
+  ]
 }

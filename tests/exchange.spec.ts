@@ -25,7 +25,8 @@ import {
   DEFAULT_PUBLIC_KEY,
   ORACLE_OFFSET,
   ACCURACY,
-  calculateDebt
+  calculateDebt,
+  SYNTHETIFY_ECHANGE_SEED
 } from './utils'
 
 describe('exchange', () => {
@@ -40,7 +41,6 @@ describe('exchange', () => {
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
-  const programSigner = new anchor.web3.Account()
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -51,7 +51,7 @@ describe('exchange', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [programSigner.publicKey.toBuffer()],
+      [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -95,8 +95,7 @@ describe('exchange', () => {
       assetsList,
       collateralAccount,
       collateralToken: collateralToken.publicKey,
-      nonce,
-      programSigner: programSigner.publicKey
+      nonce
     })
     exchange = await Exchange.build(
       connection,
@@ -111,7 +110,6 @@ describe('exchange', () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
-    assert.ok(state.programSigner.equals(programSigner.publicKey))
     assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))

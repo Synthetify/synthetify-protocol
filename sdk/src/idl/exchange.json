@@ -35,10 +35,6 @@
             "type": "publicKey"
           },
           {
-            "name": "programSigner",
-            "type": "publicKey"
-          },
-          {
             "name": "nonce",
             "type": "u8"
           },
@@ -98,11 +94,6 @@
           },
           {
             "name": "assetsList",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "programSigner",
             "isMut": false,
             "isSigner": false
           }
@@ -322,8 +313,5 @@
       "name": "CollateralAccountError",
       "msg": "Invalid collateral_account"
     }
-  ],
-  "metadata": {
-    "address": "7jnkhqVixdS9cgVxF2hNxZj9iJaSSfPNGsTcsT98o7fE"
-  }
+  ]
 }

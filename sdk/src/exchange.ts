@@ -65,22 +65,14 @@ export class Exchange {
     instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
     return instance
   }
-  public async init({
-    admin,
-    assetsList,
-    collateralAccount,
-    collateralToken,
-    nonce,
-    programSigner
-  }: Init) {
+  public async init({ admin, assetsList, collateralAccount, collateralToken, nonce }: Init) {
     // @ts-expect-error
     await this.program.state.rpc.new(nonce, {
       accounts: {
         admin: admin,
         collateralToken: collateralToken,
         collateralAccount: collateralAccount,
-        assetsList: assetsList,
-        programSigner: programSigner
+        assetsList: assetsList
       }
     })
   }
@@ -236,7 +228,6 @@ export interface DepositInstruction {
 }
 export interface Init {
   admin: web3.PublicKey
-  programSigner: web3.PublicKey
   nonce: number
   assetsList: web3.PublicKey
   collateralToken: web3.PublicKey
@@ -244,7 +235,6 @@ export interface Init {
 }
 export interface ExchangeState {
   admin: web3.PublicKey
-  programSigner: web3.PublicKey
   nonce: number
   debtShares: BN
   collateralShares: BN

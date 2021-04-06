@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use manager::{Asset, AssetsList, SetAssetSupply};
 use math::*;
-
+const SYNTHETIFY_ECHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
@@ -17,7 +17,6 @@ pub mod exchange {
     #[state]
     pub struct InternalState {
         pub admin: Pubkey,
-        pub program_signer: Pubkey,
         pub nonce: u8,
         pub debt_shares: u64,
         pub collateral_shares: u64,
@@ -32,7 +31,6 @@ pub mod exchange {
         pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
             Ok(Self {
                 admin: *ctx.accounts.admin.key,
-                program_signer: *ctx.accounts.program_signer.key,
                 nonce: nonce,
                 debt_shares: 0u64,
                 collateral_shares: 0u64,
@@ -56,7 +54,7 @@ pub mod exchange {
             }
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             // Transfer token
-            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             let result = token::transfer(cpi_ctx, amount);
@@ -109,7 +107,7 @@ pub mod exchange {
                 return Err(ErrorCode::MintLimit.into());
             }
             let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount_mint_usd);
-            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_program = ctx.accounts.manager_program.clone();
             let cpi_accounts = SetAssetSupply {
@@ -171,7 +169,7 @@ pub mod exchange {
             }
             let shares_to_burn =
                 amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
-            let seeds = &[self.program_signer.as_ref(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
 
             self.collateral_shares -= shares_to_burn;
@@ -199,7 +197,6 @@ pub struct New<'info> {
     pub collateral_token: AccountInfo<'info>,
     pub collateral_account: AccountInfo<'info>,
     pub assets_list: AccountInfo<'info>,
-    pub program_signer: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {

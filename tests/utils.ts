@@ -5,6 +5,7 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from 
 import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
 import { AssetsList } from '@synthetify/sdk/lib/manager'
 
+export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
