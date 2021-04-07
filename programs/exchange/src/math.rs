@@ -102,6 +102,17 @@ pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     let shares = amount as u128 * all_shares as u128 / full_amount as u128;
     return shares as u64;
 }
+pub fn amount_to_discount(amount: u64) -> u8 {
+    // decimals of token = 6
+    // we want discounts start from 2000 -> 4000 ...
+    let units = amount / 10u64.pow(6 + 3);
+    let discount = (units as f64).log2();
+    if discount > 20.0 {
+        return 20;
+    } else {
+        return discount.floor() as u8;
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -391,6 +402,39 @@ mod tests {
             };
             let result = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
             assert_eq!(result, 20_000_000)
+        }
+    }
+    #[test]
+    fn test_amount_to_discount() {
+        {
+            let amount = 1_999u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 0)
+        }
+        {
+            let amount = 2_000u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 1)
+        }
+        {
+            let amount = 4_900u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 2)
+        }
+        {
+            let amount = 1_024_000u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 10)
+        }
+        {
+            let amount = 1_048_576_000u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 20);
+            let result = amount_to_discount(amount - 1);
+            assert_eq!(result, 19);
+            // max discount 20%
+            let result = amount_to_discount(amount * 2);
+            assert_eq!(result, 20);
         }
     }
 }
