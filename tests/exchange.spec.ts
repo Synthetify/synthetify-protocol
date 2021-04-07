@@ -609,7 +609,7 @@ describe('exchange', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 9
+        decimals: 8
       })
       const btcFeed = await createPriceFeed({
         admin: ORACLE_ADMIN.publicKey,
@@ -620,7 +620,7 @@ describe('exchange', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 8
+        decimals: 6
       })
       const ethFeed = await createPriceFeed({
         admin: ORACLE_ADMIN.publicKey,
@@ -633,7 +633,7 @@ describe('exchange', () => {
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: btcToken.publicKey,
-        tokenDecimals: 6,
+        tokenDecimals: 8,
         tokenFeed: btcFeed
       })
       await manager.addNewAsset({

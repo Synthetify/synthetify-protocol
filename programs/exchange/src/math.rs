@@ -121,10 +121,16 @@ pub fn calculate_swap_out_amount(
 ) -> u64 {
     let amount_before_fee = asset_in.price as u128 * *amount as u128 / asset_for.price as u128;
     let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 10000);
-    let decimal_change =
-        10f64.powi(((asset_for.decimals as i16 - asset_in.decimals as i16) as i8).into());
-    let scaled_amount = amount as f64 * (decimal_change);
-    return scaled_amount as u64;
+    let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
+    if decimal_difference < 0 {
+        let decimal_change = 10u128.pow((-decimal_difference) as u32);
+        let scaled_amount = amount / (decimal_change);
+        return scaled_amount as u64;
+    } else {
+        let decimal_change = 10u128.pow(decimal_difference as u32);
+        let scaled_amount = amount * (decimal_change);
+        return scaled_amount as u64;
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -461,12 +467,19 @@ mod tests {
                 price: 50000 * 10u64.pow(ORACLE_OFFSET.into()),
                 ..Default::default()
             };
+            let assetETH = Asset {
+                decimals: 7,
+                price: 2000 * 10u64.pow(ORACLE_OFFSET.into()),
+                ..Default::default()
+            };
             let fee = 30u8;
             let result =
                 calculate_swap_out_amount(&assetUSD, &assetBTC, &(50000 * 10u64.pow(6)), &fee);
             assert_eq!(result, 0_99700000);
             let result = calculate_swap_out_amount(&assetBTC, &assetUSD, &(1 * 10u64.pow(8)), &fee);
             assert_eq!(result, 49850_000_000);
+            let result = calculate_swap_out_amount(&assetBTC, &assetETH, &99700000, &fee);
+            assert_eq!(result, 24_850_2250);
         }
     }
 }
