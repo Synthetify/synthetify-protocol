@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, ops::Mul};
 
 use crate::*;
 use manager::Asset;
@@ -119,11 +119,12 @@ pub fn calculate_swap_out_amount(
     amount: &u64,
     fee: &u8, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
-    // Assume same amount of decimals
-    // TODO: Fix that for future
     let amount_before_fee = asset_in.price as u128 * *amount as u128 / asset_for.price as u128;
     let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 10000);
-    return amount as u64;
+    let decimal_change =
+        10f64.powi(((asset_for.decimals as i16 - asset_in.decimals as i16) as i8).into());
+    let scaled_amount = amount as f64 * (decimal_change);
+    return scaled_amount as u64;
 }
 #[cfg(test)]
 mod tests {
@@ -330,7 +331,6 @@ mod tests {
         // debt 2400
         let assets: Vec<Asset> = vec![asset_1, asset_2];
         let result = calculate_debt(&assets, slot, 0);
-        // println!("{:?}", result);
         assert!(result.is_err());
     }
     #[test]
@@ -446,6 +446,27 @@ mod tests {
             // max discount 20%
             let result = amount_to_discount(amount * 2);
             assert_eq!(result, 20);
+        }
+    }
+    #[test]
+    fn test_calculate_swap_out_amount() {
+        {
+            let assetUSD = Asset {
+                decimals: 6,
+                price: 1 * 10u64.pow(ORACLE_OFFSET.into()),
+                ..Default::default()
+            };
+            let assetBTC = Asset {
+                decimals: 8,
+                price: 50000 * 10u64.pow(ORACLE_OFFSET.into()),
+                ..Default::default()
+            };
+            let fee = 30u8;
+            let result =
+                calculate_swap_out_amount(&assetUSD, &assetBTC, &(50000 * 10u64.pow(6)), &fee);
+            assert_eq!(result, 0_99700000);
+            let result = calculate_swap_out_amount(&assetBTC, &assetUSD, &(1 * 10u64.pow(8)), &fee);
+            assert_eq!(result, 49850_000_000);
         }
     }
 }

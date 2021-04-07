@@ -609,7 +609,7 @@ describe('exchange', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 6
+        decimals: 9
       })
       const btcFeed = await createPriceFeed({
         admin: ORACLE_ADMIN.publicKey,
@@ -620,7 +620,7 @@ describe('exchange', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 6
+        decimals: 8
       })
       const ethFeed = await createPriceFeed({
         admin: ORACLE_ADMIN.publicKey,

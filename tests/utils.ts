@@ -36,7 +36,16 @@ export const calculateAmountAfterFee = (
   amount: BN
 ) => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  return amountOutBeforeFee.sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
+  const decimal_change = 10 ** (assetFor.decimals - assetIn.decimals)
+  if (decimal_change < 1) {
+    return amountOutBeforeFee
+      .sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
+      .div(new BN(1 / decimal_change))
+  } else {
+    return amountOutBeforeFee
+      .sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
+      .mul(new BN(decimal_change))
+  }
 }
 interface ICreateToken {
   connection: Connection
