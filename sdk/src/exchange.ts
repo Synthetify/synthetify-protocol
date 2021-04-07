@@ -2,8 +2,8 @@ import { Network } from './network'
 import idl from './idl/exchange.json'
 import { BN, Idl, Program, Provider, web3, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
-import { DEFAULT_PUBLIC_KEY, signAndSend } from './utils'
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { DEFAULT_PUBLIC_KEY, signAndSend, tou64 } from './utils'
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { AssetsList, Manager } from './manager'
 
 export class Exchange {
@@ -78,7 +78,9 @@ export class Exchange {
   }
   public async getState() {
     const state = (await this.program.state()) as ExchangeState
+    // need to add hooks on change
     this.state = state
+    this.assetsList = await this.manager.getAssetsList(this.state.assetsList)
     return state
   }
   public async getExchangeAccount(exchangeAccount: web3.PublicKey) {
@@ -145,6 +147,32 @@ export class Exchange {
       }
     }) as web3.TransactionInstruction)
   }
+  public async swapInstruction({
+    amount,
+    exchangeAccount,
+    owner,
+    tokenFor,
+    tokenIn,
+    userTokenAccountFor,
+    userTokenAccountIn
+  }: SwapInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.swap(amount, {
+      accounts: {
+        exchangeAuthority: this.exchangeAuthority,
+        tokenFor: tokenFor,
+        tokenIn: tokenIn,
+        userTokenAccountFor: userTokenAccountFor,
+        userTokenAccountIn: userTokenAccountIn,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        owner: owner,
+        assetsList: this.state.assetsList,
+        managerProgram: this.manager.programId
+      }
+    }) as web3.TransactionInstruction)
+  }
   private async processOperations(txs: web3.Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -155,6 +183,45 @@ export class Exchange {
     })
     this.wallet.signAllTransactions(txs)
     return txs
+  }
+  public async swap({
+    amount,
+    exchangeAccount,
+    owner,
+    tokenFor,
+    tokenIn,
+    userTokenAccountFor,
+    userTokenAccountIn,
+    signers
+  }: Swap) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const mintIx = await this.swapInstruction({
+      amount,
+      exchangeAccount,
+      owner,
+      tokenFor,
+      tokenIn,
+      userTokenAccountFor,
+      userTokenAccountIn
+    })
+    const approveIx = await Token.createApproveInstruction(
+      TOKEN_PROGRAM_ID,
+      userTokenAccountIn,
+      this.exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    const updateTx = new web3.Transaction().add(updateIx)
+    const mintTx = new web3.Transaction().add(approveIx).add(mintIx)
+    const txs = await this.processOperations([updateTx, mintTx])
+    signers ? txs[1].partialSign(...signers) : null
+    const promisesTx = txs.map((tx) =>
+      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+        skipPreflight: true
+      })
+    )
+    return Promise.all(promisesTx)
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -202,6 +269,16 @@ export interface Mint {
   amount: BN
   signers?: Array<web3.Account>
 }
+export interface Swap {
+  exchangeAccount: web3.PublicKey
+  owner: web3.PublicKey
+  tokenIn: web3.PublicKey
+  tokenFor: web3.PublicKey
+  userTokenAccountIn: web3.PublicKey
+  userTokenAccountFor: web3.PublicKey
+  amount: BN
+  signers?: Array<web3.Account>
+}
 export interface Withdraw {
   exchangeAccount: web3.PublicKey
   owner: web3.PublicKey
@@ -213,6 +290,15 @@ export interface MintInstruction {
   exchangeAccount: web3.PublicKey
   owner: web3.PublicKey
   to: web3.PublicKey
+  amount: BN
+}
+export interface SwapInstruction {
+  exchangeAccount: web3.PublicKey
+  owner: web3.PublicKey
+  tokenIn: web3.PublicKey
+  tokenFor: web3.PublicKey
+  userTokenAccountIn: web3.PublicKey
+  userTokenAccountFor: web3.PublicKey
   amount: BN
 }
 export interface WithdrawInstruction {

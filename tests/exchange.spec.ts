@@ -26,7 +26,8 @@ import {
   ORACLE_OFFSET,
   ACCURACY,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED
+  SYNTHETIFY_ECHANGE_SEED,
+  calculateAmountAfterFee
 } from './utils'
 
 describe('exchange', () => {
@@ -598,6 +599,96 @@ describe('exchange', () => {
       } catch (error) {
         assert.ok(true)
       }
+    })
+  })
+  describe.only('#swap()', async () => {
+    let btcToken: Token
+    before(async () => {
+      btcToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 6
+      })
+      const btcFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(50000 * 1e4)
+      })
+      const newAssetLimit = new BN(1000000)
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: btcToken.publicKey,
+        tokenDecimals: 6,
+        tokenFeed: btcFeed
+      })
+      const state = await exchange.getState()
+    })
+
+    it('Swap usd->btc', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // We can mint max 2000 * 1e6
+      const usdMintAmount = new BN(2000 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+      const assetsListData = await manager.getAssetsList(assetsList)
+      await exchange.swap({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor: btcTokenAccount,
+        userTokenAccountIn: usdTokenAccount,
+        tokenFor: btcToken.publicKey,
+        tokenIn: assetsListData.assets[0].assetAddress,
+        signers: [accountOwner]
+      })
+      const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
+      const amountOut = calculateAmountAfterFee(
+        assetsListData.assets[0],
+        btcAsset,
+        exchange.state.fee,
+        usdMintAmount
+      )
+      const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountAfter.amount.eq(amountOut))
+
+      const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
+
+      const assetsListDataAfter = await manager.getAssetsList(assetsList)
+      assert.ok(
+        assetsListDataAfter.assets[0].supply.eq(assetsListData.assets[0].supply.sub(usdMintAmount))
+      )
     })
   })
 })

@@ -113,7 +113,18 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return discount.floor() as u8;
     }
 }
-
+pub fn calculate_swap_out_amount(
+    asset_in: &Asset,
+    asset_for: &Asset,
+    amount: &u64,
+    fee: &u8, // in range from 0-99 | 30/10000 => 0.3% fee
+) -> u64 {
+    // Assume same amount of decimals
+    // TODO: Fix that for future
+    let amount_before_fee = asset_in.price as u128 * *amount as u128 / asset_for.price as u128;
+    let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 10000);
+    return amount as u64;
+}
 #[cfg(test)]
 mod tests {
     use std::ops::Div;

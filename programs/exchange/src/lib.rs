@@ -1,12 +1,14 @@
 #![feature(proc_macro_hygiene)]
 
 mod math;
+mod utils;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use manager::{Asset, AssetsList, SetAssetSupply};
 use math::*;
-const SYNTHETIFY_ECHANGE_SEED: &str = "Synthetify";
+use utils::*;
+const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
@@ -43,6 +45,8 @@ pub mod exchange {
             })
         }
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
+            msg!("Syntetify: DEPOSIT");
+
             if !ctx
                 .accounts
                 .collateral_account
@@ -54,7 +58,7 @@ pub mod exchange {
             }
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             // Transfer token
-            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             let result = token::transfer(cpi_ctx, amount);
@@ -69,6 +73,8 @@ pub mod exchange {
             Ok(())
         }
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
+            msg!("Syntetify: MINT");
+
             let mint_token_adddress = ctx.accounts.usd_token.key;
             let collateral_account = &ctx.accounts.collateral_account;
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
@@ -107,7 +113,7 @@ pub mod exchange {
                 return Err(ErrorCode::MintLimit.into());
             }
             let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount_mint_usd);
-            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_program = ctx.accounts.manager_program.clone();
             let cpi_accounts = SetAssetSupply {
@@ -128,6 +134,8 @@ pub mod exchange {
             Ok(())
         }
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+            msg!("Syntetify: WITHDRAW");
+
             let collateral_account = &ctx.accounts.collateral_account;
             if !collateral_account
                 .to_account_info()
@@ -169,7 +177,7 @@ pub mod exchange {
             }
             let shares_to_burn =
                 amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
-            let seeds = &[SYNTHETIFY_ECHANGE_SEED.as_bytes(), &[self.nonce]];
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
 
             self.collateral_shares -= shares_to_burn;
@@ -177,6 +185,75 @@ pub mod exchange {
 
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::transfer(cpi_ctx, amount);
+            Ok(())
+        }
+        pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
+            msg!("Syntetify: SWAP");
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            let token_address_in = ctx.accounts.token_in.key;
+            let token_address_for = ctx.accounts.token_for.key;
+            let slot = ctx.accounts.clock.slot;
+            let assets = &ctx.accounts.assets_list.assets;
+
+            if token_address_for.eq(&assets[1].asset_address) {
+                return Err(ErrorCode::SyntheticCollateral.into());
+            }
+            if token_address_in.eq(token_address_for) {
+                return Err(ErrorCode::SyntheticCollateral.into());
+            }
+            let asset_in_index = assets
+                .iter()
+                .position(|x| x.asset_address == *token_address_in)
+                .unwrap();
+            let asset_for_index = assets
+                .iter()
+                .position(|x| x.asset_address == *token_address_for)
+                .unwrap();
+
+            check_feed_update(
+                &assets,
+                asset_in_index,
+                asset_for_index,
+                self.max_delay,
+                slot,
+            )
+            .unwrap();
+            let amount_for = calculate_swap_out_amount(
+                &assets[asset_in_index],
+                &assets[asset_for_index],
+                &amount,
+                &self.fee,
+            );
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+
+            let cpi_program = ctx.accounts.manager_program.clone();
+            let cpi_accounts = SetAssetSupply {
+                assets_list: ctx.accounts.assets_list.clone().into(),
+                exchange_authority: ctx.accounts.exchange_authority.clone().into(),
+            };
+            let cpi_ctx_for =
+                CpiContext::new(cpi_program.clone(), cpi_accounts.clone()).with_signer(signer);
+            manager::cpi::set_asset_supply(
+                cpi_ctx_for,
+                assets[asset_for_index].asset_address,
+                assets[asset_for_index].supply + amount_for,
+            );
+            let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
+
+            manager::cpi::set_asset_supply(
+                cpi_ctx_in,
+                assets[asset_in_index].asset_address,
+                assets[asset_in_index].supply - amount,
+            );
+
+            let cpi_ctx_burn: CpiContext<Burn> =
+                CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::burn(cpi_ctx_burn, amount);
+
+            let cpi_ctx_mint: CpiContext<MintTo> =
+                CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::mint_to(cpi_ctx_mint, amount_for);
             Ok(())
         }
     }
@@ -282,6 +359,49 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
+#[derive(Accounts)]
+pub struct Swap<'info> {
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: CpiAccount<'info, AssetsList>,
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub token_in: AccountInfo<'info>,
+    #[account(mut)]
+    pub token_for: AccountInfo<'info>,
+    #[account(mut)]
+    pub user_token_account_in: AccountInfo<'info>,
+    #[account(mut)]
+    pub user_token_account_for: AccountInfo<'info>,
+    #[account(mut, has_one = owner)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub manager_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+    fn from(accounts: &Swap<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: accounts.token_in.to_account_info(),
+            to: accounts.user_token_account_in.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &Swap<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.token_for.to_account_info(),
+            to: accounts.user_token_account_for.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 #[account]
 pub struct ExchangeAccount {
     pub owner: Pubkey,
@@ -304,4 +424,6 @@ pub enum ErrorCode {
     WithdrawLimit,
     #[msg("Invalid collateral_account")]
     CollateralAccountError,
+    #[msg("Synthetic collateral is not supported")]
+    SyntheticCollateral,
 }

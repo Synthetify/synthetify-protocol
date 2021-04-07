@@ -3,7 +3,7 @@ import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
-import { AssetsList } from '@synthetify/sdk/lib/manager'
+import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const ORACLE_ADMIN = new Account()
@@ -28,6 +28,15 @@ export const calculateDebt = (assetsList: AssetsList) => {
       ),
     new BN(0)
   )
+}
+export const calculateAmountAfterFee = (
+  assetIn: Asset,
+  assetFor: Asset,
+  fee: number,
+  amount: BN
+) => {
+  const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
+  return amountOutBeforeFee.sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
 }
 interface ICreateToken {
   connection: Connection

@@ -148,7 +148,7 @@ pub mod manager {
 }
 #[derive(Accounts)]
 pub struct New {}
-#[derive(Accounts)]
+#[derive(Accounts, Clone)]
 pub struct SetAssetSupply<'info> {
     #[account(mut,has_one=exchange_authority)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
