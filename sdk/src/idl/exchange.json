@@ -323,6 +323,62 @@
             "type": "u64"
           }
         ]
+      },
+      {
+        "name": "burn",
+        "accounts": [
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenBurn",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccountBurn",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "managerProgram",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
       }
     ]
   },
@@ -389,8 +445,5 @@
       "name": "SyntheticCollateral",
       "msg": "Synthetic collateral is not supported"
     }
-  ],
-  "metadata": {
-    "address": "5XztKWsQdqULwX6YEoanZNpKXAp4xWXcLDiGX1EwXhci"
-  }
+  ]
 }

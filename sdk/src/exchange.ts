@@ -193,6 +193,28 @@ export class Exchange {
       }
     }) as web3.TransactionInstruction)
   }
+  public async burnInstruction({
+    amount,
+    exchangeAccount,
+    owner,
+    tokenBurn,
+    userTokenAccountBurn
+  }: BurnInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.burn(amount, {
+      accounts: {
+        exchangeAuthority: this.exchangeAuthority,
+        tokenBurn: tokenBurn,
+        userTokenAccountBurn: userTokenAccountBurn,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        owner: owner,
+        assetsList: this.state.assetsList,
+        managerProgram: this.manager.programId
+      }
+    }) as web3.TransactionInstruction)
+  }
   private async processOperations(txs: web3.Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -215,7 +237,7 @@ export class Exchange {
     signers
   }: Swap) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
-    const mintIx = await this.swapInstruction({
+    const swapIx = await this.swapInstruction({
       amount,
       exchangeAccount,
       owner,
@@ -233,8 +255,43 @@ export class Exchange {
       tou64(amount)
     )
     const updateTx = new web3.Transaction().add(updateIx)
-    const mintTx = new web3.Transaction().add(approveIx).add(mintIx)
-    const txs = await this.processOperations([updateTx, mintTx])
+    const swapTx = new web3.Transaction().add(approveIx).add(swapIx)
+    const txs = await this.processOperations([updateTx, swapTx])
+    signers ? txs[1].partialSign(...signers) : null
+    const promisesTx = txs.map((tx) =>
+      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+        skipPreflight: true
+      })
+    )
+    return Promise.all(promisesTx)
+  }
+  public async burn({
+    amount,
+    exchangeAccount,
+    owner,
+    tokenBurn,
+    userTokenAccountBurn,
+    signers
+  }: Burn) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const burnIx = await this.burnInstruction({
+      amount,
+      exchangeAccount,
+      owner,
+      tokenBurn,
+      userTokenAccountBurn
+    })
+    const approveIx = await Token.createApproveInstruction(
+      TOKEN_PROGRAM_ID,
+      userTokenAccountBurn,
+      this.exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    const updateTx = new web3.Transaction().add(updateIx)
+    const burnTx = new web3.Transaction().add(approveIx).add(burnIx)
+    const txs = await this.processOperations([updateTx, burnTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
       web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
@@ -299,6 +356,14 @@ export interface Swap {
   amount: BN
   signers?: Array<web3.Account>
 }
+export interface Burn {
+  exchangeAccount: web3.PublicKey
+  owner: web3.PublicKey
+  tokenBurn: web3.PublicKey
+  userTokenAccountBurn: web3.PublicKey
+  amount: BN
+  signers?: Array<web3.Account>
+}
 export interface Withdraw {
   exchangeAccount: web3.PublicKey
   owner: web3.PublicKey
@@ -319,6 +384,13 @@ export interface SwapInstruction {
   tokenFor: web3.PublicKey
   userTokenAccountIn: web3.PublicKey
   userTokenAccountFor: web3.PublicKey
+  amount: BN
+}
+export interface BurnInstruction {
+  exchangeAccount: web3.PublicKey
+  owner: web3.PublicKey
+  tokenBurn: web3.PublicKey
+  userTokenAccountBurn: web3.PublicKey
   amount: BN
 }
 export interface WithdrawInstruction {

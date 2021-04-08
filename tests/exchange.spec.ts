@@ -28,7 +28,8 @@ import {
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
-  toEffectiveFee
+  toEffectiveFee,
+  createAccountWithCollateralAndMaxMintUsd
 } from './utils'
 
 describe('exchange', () => {
@@ -1032,6 +1033,315 @@ describe('exchange', () => {
       } catch (error) {
         assert.ok(true)
       }
+    })
+  })
+  describe('#burn()', async () => {
+    let btcToken: Token
+    let ethToken: Token
+    before(async () => {
+      btcToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const btcFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(50000 * 1e4)
+      })
+      ethToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 6
+      })
+      const ethFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(2000 * 1e4)
+      })
+      const newAssetLimit = new BN(10).pow(new BN(18))
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: btcToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: btcFeed
+      })
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: ethToken.publicKey,
+        tokenDecimals: 6,
+        tokenFeed: ethFeed
+      })
+      // Just to add user
+      await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: new BN(10000000 * 1e6),
+        usdToken
+      })
+      const state = await exchange.getState()
+    })
+    it('Burn all debt', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      // We can mint max 200 * 1e6
+      const usdMintAmount = new BN(200 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
+
+      await exchange.burn({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        tokenBurn: usdToken.publicKey,
+        userTokenAccountBurn: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.eq(new BN(0)))
+    })
+    it('Burn more than debt - should return rest', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const temp = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      // We can mint max 200 * 1e6
+      const usdMintAmount = new BN(200 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+      // Transfer some USD
+      const transferAmount = new BN(10 * 1e6)
+      await usdToken.transfer(
+        temp.usdTokenAccount,
+        usdTokenAccount,
+        temp.accountOwner,
+        [],
+        tou64(transferAmount)
+      )
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount.add(transferAmount)))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
+
+      await exchange.burn({
+        amount: usdMintAmount.add(transferAmount),
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        tokenBurn: usdToken.publicKey,
+        userTokenAccountBurn: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      // We should end with transfered amount
+      const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountAfter.amount.eq(transferAmount))
+
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.eq(new BN(0)))
+    })
+    it('Burn without signer', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        usdTokenAccount,
+        userCollateralTokenAccount,
+        usdMintAmount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
+
+      try {
+        await exchange.burn({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          tokenBurn: usdToken.publicKey,
+          userTokenAccountBurn: usdTokenAccount,
+          signers: []
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
+    it('Burn wrong token', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        usdTokenAccount,
+        userCollateralTokenAccount,
+        usdMintAmount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
+
+      try {
+        await exchange.burn({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          tokenBurn: ethToken.publicKey,
+          userTokenAccountBurn: usdTokenAccount,
+          signers: [accountOwner]
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
+    it('Burn btc token', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+
+      const {
+        accountOwner,
+        exchangeAccount,
+        usdTokenAccount,
+        userCollateralTokenAccount,
+        usdMintAmount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      const userBtcTokenAccount = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccount.amount.eq(new BN(0)))
+      const userUsdTokenAccount = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccount.amount.eq(usdMintAmount))
+      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountData.debtShares.gt(new BN(0)))
+
+      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+      const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
+      assert.ok(effectiveFee === 300) // discount 0%
+      const assetsListData = await manager.getAssetsList(assetsList)
+
+      await exchange.swap({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor: btcTokenAccount,
+        userTokenAccountIn: usdTokenAccount,
+        tokenFor: btcToken.publicKey,
+        tokenIn: usdToken.publicKey,
+        signers: [accountOwner]
+      })
+      const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
+      const btcAmountOut = calculateAmountAfterFee(
+        assetsListData.assets[0],
+        btcAsset,
+        effectiveFee,
+        usdMintAmount
+      )
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(btcAmountOut))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+
+      await exchange.burn({
+        amount: btcAmountOut,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        tokenBurn: btcToken.publicKey,
+        userTokenAccountBurn: btcTokenAccount,
+        signers: [accountOwner]
+      })
+      // We should endup with some debt
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.gt(new BN(0)))
+      assert.ok(exchangeAccountAfter.debtShares.lt(exchangeAccountBefore.debtShares))
+
+      // Burned all BTC
+      const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountAfter.amount.eq(new BN(0)))
     })
   })
 })

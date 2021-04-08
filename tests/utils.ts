@@ -229,6 +229,15 @@ export interface IAccountWithCollateral {
   collateralToken: Token
   amount: BN
 }
+export interface IAccountWithCollateralandMint {
+  exchange: Exchange
+  collateralTokenMintAuthority: PublicKey
+  collateralAccount: PublicKey
+  exchangeAuthority: PublicKey
+  collateralToken: Token
+  usdToken: Token
+  amount: BN
+}
 export const createAccountWithCollateral = async ({
   exchange,
   collateralTokenMintAuthority,
@@ -266,4 +275,45 @@ export const createAccountWithCollateral = async ({
   )
 
   return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
+}
+export const createAccountWithCollateralAndMaxMintUsd = async ({
+  exchange,
+  collateralTokenMintAuthority,
+  collateralToken,
+  collateralAccount,
+  exchangeAuthority,
+  amount,
+  usdToken
+}: IAccountWithCollateralandMint) => {
+  const {
+    accountOwner,
+    exchangeAccount,
+    userCollateralTokenAccount
+  } = await createAccountWithCollateral({
+    amount,
+    collateralAccount,
+    collateralToken,
+    collateralTokenMintAuthority,
+    exchange,
+    exchangeAuthority
+  })
+  // create usd account
+  const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+  // Price of token is 2$ and collateral ratio 1000%
+  const usdMintAmount = amount.div(new BN(5))
+  await exchange.mint({
+    amount: usdMintAmount,
+    exchangeAccount,
+    owner: accountOwner.publicKey,
+    to: usdTokenAccount,
+    signers: [accountOwner]
+  })
+  return {
+    accountOwner,
+    exchangeAccount,
+    userCollateralTokenAccount,
+    usdTokenAccount,
+    usdMintAmount
+  }
 }

@@ -20,3 +20,7 @@ pub fn check_feed_update(
     }
     return Ok(());
 }
+
+pub fn div_up(a: u128, b: u128) -> u128 {
+    (a + (b - 1)) / b
+}

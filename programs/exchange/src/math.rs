@@ -27,8 +27,10 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
-        debt += (asset.price as u128 * asset.supply as u128)
-            / 10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+        debt += div_up(
+            (asset.price as u128 * asset.supply as u128),
+            10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into()),
+        )
     }
     Ok(debt as u64)
 }
@@ -41,7 +43,10 @@ pub fn calculate_user_debt_in_usd(
     if debt_shares == 0 {
         return 0;
     }
-    let user_debt = debt as u128 * user_account.debt_shares as u128 / debt_shares as u128;
+    let user_debt = div_up(
+        debt as u128 * user_account.debt_shares as u128,
+        debt_shares as u128,
+    );
     return user_debt as u64;
 }
 
@@ -138,6 +143,24 @@ pub fn calculate_swap_out_amount(
         let scaled_amount = amount * (decimal_change);
         return scaled_amount as u64;
     }
+}
+pub fn calculate_burned_shares(
+    asset: &Asset,
+    user_debt: &u64,
+    user_shares: &u64,
+    amount: &u64,
+) -> u64 {
+    let burn_amount_in_usd = asset.price as u128 * *amount as u128
+        / 10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into());
+    let burned_shares = (burn_amount_in_usd * *user_shares as u128) / (*user_debt as u128);
+    return burned_shares as u64;
+}
+pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
+    let burned_amount_token = div_up(
+        *user_debt as u128 * 10u128.pow(ORACLE_OFFSET.into()),
+        asset.price as u128,
+    );
+    return burned_amount_token as u64;
 }
 #[cfg(test)]
 mod tests {

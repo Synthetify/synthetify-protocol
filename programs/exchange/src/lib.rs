@@ -11,7 +11,6 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::{borrow::BorrowMut, convert::TryInto};
 
     use crate::math::{calculate_debt, get_collateral_shares};
 
@@ -273,6 +272,72 @@ pub mod exchange {
             token::mint_to(cpi_ctx_mint, amount_for);
             Ok(())
         }
+        pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
+            msg!("Syntetify: BURN");
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            let token_address = ctx.accounts.token_burn.key;
+            let slot = ctx.accounts.clock.slot;
+            let assets = &ctx.accounts.assets_list.assets;
+
+            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
+            let burn_asset_index = assets
+                .iter()
+                .position(|x| x.asset_address == *token_address)
+                .unwrap();
+            let burn_asset = &assets[burn_asset_index];
+            let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
+
+            let burned_shares = calculate_burned_shares(
+                &burn_asset,
+                &user_debt,
+                &exchange_account.debt_shares,
+                &amount,
+            );
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            if burned_shares >= exchange_account.debt_shares {
+                let burned_amount = calculate_max_burned_in_token(&burn_asset, &user_debt);
+                self.debt_shares -= exchange_account.debt_shares;
+                exchange_account.debt_shares = 0;
+                // Change supply
+                let cpi_program = ctx.accounts.manager_program.clone();
+                let cpi_accounts = SetAssetSupply {
+                    assets_list: ctx.accounts.assets_list.clone().into(),
+                    exchange_authority: ctx.accounts.exchange_authority.clone().into(),
+                };
+                let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
+
+                manager::cpi::set_asset_supply(
+                    cpi_ctx_in,
+                    burn_asset.asset_address,
+                    burn_asset.supply - burned_amount,
+                );
+                // Burn token
+                let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+                token::burn(cpi_ctx, burned_amount);
+                Ok(())
+            } else {
+                exchange_account.debt_shares -= burned_shares;
+                self.debt_shares -= burned_shares;
+                // Change supply
+                let cpi_program = ctx.accounts.manager_program.clone();
+                let cpi_accounts = SetAssetSupply {
+                    assets_list: ctx.accounts.assets_list.clone().into(),
+                    exchange_authority: ctx.accounts.exchange_authority.clone().into(),
+                };
+                let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
+
+                manager::cpi::set_asset_supply(
+                    cpi_ctx_in,
+                    burn_asset.asset_address,
+                    burn_asset.supply - amount,
+                );
+                // Burn token
+                let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+                token::burn(cpi_ctx, amount);
+                Ok(())
+            }
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
@@ -370,6 +435,34 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
         let cpi_accounts = Transfer {
             from: accounts.user_collateral_account.to_account_info(),
             to: accounts.collateral_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct BurnToken<'info> {
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: CpiAccount<'info, AssetsList>,
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub token_burn: AccountInfo<'info>,
+    #[account(mut)]
+    pub user_token_account_burn: AccountInfo<'info>,
+    #[account(mut, has_one = owner)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
+    pub manager_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+    fn from(accounts: &BurnToken<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: accounts.token_burn.to_account_info(),
+            to: accounts.user_token_account_burn.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.to_account_info();
