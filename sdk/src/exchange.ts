@@ -86,6 +86,25 @@ export class Exchange {
   public async getExchangeAccount(exchangeAccount: web3.PublicKey) {
     return (await this.program.account.exchangeAccount(exchangeAccount)) as ExchangeAccount
   }
+  public async getUserCollateralBalance(exchangeAccount: web3.PublicKey) {
+    const userAccount = (await this.program.account.exchangeAccount(
+      exchangeAccount
+    )) as ExchangeAccount
+    if (userAccount.collateralShares.eq(new BN(0))) {
+      return new BN(0)
+    }
+    const state = await this.getState()
+    const collateralToken = new Token(
+      this.connection,
+      this.assetsList.assets[1].assetAddress,
+      TOKEN_PROGRAM_ID,
+      new web3.Account()
+    )
+    const exchangeCollateralInfo = await collateralToken.getAccountInfo(state.collateralAccount)
+    return userAccount.collateralShares
+      .mul(new BN(exchangeCollateralInfo.amount.toString()))
+      .div(state.collateralShares)
+  }
   public async createExchangeAccount(owner: web3.PublicKey) {
     const exchangeAccount = new web3.Account()
     await this.program.rpc.createExchangeAccount(owner, {
@@ -169,7 +188,8 @@ export class Exchange {
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
-        managerProgram: this.manager.programId
+        managerProgram: this.manager.programId,
+        collateralAccount: this.state.collateralAccount
       }
     }) as web3.TransactionInstruction)
   }

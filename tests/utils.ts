@@ -29,21 +29,36 @@ export const calculateDebt = (assetsList: AssetsList) => {
     new BN(0)
   )
 }
+export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
+  // decimals of token = 6
+  // we want discounts start from 2000 -> 4000 ...
+  const scaledBalance = userCollateralBalance.div(new BN(10 ** (6 + 3)))
+  if (scaledBalance.eq(new BN(0))) {
+    return fee
+  } else {
+    const discount = Math.log2(scaledBalance.toNumber())
+    if (discount > 20) {
+      return Math.ceil(fee - (fee * 20) / 100)
+    } else {
+      return Math.ceil(fee - (fee * discount) / 100)
+    }
+  }
+}
 export const calculateAmountAfterFee = (
   assetIn: Asset,
   assetFor: Asset,
-  fee: number,
+  effectiveFee: number,
   amount: BN
 ) => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
   const decimal_change = 10 ** (assetFor.decimals - assetIn.decimals)
   if (decimal_change < 1) {
     return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
+      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
       .div(new BN(1 / decimal_change))
   } else {
     return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(fee)).div(new BN(10000)))
+      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
       .mul(new BN(decimal_change))
   }
 }

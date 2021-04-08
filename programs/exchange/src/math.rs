@@ -102,25 +102,32 @@ pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     let shares = amount as u128 * all_shares as u128 / full_amount as u128;
     return shares as u64;
 }
+const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
+pub const fn log2(n: u64) -> u64 {
+    (BITS - 1) - n.leading_zeros() as u64
+}
 pub fn amount_to_discount(amount: u64) -> u8 {
     // decimals of token = 6
     // we want discounts start from 2000 -> 4000 ...
     let units = amount / 10u64.pow(6 + 3);
-    let discount = (units as f64).log2();
-    if discount > 20.0 {
+    if units == 0 {
+        return 0;
+    }
+    let discount = log2(units);
+    if discount > 20 {
         return 20;
     } else {
-        return discount.floor() as u8;
+        return discount as u8;
     }
 }
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
     amount: &u64,
-    fee: &u8, // in range from 0-99 | 30/10000 => 0.3% fee
+    fee: &u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
     let amount_before_fee = asset_in.price as u128 * *amount as u128 / asset_for.price as u128;
-    let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 10000);
+    let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 100000);
     let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
@@ -424,6 +431,16 @@ mod tests {
     #[test]
     fn test_amount_to_discount() {
         {
+            let amount = 0u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 0)
+        }
+        {
+            let amount = 12u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 0)
+        }
+        {
             let amount = 1_999u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
             assert_eq!(result, 0)
@@ -472,7 +489,7 @@ mod tests {
                 price: 2000 * 10u64.pow(ORACLE_OFFSET.into()),
                 ..Default::default()
             };
-            let fee = 30u8;
+            let fee = 300u32;
             let result =
                 calculate_swap_out_amount(&assetUSD, &assetBTC, &(50000 * 10u64.pow(6)), &fee);
             assert_eq!(result, 0_99700000);

@@ -27,7 +27,7 @@ pub mod exchange {
         pub assets_list: Pubkey,
         pub collateralization_level: u32, // in % should range from 300%-1000%
         pub max_delay: u32,               // max blocks of delay 100 blocks ~ 1 min
-        pub fee: u8,                      // in basis points 30 ~ 0.3%
+        pub fee: u32,                     //  300 = 0.3%
     }
     impl InternalState {
         pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
@@ -41,7 +41,7 @@ pub mod exchange {
                 assets_list: *ctx.accounts.assets_list.key,
                 collateralization_level: 1000,
                 max_delay: 10,
-                fee: 30,
+                fee: 300,
             })
         }
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
@@ -195,6 +195,14 @@ pub mod exchange {
             let slot = ctx.accounts.clock.slot;
             let assets = &ctx.accounts.assets_list.assets;
 
+            let collateral_account = &ctx.accounts.collateral_account;
+            if !collateral_account
+                .to_account_info()
+                .key
+                .eq(&self.collateral_account)
+            {
+                return Err(ErrorCode::CollateralAccountError.into());
+            }
             if token_address_for.eq(&assets[1].asset_address) {
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
@@ -218,11 +226,20 @@ pub mod exchange {
                 slot,
             )
             .unwrap();
+            let collateral_amount = calculate_user_collateral_in_token(
+                exchange_account.collateral_shares,
+                self.collateral_shares,
+                collateral_account.amount,
+            );
+
+            let discount = amount_to_discount(collateral_amount);
+            let effective_fee = self.fee - (self.fee * discount as u32 / 100);
+
             let amount_for = calculate_swap_out_amount(
                 &assets[asset_in_index],
                 &assets[asset_for_index],
                 &amount,
-                &self.fee,
+                &effective_fee,
             );
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
@@ -379,6 +396,7 @@ pub struct Swap<'info> {
     pub owner: AccountInfo<'info>,
     pub clock: Sysvar<'info, Clock>,
     pub manager_program: AccountInfo<'info>,
+    pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
     fn from(accounts: &Swap<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {

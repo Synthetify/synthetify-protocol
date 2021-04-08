@@ -68,7 +68,7 @@
           },
           {
             "name": "fee",
-            "type": "u8"
+            "type": "u32"
           }
         ]
       }
@@ -310,6 +310,11 @@
             "name": "managerProgram",
             "isMut": false,
             "isSigner": false
+          },
+          {
+            "name": "collateralAccount",
+            "isMut": false,
+            "isSigner": false
           }
         ],
         "args": [
@@ -386,6 +391,6 @@
     }
   ],
   "metadata": {
-    "address": "EgC9DMBdGMyAnn5YtpNUS1W6g21j8B7iK8pdqAKjnQrG"
+    "address": "5XztKWsQdqULwX6YEoanZNpKXAp4xWXcLDiGX1EwXhci"
   }
 }
