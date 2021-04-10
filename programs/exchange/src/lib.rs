@@ -82,6 +82,7 @@ pub mod exchange {
 
             let mint_token_adddress = ctx.accounts.usd_token.key;
             let collateral_account = &ctx.accounts.collateral_account;
+            let assets_list = &ctx.accounts.assets_list;
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
@@ -92,7 +93,10 @@ pub mod exchange {
             {
                 return Err(ErrorCode::CollateralAccountError.into());
             }
-            let assets = &ctx.accounts.assets_list.assets;
+            if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                return Err(ErrorCode::InvalidAssetsList.into());
+            }
+            let assets = &assets_list.assets;
             let exchange_account = &mut ctx.accounts.exchange_account;
             let slot = ctx.accounts.clock.slot;
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
@@ -103,7 +107,6 @@ pub mod exchange {
             let mint_asset = &assets[0];
             let collateral_asset = &assets[1];
 
-            let amount_mint_usd = calculate_amount_mint_in_usd(&mint_asset, amount);
             let collateral_amount = calculate_user_collateral_in_token(
                 exchange_account.collateral_shares,
                 self.collateral_shares,
@@ -114,10 +117,10 @@ pub mod exchange {
                 self.collateralization_level,
                 collateral_amount,
             );
-            if max_user_debt - user_debt < amount_mint_usd {
+            if max_user_debt < amount.checked_add(user_debt).unwrap() {
                 return Err(ErrorCode::MintLimit.into());
             }
-            let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount_mint_usd);
+            let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount);
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_program = ctx.accounts.manager_program.clone();
@@ -142,6 +145,7 @@ pub mod exchange {
             msg!("Syntetify: WITHDRAW");
 
             let collateral_account = &ctx.accounts.collateral_account;
+            let assets_list = &ctx.accounts.assets_list;
             if !collateral_account
                 .to_account_info()
                 .key
@@ -149,8 +153,11 @@ pub mod exchange {
             {
                 return Err(ErrorCode::CollateralAccountError.into());
             }
+            if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                return Err(ErrorCode::InvalidAssetsList.into());
+            }
             let slot = ctx.accounts.clock.slot;
-            let assets = &ctx.accounts.assets_list.assets;
+            let assets = &assets_list.assets;
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
 
             let exchange_account = &mut ctx.accounts.exchange_account;
@@ -198,7 +205,8 @@ pub mod exchange {
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
             let slot = ctx.accounts.clock.slot;
-            let assets = &ctx.accounts.assets_list.assets;
+            let assets_list = &ctx.accounts.assets_list;
+            let assets = &assets_list.assets;
 
             let collateral_account = &ctx.accounts.collateral_account;
             if !collateral_account
@@ -212,7 +220,10 @@ pub mod exchange {
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
             if token_address_in.eq(token_address_for) {
-                return Err(ErrorCode::SyntheticCollateral.into());
+                return Err(ErrorCode::WashTrade.into());
+            }
+            if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                return Err(ErrorCode::InvalidAssetsList.into());
             }
             let asset_in_index = assets
                 .iter()
@@ -283,8 +294,11 @@ pub mod exchange {
             let exchange_account = &mut ctx.accounts.exchange_account;
             let token_address = ctx.accounts.token_burn.key;
             let slot = ctx.accounts.clock.slot;
-            let assets = &ctx.accounts.assets_list.assets;
-
+            let assets_list = &ctx.accounts.assets_list;
+            let assets = &assets_list.assets;
+            if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                return Err(ErrorCode::InvalidAssetsList.into());
+            }
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let burn_asset_index = assets
                 .iter()
@@ -312,7 +326,6 @@ pub mod exchange {
                     exchange_authority: ctx.accounts.exchange_authority.clone().into(),
                 };
                 let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
-
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
                     burn_asset.asset_address,
@@ -347,11 +360,11 @@ pub mod exchange {
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
             msg!("Syntetify: LIQUIDATE");
             let exchange_account = &mut ctx.accounts.exchange_account;
+            let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
             let assets_list = &ctx.accounts.assets_list;
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
-            let usd_token = ctx.accounts.usd_token.key;
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
             if !signer.eq(&user_usd_account.owner) {
@@ -368,6 +381,9 @@ pub mod exchange {
             {
                 return Err(ErrorCode::CollateralAccountError.into());
             }
+            if !liquidation_account.eq(&self.liquidation_account) {
+                return Err(ErrorCode::ExchangeLiquidationAccount.into());
+            }
 
             let collateral_amount_in_token = calculate_user_collateral_in_token(
                 exchange_account.collateral_shares,
@@ -375,6 +391,9 @@ pub mod exchange {
                 collateral_account.amount,
             );
             let usd_token = &assets[0];
+            if !ctx.accounts.usd_token.key.eq(&usd_token.asset_address) {
+                return Err(ErrorCode::NotSyntheticUsd.into());
+            }
             let collateral_asset = &assets[1];
 
             let collateral_amount_in_usd =
@@ -415,6 +434,7 @@ pub mod exchange {
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer_seeds = &[&seeds[..]];
             {
+                // burn usd
                 let manager_program = ctx.accounts.manager_program.clone();
                 let cpi_accounts = SetAssetSupply {
                     assets_list: ctx.accounts.assets_list.clone().into(),
@@ -428,7 +448,6 @@ pub mod exchange {
                     usd_token.asset_address,
                     usd_token.supply - burned_amount,
                 );
-                // burn usd
                 let burn_accounts = Burn {
                     mint: ctx.accounts.usd_token.to_account_info(),
                     to: ctx.accounts.user_usd_account.to_account_info(),
@@ -694,4 +713,8 @@ pub enum ErrorCode {
     InvalidLiquidation,
     #[msg("Invalid signer")]
     InvalidSigner,
+    #[msg("Wash trade")]
+    WashTrade,
+    #[msg("Invalid exchange liquidation account")]
+    ExchangeLiquidationAccount,
 }
