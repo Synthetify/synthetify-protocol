@@ -73,8 +73,12 @@ pub mod exchange {
                 &self.collateral_shares,
             );
             let exchange_account = &mut ctx.accounts.exchange_account;
-            exchange_account.collateral_shares += new_shares;
-            self.collateral_shares += new_shares;
+
+            exchange_account.collateral_shares = exchange_account
+                .collateral_shares
+                .checked_add(new_shares)
+                .unwrap();
+            self.collateral_shares = self.collateral_shares.checked_add(new_shares).unwrap();
             Ok(())
         }
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
@@ -132,10 +136,13 @@ pub mod exchange {
             manager::cpi::set_asset_supply(
                 cpi_ctx,
                 mint_asset.asset_address,
-                mint_asset.supply + amount,
+                mint_asset.supply.checked_add(amount).unwrap(),
             );
-            self.debt_shares += new_shares;
-            exchange_account.debt_shares += new_shares;
+            self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
+            exchange_account.debt_shares = exchange_account
+                .debt_shares
+                .checked_add(new_shares)
+                .unwrap();
 
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::mint_to(cpi_ctx, amount);
@@ -192,8 +199,11 @@ pub mod exchange {
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
 
-            self.collateral_shares -= shares_to_burn;
-            exchange_account.collateral_shares -= shares_to_burn;
+            self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
+            exchange_account.collateral_shares = exchange_account
+                .collateral_shares
+                .checked_sub(shares_to_burn)
+                .unwrap();
 
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::transfer(cpi_ctx, amount);
@@ -249,7 +259,17 @@ pub mod exchange {
             );
 
             let discount = amount_to_discount(collateral_amount);
-            let effective_fee = self.fee - (self.fee * discount as u32 / 100);
+            let effective_fee = self
+                .fee
+                .checked_sub(
+                    (self
+                        .fee
+                        .checked_mul(discount as u32)
+                        .unwrap()
+                        .checked_div(100))
+                    .unwrap(),
+                )
+                .unwrap();
 
             let amount_for = calculate_swap_out_amount(
                 &assets[asset_in_index],
@@ -270,14 +290,17 @@ pub mod exchange {
             manager::cpi::set_asset_supply(
                 cpi_ctx_for,
                 assets[asset_for_index].asset_address,
-                assets[asset_for_index].supply + amount_for,
+                assets[asset_for_index]
+                    .supply
+                    .checked_add(amount_for)
+                    .unwrap(),
             );
             let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
 
             manager::cpi::set_asset_supply(
                 cpi_ctx_in,
                 assets[asset_in_index].asset_address,
-                assets[asset_in_index].supply - amount,
+                assets[asset_in_index].supply.checked_sub(amount).unwrap(),
             );
 
             let cpi_ctx_burn: CpiContext<Burn> =
@@ -317,7 +340,11 @@ pub mod exchange {
             let signer = &[&seeds[..]];
             if burned_shares >= exchange_account.debt_shares {
                 let burned_amount = calculate_max_burned_in_token(&burn_asset, &user_debt);
-                self.debt_shares -= exchange_account.debt_shares;
+
+                self.debt_shares = self
+                    .debt_shares
+                    .checked_sub(exchange_account.debt_shares)
+                    .unwrap();
                 exchange_account.debt_shares = 0;
                 // Change supply
                 let cpi_program = ctx.accounts.manager_program.clone();
@@ -329,15 +356,18 @@ pub mod exchange {
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
                     burn_asset.asset_address,
-                    burn_asset.supply - burned_amount,
+                    burn_asset.supply.checked_sub(burned_amount).unwrap(),
                 );
                 // Burn token
                 let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
                 token::burn(cpi_ctx, burned_amount);
                 Ok(())
             } else {
-                exchange_account.debt_shares -= burned_shares;
-                self.debt_shares -= burned_shares;
+                exchange_account.debt_shares = exchange_account
+                    .debt_shares
+                    .checked_sub(burned_shares)
+                    .unwrap();
+                self.debt_shares = self.debt_shares.checked_sub(burned_shares).unwrap();
                 // Change supply
                 let cpi_program = ctx.accounts.manager_program.clone();
                 let cpi_accounts = SetAssetSupply {
@@ -349,7 +379,7 @@ pub mod exchange {
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
                     burn_asset.asset_address,
-                    burn_asset.supply - amount,
+                    burn_asset.supply.checked_sub(amount).unwrap(),
                 );
                 // Burn token
                 let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
@@ -423,13 +453,22 @@ pub mod exchange {
             let burned_collateral_shares = amount_to_shares(
                 self.collateral_shares,
                 collateral_account.amount,
-                amount_to_system + amount_to_liquidator,
+                amount_to_system.checked_add(amount_to_liquidator).unwrap(),
             );
 
-            self.collateral_shares -= burned_collateral_shares;
-            self.debt_shares -= burned_debt_shares;
-            exchange_account.debt_shares -= burned_debt_shares;
-            exchange_account.collateral_shares -= burned_collateral_shares;
+            self.collateral_shares = self
+                .collateral_shares
+                .checked_sub(burned_collateral_shares)
+                .unwrap();
+            self.debt_shares = self.debt_shares.checked_sub(burned_debt_shares).unwrap();
+            exchange_account.debt_shares = exchange_account
+                .debt_shares
+                .checked_sub(burned_debt_shares)
+                .unwrap();
+            exchange_account.collateral_shares = exchange_account
+                .collateral_shares
+                .checked_sub(burned_collateral_shares)
+                .unwrap();
 
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer_seeds = &[&seeds[..]];
@@ -446,7 +485,7 @@ pub mod exchange {
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
                     usd_token.asset_address,
-                    usd_token.supply - burned_amount,
+                    usd_token.supply.checked_sub(burned_amount).unwrap(),
                 );
                 let burn_accounts = Burn {
                     mint: ctx.accounts.usd_token.to_account_info(),
@@ -595,6 +634,7 @@ pub struct Liquidate<'info> {
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub user_usd_account: CpiAccount<'info, TokenAccount>,

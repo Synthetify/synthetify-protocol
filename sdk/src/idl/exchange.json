@@ -402,7 +402,7 @@
         "accounts": [
           {
             "name": "exchangeAuthority",
-            "isMut": true,
+            "isMut": false,
             "isSigner": false
           },
           {
@@ -442,12 +442,12 @@
           },
           {
             "name": "clock",
-            "isMut": true,
+            "isMut": false,
             "isSigner": false
           },
           {
             "name": "managerProgram",
-            "isMut": true,
+            "isMut": false,
             "isSigner": false
           },
           {
@@ -542,9 +542,16 @@
       "code": 110,
       "name": "InvalidSigner",
       "msg": "Invalid signer"
+    },
+    {
+      "code": 111,
+      "name": "WashTrade",
+      "msg": "Wash trade"
+    },
+    {
+      "code": 112,
+      "name": "ExchangeLiquidationAccount",
+      "msg": "Invalid exchange liquidation account"
     }
-  ],
-  "metadata": {
-    "address": "8xzETzL8H3wnruedUqXmEXgMRf419cs6j8LR8ZdUrZK2"
-  }
+  ]
 }
