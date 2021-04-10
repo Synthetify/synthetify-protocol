@@ -22,7 +22,11 @@ pub fn check_feed_update(
 }
 
 pub fn div_up(a: u128, b: u128) -> u128 {
-    (a + (b - 1)) / b
+    return a
+        .checked_add(b.checked_sub(1).unwrap())
+        .unwrap()
+        .checked_div(b)
+        .unwrap();
 }
 
 pub fn check_liquidation(
@@ -30,8 +34,12 @@ pub fn check_liquidation(
     user_debt: u64,
     liquidation_threshold: u8,
 ) -> Result<()> {
-    let is_safe =
-        (user_debt as u128 * liquidation_threshold as u128) / 100 >= user_collateral as u128;
+    let is_safe = (user_debt as u128)
+        .checked_mul(liquidation_threshold as u128)
+        .unwrap()
+        .checked_div(100)
+        .unwrap()
+        >= user_collateral as u128;
     if (is_safe) {
         return Ok(());
     } else {

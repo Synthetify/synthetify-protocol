@@ -15,9 +15,12 @@ pub fn get_collateral_shares(
     if *collateral_shares == 0u64 {
         return *to_deposit_amount;
     }
-    let shares =
-        *to_deposit_amount as u128 * *collateral_shares as u128 / *collateral_amount as u128;
-    return shares as u64;
+    let shares = (*to_deposit_amount as u128)
+        .checked_mul(*collateral_shares as u128)
+        .unwrap()
+        .checked_div(*collateral_amount as u128)
+        .unwrap();
+    return shares.try_into().unwrap();
 }
 
 pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<u64> {
@@ -28,8 +31,12 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
         }
 
         debt += div_up(
-            (asset.price as u128 * asset.supply as u128),
-            10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into()),
+            (asset.price as u128)
+                .checked_mul(asset.supply as u128)
+                .unwrap(),
+            10u128
+                .checked_pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .unwrap(),
         );
     }
     Ok(debt as u64)
@@ -44,15 +51,24 @@ pub fn calculate_user_debt_in_usd(
         return 0;
     }
     let user_debt = div_up(
-        debt as u128 * user_account.debt_shares as u128,
+        (debt as u128)
+            .checked_mul(user_account.debt_shares as u128)
+            .unwrap(),
         debt_shares as u128,
     );
     return user_debt as u64;
 }
 
 pub fn calculate_amount_mint_in_usd(mint_asset: &Asset, amount: u64) -> u64 {
-    let mint_amount_in_usd = mint_asset.price as u128 * amount as u128
-        / 10u128.pow((mint_asset.decimals + ORACLE_OFFSET - ACCURACY).into());
+    let mint_amount_in_usd = (mint_asset.price as u128)
+        .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(
+            10u128
+                .checked_pow((mint_asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
+        .unwrap();
     return mint_amount_in_usd as u64;
 }
 
@@ -61,20 +77,35 @@ pub fn calculate_max_user_debt_in_usd(
     collateralization_level: u32,
     collateral_amount: u64,
 ) -> u64 {
-    let user_max_debt = collateral_asset.price as u128 * collateral_amount as u128
-        / 10u128.pow((collateral_asset.decimals + ORACLE_OFFSET - ACCURACY).into());
-    return (user_max_debt * 100 / collateralization_level as u128)
-        .try_into()
+    let user_max_debt = (collateral_asset.price as u128)
+        .checked_mul(collateral_amount as u128)
+        .unwrap()
+        .checked_div(
+            10u128
+                .checked_pow((collateral_asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
         .unwrap();
+    return (user_max_debt
+        .checked_mul(100)
+        .unwrap()
+        .checked_div(collateralization_level as u128)
+        .unwrap())
+    .try_into()
+    .unwrap();
 }
 
 pub fn calculate_new_shares(shares: u64, debt: u64, minted_amount_usd: u64) -> u64 {
     if shares == 0u64 {
         return minted_amount_usd;
     }
-    let new_shares = (shares as u128 * minted_amount_usd as u128) / debt as u128;
+    let new_shares = (shares as u128)
+        .checked_mul(minted_amount_usd as u128)
+        .unwrap()
+        .checked_div(debt as u128)
+        .unwrap();
 
-    return new_shares as u64;
+    return new_shares.try_into().unwrap();
 }
 pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: &u64,
@@ -84,7 +115,11 @@ pub fn calculate_max_withdraw_in_usd(
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
     }
-    return ((max_user_debt_in_usd - user_debt_in_usd) * *collateralization_level as u64) / 100;
+    return (max_user_debt_in_usd - user_debt_in_usd)
+        .checked_mul(*collateralization_level as u64)
+        .unwrap()
+        .checked_div(100)
+        .unwrap();
 }
 pub fn calculate_user_collateral_in_token(
     user_collateral_shares: u64,
@@ -94,18 +129,29 @@ pub fn calculate_user_collateral_in_token(
     if user_collateral_shares == 0 {
         return 0;
     }
-    let tokens = user_collateral_shares as u128 * balance as u128 / collateral_shares as u128;
-    return tokens as u64;
+    let tokens = (user_collateral_shares as u128)
+        .checked_mul(balance as u128)
+        .unwrap()
+        .checked_div(collateral_shares as u128)
+        .unwrap();
+    return tokens.try_into().unwrap();
 }
 pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
     // collateral and usd have same number of decimals
-    let tokens = user_max_withdraw_in_usd as u128 * 10u128.pow(ORACLE_OFFSET.into())
-        / collateral_asset.price as u128;
-    return tokens as u64;
+    let tokens = (user_max_withdraw_in_usd as u128)
+        .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+        .unwrap()
+        .checked_div(collateral_asset.price as u128)
+        .unwrap();
+    return tokens.try_into().unwrap();
 }
 pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
-    let shares = amount as u128 * all_shares as u128 / full_amount as u128;
-    return shares as u64;
+    let shares = (amount as u128)
+        .checked_mul(all_shares as u128)
+        .unwrap()
+        .checked_div(full_amount as u128)
+        .unwrap();
+    return shares.try_into().unwrap();
 }
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
 pub const fn log2(n: u64) -> u64 {
@@ -131,17 +177,29 @@ pub fn calculate_swap_out_amount(
     amount: &u64,
     fee: &u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
-    let amount_before_fee = asset_in.price as u128 * *amount as u128 / asset_for.price as u128;
-    let amount = amount_before_fee - (amount_before_fee * *fee as u128 / 100000);
+    let amount_before_fee = (asset_in.price as u128)
+        .checked_mul(*amount as u128)
+        .unwrap()
+        .checked_div(asset_for.price as u128)
+        .unwrap();
+    let amount = amount_before_fee
+        .checked_sub(
+            amount_before_fee
+                .checked_mul(*fee as u128)
+                .unwrap()
+                .checked_div(100000)
+                .unwrap(),
+        )
+        .unwrap();
     let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount = amount / (decimal_change);
-        return scaled_amount as u64;
+        return scaled_amount.try_into().unwrap();
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
         let scaled_amount = amount * (decimal_change);
-        return scaled_amount as u64;
+        return scaled_amount.try_into().unwrap();
     }
 }
 pub fn calculate_burned_shares(
@@ -150,21 +208,38 @@ pub fn calculate_burned_shares(
     user_shares: &u64,
     amount: &u64,
 ) -> u64 {
-    let burn_amount_in_usd = asset.price as u128 * *amount as u128
-        / 10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into());
-    let burned_shares = (burn_amount_in_usd * *user_shares as u128) / (*user_debt as u128);
-    return burned_shares as u64;
+    let burn_amount_in_usd = (asset.price as u128)
+        .checked_mul(*amount as u128)
+        .unwrap()
+        .checked_div(
+            10u128
+                .checked_pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
+        .unwrap();
+    let burned_shares = burn_amount_in_usd
+        .checked_mul(*user_shares as u128)
+        .unwrap()
+        .checked_div(*user_debt as u128)
+        .unwrap();
+    return burned_shares.try_into().unwrap();
 }
 pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
     let burned_amount_token = div_up(
-        *user_debt as u128 * 10u128.pow(ORACLE_OFFSET.into()),
+        (*user_debt as u128)
+            .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+            .unwrap(),
         asset.price as u128,
     );
-    return burned_amount_token as u64;
+    return burned_amount_token.try_into().unwrap();
 }
 pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
-    let amount = amount as u128 * 10u128.pow(ORACLE_OFFSET.into()) / asset.price as u128;
-    return amount as u64;
+    let amount = (amount as u128)
+        .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+        .unwrap()
+        .checked_div(asset.price as u128)
+        .unwrap();
+    return amount.try_into().unwrap();
 }
 pub fn calculate_liquidation(
     collateral_value: u64,
@@ -172,20 +247,41 @@ pub fn calculate_liquidation(
     collateral_ratio: u32,   // in %
     liquidation_penalty: u8, // in %
 ) -> (u64, u64, u64) {
-    let max_burned_amount = (debt_value as u128 * collateral_ratio as u128
-        - collateral_value.mul(100) as u128)
-        / (collateral_ratio - (100 + liquidation_penalty) as u32) as u128;
+    let max_burned_amount = ((debt_value as u128)
+        .checked_mul(collateral_ratio as u128)
+        .unwrap()
+        .checked_sub(
+            collateral_value
+                .checked_mul(100)
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        )
+        .unwrap())
+    .checked_div(
+        (collateral_ratio.checked_sub((100 + liquidation_penalty) as u32)).unwrap() as u128,
+    )
+    .unwrap();
     // 20% of penalty is going system
     let penalty_to_system = liquidation_penalty / 5;
     let penalty_to_user = liquidation_penalty - penalty_to_system;
 
-    let user_reward_usd = (max_burned_amount * (100 + penalty_to_user) as u128) / 100;
-    let system_reward_usd = div_up((max_burned_amount * (penalty_to_system) as u128), 100);
+    let user_reward_usd = (max_burned_amount
+        .checked_mul((100 + penalty_to_user).into())
+        .unwrap())
+    .checked_div(100)
+    .unwrap();
+    let system_reward_usd = div_up(
+        max_burned_amount
+            .checked_mul((penalty_to_system).into())
+            .unwrap(),
+        100,
+    );
 
     return (
-        max_burned_amount as u64,
-        user_reward_usd as u64,
-        system_reward_usd as u64,
+        max_burned_amount.try_into().unwrap(),
+        user_reward_usd.try_into().unwrap(),
+        system_reward_usd.try_into().unwrap(),
     );
 }
 #[cfg(test)]
@@ -333,7 +429,7 @@ mod tests {
             let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3, asset_4];
             let result = calculate_debt(&assets, slot, 100);
             match result {
-                Ok(debt) => assert_eq!(debt, 5200000000_152507),
+                Ok(debt) => assert_eq!(debt, 5200000000_152508),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
@@ -366,7 +462,7 @@ mod tests {
             let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3];
             let result = calculate_debt(&assets, slot, 100);
             match result {
-                Ok(debt) => assert_eq!(debt, 932210931_726361),
+                Ok(debt) => assert_eq!(debt, 932210931_726364),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
@@ -406,7 +502,7 @@ mod tests {
             let debt = 4400_162356;
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-            assert_eq!(result, 356_577176)
+            assert_eq!(result, 356_577177)
         }
         {
             let user_account = ExchangeAccount {
@@ -417,7 +513,7 @@ mod tests {
             let debt = 932210931_726361;
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-            assert_eq!(result, 115210)
+            assert_eq!(result, 115211)
         }
         {
             let user_account = ExchangeAccount {
@@ -428,7 +524,7 @@ mod tests {
             let debt = 526932210931_726361;
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-            assert_eq!(result, 394145294459_835460)
+            assert_eq!(result, 394145294459_835461)
         }
     }
     #[test]
