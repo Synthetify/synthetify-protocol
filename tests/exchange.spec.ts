@@ -50,6 +50,7 @@ describe('exchange', () => {
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
   let collateralAccount: PublicKey
+  let liquidationAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
   before(async () => {
@@ -71,6 +72,7 @@ describe('exchange', () => {
       mintAuthority: CollateralTokenMinter.publicKey
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
+    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -97,6 +99,7 @@ describe('exchange', () => {
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
       collateralAccount,
+      liquidationAccount,
       collateralToken: collateralToken.publicKey,
       nonce
     })
@@ -114,12 +117,15 @@ describe('exchange', () => {
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.collateralToken.equals(collateralToken.publicKey))
+    assert.ok(state.liquidationAccount.equals(liquidationAccount))
     assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 10)
     assert.ok(state.fee === 300)
+    assert.ok(state.liquidationPenalty === 15)
+    assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.collateralShares.eq(new BN(0)))

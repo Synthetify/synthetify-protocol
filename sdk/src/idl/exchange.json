@@ -69,6 +69,18 @@
           {
             "name": "fee",
             "type": "u32"
+          },
+          {
+            "name": "liquidationAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "liquidationPenalty",
+            "type": "u8"
+          },
+          {
+            "name": "liquidationThreshold",
+            "type": "u8"
           }
         ]
       }
@@ -94,6 +106,11 @@
           },
           {
             "name": "assetsList",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "liquidationAccount",
             "isMut": false,
             "isSigner": false
           }
@@ -379,6 +396,72 @@
             "type": "u64"
           }
         ]
+      },
+      {
+        "name": "liquidate",
+        "accounts": [
+          {
+            "name": "exchangeAuthority",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "usdToken",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userUsdAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userCollateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "clock",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "managerProgram",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "collateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "liquidationAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
       }
     ]
   },
@@ -444,6 +527,24 @@
       "code": 107,
       "name": "SyntheticCollateral",
       "msg": "Synthetic collateral is not supported"
+    },
+    {
+      "code": 108,
+      "name": "InvalidAssetsList",
+      "msg": "Invalid Assets List"
+    },
+    {
+      "code": 109,
+      "name": "InvalidLiquidation",
+      "msg": "Invalid Liquidation"
+    },
+    {
+      "code": 110,
+      "name": "InvalidSigner",
+      "msg": "Invalid signer"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "8xzETzL8H3wnruedUqXmEXgMRf419cs6j8LR8ZdUrZK2"
+  }
 }

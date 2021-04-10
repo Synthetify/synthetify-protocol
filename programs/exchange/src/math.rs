@@ -30,7 +30,7 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
         debt += div_up(
             (asset.price as u128 * asset.supply as u128),
             10u128.pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into()),
-        )
+        );
     }
     Ok(debt as u64)
 }
@@ -161,6 +161,32 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
         asset.price as u128,
     );
     return burned_amount_token as u64;
+}
+pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
+    let amount = amount as u128 * 10u128.pow(ORACLE_OFFSET.into()) / asset.price as u128;
+    return amount as u64;
+}
+pub fn calculate_liquidation(
+    collateral_value: u64,
+    debt_value: u64,
+    collateral_ratio: u32,   // in %
+    liquidation_penalty: u8, // in %
+) -> (u64, u64, u64) {
+    let max_burned_amount = (debt_value as u128 * collateral_ratio as u128
+        - collateral_value.mul(100) as u128)
+        / (collateral_ratio - (100 + liquidation_penalty) as u32) as u128;
+    // 20% of penalty is going system
+    let penalty_to_system = liquidation_penalty / 5;
+    let penalty_to_user = liquidation_penalty - penalty_to_system;
+
+    let user_reward_usd = (max_burned_amount * (100 + penalty_to_user) as u128) / 100;
+    let system_reward_usd = div_up((max_burned_amount * (penalty_to_system) as u128), 100);
+
+    return (
+        max_burned_amount as u64,
+        user_reward_usd as u64,
+        system_reward_usd as u64,
+    );
 }
 #[cfg(test)]
 mod tests {
@@ -520,6 +546,24 @@ mod tests {
             assert_eq!(result, 49850_000_000);
             let result = calculate_swap_out_amount(&assetBTC, &assetETH, &99700000, &fee);
             assert_eq!(result, 24_850_2250);
+        }
+    }
+    #[test]
+    fn test_calculate_liquidation() {
+        {
+            let collateral_value = 1000 * 10u64.pow(6);
+            let debt_value = 500 * 10u64.pow(6);
+            let collateral_ratio = 500u32;
+            let penalty = 15u8;
+            let (max_burned_amount, user_reward_usd, system_reward_usd) =
+                calculate_liquidation(collateral_value, debt_value, collateral_ratio, penalty);
+            assert_eq!(max_burned_amount, 389_610389);
+            assert_eq!(user_reward_usd, 436_363635);
+            assert_eq!(system_reward_usd, 116_88312);
+            assert_eq!(
+                max_burned_amount * (100 + penalty) as u64 / 100,
+                user_reward_usd + system_reward_usd
+            );
         }
     }
 }

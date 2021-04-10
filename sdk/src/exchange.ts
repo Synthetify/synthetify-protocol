@@ -2,7 +2,7 @@ import { Network } from './network'
 import idl from './idl/exchange.json'
 import { BN, Idl, Program, Provider, web3, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
-import { DEFAULT_PUBLIC_KEY, signAndSend, tou64 } from './utils'
+import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { AssetsList, Manager } from './manager'
 
@@ -65,14 +65,22 @@ export class Exchange {
     instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
     return instance
   }
-  public async init({ admin, assetsList, collateralAccount, collateralToken, nonce }: Init) {
+  public async init({
+    admin,
+    assetsList,
+    collateralAccount,
+    collateralToken,
+    nonce,
+    liquidationAccount
+  }: Init) {
     // @ts-expect-error
     await this.program.state.rpc.new(nonce, {
       accounts: {
         admin: admin,
         collateralToken: collateralToken,
         collateralAccount: collateralAccount,
-        assetsList: assetsList
+        assetsList: assetsList,
+        liquidationAccount: liquidationAccount
       }
     })
   }
@@ -104,6 +112,18 @@ export class Exchange {
     return userAccount.collateralShares
       .mul(new BN(exchangeCollateralInfo.amount.toString()))
       .div(state.collateralShares)
+  }
+  public async getUserDebtBalance(exchangeAccount: web3.PublicKey) {
+    const userAccount = (await this.program.account.exchangeAccount(
+      exchangeAccount
+    )) as ExchangeAccount
+    if (userAccount.collateralShares.eq(new BN(0))) {
+      return new BN(0)
+    }
+    const state = await this.getState()
+    const debt = calculateDebt(this.assetsList)
+
+    return userAccount.debtShares.mul(debt).div(state.debtShares)
   }
   public async createExchangeAccount(owner: web3.PublicKey) {
     const exchangeAccount = new web3.Account()
@@ -193,6 +213,30 @@ export class Exchange {
       }
     }) as web3.TransactionInstruction)
   }
+  public async liquidateInstruction({
+    exchangeAccount,
+    signer,
+    userCollateralAccount,
+    userUsdAccount
+  }: LiquidateInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.liquidate({
+      accounts: {
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        signer: signer,
+        usdToken: this.assetsList.assets[0].assetAddress,
+        assetsList: this.state.assetsList,
+        userCollateralAccount: userCollateralAccount,
+        userUsdAccount: userUsdAccount,
+        managerProgram: this.manager.programId,
+        collateralAccount: this.state.collateralAccount,
+        liquidationAccount: this.state.liquidationAccount
+      }
+    }) as web3.TransactionInstruction)
+  }
   public async burnInstruction({
     amount,
     exchangeAccount,
@@ -225,6 +269,40 @@ export class Exchange {
     })
     this.wallet.signAllTransactions(txs)
     return txs
+  }
+  public async liquidate({
+    exchangeAccount,
+    signer,
+    userCollateralAccount,
+    userUsdAccount,
+    signers,
+    allowanceAmount
+  }: Liquidate) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const liquidateIx = await this.liquidateInstruction({
+      exchangeAccount,
+      signer,
+      userCollateralAccount,
+      userUsdAccount
+    })
+    const approveIx = await Token.createApproveInstruction(
+      TOKEN_PROGRAM_ID,
+      userUsdAccount,
+      this.exchangeAuthority,
+      signer,
+      [],
+      tou64(allowanceAmount)
+    )
+    const updateTx = new web3.Transaction().add(updateIx)
+    const liquidateTx = new web3.Transaction().add(approveIx).add(liquidateIx)
+    const txs = await this.processOperations([updateTx, liquidateTx])
+    signers ? txs[1].partialSign(...signers) : null
+    const promisesTx = txs.map((tx) =>
+      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+        skipPreflight: true
+      })
+    )
+    return Promise.all(promisesTx)
   }
   public async swap({
     amount,
@@ -346,6 +424,14 @@ export interface Mint {
   amount: BN
   signers?: Array<web3.Account>
 }
+export interface Liquidate {
+  exchangeAccount: web3.PublicKey
+  userUsdAccount: web3.PublicKey
+  userCollateralAccount: web3.PublicKey
+  signer: web3.PublicKey
+  allowanceAmount: BN
+  signers?: Array<web3.Account>
+}
 export interface Swap {
   exchangeAccount: web3.PublicKey
   owner: web3.PublicKey
@@ -386,6 +472,12 @@ export interface SwapInstruction {
   userTokenAccountFor: web3.PublicKey
   amount: BN
 }
+export interface LiquidateInstruction {
+  exchangeAccount: web3.PublicKey
+  userUsdAccount: web3.PublicKey
+  userCollateralAccount: web3.PublicKey
+  signer: web3.PublicKey
+}
 export interface BurnInstruction {
   exchangeAccount: web3.PublicKey
   owner: web3.PublicKey
@@ -410,6 +502,7 @@ export interface Init {
   assetsList: web3.PublicKey
   collateralToken: web3.PublicKey
   collateralAccount: web3.PublicKey
+  liquidationAccount: web3.PublicKey
 }
 export interface ExchangeState {
   admin: web3.PublicKey
@@ -419,9 +512,12 @@ export interface ExchangeState {
   assetsList: web3.PublicKey
   collateralToken: web3.PublicKey
   collateralAccount: web3.PublicKey
+  liquidationAccount: web3.PublicKey
   collateralizationLevel: number
   maxDelay: number
   fee: number
+  liquidationPenalty: number
+  liquidationThreshold: number
 }
 export interface ExchangeAccount {
   owner: web3.PublicKey
