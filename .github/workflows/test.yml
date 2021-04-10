@@ -28,6 +28,7 @@ jobs:
           ts-mocha -h
       - name: install solana
         run: |
+          sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev
           sh -c "$(curl -sSfL https://release.solana.com/v1.6.4/install)"
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
