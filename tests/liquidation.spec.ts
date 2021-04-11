@@ -1,15 +1,17 @@
 import * as anchor from '@project-serum/anchor'
-import { Program } from '@project-serum/anchor'
+import { Program, Provider } from '@project-serum/anchor'
 import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Account,
   PublicKey,
+  sendAndConfirmRawTransaction,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
-  Transaction
+  Transaction,
+  TransactionInstruction
 } from '@solana/web3.js'
-import { assert, expect } from 'chai'
+import { assert, expect, should } from 'chai'
 import { BN, calculateLiquidation, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
@@ -30,7 +32,8 @@ import {
   calculateAmountAfterFee,
   toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
-  tokenToUsdValue
+  tokenToUsdValue,
+  assertThrowsAsync
 } from './utils'
 
 describe('liquidation', () => {
@@ -125,7 +128,7 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchange,
       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: new BN(1000 * 1e6)
+      amount: new BN(100000 * 1e6) // give enough for liquidations
     })
     liquidator = liquidatorData.accountOwner
     liquidatorUsdAccount = liquidatorData.usdTokenAccount
@@ -149,113 +152,351 @@ describe('liquidation', () => {
     assert.ok(state.debtShares.gt(new BN(0)))
     assert.ok(state.collateralShares.gt(new BN(0)))
   })
-  it('#liquidate()', async () => {
-    const collateralAmount = new BN(1000 * 1e6)
-    const {
-      accountOwner,
-      exchangeAccount,
-      userCollateralTokenAccount,
-      usdMintAmount
-    } = await createAccountWithCollateralAndMaxMintUsd({
-      collateralAccount,
-      collateralToken,
-      exchangeAuthority,
-      exchange,
-      usdToken,
-      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: collateralAmount
+  describe('#liquidate()', async () => {
+    afterEach(async () => {
+      await oracleProgram.rpc.setPrice(initialCollateralPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+      // update prices
+      await manager.updatePrices(assetsList)
     })
+    it('should liquidate', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount,
+        usdMintAmount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        usdToken,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
 
-    const assetsListData = await manager.getAssetsList(assetsList)
-    assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+      const assetsListData = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
 
-    const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-    await oracleProgram.rpc.setPrice(newCollateralPrice, {
-      accounts: {
-        admin: ORACLE_ADMIN.publicKey,
-        priceFeed: collateralTokenFeed
-      },
-      signers: [ORACLE_ADMIN]
-    })
-    // update prices
-    await manager.updatePrices(assetsList)
-    const state = await exchange.getState()
+      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
+      await oracleProgram.rpc.setPrice(newCollateralPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+      // update prices
+      await manager.updatePrices(assetsList)
+      const state = await exchange.getState()
 
-    const assetsListDataUpdated = await manager.getAssetsList(assetsList)
-    assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
+      const assetsListDataUpdated = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
 
-    const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-    assert.ok(userCollateralBalance.eq(collateralAmount))
-    const collateralUsdValue = tokenToUsdValue(
-      userCollateralBalance,
-      assetsListDataUpdated.assets[1]
-    )
-    assert.ok(
-      collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
-    )
-    const exchangeDebt = calculateDebt(assetsListDataUpdated)
-    const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-    assert.ok(userDebtBalance.eq(usdMintAmount))
-    const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
-      collateralUsdValue,
-      userDebtBalance,
-      state.collateralizationLevel,
-      state.liquidationPenalty
-    )
-    // trigger liquidation
-    await exchange.liquidate({
-      exchangeAccount,
-      allowanceAmount: maxBurnUsd,
-      signer: liquidator.publicKey,
-      userCollateralAccount: liquidatorCollateralAccount,
-      userUsdAccount: liquidatorUsdAccount,
-      signers: [liquidator]
-    })
-    await exchange.getState()
-    const assetsListDataAfter = await manager.getAssetsList(assetsList)
-
-    // user debt should be reduced
-    const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
-    assert.ok(userDebtBalanceAfter.eq(userDebtBalance.sub(maxBurnUsd)))
-
-    const userCollateralBalanceAfter = await exchange.getUserCollateralBalance(exchangeAccount)
-    const collateralUsdValueAfter = tokenToUsdValue(
-      userCollateralBalanceAfter,
-      assetsListDataAfter.assets[1]
-    )
-    // user collateral should be reduced
-    assert.ok(
-      collateralUsdValueAfter.eq(collateralUsdValue.sub(systemRewardUsd).sub(userRewardUsd))
-    )
-    const sytemLiquidationAccountData = await collateralToken.getAccountInfo(liquidationAccount)
-    const sytemLiquidationValue = sytemLiquidationAccountData.amount
-      .mul(assetsListDataAfter.assets[1].price)
-      .addn(10 ** 4 - 1) // round up
-      .div(new BN(10 ** 4))
-
-    // system account should get part of liquidation
-    assert.ok(sytemLiquidationValue.eq(systemRewardUsd))
-    const liquidatorLiquidationAccountData = await collateralToken.getAccountInfo(
-      liquidatorCollateralAccount
-    )
-
-    const liquidatorLiquidationValue = liquidatorLiquidationAccountData.amount
-      .mul(assetsListDataAfter.assets[1].price)
-      .addn(10 ** 4 - 1) // round up
-      .div(new BN(10 ** 4))
-    // liquidator should get part of liquidation
-    assert.ok(liquidatorLiquidationValue.eq(userRewardUsd))
-
-    // user collateral should reduce by amount transfered out
-    assert.ok(
-      userCollateralBalanceAfter.eq(
-        userCollateralBalance
-          .sub(sytemLiquidationAccountData.amount)
-          .sub(liquidatorLiquidationAccountData.amount)
+      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+      assert.ok(userCollateralBalance.eq(collateralAmount))
+      const collateralUsdValue = tokenToUsdValue(
+        userCollateralBalance,
+        assetsListDataUpdated.assets[1]
       )
-    )
-    const exchangeDebtAfter = calculateDebt(assetsListDataAfter)
-    // debt of exchange should reduce
-    assert.ok(exchangeDebtAfter.eq(exchangeDebt.sub(maxBurnUsd)))
+      assert.ok(
+        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
+      )
+      const exchangeDebt = calculateDebt(assetsListDataUpdated)
+      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalance.eq(usdMintAmount))
+      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+        collateralUsdValue,
+        userDebtBalance,
+        state.collateralizationLevel,
+        state.liquidationPenalty
+      )
+      // trigger liquidation
+      await exchange.liquidate({
+        exchangeAccount,
+        allowanceAmount: maxBurnUsd,
+        signer: liquidator.publicKey,
+        userCollateralAccount: liquidatorCollateralAccount,
+        userUsdAccount: liquidatorUsdAccount,
+        signers: [liquidator]
+      })
+      await exchange.getState()
+      const assetsListDataAfter = await manager.getAssetsList(assetsList)
+
+      // user debt should be reduced
+      const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalanceAfter.eq(userDebtBalance.sub(maxBurnUsd)))
+
+      const userCollateralBalanceAfter = await exchange.getUserCollateralBalance(exchangeAccount)
+      const collateralUsdValueAfter = tokenToUsdValue(
+        userCollateralBalanceAfter,
+        assetsListDataAfter.assets[1]
+      )
+      // user collateral should be reduced
+      assert.ok(
+        collateralUsdValueAfter.eq(collateralUsdValue.sub(systemRewardUsd).sub(userRewardUsd))
+      )
+      const sytemLiquidationAccountData = await collateralToken.getAccountInfo(liquidationAccount)
+      const sytemLiquidationValue = sytemLiquidationAccountData.amount
+        .mul(assetsListDataAfter.assets[1].price)
+        .addn(10 ** 4 - 1) // round up
+        .div(new BN(10 ** 4))
+
+      // system account should get part of liquidation
+      assert.ok(sytemLiquidationValue.eq(systemRewardUsd))
+      const liquidatorLiquidationAccountData = await collateralToken.getAccountInfo(
+        liquidatorCollateralAccount
+      )
+
+      const liquidatorLiquidationValue = liquidatorLiquidationAccountData.amount
+        .mul(assetsListDataAfter.assets[1].price)
+        .addn(10 ** 4 - 1) // round up
+        .div(new BN(10 ** 4))
+      // liquidator should get part of liquidation
+      assert.ok(liquidatorLiquidationValue.eq(userRewardUsd))
+
+      // user collateral should reduce by amount transfered out
+      assert.ok(
+        userCollateralBalanceAfter.eq(
+          userCollateralBalance
+            .sub(sytemLiquidationAccountData.amount)
+            .sub(liquidatorLiquidationAccountData.amount)
+        )
+      )
+      const exchangeDebtAfter = calculateDebt(assetsListDataAfter)
+      // debt of exchange should reduce
+      assert.ok(exchangeDebtAfter.eq(exchangeDebt.sub(maxBurnUsd)))
+    })
+    it('fail without signer', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        usdToken,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const assetsListData = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+
+      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
+      await oracleProgram.rpc.setPrice(newCollateralPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+      // update prices
+      await manager.updatePrices(assetsList)
+      const state = await exchange.getState()
+
+      const assetsListDataUpdated = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
+
+      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+      assert.ok(userCollateralBalance.eq(collateralAmount))
+      const collateralUsdValue = tokenToUsdValue(
+        userCollateralBalance,
+        assetsListDataUpdated.assets[1]
+      )
+      assert.ok(
+        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
+      )
+      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalance.eq(usdMintAmount))
+      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+        collateralUsdValue,
+        userDebtBalance,
+        state.collateralizationLevel,
+        state.liquidationPenalty
+      )
+      // trigger liquidation
+      await assertThrowsAsync(
+        exchange.liquidate({
+          exchangeAccount,
+          allowanceAmount: maxBurnUsd,
+          signer: liquidator.publicKey,
+          userCollateralAccount: liquidatorCollateralAccount,
+          userUsdAccount: liquidatorUsdAccount,
+          signers: []
+        })
+      )
+    })
+    it('fail too low allowance', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        usdToken,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const assetsListData = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+
+      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
+      await oracleProgram.rpc.setPrice(newCollateralPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+      // update prices
+      await manager.updatePrices(assetsList)
+      const state = await exchange.getState()
+
+      const assetsListDataUpdated = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
+
+      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+      assert.ok(userCollateralBalance.eq(collateralAmount))
+      const collateralUsdValue = tokenToUsdValue(
+        userCollateralBalance,
+        assetsListDataUpdated.assets[1]
+      )
+      assert.ok(
+        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
+      )
+      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalance.eq(usdMintAmount))
+      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+        collateralUsdValue,
+        userDebtBalance,
+        state.collateralizationLevel,
+        state.liquidationPenalty
+      )
+      // trigger liquidation
+      await assertThrowsAsync(
+        exchange.liquidate({
+          exchangeAccount,
+          allowanceAmount: maxBurnUsd.subn(1), // burnAmount -1
+          signer: liquidator.publicKey,
+          userCollateralAccount: liquidatorCollateralAccount,
+          userUsdAccount: liquidatorUsdAccount,
+          signers: [liquidator]
+        })
+      )
+    })
+    it('fail wrong asset list', async () => {
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        exchangeAccount,
+        usdMintAmount,
+        userCollateralTokenAccount,
+        usdTokenAccount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        usdToken,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+
+      const assetsListData = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+
+      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
+      await oracleProgram.rpc.setPrice(newCollateralPrice, {
+        accounts: {
+          admin: ORACLE_ADMIN.publicKey,
+          priceFeed: collateralTokenFeed
+        },
+        signers: [ORACLE_ADMIN]
+      })
+      // update prices
+      await manager.updatePrices(assetsList)
+      const state = await exchange.getState()
+
+      const assetsListDataUpdated = await manager.getAssetsList(assetsList)
+      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
+
+      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+      assert.ok(userCollateralBalance.eq(collateralAmount))
+      const collateralUsdValue = tokenToUsdValue(
+        userCollateralBalance,
+        assetsListDataUpdated.assets[1]
+      )
+      assert.ok(
+        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
+      )
+      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalance.eq(usdMintAmount))
+      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+        collateralUsdValue,
+        userDebtBalance,
+        state.collateralizationLevel,
+        state.liquidationPenalty
+      )
+      const updateIx = await manager.updatePricesInstruction(exchange.state.assetsList)
+
+      const fakeAssetList = await createAssetsList({
+        exchangeAuthority,
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        collateralToken,
+        collateralTokenFeed,
+        connection,
+        manager,
+        wallet
+      })
+      //@ts-expect-error
+      const liquidateIx = await (exchange.program.state.instruction.liquidate({
+        accounts: {
+          exchangeAuthority: exchange.exchangeAuthority,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          clock: SYSVAR_CLOCK_PUBKEY,
+          exchangeAccount: exchangeAccount,
+          signer: liquidator.publicKey,
+          usdToken: usdToken.publicKey,
+          assetsList: fakeAssetList.assetsList,
+          userCollateralAccount: liquidatorCollateralAccount,
+          userUsdAccount: liquidatorUsdAccount,
+          managerProgram: exchange.manager.programId,
+          collateralAccount: exchange.state.collateralAccount,
+          liquidationAccount: exchange.state.liquidationAccount
+        }
+      }) as TransactionInstruction)
+      const approveIx = await Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        liquidatorUsdAccount,
+        exchange.exchangeAuthority,
+        liquidator.publicKey,
+        [],
+        tou64(maxBurnUsd)
+      )
+      const updateTx = new Transaction().add(updateIx)
+      const liquidateTx = new Transaction().add(approveIx).add(liquidateIx)
+      const blockhash = await connection.getRecentBlockhash(Provider.defaultOptions().commitment)
+      const txs = [updateTx, liquidateTx]
+      txs.forEach((tx) => {
+        tx.feePayer = exchange.wallet.publicKey
+        tx.recentBlockhash = blockhash.blockhash
+      })
+      exchange.wallet.signAllTransactions(txs)
+      txs[1].partialSign(liquidator)
+      const promisesTx = txs.map((tx) =>
+        sendAndConfirmRawTransaction(connection, tx.serialize(), {
+          skipPreflight: true
+        })
+      )
+      await assertThrowsAsync(async () => {
+        await Promise.all(promisesTx)
+      })
+    })
   })
 })

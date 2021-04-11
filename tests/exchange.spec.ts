@@ -29,7 +29,8 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
   toEffectiveFee,
-  createAccountWithCollateralAndMaxMintUsd
+  createAccountWithCollateralAndMaxMintUsd,
+  assertThrowsAsync
 } from './utils'
 
 describe('exchange', () => {
@@ -246,30 +247,26 @@ describe('exchange', () => {
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
       const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
       await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
-
-      try {
-        const depositIx = await exchange.depositInstruction({
-          amount: amount.mul(new BN(2)),
-          exchangeAccount,
-          userCollateralAccount: userCollateralTokenAccount
-        })
-        const approveIx = Token.createApproveInstruction(
-          collateralToken.programId,
-          userCollateralTokenAccount,
-          exchangeAuthority,
-          accountOwner.publicKey,
-          [],
-          tou64(amount)
-        )
+      const depositIx = await exchange.depositInstruction({
+        amount: amount.mul(new BN(2)),
+        exchangeAccount,
+        userCollateralAccount: userCollateralTokenAccount
+      })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await assertThrowsAsync(async () => {
         await signAndSend(
           new Transaction().add(approveIx).add(depositIx),
           [wallet, accountOwner],
           connection
         )
-        assert.ok(false)
-      } catch (err) {
-        assert.ok(true)
-      }
+      })
     })
   })
   describe('#mint()', async () => {
@@ -380,18 +377,15 @@ describe('exchange', () => {
 
       // Max is collateralAmount*price/10 -> 20*1e6
       const usdMintAmount = new BN(20 * 1e6).add(new BN(1))
-      try {
-        await exchange.mint({
+      await assertThrowsAsync(
+        exchange.mint({
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
   })
   describe('#withdraw()', async () => {
@@ -540,18 +534,15 @@ describe('exchange', () => {
       })
 
       const withdrawAmount = collateralAmount.add(new BN(1000000))
-      try {
-        await exchange.withdraw({
+      await assertThrowsAsync(
+        exchange.withdraw({
           amount: withdrawAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (err) {
-        assert.ok(true)
-      }
+      )
     })
     it('withdraw with debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
@@ -595,18 +586,15 @@ describe('exchange', () => {
       )
       assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
       // We cant withdraw anymore
-      try {
-        await exchange.withdraw({
+      await assertThrowsAsync(
+        exchange.withdraw({
           amount: new BN(1),
           exchangeAccount,
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
   })
   describe('#swap()', async () => {
@@ -992,8 +980,8 @@ describe('exchange', () => {
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
       const assetsListData = await manager.getAssetsList(assetsList)
-      try {
-        await exchange.swap({
+      await assertThrowsAsync(
+        exchange.swap({
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1003,10 +991,7 @@ describe('exchange', () => {
           tokenIn: assetsListData.assets[0].assetAddress,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Swap over max supply', async () => {
       const collateralAmount = new BN(10000 * 1e6)
@@ -1045,8 +1030,8 @@ describe('exchange', () => {
 
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
-      try {
-        await exchange.swap({
+      await assertThrowsAsync(
+        exchange.swap({
           amount: new BN(1e6),
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1056,10 +1041,7 @@ describe('exchange', () => {
           tokenIn: usdToken.publicKey,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Swap more than balance should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
@@ -1098,8 +1080,8 @@ describe('exchange', () => {
       const assetsListData = await manager.getAssetsList(assetsList)
       const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
 
-      try {
-        await exchange.swap({
+      await assertThrowsAsync(
+        exchange.swap({
           amount: usdMintAmount.add(new BN(1)),
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1109,10 +1091,7 @@ describe('exchange', () => {
           tokenIn: assetsListData.assets[0].assetAddress,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
   })
   describe('#burn()', async () => {
@@ -1302,8 +1281,8 @@ describe('exchange', () => {
       const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
 
-      try {
-        await exchange.burn({
+      await assertThrowsAsync(
+        exchange.burn({
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1311,10 +1290,7 @@ describe('exchange', () => {
           userTokenAccountBurn: usdTokenAccount,
           signers: []
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Burn wrong token', async () => {
       const collateralAmount = new BN(1000 * 1e6)
@@ -1339,8 +1315,8 @@ describe('exchange', () => {
       const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
 
-      try {
-        await exchange.burn({
+      await assertThrowsAsync(
+        exchange.burn({
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1348,10 +1324,7 @@ describe('exchange', () => {
           userTokenAccountBurn: usdTokenAccount,
           signers: [accountOwner]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Burn btc token', async () => {
       const collateralAmount = new BN(1000 * 1e6)

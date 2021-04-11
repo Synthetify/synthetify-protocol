@@ -4,6 +4,7 @@ import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
 import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
+import assert from 'assert'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const ORACLE_ADMIN = new Account()
@@ -318,5 +319,18 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     userCollateralTokenAccount,
     usdTokenAccount,
     usdMintAmount
+  }
+}
+
+export async function assertThrowsAsync(fn, regExp?) {
+  let f = () => {}
+  try {
+    await fn()
+  } catch (e) {
+    f = () => {
+      throw e
+    }
+  } finally {
+    assert.throws(f, regExp)
   }
 }

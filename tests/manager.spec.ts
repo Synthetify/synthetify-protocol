@@ -21,7 +21,8 @@ import {
   createAssetsList,
   ICreateAssetsList,
   IAddNewAssets,
-  addNewAssets
+  addNewAssets,
+  assertThrowsAsync
 } from './utils'
 import { Network } from '@synthetify/sdk/lib/network'
 
@@ -163,52 +164,43 @@ describe('manager', () => {
         tokenFeed: newTokenFeed
       })
       const newSupply = newAssetLimit.addn(1)
-      try {
-        await manager.setAssetSupply({
+      await assertThrowsAsync(
+        manager.setAssetSupply({
           assetsList,
           assetAddress: newToken.publicKey,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Should fail with wrong signer', async () => {
       const beforeAssetList = await manager.getAssetsList(assetsList)
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
-      try {
-        await managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
+      await assertThrowsAsync(
+        managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
           accounts: {
             assetsList: assetsList,
             exchangeAuthority: exchangeAuthorityAccount.publicKey
           },
           signers: [new Account()]
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
     it('Should fail if asset not found', async () => {
       const beforeAssetList = await manager.getAssetsList(assetsList)
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
-      try {
-        await manager.setAssetSupply({
+      await assertThrowsAsync(
+        manager.setAssetSupply({
           assetsList,
           assetAddress: new Account().publicKey,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
         })
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      )
     })
   })
   describe('#add_new_asset()', async () => {
@@ -267,30 +259,21 @@ describe('manager', () => {
 
       const beforeAssetList = await manager.getAssetsList(assetsList)
 
-      try {
-        await addNewAssets(addNewAssetParams)
-        assert.ok(false)
-      } catch (error) {
-        assert.ok(true)
-      }
+      await assertThrowsAsync(addNewAssets(addNewAssetParams))
     })
   })
   describe('#set_max_supply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)
 
     it('Error should be throwed while setting new max supply', async () => {
-      try {
-        await manager.setAssetMaxSupply({
+      await assertThrowsAsync(
+        manager.setAssetMaxSupply({
           assetAddress: new Account().publicKey,
           assetsAdmin: ASSETS_MANAGER_ADMIN,
           assetsList,
           newMaxSupply: newAssetLimit
         })
-        assert.ok(false)
-      } catch (err) {
-        // Check err message
-        assert.ok(err.msg === errMessage)
-      }
+      )
 
       const afterAssetList = await manager.getAssetsList(assetsList)
 
@@ -334,15 +317,14 @@ describe('manager', () => {
         signers: [ORACLE_ADMIN]
       })
 
-      try {
-        await managerProgram.rpc.setAssetsPrices({
+      await assertThrowsAsync(
+        managerProgram.rpc.setAssetsPrices({
           remainingAccounts: feedAddresses,
           accounts: {
             assetsList: assetsList
           }
         })
-        assert.ok(false)
-      } catch (err) {}
+      )
       const assetList = await manager.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
