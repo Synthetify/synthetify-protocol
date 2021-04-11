@@ -177,7 +177,7 @@ export const addNewAssets = async ({
   newAssetLimit,
   newAssetsNumber = 1
 }: IAddNewAssets) => {
-  let newAssetsResults = []
+  let newAssetsResults: Array<{ assetAddress: PublicKey; feedAddress: PublicKey }> = []
   for (var newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
     const newToken = await createToken({
       connection,

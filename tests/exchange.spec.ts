@@ -612,6 +612,7 @@ describe('exchange', () => {
   describe('#swap()', async () => {
     let btcToken: Token
     let ethToken: Token
+    let zeroMaxSupplyToken: Token
     before(async () => {
       btcToken = await createToken({
         connection,
@@ -630,12 +631,24 @@ describe('exchange', () => {
         mintAuthority: exchangeAuthority,
         decimals: 6
       })
+      const zeroMaxSupplyTokenFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(20 * 1e4)
+      })
+      zeroMaxSupplyToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 6
+      })
       const ethFeed = await createPriceFeed({
         admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
         initPrice: new BN(2000 * 1e4)
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
+
       await manager.addNewAsset({
         assetsAdmin: ASSETS_MANAGER_ADMIN,
         assetsList,
@@ -651,6 +664,14 @@ describe('exchange', () => {
         tokenAddress: ethToken.publicKey,
         tokenDecimals: 6,
         tokenFeed: ethFeed
+      })
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: new BN(0),
+        tokenAddress: zeroMaxSupplyToken.publicKey,
+        tokenDecimals: 6,
+        tokenFeed: zeroMaxSupplyTokenFeed
       })
       const state = await exchange.getState()
     })
@@ -980,6 +1001,59 @@ describe('exchange', () => {
           userTokenAccountIn: usdTokenAccount,
           tokenFor: assetsListData.assets[0].assetAddress,
           tokenIn: assetsListData.assets[0].assetAddress,
+          signers: [accountOwner]
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
+    })
+    it('Swap over max supply', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const zeroMaxSupplyTokenAccount = await zeroMaxSupplyToken.createAccount(
+        accountOwner.publicKey
+      )
+
+      // We can mint max 2000 * 1e6
+      const usdMintAmount = new BN(2000 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const zeroMaxSupplyTokenAccountBefore = await zeroMaxSupplyToken.getAccountInfo(
+        zeroMaxSupplyTokenAccount
+      )
+      assert.ok(zeroMaxSupplyTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+      try {
+        await exchange.swap({
+          amount: new BN(1e6),
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: zeroMaxSupplyTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: zeroMaxSupplyToken.publicKey,
+          tokenIn: usdToken.publicKey,
           signers: [accountOwner]
         })
         assert.ok(false)

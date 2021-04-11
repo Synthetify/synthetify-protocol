@@ -66,7 +66,7 @@ describe('manager', () => {
 
     await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
 
-    assetsList = await manager.createAssetsList(3)
+    assetsList = await manager.createAssetsList(5)
     await manager.initializeAssetsList({
       assetsList,
       collateralTokenFeed,
@@ -138,6 +138,42 @@ describe('manager', () => {
       const afterAsset = afterAssetList.assets[0]
       // Check new supply
       assert.ok(afterAsset.supply.eq(newSupply))
+    })
+    it('Set asset supply over max', async () => {
+      const newAssetLimit = new BN(3 * 1e4)
+      const newAssetDecimals = 6
+      const newToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: wallet.publicKey,
+        decimals: newAssetDecimals
+      })
+      const newTokenFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(2 * 1e4)
+      })
+
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: newToken.publicKey,
+        tokenDecimals: newAssetDecimals,
+        tokenFeed: newTokenFeed
+      })
+      const newSupply = newAssetLimit.addn(1)
+      try {
+        await manager.setAssetSupply({
+          assetsList,
+          assetAddress: newToken.publicKey,
+          newSupply,
+          exchangeAuthority: exchangeAuthorityAccount
+        })
+        assert.ok(false)
+      } catch (error) {
+        assert.ok(true)
+      }
     })
     it('Should fail with wrong signer', async () => {
       const beforeAssetList = await manager.getAssetsList(assetsList)

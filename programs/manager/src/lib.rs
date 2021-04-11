@@ -121,6 +121,9 @@ pub mod manager {
             .iter_mut()
             .find(|x| x.asset_address == asset_address)
             .unwrap();
+        if new_supply.gt(&asset.max_supply) {
+            return Err(ErrorCode::MaxSupply.into());
+        }
         asset.supply = new_supply;
         Ok(())
     }
@@ -217,4 +220,6 @@ pub enum ErrorCode {
     Unauthorized,
     #[msg("No asset with such address was found")]
     NoAssetFound,
+    #[msg("Asset max_supply crossed")]
+    MaxSupply,
 }
