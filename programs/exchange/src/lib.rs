@@ -59,6 +59,7 @@ pub mod exchange {
                 .key
                 .eq(&self.collateral_account)
             {
+                msg!("Error: CollateralAccountError");
                 return Err(ErrorCode::CollateralAccountError.into());
             }
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
@@ -88,6 +89,7 @@ pub mod exchange {
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
             if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
+                msg!("Error: NotSyntheticUsd");
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
             if !collateral_account
@@ -95,9 +97,11 @@ pub mod exchange {
                 .key
                 .eq(&self.collateral_account)
             {
+                msg!("Error: CollateralAccountError");
                 return Err(ErrorCode::CollateralAccountError.into());
             }
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
             let assets = &assets_list.assets;
@@ -122,6 +126,7 @@ pub mod exchange {
                 collateral_amount,
             );
             if max_user_debt < amount.checked_add(user_debt).unwrap() {
+                msg!("Error: MintLimit");
                 return Err(ErrorCode::MintLimit.into());
             }
             let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount);
@@ -158,9 +163,11 @@ pub mod exchange {
                 .key
                 .eq(&self.collateral_account)
             {
+                msg!("Error: CollateralAccountError");
                 return Err(ErrorCode::CollateralAccountError.into());
             }
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
             let slot = ctx.accounts.clock.slot;
@@ -192,6 +199,7 @@ pub mod exchange {
             let max_withdrawable =
                 calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
             if max_withdrawable < amount {
+                msg!("Error: WithdrawLimit");
                 return Err(ErrorCode::WithdrawLimit.into());
             }
             let shares_to_burn =
@@ -224,15 +232,21 @@ pub mod exchange {
                 .key
                 .eq(&self.collateral_account)
             {
+                msg!("Error: CollateralAccountError");
                 return Err(ErrorCode::CollateralAccountError.into());
             }
             if token_address_for.eq(&assets[1].asset_address) {
+                msg!("Error: SyntheticCollateral");
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
             if token_address_in.eq(token_address_for) {
+                msg!("Error: WashTrade");
+
                 return Err(ErrorCode::WashTrade.into());
             }
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
+
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
             let asset_in_index = assets
@@ -320,6 +334,8 @@ pub mod exchange {
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
+
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
@@ -393,11 +409,13 @@ pub mod exchange {
             let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
             let assets_list = &ctx.accounts.assets_list;
             if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
                 return Err(ErrorCode::InvalidAssetsList.into());
             }
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
             if !signer.eq(&user_usd_account.owner) {
+                msg!("Error: InvalidSigner");
                 return Err(ErrorCode::InvalidSigner.into());
             }
             let slot = ctx.accounts.clock.slot;
@@ -409,9 +427,11 @@ pub mod exchange {
                 .key
                 .eq(&self.collateral_account)
             {
+                msg!("Error: CollateralAccountError");
                 return Err(ErrorCode::CollateralAccountError.into());
             }
             if !liquidation_account.eq(&self.liquidation_account) {
+                msg!("Error: ExchangeLiquidationAccount");
                 return Err(ErrorCode::ExchangeLiquidationAccount.into());
             }
 
@@ -422,6 +442,7 @@ pub mod exchange {
             );
             let usd_token = &assets[0];
             if !ctx.accounts.usd_token.key.eq(&usd_token.asset_address) {
+                msg!("Error: NotSyntheticUsd");
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
             let collateral_asset = &assets[1];

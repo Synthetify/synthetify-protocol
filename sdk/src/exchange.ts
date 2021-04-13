@@ -62,8 +62,24 @@ export class Exchange {
       opts
     )
     await instance.getState()
+    instance.onStateChange((state) => {
+      instance.state = state
+    })
     instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
     return instance
+  }
+  public onStateChange(fn: (state: ExchangeState) => void) {
+    // @ts-expect-error
+    this.program.state.subscribe('singleGossip').on('change', (state: ExchangeState) => {
+      fn(state)
+    })
+  }
+  public onAccountChange(address: web3.PublicKey, fn: (account: ExchangeAccount) => void) {
+    this.program.account.exchangeAccount
+      .subscribe(address, 'singleGossip')
+      .on('change', (account: ExchangeAccount) => {
+        fn(account)
+      })
   }
   public async init({
     admin,

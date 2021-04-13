@@ -1,5 +1,5 @@
 {
-  "name": "synthetify-sdk",
+  "name": "@synthetify/sdk",
   "version": "0.0.1",
   "description": "",
   "main": "lib/index.js",
@@ -10,7 +10,7 @@
     "build": "tsc"
   },
   "keywords": [],
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "typescript": "^4.2.3",
     "@project-serum/anchor": "^0.3.1-beta.3",

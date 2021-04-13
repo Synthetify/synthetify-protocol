@@ -265,6 +265,14 @@
       "code": 102,
       "name": "NoAssetFound",
       "msg": "No asset with such address was found"
+    },
+    {
+      "code": 103,
+      "name": "MaxSupply",
+      "msg": "Asset max_supply crossed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "EaBFxaBcB76VQWGQAStSNkrYM9WQQkCJQxQ9aJDJLTGh"
+  }
 }

@@ -38,6 +38,13 @@ export class Manager {
   public async getAssetsList(assetsList: web3.PublicKey): Promise<AssetsList> {
     return await this.program.account.assetsList(assetsList)
   }
+  public onAssetsListChange(address: web3.PublicKey, fn: (list: AssetsList) => void) {
+    this.program.account.assetsList
+      .subscribe(address, 'singleGossip')
+      .on('change', (list: AssetsList) => {
+        fn(list)
+      })
+  }
   public async createAssetsList(size: number) {
     const assetListAccount = new web3.Account()
     await this.program.rpc.createAssetsList(size, {
