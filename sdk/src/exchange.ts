@@ -142,17 +142,22 @@ export class Exchange {
     return userAccount.debtShares.mul(debt).div(state.debtShares)
   }
   public async createExchangeAccount(owner: web3.PublicKey) {
-    const exchangeAccount = new web3.Account()
+    //@ts-expect-error
+    const state = await this.program.state.address()
+    const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     await this.program.rpc.createExchangeAccount(owner, {
       accounts: {
-        exchangeAccount: exchangeAccount.publicKey,
-        rent: web3.SYSVAR_RENT_PUBKEY
-      },
-      signers: [exchangeAccount],
-      instructions: [await this.program.account.exchangeAccount.createInstruction(exchangeAccount)]
+        exchangeAccount: account,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        admin: owner,
+        payer: this.wallet.publicKey,
+        state: state,
+        systemProgram: web3.SystemProgram.programId
+      }
     })
-    return exchangeAccount.publicKey
+    return account
   }
+
   public async depositInstruction({
     amount,
     exchangeAccount,

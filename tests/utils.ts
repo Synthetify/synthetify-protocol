@@ -1,4 +1,4 @@
-import { BN, Program } from '@project-serum/anchor'
+import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
@@ -209,7 +209,7 @@ export const addNewAssets = async ({
 }
 
 const newAccountWithLamports = async (connection, lamports = 1e10) => {
-  const account = new Account()
+  const account = new web3.Account()
 
   let retries = 30
   await connection.requestAirdrop(account.publicKey, lamports)

@@ -498,7 +498,9 @@ mod tests {
                 debt_shares: 100,
                 owner: Pubkey::default(),
                 collateral_shares: 1,
+                ..Default::default()
             };
+
             let debt = 4400_162356;
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
@@ -509,6 +511,7 @@ mod tests {
                 debt_shares: 1525783,
                 owner: Pubkey::default(),
                 collateral_shares: 1,
+                ..Default::default()
             };
             let debt = 932210931_726361;
 
@@ -520,6 +523,7 @@ mod tests {
                 debt_shares: 9234567898765432,
                 owner: Pubkey::default(),
                 collateral_shares: 1,
+                ..Default::default()
             };
             let debt = 526932210931_726361;
 

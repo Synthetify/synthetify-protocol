@@ -19,19 +19,28 @@ const initialTokens = [
   { price: new BN(25 * 1e4), ticker: Buffer.from('xLINK'), decimals: 6, limit: new BN(1e12) },
   { price: new BN(300 * 1e4), ticker: Buffer.from('xBNB'), decimals: 6, limit: new BN(1e12) }
 ]
-const provider = Provider.local('https://devnet.solana.com', {
+const provider = Provider.local('http://127.0.0.1:8899', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  'H6AgoP6cPWtTxTJpuMYMvTjnkSRevUVX2GJSLJGTxLUQ'
+  'ETfbkiQLiDcNCX6EsPCwAYgND7sGu3moPjVYUx4UhTKP'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  '4dp69AVMjj3q6KYMTvwWJjgGfXbN1GkNT7gcTRFhRd8c'
+  'CNG7Zo3sidSpNJam5Pmd53tjcM8kvFoWQvvMsaUDXi48'
 )
 const managerProgramId: web3.PublicKey = new web3.PublicKey(
-  'GXM6bZUMGtNm1HetQeHz4bo67421kGoqtv4preV2QNiN'
+  'XfCct5sN4UjFDEBhupxNFMra3Ubo3kc2TPNinseshzk'
 )
+// const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
+//   'H6AgoP6cPWtTxTJpuMYMvTjnkSRevUVX2GJSLJGTxLUQ'
+// )
+// const oracleProgramId: web3.PublicKey = new web3.PublicKey(
+//   '4dp69AVMjj3q6KYMTvwWJjgGfXbN1GkNT7gcTRFhRd8c'
+// )
+// const managerProgramId: web3.PublicKey = new web3.PublicKey(
+//   'GXM6bZUMGtNm1HetQeHz4bo67421kGoqtv4preV2QNiN'
+// )
 
 const main = async () => {
   const connection = provider.connection

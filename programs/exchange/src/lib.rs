@@ -1,5 +1,3 @@
-#![feature(proc_macro_hygiene)]
-
 mod math;
 mod utils;
 
@@ -567,9 +565,20 @@ pub struct New<'info> {
 }
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init)]
+    #[account(associated = admin, with = state,payer=payer)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub admin: AccountInfo<'info>,
+    #[account(mut, signer)]
+    pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
+    pub state: ProgramState<'info, InternalState>,
+    pub system_program: AccountInfo<'info>,
+}
+#[associated]
+pub struct ExchangeAccount {
+    pub owner: Pubkey,
+    pub debt_shares: u64,
+    pub collateral_shares: u64,
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -744,12 +753,7 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
-#[account]
-pub struct ExchangeAccount {
-    pub owner: Pubkey,
-    pub debt_shares: u64,
-    pub collateral_shares: u64,
-}
+
 #[error]
 pub enum ErrorCode {
     #[msg("Your error message")]
