@@ -19,18 +19,22 @@ const initialTokens = [
   { price: new BN(25 * 1e4), ticker: Buffer.from('xLINK'), decimals: 6, limit: new BN(1e12) },
   { price: new BN(300 * 1e4), ticker: Buffer.from('xBNB'), decimals: 6, limit: new BN(1e12) }
 ]
-const provider = Provider.local('http://127.0.0.1:8899', {
+const provider = Provider.local('https://devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
+// const provider = Provider.local('http://127.0.0.1:8899', {
+//   // preflightCommitment: 'max',
+//   skipPreflight: true
+// })
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  'ETfbkiQLiDcNCX6EsPCwAYgND7sGu3moPjVYUx4UhTKP'
+  '6KazpXuE58pk6QLwwuU4L3cuXYfn8R8Y8g96sqerAuL'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'CNG7Zo3sidSpNJam5Pmd53tjcM8kvFoWQvvMsaUDXi48'
+  'FLQUW3YzGiv77Jn6EoaGAPUfqT6gyMUug6JoFwzLQJoH'
 )
 const managerProgramId: web3.PublicKey = new web3.PublicKey(
-  'XfCct5sN4UjFDEBhupxNFMra3Ubo3kc2TPNinseshzk'
+  'RsAxF9z5htuYaQ9Zi6Cdi1bQFjF1x2GmTY7XrEiCRsQ'
 )
 // const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
 //   'H6AgoP6cPWtTxTJpuMYMvTjnkSRevUVX2GJSLJGTxLUQ'
@@ -111,13 +115,14 @@ const main = async () => {
       connection,
       payer: wallet,
       mintAuthority: exchangeAuthority,
-      decimals: 6
+      decimals: asset.decimals
     })
     const newFeed = await createPriceFeed({
       admin: wallet.publicKey,
       oracleProgram,
-      initPrice: new BN(2000 * 1e4)
+      initPrice: asset.price
     })
+    console.log(`Adding ${newToken.publicKey.toString()}`)
     await sleep(10000)
 
     await manager.addNewAsset({
@@ -129,6 +134,9 @@ const main = async () => {
       tokenFeed: newFeed
     })
   }
+  const state = await exchange.getState()
+  await manager.updatePrices(state.assetsList)
+
   console.log(await exchange.getState())
 }
 main()

@@ -3,18 +3,27 @@ import idl from './idl/manager.json'
 import { BN, Idl, Program, Provider, web3 } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { DEFAULT_PUBLIC_KEY } from './utils'
+import {
+  Connection,
+  PublicKey,
+  ConfirmOptions,
+  Account,
+  SYSVAR_RENT_PUBKEY,
+  SYSVAR_CLOCK_PUBKEY,
+  TransactionInstruction
+} from '@solana/web3.js'
 export class Manager {
-  connection: web3.Connection
+  connection: Connection
   network: Network
-  programId: web3.PublicKey
+  programId: PublicKey
   idl: Idl = idl as Idl
   program: Program
   public constructor(
-    connection: web3.Connection,
+    connection: Connection,
     network: Network,
     wallet: IWallet,
-    programId?: web3.PublicKey,
-    opts?: web3.ConfirmOptions
+    programId?: PublicKey,
+    opts?: ConfirmOptions
   ) {
     this.connection = connection
     this.network = network
@@ -28,17 +37,17 @@ export class Manager {
       throw new Error('Not supported')
     }
   }
-  public async init(admin: web3.PublicKey) {
+  public async init(admin: PublicKey) {
     // @ts-expect-error
     await this.program.state.rpc.new(admin)
   }
   public async getState() {
-    return (await this.program.state()) as { admin: web3.PublicKey; initialized: boolean }
+    return (await this.program.state()) as { admin: PublicKey; initialized: boolean }
   }
-  public async getAssetsList(assetsList: web3.PublicKey): Promise<AssetsList> {
+  public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
     return await this.program.account.assetsList(assetsList)
   }
-  public onAssetsListChange(address: web3.PublicKey, fn: (list: AssetsList) => void) {
+  public onAssetsListChange(address: PublicKey, fn: (list: AssetsList) => void) {
     this.program.account.assetsList
       .subscribe(address, 'singleGossip')
       .on('change', (list: AssetsList) => {
@@ -46,11 +55,11 @@ export class Manager {
       })
   }
   public async createAssetsList(size: number) {
-    const assetListAccount = new web3.Account()
+    const assetListAccount = new Account()
     await this.program.rpc.createAssetsList(size, {
       accounts: {
         assetsList: assetListAccount.publicKey,
-        rent: web3.SYSVAR_RENT_PUBKEY
+        rent: SYSVAR_RENT_PUBKEY
       },
       signers: [assetListAccount],
       instructions: [
@@ -136,7 +145,7 @@ export class Manager {
       }
     )
   }
-  public async updatePrices(assetsList: web3.PublicKey) {
+  public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
       .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
@@ -147,11 +156,11 @@ export class Manager {
       remainingAccounts: feedAddresses,
       accounts: {
         assetsList: assetsList,
-        clock: web3.SYSVAR_CLOCK_PUBKEY
+        clock: SYSVAR_CLOCK_PUBKEY
       }
     })
   }
-  public async updatePricesInstruction(assetsList: web3.PublicKey) {
+  public async updatePricesInstruction(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
       .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
@@ -162,22 +171,22 @@ export class Manager {
       remainingAccounts: feedAddresses,
       accounts: {
         assetsList: assetsList,
-        clock: web3.SYSVAR_CLOCK_PUBKEY
+        clock: SYSVAR_CLOCK_PUBKEY
       }
-    })) as web3.TransactionInstruction
+    })) as TransactionInstruction
   }
 }
 export interface InitializeAssetList {
-  exchangeAuthority: web3.PublicKey
-  collateralToken: web3.PublicKey
-  collateralTokenFeed: web3.PublicKey
-  usdToken: web3.PublicKey
-  assetsAdmin: web3.Account
-  assetsList: web3.PublicKey
+  exchangeAuthority: PublicKey
+  collateralToken: PublicKey
+  collateralTokenFeed: PublicKey
+  usdToken: PublicKey
+  assetsAdmin: Account
+  assetsList: PublicKey
 }
 export interface Asset {
-  feedAddress: web3.PublicKey
-  assetAddress: web3.PublicKey
+  feedAddress: PublicKey
+  assetAddress: PublicKey
   price: BN
   supply: BN
   lastUpdate: BN
@@ -185,27 +194,27 @@ export interface Asset {
   decimals: number
 }
 export interface AssetsList {
-  exchangeAuthority: web3.PublicKey
+  exchangeAuthority: PublicKey
   initialized: boolean
   assets: Array<Asset>
 }
 export interface SetAssetSupply {
-  assetAddress: web3.PublicKey
-  assetsList: web3.PublicKey
-  exchangeAuthority: web3.Account
+  assetAddress: PublicKey
+  assetsList: PublicKey
+  exchangeAuthority: Account
   newSupply: BN
 }
 export interface SetAssetMaxSupply {
-  assetAddress: web3.PublicKey
-  assetsList: web3.PublicKey
-  assetsAdmin: web3.Account
+  assetAddress: PublicKey
+  assetsList: PublicKey
+  assetsAdmin: Account
   newMaxSupply: BN
 }
 export interface AddNewAsset {
-  tokenFeed: web3.PublicKey
-  tokenAddress: web3.PublicKey
-  assetsList: web3.PublicKey
+  tokenFeed: PublicKey
+  tokenAddress: PublicKey
+  assetsList: PublicKey
   tokenDecimals: number
   maxSupply: BN
-  assetsAdmin: web3.Account
+  assetsAdmin: Account
 }
