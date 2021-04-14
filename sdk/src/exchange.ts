@@ -74,9 +74,6 @@ export class Exchange {
       opts
     )
     await instance.getState()
-    instance.onStateChange((state) => {
-      instance.state = state
-    })
     instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
     return instance
   }
