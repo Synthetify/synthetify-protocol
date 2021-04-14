@@ -573,8 +573,5 @@
       "name": "ExchangeLiquidationAccount",
       "msg": "Invalid exchange liquidation account"
     }
-  ],
-  "metadata": {
-    "address": "GYJyQ2GXML8SvHVgyf2kqKzUSGaru3rMemBjPSsV52Jx"
-  }
+  ]
 }

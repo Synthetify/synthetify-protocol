@@ -271,8 +271,5 @@
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     }
-  ],
-  "metadata": {
-    "address": "D2QhKSCLzVUDb7nvq8Z8W39kytzW6EG85wCoc2DWmh3V"
-  }
+  ]
 }

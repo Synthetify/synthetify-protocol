@@ -1,32 +1,44 @@
 import { Network } from './network'
 import idl from './idl/exchange.json'
-import { BN, Idl, Program, Provider, web3, utils } from '@project-serum/anchor'
+import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { AssetsList, Manager } from './manager'
+import {
+  Connection,
+  PublicKey,
+  ConfirmOptions,
+  Account,
+  SYSVAR_RENT_PUBKEY,
+  SystemProgram,
+  TransactionInstruction,
+  SYSVAR_CLOCK_PUBKEY,
+  Transaction,
+  sendAndConfirmRawTransaction
+} from '@solana/web3.js'
 
 export class Exchange {
-  connection: web3.Connection
+  connection: Connection
   network: Network
   manager: Manager
   wallet: IWallet
-  programId: web3.PublicKey
-  exchangeAuthority: web3.PublicKey
+  programId: PublicKey
+  exchangeAuthority: PublicKey
   idl: Idl = idl as Idl
   program: Program
   state: ExchangeState
-  opts?: web3.ConfirmOptions
+  opts?: ConfirmOptions
   assetsList: AssetsList
 
   private constructor(
-    connection: web3.Connection,
+    connection: Connection,
     network: Network,
     wallet: IWallet,
     manager: Manager,
-    exchangeAuthority?: web3.PublicKey,
-    programId?: web3.PublicKey,
-    opts?: web3.ConfirmOptions
+    exchangeAuthority?: PublicKey,
+    programId?: PublicKey,
+    opts?: ConfirmOptions
   ) {
     this.connection = connection
     this.network = network
@@ -44,13 +56,13 @@ export class Exchange {
     }
   }
   public static async build(
-    connection: web3.Connection,
+    connection: Connection,
     network: Network,
     wallet: IWallet,
     manager: Manager,
-    exchangeAuthority?: web3.PublicKey,
-    programId?: web3.PublicKey,
-    opts?: web3.ConfirmOptions
+    exchangeAuthority?: PublicKey,
+    programId?: PublicKey,
+    opts?: ConfirmOptions
   ) {
     const instance = new Exchange(
       connection,
@@ -62,9 +74,6 @@ export class Exchange {
       opts
     )
     await instance.getState()
-    instance.onStateChange((state) => {
-      instance.state = state
-    })
     instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
     return instance
   }
@@ -74,7 +83,7 @@ export class Exchange {
       fn(state)
     })
   }
-  public onAccountChange(address: web3.PublicKey, fn: (account: ExchangeAccount) => void) {
+  public onAccountChange(address: PublicKey, fn: (account: ExchangeAccount) => void) {
     this.program.account.exchangeAccount
       .subscribe(address, 'singleGossip')
       .on('change', (account: ExchangeAccount) => {
@@ -107,10 +116,10 @@ export class Exchange {
     this.assetsList = await this.manager.getAssetsList(this.state.assetsList)
     return state
   }
-  public async getExchangeAccount(exchangeAccount: web3.PublicKey) {
+  public async getExchangeAccount(exchangeAccount: PublicKey) {
     return (await this.program.account.exchangeAccount(exchangeAccount)) as ExchangeAccount
   }
-  public async getUserCollateralBalance(exchangeAccount: web3.PublicKey) {
+  public async getUserCollateralBalance(exchangeAccount: PublicKey) {
     const userAccount = (await this.program.account.exchangeAccount(
       exchangeAccount
     )) as ExchangeAccount
@@ -122,14 +131,14 @@ export class Exchange {
       this.connection,
       this.assetsList.assets[1].assetAddress,
       TOKEN_PROGRAM_ID,
-      new web3.Account()
+      new Account()
     )
     const exchangeCollateralInfo = await collateralToken.getAccountInfo(state.collateralAccount)
     return userAccount.collateralShares
       .mul(new BN(exchangeCollateralInfo.amount.toString()))
       .div(state.collateralShares)
   }
-  public async getUserDebtBalance(exchangeAccount: web3.PublicKey) {
+  public async getUserDebtBalance(exchangeAccount: PublicKey) {
     const userAccount = (await this.program.account.exchangeAccount(
       exchangeAccount
     )) as ExchangeAccount
@@ -141,20 +150,42 @@ export class Exchange {
 
     return userAccount.debtShares.mul(debt).div(state.debtShares)
   }
-  public async createExchangeAccount(owner: web3.PublicKey) {
+  public async createExchangeAccount(owner: PublicKey) {
     //@ts-expect-error
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     await this.program.rpc.createExchangeAccount(owner, {
       accounts: {
         exchangeAccount: account,
-        rent: web3.SYSVAR_RENT_PUBKEY,
+        rent: SYSVAR_RENT_PUBKEY,
         admin: owner,
         payer: this.wallet.publicKey,
         state: state,
-        systemProgram: web3.SystemProgram.programId
+        systemProgram: SystemProgram.programId
       }
     })
+    return account
+  }
+  public async createExchangeAccountInstruction(owner: PublicKey) {
+    //@ts-expect-error
+    const state = await this.program.state.address()
+    const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
+    const ix = (await this.program.instruction.createExchangeAccount(owner, {
+      accounts: {
+        exchangeAccount: account,
+        rent: SYSVAR_RENT_PUBKEY,
+        admin: owner,
+        payer: this.wallet.publicKey,
+        state: state,
+        systemProgram: SystemProgram.programId
+      }
+    })) as TransactionInstruction
+    return { account, ix }
+  }
+  public async getExchangeAccountAddress(owner: PublicKey) {
+    //@ts-expect-error
+    const state = await this.program.state.address()
+    const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     return account
   }
 
@@ -172,7 +203,7 @@ export class Exchange {
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAuthority: this.exchangeAuthority
       }
-    })) as web3.TransactionInstruction
+    })) as TransactionInstruction
   }
   public async withdrawInstruction({ amount, exchangeAccount, owner, to }: WithdrawInstruction) {
     // @ts-expect-error
@@ -181,14 +212,14 @@ export class Exchange {
         exchangeAuthority: this.exchangeAuthority,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
         managerProgram: this.programId,
         collateralAccount: this.state.collateralAccount
       }
-    }) as web3.TransactionInstruction)
+    }) as TransactionInstruction)
   }
   public async mintInstruction({ amount, exchangeAccount, owner, to }: MintInstruction) {
     // @ts-expect-error
@@ -198,14 +229,14 @@ export class Exchange {
         usdToken: this.assetsList.assets[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
         managerProgram: this.manager.programId,
         collateralAccount: this.state.collateralAccount
       }
-    }) as web3.TransactionInstruction)
+    }) as TransactionInstruction)
   }
   public async swapInstruction({
     amount,
@@ -225,14 +256,14 @@ export class Exchange {
         userTokenAccountFor: userTokenAccountFor,
         userTokenAccountIn: userTokenAccountIn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
         managerProgram: this.manager.programId,
         collateralAccount: this.state.collateralAccount
       }
-    }) as web3.TransactionInstruction)
+    }) as TransactionInstruction)
   }
   public async liquidateInstruction({
     exchangeAccount,
@@ -245,7 +276,7 @@ export class Exchange {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         signer: signer,
         usdToken: this.assetsList.assets[0].assetAddress,
@@ -256,7 +287,7 @@ export class Exchange {
         collateralAccount: this.state.collateralAccount,
         liquidationAccount: this.state.liquidationAccount
       }
-    }) as web3.TransactionInstruction)
+    }) as TransactionInstruction)
   }
   public async burnInstruction({
     amount,
@@ -272,15 +303,15 @@ export class Exchange {
         tokenBurn: tokenBurn,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
         managerProgram: this.manager.programId
       }
-    }) as web3.TransactionInstruction)
+    }) as TransactionInstruction)
   }
-  private async processOperations(txs: web3.Transaction[]) {
+  private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
     )
@@ -288,7 +319,7 @@ export class Exchange {
       tx.feePayer = this.wallet.publicKey
       tx.recentBlockhash = blockhash.blockhash
     })
-    this.wallet.signAllTransactions(txs)
+    await this.wallet.signAllTransactions(txs)
     return txs
   }
   public async liquidate({
@@ -314,12 +345,12 @@ export class Exchange {
       [],
       tou64(allowanceAmount)
     )
-    const updateTx = new web3.Transaction().add(updateIx)
-    const liquidateTx = new web3.Transaction().add(approveIx).add(liquidateIx)
+    const updateTx = new Transaction().add(updateIx)
+    const liquidateTx = new Transaction().add(approveIx).add(liquidateIx)
     const txs = await this.processOperations([updateTx, liquidateTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
-      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
       })
     )
@@ -353,12 +384,12 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const updateTx = new web3.Transaction().add(updateIx)
-    const swapTx = new web3.Transaction().add(approveIx).add(swapIx)
+    const updateTx = new Transaction().add(updateIx)
+    const swapTx = new Transaction().add(approveIx).add(swapIx)
     const txs = await this.processOperations([updateTx, swapTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
-      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
       })
     )
@@ -388,12 +419,12 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const updateTx = new web3.Transaction().add(updateIx)
-    const burnTx = new web3.Transaction().add(approveIx).add(burnIx)
+    const updateTx = new Transaction().add(updateIx)
+    const burnTx = new Transaction().add(approveIx).add(burnIx)
     const txs = await this.processOperations([updateTx, burnTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
-      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
       })
     )
@@ -407,12 +438,12 @@ export class Exchange {
       owner,
       to
     })
-    const updateTx = new web3.Transaction().add(updateIx)
-    const mintTx = new web3.Transaction().add(mintIx)
+    const updateTx = new Transaction().add(updateIx)
+    const mintTx = new Transaction().add(mintIx)
     const txs = await this.processOperations([updateTx, mintTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
-      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
       })
     )
@@ -426,12 +457,12 @@ export class Exchange {
       owner,
       to
     })
-    const updateTx = new web3.Transaction().add(updateIx)
-    const withdrawTx = new web3.Transaction().add(withdrawIx)
+    const updateTx = new Transaction().add(updateIx)
+    const withdrawTx = new Transaction().add(withdrawIx)
     const txs = await this.processOperations([updateTx, withdrawTx])
     signers ? txs[1].partialSign(...signers) : null
     const promisesTx = txs.map((tx) =>
-      web3.sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
+      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
         skipPreflight: true
       })
     )
@@ -439,101 +470,101 @@ export class Exchange {
   }
 }
 export interface Mint {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  to: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  to: PublicKey
   amount: BN
-  signers?: Array<web3.Account>
+  signers?: Array<Account>
 }
 export interface Liquidate {
-  exchangeAccount: web3.PublicKey
-  userUsdAccount: web3.PublicKey
-  userCollateralAccount: web3.PublicKey
-  signer: web3.PublicKey
+  exchangeAccount: PublicKey
+  userUsdAccount: PublicKey
+  userCollateralAccount: PublicKey
+  signer: PublicKey
   allowanceAmount: BN
-  signers?: Array<web3.Account>
+  signers?: Array<Account>
 }
 export interface Swap {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  tokenIn: web3.PublicKey
-  tokenFor: web3.PublicKey
-  userTokenAccountIn: web3.PublicKey
-  userTokenAccountFor: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  tokenIn: PublicKey
+  tokenFor: PublicKey
+  userTokenAccountIn: PublicKey
+  userTokenAccountFor: PublicKey
   amount: BN
-  signers?: Array<web3.Account>
+  signers?: Array<Account>
 }
 export interface Burn {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  tokenBurn: web3.PublicKey
-  userTokenAccountBurn: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  tokenBurn: PublicKey
+  userTokenAccountBurn: PublicKey
   amount: BN
-  signers?: Array<web3.Account>
+  signers?: Array<Account>
 }
 export interface Withdraw {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  to: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  to: PublicKey
   amount: BN
-  signers?: Array<web3.Account>
+  signers?: Array<Account>
 }
 export interface MintInstruction {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  to: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  to: PublicKey
   amount: BN
 }
 export interface SwapInstruction {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  tokenIn: web3.PublicKey
-  tokenFor: web3.PublicKey
-  userTokenAccountIn: web3.PublicKey
-  userTokenAccountFor: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  tokenIn: PublicKey
+  tokenFor: PublicKey
+  userTokenAccountIn: PublicKey
+  userTokenAccountFor: PublicKey
   amount: BN
 }
 export interface LiquidateInstruction {
-  exchangeAccount: web3.PublicKey
-  userUsdAccount: web3.PublicKey
-  userCollateralAccount: web3.PublicKey
-  signer: web3.PublicKey
+  exchangeAccount: PublicKey
+  userUsdAccount: PublicKey
+  userCollateralAccount: PublicKey
+  signer: PublicKey
 }
 export interface BurnInstruction {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  tokenBurn: web3.PublicKey
-  userTokenAccountBurn: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  tokenBurn: PublicKey
+  userTokenAccountBurn: PublicKey
   amount: BN
 }
 export interface WithdrawInstruction {
-  exchangeAccount: web3.PublicKey
-  owner: web3.PublicKey
-  to: web3.PublicKey
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  to: PublicKey
   amount: BN
 }
 export interface DepositInstruction {
-  exchangeAccount: web3.PublicKey
-  userCollateralAccount: web3.PublicKey
+  exchangeAccount: PublicKey
+  userCollateralAccount: PublicKey
   amount: BN
 }
 export interface Init {
-  admin: web3.PublicKey
+  admin: PublicKey
   nonce: number
-  assetsList: web3.PublicKey
-  collateralToken: web3.PublicKey
-  collateralAccount: web3.PublicKey
-  liquidationAccount: web3.PublicKey
+  assetsList: PublicKey
+  collateralToken: PublicKey
+  collateralAccount: PublicKey
+  liquidationAccount: PublicKey
 }
 export interface ExchangeState {
-  admin: web3.PublicKey
+  admin: PublicKey
   nonce: number
   debtShares: BN
   collateralShares: BN
-  assetsList: web3.PublicKey
-  collateralToken: web3.PublicKey
-  collateralAccount: web3.PublicKey
-  liquidationAccount: web3.PublicKey
+  assetsList: PublicKey
+  collateralToken: PublicKey
+  collateralAccount: PublicKey
+  liquidationAccount: PublicKey
   collateralizationLevel: number
   maxDelay: number
   fee: number
@@ -541,7 +572,7 @@ export interface ExchangeState {
   liquidationThreshold: number
 }
 export interface ExchangeAccount {
-  owner: web3.PublicKey
+  owner: PublicKey
   debtShares: BN
   collateralShares: BN
 }

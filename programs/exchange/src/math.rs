@@ -225,13 +225,28 @@ pub fn calculate_burned_shares(
     return burned_shares.try_into().unwrap();
 }
 pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
-    let burned_amount_token = div_up(
-        (*user_debt as u128)
-            .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
-            .unwrap(),
-        asset.price as u128,
-    );
-    return burned_amount_token.try_into().unwrap();
+    let decimal_difference = asset.decimals as i32 - ACCURACY as i32;
+    if (decimal_difference >= 0) {
+        let burned_amount_token = div_up(
+            (*user_debt as u128)
+                .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
+                .unwrap()
+                .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+                .unwrap(),
+            asset.price as u128,
+        );
+        return burned_amount_token.try_into().unwrap();
+    } else {
+        let burned_amount_token = div_up(
+            (*user_debt as u128)
+                .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+                .unwrap()
+                .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
+                .unwrap(),
+            asset.price as u128,
+        );
+        return burned_amount_token.try_into().unwrap();
+    }
 }
 pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
     let amount = (amount as u128)
