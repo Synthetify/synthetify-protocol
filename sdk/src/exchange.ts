@@ -1,8 +1,8 @@
-import { Network } from './network'
+import { DEV_NET, Network, TEST_NET } from './network'
 import idl from './idl/exchange.json'
 import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
-import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, tou64 } from './utils'
+import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, sleep, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { AssetsList, Manager } from './manager'
 import {
@@ -46,13 +46,24 @@ export class Exchange {
     this.manager = manager
     this.opts = opts
     const provider = new Provider(connection, wallet, opts || Provider.defaultOptions())
-    if (network === Network.LOCAL) {
-      this.programId = programId
-      this.exchangeAuthority = exchangeAuthority
-      this.program = new Program(idl as Idl, programId, provider)
-    } else {
-      // We will add it once we deploy
-      throw new Error('Not supported')
+    switch (network) {
+      case Network.LOCAL:
+        this.programId = programId
+        this.exchangeAuthority = exchangeAuthority
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      case Network.DEV:
+        this.programId = DEV_NET.exchange
+        this.exchangeAuthority = DEV_NET.exchangeAuthority
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      case Network.TEST:
+        this.programId = TEST_NET.exchange
+        this.exchangeAuthority = TEST_NET.exchangeAuthority
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      default:
+        throw new Error('Not supported')
     }
   }
   public static async build(
@@ -349,12 +360,13 @@ export class Exchange {
     const liquidateTx = new Transaction().add(approveIx).add(liquidateIx)
     const txs = await this.processOperations([updateTx, liquidateTx])
     signers ? txs[1].partialSign(...signers) : null
-    const promisesTx = txs.map((tx) =>
-      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
-        skipPreflight: true
-      })
-    )
-    return Promise.all(promisesTx)
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
   public async swap({
     amount,
@@ -388,12 +400,13 @@ export class Exchange {
     const swapTx = new Transaction().add(approveIx).add(swapIx)
     const txs = await this.processOperations([updateTx, swapTx])
     signers ? txs[1].partialSign(...signers) : null
-    const promisesTx = txs.map((tx) =>
-      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
-        skipPreflight: true
-      })
-    )
-    return Promise.all(promisesTx)
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
   public async burn({
     amount,
@@ -423,12 +436,13 @@ export class Exchange {
     const burnTx = new Transaction().add(approveIx).add(burnIx)
     const txs = await this.processOperations([updateTx, burnTx])
     signers ? txs[1].partialSign(...signers) : null
-    const promisesTx = txs.map((tx) =>
-      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
-        skipPreflight: true
-      })
-    )
-    return Promise.all(promisesTx)
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -442,12 +456,13 @@ export class Exchange {
     const mintTx = new Transaction().add(mintIx)
     const txs = await this.processOperations([updateTx, mintTx])
     signers ? txs[1].partialSign(...signers) : null
-    const promisesTx = txs.map((tx) =>
-      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
-        skipPreflight: true
-      })
-    )
-    return Promise.all(promisesTx)
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
   public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -461,12 +476,13 @@ export class Exchange {
     const withdrawTx = new Transaction().add(withdrawIx)
     const txs = await this.processOperations([updateTx, withdrawTx])
     signers ? txs[1].partialSign(...signers) : null
-    const promisesTx = txs.map((tx) =>
-      sendAndConfirmRawTransaction(this.connection, tx.serialize(), {
-        skipPreflight: true
-      })
-    )
-    return Promise.all(promisesTx)
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
 }
 export interface Mint {
