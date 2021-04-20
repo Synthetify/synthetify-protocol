@@ -322,6 +322,25 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async checkAccountInstruction(exchangeAccount: PublicKey) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.checkAccountCollateralization({
+      accounts: {
+        clock: SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        assetsList: this.state.assetsList,
+        collateralAccount: this.state.collateralAccount
+      }
+    }) as TransactionInstruction)
+  }
+  public async setLiquidationBufferInstruction(newLiquidationBuffer: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setLiquidationBuffer(newLiquidationBuffer, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -332,6 +351,21 @@ export class Exchange {
     })
     await this.wallet.signAllTransactions(txs)
     return txs
+  }
+  public async checkAccount(exchangeAccount: PublicKey) {
+    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const checkIx = await this.checkAccountInstruction(exchangeAccount)
+
+    const updateTx = new Transaction().add(updateIx)
+    const checkTx = new Transaction().add(checkIx)
+    const txs = await this.processOperations([updateTx, checkTx])
+    await this.connection.sendRawTransaction(txs[0].serialize(), {
+      skipPreflight: true
+    })
+    await sleep(600)
+    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+      skipPreflight: true
+    })
   }
   public async liquidate({
     exchangeAccount,
@@ -586,9 +620,11 @@ export interface ExchangeState {
   fee: number
   liquidationPenalty: number
   liquidationThreshold: number
+  liquidationBuffer: number
 }
 export interface ExchangeAccount {
   owner: PublicKey
   debtShares: BN
   collateralShares: BN
+  liquidationDeadline: BN
 }

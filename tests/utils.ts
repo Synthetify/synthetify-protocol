@@ -13,6 +13,7 @@ export const ASSETS_MANAGER_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 4
 export const ACCURACY = 6
+export const U64_MAX = new BN('18446744073709551615')
 
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap

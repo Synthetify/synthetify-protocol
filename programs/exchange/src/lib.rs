@@ -28,6 +28,7 @@ pub mod exchange {
         pub liquidation_account: Pubkey,
         pub liquidation_penalty: u8,   //  in % range 0-25%
         pub liquidation_threshold: u8, // in % should range from 130-200%
+        pub liquidation_buffer: u32,   // time given user to fix collateralization ratio
     }
     impl InternalState {
         pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
@@ -45,6 +46,7 @@ pub mod exchange {
                 fee: 300,
                 liquidation_penalty: 15,
                 liquidation_threshold: 200,
+                liquidation_buffer: 172800, // about 24 Hours
             })
         }
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
@@ -65,7 +67,7 @@ pub mod exchange {
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            let result = token::transfer(cpi_ctx, amount);
+            token::transfer(cpi_ctx, amount);
             let new_shares = get_collateral_shares(
                 &exchange_collateral_balance,
                 &amount,
@@ -417,8 +419,8 @@ pub mod exchange {
                 return Err(ErrorCode::InvalidSigner.into());
             }
             let slot = ctx.accounts.clock.slot;
-            let assets = &assets_list.assets;
 
+            let assets = &assets_list.assets;
             let collateral_account = &ctx.accounts.collateral_account;
             if !collateral_account
                 .to_account_info()
@@ -433,16 +435,22 @@ pub mod exchange {
                 return Err(ErrorCode::ExchangeLiquidationAccount.into());
             }
 
-            let collateral_amount_in_token = calculate_user_collateral_in_token(
-                exchange_account.collateral_shares,
-                self.collateral_shares,
-                collateral_account.amount,
-            );
             let usd_token = &assets[0];
             if !ctx.accounts.usd_token.key.eq(&usd_token.asset_address) {
                 msg!("Error: NotSyntheticUsd");
                 return Err(ErrorCode::NotSyntheticUsd.into());
             }
+
+            if exchange_account.liquidation_deadline > slot {
+                msg!("Error: LiquidationDeadline");
+                return Err(ErrorCode::LiquidationDeadline.into());
+            }
+
+            let collateral_amount_in_token = calculate_user_collateral_in_token(
+                exchange_account.collateral_shares,
+                self.collateral_shares,
+                collateral_account.amount,
+            );
             let collateral_asset = &assets[1];
 
             let collateral_amount_in_usd =
@@ -488,7 +496,7 @@ pub mod exchange {
                 .collateral_shares
                 .checked_sub(burned_collateral_shares)
                 .unwrap();
-
+            exchange_account.liquidation_deadline = u64::MAX;
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer_seeds = &[&seeds[..]];
             {
@@ -543,6 +551,75 @@ pub mod exchange {
 
             Ok(())
         }
+        pub fn check_account_collateralization(
+            &mut self,
+            ctx: Context<CheckCollateralization>,
+        ) -> Result<()> {
+            msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
+            let assets_list = &ctx.accounts.assets_list;
+            let collateral_account = &ctx.accounts.collateral_account;
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            if !collateral_account
+                .to_account_info()
+                .key
+                .eq(&self.collateral_account)
+            {
+                msg!("Error: CollateralAccountError");
+                return Err(ErrorCode::CollateralAccountError.into());
+            }
+            if !assets_list.to_account_info().key.eq(&self.assets_list) {
+                msg!("Error: InvalidAssetsList");
+                return Err(ErrorCode::InvalidAssetsList.into());
+            }
+            let assets = &assets_list.assets;
+            let slot = ctx.accounts.clock.slot;
+            let collateral_asset = &assets[1];
+
+            let collateral_amount_in_token = calculate_user_collateral_in_token(
+                exchange_account.collateral_shares,
+                self.collateral_shares,
+                collateral_account.amount,
+            );
+            let collateral_amount_in_usd =
+                calculate_amount_mint_in_usd(&collateral_asset, collateral_amount_in_token);
+
+            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
+            let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
+
+            let result = check_liquidation(
+                collateral_amount_in_usd,
+                user_debt,
+                self.liquidation_threshold,
+            );
+            match result {
+                Ok(_) => {
+                    if exchange_account.liquidation_deadline == u64::MAX {
+                        exchange_account.liquidation_deadline =
+                            slot.checked_add(self.liquidation_buffer.into()).unwrap();
+                    }
+                }
+                Err(_) => {
+                    exchange_account.liquidation_deadline = u64::MAX;
+                }
+            }
+
+            Ok(())
+        }
+        // admin methods
+        pub fn set_liquidation_buffer(
+            &mut self,
+            ctx: Context<AdminAction>,
+            liquidation_buffer: u32,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin: SET LIQUIDATION BUFFER");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.liquidation_buffer = liquidation_buffer;
+            Ok(())
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
@@ -552,6 +629,7 @@ pub mod exchange {
         exchange_account.owner = owner;
         exchange_account.debt_shares = 0;
         exchange_account.collateral_shares = 0;
+        exchange_account.liquidation_deadline = u64::MAX;
         Ok(())
     }
 }
@@ -579,6 +657,7 @@ pub struct ExchangeAccount {
     pub owner: Pubkey,
     pub debt_shares: u64,
     pub collateral_shares: u64,
+    pub liquidation_deadline: u64,
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -754,6 +833,21 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
     }
 }
 
+#[derive(Accounts)]
+pub struct CheckCollateralization<'info> {
+    #[account(mut)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub assets_list: CpiAccount<'info, AssetsList>,
+    pub clock: Sysvar<'info, Clock>,
+    pub collateral_account: CpiAccount<'info, TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct AdminAction<'info> {
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+}
+
 #[error]
 pub enum ErrorCode {
     #[msg("Your error message")]
@@ -782,4 +876,6 @@ pub enum ErrorCode {
     WashTrade,
     #[msg("Invalid exchange liquidation account")]
     ExchangeLiquidationAccount,
+    #[msg("Liquidation deadline not passed")]
+    LiquidationDeadline,
 }

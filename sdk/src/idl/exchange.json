@@ -101,6 +101,10 @@
           {
             "name": "liquidationThreshold",
             "type": "u8"
+          },
+          {
+            "name": "liquidationBuffer",
+            "type": "u32"
           }
         ]
       }
@@ -482,6 +486,48 @@
           }
         ],
         "args": []
+      },
+      {
+        "name": "checkAccountCollateralization",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "collateralAccount",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "setLiquidationBuffer",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "liquidationBuffer",
+            "type": "u32"
+          }
+        ]
       }
     ]
   },
@@ -501,6 +547,10 @@
           },
           {
             "name": "collateralShares",
+            "type": "u64"
+          },
+          {
+            "name": "liquidationDeadline",
             "type": "u64"
           }
         ]
@@ -572,6 +622,14 @@
       "code": 112,
       "name": "ExchangeLiquidationAccount",
       "msg": "Invalid exchange liquidation account"
+    },
+    {
+      "code": 113,
+      "name": "LiquidationDeadline",
+      "msg": "Liquidation deadline not passed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "83JEpDcJdQRLZnkPvo1sUURKwsMaKBhec3YFHyN7y7k9"
+  }
 }
