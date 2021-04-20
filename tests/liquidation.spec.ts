@@ -33,7 +33,8 @@ import {
   toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   tokenToUsdValue,
-  assertThrowsAsync
+  assertThrowsAsync,
+  U64_MAX
 } from './utils'
 
 describe('liquidation', () => {
@@ -149,6 +150,7 @@ describe('liquidation', () => {
     assert.ok(state.liquidationPenalty === 15)
     assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
+    assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.gt(new BN(0)))
     assert.ok(state.collateralShares.gt(new BN(0)))
   })
@@ -163,6 +165,12 @@ describe('liquidation', () => {
       })
       // update prices
       await manager.updatePrices(assetsList)
+    })
+    beforeEach(async () => {
+      // change liquidation buffor for sake of tests
+      const newLiquidationBuffer = 0
+      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
     it('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 1e6)
@@ -217,6 +225,46 @@ describe('liquidation', () => {
         state.collateralizationLevel,
         state.liquidationPenalty
       )
+      // trigger liquidation without marking account
+      await assertThrowsAsync(
+        exchange.liquidate({
+          exchangeAccount,
+          allowanceAmount: maxBurnUsd,
+          signer: liquidator.publicKey,
+          userCollateralAccount: liquidatorCollateralAccount,
+          userUsdAccount: liquidatorUsdAccount,
+          signers: [liquidator]
+        })
+      )
+      const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
+
+      // change liquidation buffor for sake of test
+      const newLiquidationBuffer = 10
+      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const updatedState = await exchange.getState()
+      assert.ok((updatedState.liquidationBuffer = newLiquidationBuffer))
+
+      // set account liquidation deadline
+      await exchange.checkAccount(exchangeAccount)
+      const slot = await connection.getSlot()
+      const exchangeAccountDataAfterCheck = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountDataAfterCheck.liquidationDeadline.eqn(slot + newLiquidationBuffer))
+
+      // trigger liquidation without waiting for liquidation deadline
+      await assertThrowsAsync(
+        exchange.liquidate({
+          exchangeAccount,
+          allowanceAmount: maxBurnUsd,
+          signer: liquidator.publicKey,
+          userCollateralAccount: liquidatorCollateralAccount,
+          userUsdAccount: liquidatorUsdAccount,
+          signers: [liquidator]
+        })
+      )
+      // wait for liquidation deadline
+      await sleep(6000)
       // trigger liquidation
       await exchange.liquidate({
         exchangeAccount,
@@ -226,8 +274,13 @@ describe('liquidation', () => {
         userUsdAccount: liquidatorUsdAccount,
         signers: [liquidator]
       })
+
       await exchange.getState()
       const assetsListDataAfter = await manager.getAssetsList(assetsList)
+
+      await exchange.checkAccount(exchangeAccount)
+      const exchangeAccountDataAfterLiquidation = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountDataAfterLiquidation.liquidationDeadline.eq(U64_MAX))
 
       // user debt should be reduced
       const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
@@ -495,7 +548,7 @@ describe('liquidation', () => {
         manager,
         wallet
       })
-      //@ts-expect-error
+      // @ts-expect-error
       const liquidateIx = await (exchange.program.state.instruction.liquidate({
         accounts: {
           exchangeAuthority: exchange.exchangeAuthority,

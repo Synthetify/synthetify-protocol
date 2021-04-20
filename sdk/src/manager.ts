@@ -1,4 +1,4 @@
-import { Network } from './network'
+import { DEV_NET, Network, TEST_NET } from './network'
 import idl from './idl/manager.json'
 import { BN, Idl, Program, Provider, web3 } from '@project-serum/anchor'
 import { IWallet } from '.'
@@ -29,12 +29,21 @@ export class Manager {
     this.network = network
     // This will be unused
     const provider = new Provider(connection, wallet, opts || Provider.defaultOptions())
-    if (network === Network.LOCAL) {
-      this.programId = programId
-      this.program = new Program(idl as Idl, programId, provider)
-    } else {
-      // We will add it once we deploy
-      throw new Error('Not supported')
+    switch (network) {
+      case Network.LOCAL:
+        this.programId = programId
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      case Network.DEV:
+        this.programId = DEV_NET.manager
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      case Network.TEST:
+        this.programId = TEST_NET.manager
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      default:
+        throw new Error('Not supported')
     }
   }
   public async init(admin: PublicKey) {
