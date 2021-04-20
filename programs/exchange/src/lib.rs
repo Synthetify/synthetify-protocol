@@ -620,6 +620,68 @@ pub mod exchange {
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
         }
+        pub fn set_liquidation_threshold(
+            &mut self,
+            ctx: Context<AdminAction>,
+            liquidation_threshold: u8,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin: SET LIQUIDATION THRESHOLD");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.liquidation_threshold = liquidation_threshold;
+            Ok(())
+        }
+        pub fn set_liquidation_penalty(
+            &mut self,
+            ctx: Context<AdminAction>,
+            liquidation_penalty: u8,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin: SET LIQUIDATION PENALTY");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.liquidation_penalty = liquidation_penalty;
+            Ok(())
+        }
+        pub fn set_collateralization_level(
+            &mut self,
+            ctx: Context<AdminAction>,
+            collateralization_level: u32,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin: SET COLLATERALIZATION LEVEL");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.collateralization_level = collateralization_level;
+            Ok(())
+        }
+        pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
+            msg!("Syntetify:Admin: SET FEE");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.fee = fee;
+            Ok(())
+        }
+        pub fn set_max_delay(&mut self, ctx: Context<AdminAction>, max_delay: u32) -> Result<()> {
+            msg!("Syntetify:Admin: MAX DELAY");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                msg!("Error: Unauthorized");
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.max_delay = max_delay;
+            Ok(())
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,

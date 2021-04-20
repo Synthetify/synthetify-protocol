@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test:full": "anchor test tests/manager.spec.ts && anchor test tests/exchange.spec.ts && anchor test tests/liquidation.spec.ts",
+    "test:full": "anchor test tests/manager.spec.ts && anchor test tests/exchange.spec.ts && anchor test tests/liquidation.spec.ts && anchor test tests/exchange-admin.spec.ts",
     "test:manager": "anchor test tests/manager.spec.ts",
     "test:exchange": " anchor test tests/exchange.spec.ts",
     "test:liquidation": "anchor test tests/liquidation.spec.ts",
+    "test:admin": "anchor test tests/exchange-admin.spec.ts",
     "build": "cd sdk && npm run build"
   },
   "author": "Norbert Bodziony",

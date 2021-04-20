@@ -341,6 +341,49 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
+  public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
+  public async setCollateralizationLevelInstruction(newCollateralizationLevel: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setCollateralizationLevel(
+      newCollateralizationLevel,
+      {
+        accounts: {
+          admin: this.state.admin
+        }
+      }
+    ) as TransactionInstruction)
+  }
+  public async setFeeInstruction(newFee: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setFee(newFee, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
+  public async setMaxDelayInstruction(newMaxDelay: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setMaxDelay(newMaxDelay, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment

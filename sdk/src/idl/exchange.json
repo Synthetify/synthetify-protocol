@@ -528,6 +528,86 @@
             "type": "u32"
           }
         ]
+      },
+      {
+        "name": "setLiquidationThreshold",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "liquidationThreshold",
+            "type": "u8"
+          }
+        ]
+      },
+      {
+        "name": "setLiquidationPenalty",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "liquidationPenalty",
+            "type": "u8"
+          }
+        ]
+      },
+      {
+        "name": "setCollateralizationLevel",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "collateralizationLevel",
+            "type": "u32"
+          }
+        ]
+      },
+      {
+        "name": "setFee",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "fee",
+            "type": "u32"
+          }
+        ]
+      },
+      {
+        "name": "setMaxDelay",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "maxDelay",
+            "type": "u32"
+          }
+        ]
       }
     ]
   },
@@ -628,8 +708,5 @@
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
     }
-  ],
-  "metadata": {
-    "address": "83JEpDcJdQRLZnkPvo1sUURKwsMaKBhec3YFHyN7y7k9"
-  }
+  ]
 }
