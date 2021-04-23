@@ -59,10 +59,6 @@ describe('liquidation', () => {
   let CollateralTokenMinter: Account = wallet
   let nonce: number
 
-  let liquidator: Account
-  let liquidatorUsdAccount: PublicKey
-  let liquidatorCollateralAccount: PublicKey
-
   let initialCollateralPrice = new BN(2 * 1e4)
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -122,18 +118,6 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
-      usdToken,
-      collateralAccount,
-      collateralToken,
-      exchangeAuthority,
-      exchange,
-      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: new BN(100000 * 1e6) // give enough for liquidations
-    })
-    liquidator = liquidatorData.accountOwner
-    liquidatorUsdAccount = liquidatorData.usdTokenAccount
-    liquidatorCollateralAccount = liquidatorData.userCollateralTokenAccount
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
