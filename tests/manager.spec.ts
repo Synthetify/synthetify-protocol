@@ -129,9 +129,12 @@ describe('manager', () => {
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
+      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
+        asset.assetAddress.equals(beforeAsset.assetAddress)
+      )
       await manager.setAssetSupply({
         assetsList,
-        assetAddress: beforeAsset.assetAddress,
+        assetIndex,
         newSupply,
         exchangeAuthority: exchangeAuthorityAccount
       })
@@ -164,10 +167,15 @@ describe('manager', () => {
         tokenFeed: newTokenFeed
       })
       const newSupply = newAssetLimit.addn(1)
+
+      const beforeAssetList = await manager.getAssetsList(assetsList)
+      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
+        asset.assetAddress.equals(newToken.publicKey)
+      )
       await assertThrowsAsync(
         manager.setAssetSupply({
           assetsList,
-          assetAddress: newToken.publicKey,
+          assetIndex,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
         })
@@ -178,8 +186,13 @@ describe('manager', () => {
       const beforeAsset = beforeAssetList.assets[0]
 
       const newSupply = beforeAsset.supply.add(new BN(12345678))
+
+      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
+        asset.assetAddress.equals(beforeAsset.assetAddress)
+      )
+
       await assertThrowsAsync(
-        managerProgram.rpc.setAssetSupply(beforeAsset.assetAddress, newSupply, {
+        managerProgram.rpc.setAssetSupply(assetIndex, newSupply, {
           accounts: {
             assetsList: assetsList,
             exchangeAuthority: exchangeAuthorityAccount.publicKey
@@ -196,7 +209,7 @@ describe('manager', () => {
       await assertThrowsAsync(
         manager.setAssetSupply({
           assetsList,
-          assetAddress: new Account().publicKey,
+          assetIndex: 254,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
         })

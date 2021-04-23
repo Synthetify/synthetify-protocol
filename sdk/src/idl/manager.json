@@ -39,8 +39,8 @@
       ],
       "args": [
         {
-          "name": "assetAddress",
-          "type": "publicKey"
+          "name": "assetIndex",
+          "type": "u8"
         },
         {
           "name": "newSupply",
@@ -277,6 +277,6 @@
     }
   ],
   "metadata": {
-    "address": "4Pfn2yYQmFfj5f8FkRsHWTVGhcivZFgif5CpDKMTJybK"
+    "address": "4UzgWCuTdCt77jXyLqvnmrFN5TB6WX22nEnh84EpE1Ji"
   }
 }

@@ -727,9 +727,14 @@
       "code": 113,
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
+    },
+    {
+      "code": 114,
+      "name": "Halted",
+      "msg": "Program is currently Halted"
     }
   ],
   "metadata": {
-    "address": "HqSs8NqLCBFwU14aj6hcHArTV5sKrL9Gp1hwZzCtB1hY"
+    "address": "C15tdGcc4sqvTQqbQ4xne9XuN5AVsx8FJYE2MzXEUCYS"
   }
 }

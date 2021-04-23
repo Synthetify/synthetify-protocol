@@ -9,6 +9,7 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
+    use std::convert::TryInto;
 
     use crate::math::{calculate_debt, get_collateral_shares};
 
@@ -147,7 +148,7 @@ pub mod exchange {
             let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
             manager::cpi::set_asset_supply(
                 cpi_ctx,
-                mint_asset.asset_address,
+                0u8, // xUSD always have 0 index
                 mint_asset.supply.checked_add(amount).unwrap(),
             );
             self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
@@ -310,7 +311,7 @@ pub mod exchange {
                 CpiContext::new(cpi_program.clone(), cpi_accounts.clone()).with_signer(signer);
             manager::cpi::set_asset_supply(
                 cpi_ctx_for,
-                assets[asset_for_index].asset_address,
+                asset_for_index.try_into().unwrap(),
                 assets[asset_for_index]
                     .supply
                     .checked_add(amount_for)
@@ -320,7 +321,7 @@ pub mod exchange {
 
             manager::cpi::set_asset_supply(
                 cpi_ctx_in,
-                assets[asset_in_index].asset_address,
+                asset_in_index.try_into().unwrap(),
                 assets[asset_in_index].supply.checked_sub(amount).unwrap(),
             );
 
@@ -381,7 +382,7 @@ pub mod exchange {
                 let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
-                    burn_asset.asset_address,
+                    burn_asset_index.try_into().unwrap(),
                     burn_asset.supply.checked_sub(burned_amount).unwrap(),
                 );
                 // Burn token
@@ -404,7 +405,7 @@ pub mod exchange {
 
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
-                    burn_asset.asset_address,
+                    burn_asset_index.try_into().unwrap(),
                     burn_asset.supply.checked_sub(amount).unwrap(),
                 );
                 // Burn token
@@ -520,7 +521,7 @@ pub mod exchange {
 
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
-                    usd_token.asset_address,
+                    0u8, // xUSD always have 0 index
                     usd_token.supply.checked_sub(burned_amount).unwrap(),
                 );
                 let burn_accounts = Burn {

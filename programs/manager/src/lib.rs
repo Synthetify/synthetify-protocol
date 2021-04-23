@@ -113,15 +113,11 @@ pub mod manager {
     }
     pub fn set_asset_supply(
         ctx: Context<SetAssetSupply>,
-        asset_address: Pubkey,
+        asset_index: u8, // use index istead of address to save computation units
         new_supply: u64,
     ) -> ProgramResult {
         let assets_list = &mut ctx.accounts.assets_list;
-        let asset = assets_list
-            .assets
-            .iter_mut()
-            .find(|x| x.asset_address == asset_address)
-            .unwrap();
+        let asset = &mut assets_list.assets[asset_index as usize];
         if new_supply.gt(&asset.max_supply) {
             return Err(ErrorCode::MaxSupply.into());
         }

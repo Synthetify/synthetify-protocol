@@ -105,10 +105,10 @@ export class Manager {
   public async setAssetSupply({
     assetsList,
     exchangeAuthority,
-    assetAddress,
+    assetIndex,
     newSupply
   }: SetAssetSupply) {
-    return await this.program.rpc.setAssetSupply(assetAddress, newSupply, {
+    return await this.program.rpc.setAssetSupply(new BN(assetIndex), newSupply, {
       accounts: {
         assetsList: assetsList,
         exchangeAuthority: exchangeAuthority.publicKey
@@ -209,7 +209,7 @@ export interface AssetsList {
   assets: Array<Asset>
 }
 export interface SetAssetSupply {
-  assetAddress: PublicKey
+  assetIndex: number
   assetsList: PublicKey
   exchangeAuthority: Account
   newSupply: BN
