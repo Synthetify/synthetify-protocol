@@ -73,7 +73,7 @@ export class Manager {
       signers: [assetListAccount],
       instructions: [
         // @ts-expect-error
-        await this.program.account.assetsList.createInstruction(assetListAccount, size * 97 + 45)
+        await this.program.account.assetsList.createInstruction(assetListAccount, size * 105 + 45)
       ]
     })
     return assetListAccount.publicKey
@@ -200,6 +200,7 @@ export interface Asset {
   supply: BN
   lastUpdate: BN
   maxSupply: BN
+  settlementSlot: BN
   decimals: number
 }
 export interface AssetsList {

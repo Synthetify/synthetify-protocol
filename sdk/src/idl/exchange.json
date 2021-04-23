@@ -55,6 +55,10 @@
             "type": "publicKey"
           },
           {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
             "name": "nonce",
             "type": "u8"
           },
@@ -608,6 +612,22 @@
             "type": "u32"
           }
         ]
+      },
+      {
+        "name": "setHalted",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "halted",
+            "type": "bool"
+          }
+        ]
       }
     ]
   },
@@ -708,5 +728,8 @@
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "HqSs8NqLCBFwU14aj6hcHArTV5sKrL9Gp1hwZzCtB1hY"
+  }
 }

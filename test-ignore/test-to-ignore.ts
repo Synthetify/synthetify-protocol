@@ -63,8 +63,8 @@ describe('manager', () => {
       },
       signers: [assetListAccount],
       instructions: [
-        // 291 allows for 3 assets
-        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 97 + 13)
+        // 328 allows for 3 assets
+        await managerProgram.account.assetsList.createInstruction(assetListAccount, 3 * 105 + 13)
       ]
     })
     await managerProgram.state.rpc.createList(

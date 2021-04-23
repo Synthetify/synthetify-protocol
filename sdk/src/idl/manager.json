@@ -245,6 +245,10 @@
           {
             "name": "maxSupply",
             "type": "u64"
+          },
+          {
+            "name": "settlementSlot",
+            "type": "u64"
           }
         ]
       }
@@ -271,5 +275,8 @@
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "4Pfn2yYQmFfj5f8FkRsHWTVGhcivZFgif5CpDKMTJybK"
+  }
 }

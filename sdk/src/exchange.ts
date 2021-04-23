@@ -384,6 +384,14 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setHaltedInstruction(halted: boolean) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setHalted(halted, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -651,6 +659,7 @@ export interface Init {
 }
 export interface ExchangeState {
   admin: PublicKey
+  halted: boolean
   nonce: number
   debtShares: BN
   collateralShares: BN

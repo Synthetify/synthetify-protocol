@@ -123,6 +123,7 @@ describe('liquidation', () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
+    assert.ok(state.halted === false)
     assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.liquidationAccount.equals(liquidationAccount))
     assert.ok(state.collateralAccount.equals(collateralAccount))
@@ -135,8 +136,8 @@ describe('liquidation', () => {
     assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.liquidationBuffer === 172800)
-    assert.ok(state.debtShares.gt(new BN(0)))
-    assert.ok(state.collateralShares.gt(new BN(0)))
+    assert.ok(state.debtShares.eq(new BN(0)))
+    assert.ok(state.collateralShares.eq(new BN(0)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
@@ -232,6 +233,22 @@ describe('liquidation', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.maxDelay === newMaxDelay)
+    })
+  })
+  describe('#setHalted()', async () => {
+    it('Fail without admin signature', async () => {
+      const halted = true
+      const ix = await exchange.setHaltedInstruction(halted)
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      const state = await exchange.getState()
+      assert.ok(state.halted !== halted)
+    })
+    it('change value', async () => {
+      const halted = true
+      const ix = await exchange.setHaltedInstruction(halted)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === halted)
     })
   })
 })

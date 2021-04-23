@@ -67,7 +67,7 @@ describe('manager', () => {
 
     await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
 
-    assetsList = await manager.createAssetsList(5)
+    assetsList = await manager.createAssetsList(4)
     await manager.initializeAssetsList({
       assetsList,
       collateralTokenFeed,
@@ -256,9 +256,7 @@ describe('manager', () => {
         newAssetDecimals,
         newAssetLimit
       }
-
-      const beforeAssetList = await manager.getAssetsList(assetsList)
-
+      // we hit limit of account size and cannot add another asset
       await assertThrowsAsync(addNewAssets(addNewAssetParams))
     })
   })

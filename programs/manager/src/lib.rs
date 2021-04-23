@@ -37,6 +37,7 @@ pub mod manager {
                 price: 1 * 10u64.pow(4),
                 supply: 0,
                 max_supply: std::u64::MAX, // no limit for usd asset
+                settlement_slot: u64::MAX,
             };
             let collateral_asset = Asset {
                 decimals: 6,
@@ -46,6 +47,7 @@ pub mod manager {
                 price: 0,
                 supply: 0,                 // unused
                 max_supply: std::u64::MAX, // no limit for collateral asset
+                settlement_slot: u64::MAX,
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
             ctx.accounts.assets_list.initialized = true;
@@ -71,6 +73,7 @@ pub mod manager {
                 price: 0,
                 supply: 0,
                 max_supply: new_asset_max_supply,
+                settlement_slot: u64::MAX,
             };
 
             ctx.accounts.assets_list.assets.push(new_asset);
@@ -202,8 +205,9 @@ pub struct Asset {
     pub decimals: u8,          // 1
     pub last_update: u64,      // 8
     pub max_supply: u64,       // 8
+    pub settlement_slot: u64,  // 8 unused
 }
-// This will need 45 + x*97 bytes for each asset
+// This will need 45 + x*105 bytes for each asset
 #[account]
 pub struct AssetsList {
     pub initialized: bool,

@@ -323,10 +323,10 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   }
 }
 
-export async function assertThrowsAsync(fn, regExp?) {
+export async function assertThrowsAsync(fn: Promise<any>, regExp?) {
   let f = () => {}
   try {
-    await fn()
+    await fn
   } catch (e) {
     f = () => {
       throw e

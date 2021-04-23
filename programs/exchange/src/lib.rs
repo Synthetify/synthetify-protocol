@@ -13,27 +13,31 @@ pub mod exchange {
     use crate::math::{calculate_debt, get_collateral_shares};
 
     use super::*;
-    #[state]
+    #[state(400)] // To ensure upgradability state is about 2x bigger than required
     pub struct InternalState {
-        pub admin: Pubkey,
-        pub nonce: u8,
-        pub debt_shares: u64,
-        pub collateral_shares: u64,
-        pub collateral_token: Pubkey,
-        pub collateral_account: Pubkey,
-        pub assets_list: Pubkey,
-        pub collateralization_level: u32, // in % should range from 300%-1000%
-        pub max_delay: u32,               // max blocks of delay 100 blocks ~ 1 min
-        pub fee: u32,                     //  300 = 0.3%
-        pub liquidation_account: Pubkey,
-        pub liquidation_penalty: u8,   //  in % range 0-25%
-        pub liquidation_threshold: u8, // in % should range from 130-200%
-        pub liquidation_buffer: u32,   // time given user to fix collateralization ratio
+        // size = 204
+        //8 Account signature
+        pub admin: Pubkey,                //32
+        pub halted: bool,                 //1
+        pub nonce: u8,                    //1
+        pub debt_shares: u64,             //8
+        pub collateral_shares: u64,       //8
+        pub collateral_token: Pubkey,     //32
+        pub collateral_account: Pubkey,   //32
+        pub assets_list: Pubkey,          //32
+        pub collateralization_level: u32, //4   in % should range from 300%-1000%
+        pub max_delay: u32,               //4   max blocks of delay 100 blocks ~ 1 min
+        pub fee: u32,                     //4   300 = 0.3%
+        pub liquidation_account: Pubkey,  //32
+        pub liquidation_penalty: u8,      //1   in % range 0-25%
+        pub liquidation_threshold: u8,    //1   in % should range from 130-200%
+        pub liquidation_buffer: u32,      //4   time given user to fix collateralization ratio
     }
     impl InternalState {
         pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
             Ok(Self {
                 admin: *ctx.accounts.admin.key,
+                halted: false,
                 nonce: nonce,
                 debt_shares: 0u64,
                 collateral_shares: 0u64,
@@ -51,6 +55,10 @@ pub mod exchange {
         }
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
             msg!("Syntetify: DEPOSIT");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
 
             if !ctx
                 .accounts
@@ -83,6 +91,10 @@ pub mod exchange {
         }
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
             msg!("Syntetify: MINT");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
 
             let mint_token_adddress = ctx.accounts.usd_token.key;
             let collateral_account = &ctx.accounts.collateral_account;
@@ -151,6 +163,10 @@ pub mod exchange {
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
             msg!("Syntetify: WITHDRAW");
 
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
+
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
             if !collateral_account
@@ -211,6 +227,11 @@ pub mod exchange {
         }
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
             msg!("Syntetify: SWAP");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
+
             let exchange_account = &mut ctx.accounts.exchange_account;
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
@@ -314,6 +335,11 @@ pub mod exchange {
         }
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
             msg!("Syntetify: BURN");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
+
             let exchange_account = &mut ctx.accounts.exchange_account;
             let token_address = ctx.accounts.token_burn.key;
             let slot = ctx.accounts.clock.slot;
@@ -389,6 +415,11 @@ pub mod exchange {
         }
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
             msg!("Syntetify: LIQUIDATE");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
+
             let exchange_account = &mut ctx.accounts.exchange_account;
             let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
             let assets_list = &ctx.accounts.assets_list;
@@ -534,6 +565,11 @@ pub mod exchange {
             ctx: Context<CheckCollateralization>,
         ) -> Result<()> {
             msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
+
+            if self.halted {
+                return Err(ErrorCode::Halted.into());
+            }
+
             let assets_list = &ctx.accounts.assets_list;
             let collateral_account = &ctx.accounts.collateral_account;
             let exchange_account = &mut ctx.accounts.exchange_account;
@@ -644,12 +680,21 @@ pub mod exchange {
             Ok(())
         }
         pub fn set_max_delay(&mut self, ctx: Context<AdminAction>, max_delay: u32) -> Result<()> {
-            msg!("Syntetify:Admin: MAX DELAY");
+            msg!("Syntetify:Admin: SET MAX DELAY");
 
             if !ctx.accounts.admin.key.eq(&self.admin) {
                 return Err(ErrorCode::Unauthorized.into());
             }
             self.max_delay = max_delay;
+            Ok(())
+        }
+        pub fn set_halted(&mut self, ctx: Context<AdminAction>, halted: bool) -> Result<()> {
+            msg!("Syntetify:Admin: SET HALTED");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            self.halted = halted;
             Ok(())
         }
     }
@@ -910,4 +955,6 @@ pub enum ErrorCode {
     ExchangeLiquidationAccount,
     #[msg("Liquidation deadline not passed")]
     LiquidationDeadline,
+    #[msg("Program is currently Halted")]
+    Halted,
 }

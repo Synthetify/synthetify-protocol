@@ -117,6 +117,7 @@ describe('exchange', () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
+    assert.ok(state.halted === false)
     assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.liquidationAccount.equals(liquidationAccount))
     assert.ok(state.collateralAccount.equals(collateralAccount))
@@ -260,13 +261,13 @@ describe('exchange', () => {
         [],
         tou64(amount)
       )
-      await assertThrowsAsync(async () => {
-        await signAndSend(
+      await assertThrowsAsync(
+        signAndSend(
           new Transaction().add(approveIx).add(depositIx),
           [wallet, accountOwner],
           connection
         )
-      })
+      )
     })
   })
   describe('#mint()', async () => {
@@ -1395,6 +1396,277 @@ describe('exchange', () => {
       // Burned all BTC
       const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
       assert.ok(userBtcTokenAccountAfter.amount.eq(new BN(0)))
+    })
+  })
+  describe('System Halted', async () => {
+    it('#deposit()', async () => {
+      const accountOwner = new Account()
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+
+      const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+      const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
+      await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+      const depositIx = await exchange.depositInstruction({
+        amount,
+        exchangeAccount,
+        userCollateralAccount: userCollateralTokenAccount
+      })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      const stateHalted = await exchange.getState()
+      assert.ok(stateHalted.halted === true)
+
+      // should fail
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(approveIx).add(depositIx),
+          [wallet, accountOwner],
+          connection
+        )
+      )
+      // unlock
+      const ix = await exchange.setHaltedInstruction(false)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === false)
+
+      // should pass
+      await signAndSend(
+        new Transaction().add(approveIx).add(depositIx),
+        [wallet, accountOwner],
+        connection
+      )
+    })
+    it('#mint()', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      const usdMintAmount = new BN(5 * 1e6)
+
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      const stateHalted = await exchange.getState()
+      assert.ok(stateHalted.halted === true)
+
+      // should fail
+      await assertThrowsAsync(
+        exchange.mint({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          to: usdTokenAccount,
+          signers: [accountOwner]
+        })
+      )
+      // unlock
+      const ix = await exchange.setHaltedInstruction(false)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === false)
+
+      // should pass
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+    })
+    it('#withdraw()', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const withdrawAmount = new BN(20 * 1e6)
+
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      const stateHalted = await exchange.getState()
+      assert.ok(stateHalted.halted === true)
+
+      // should fail
+      await assertThrowsAsync(
+        exchange.withdraw({
+          amount: withdrawAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          to: userCollateralTokenAccount,
+          signers: [accountOwner]
+        })
+      )
+      // unlock
+      const ix = await exchange.setHaltedInstruction(false)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === false)
+
+      // should pass
+      await exchange.withdraw({
+        amount: withdrawAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
+    })
+    it('#burn()', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount,
+        usdMintAmount,
+        usdTokenAccount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      const stateHalted = await exchange.getState()
+      assert.ok(stateHalted.halted === true)
+
+      // should fail
+      await assertThrowsAsync(
+        exchange.burn({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          tokenBurn: usdToken.publicKey,
+          userTokenAccountBurn: usdTokenAccount,
+          signers: [accountOwner]
+        })
+      )
+      // unlock
+      const ix = await exchange.setHaltedInstruction(false)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === false)
+
+      // should pass
+      await exchange.burn({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        tokenBurn: usdToken.publicKey,
+        userTokenAccountBurn: usdTokenAccount,
+        signers: [accountOwner]
+      })
+    })
+    it('#swap()', async () => {
+      const btcToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const btcFeed = await createPriceFeed({
+        admin: ORACLE_ADMIN.publicKey,
+        oracleProgram,
+        initPrice: new BN(50000 * 1e4)
+      })
+      const newAssetLimit = new BN(10).pow(new BN(18))
+
+      await manager.addNewAsset({
+        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: btcToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: btcFeed
+      })
+      await exchange.getState()
+
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount,
+        usdMintAmount,
+        usdTokenAccount
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        collateralAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      const stateHalted = await exchange.getState()
+      assert.ok(stateHalted.halted === true)
+
+      // should fail
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: btcTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: btcToken.publicKey,
+          tokenIn: usdToken.publicKey,
+          signers: [accountOwner]
+        })
+      )
+      // unlock
+      const ix = await exchange.setHaltedInstruction(false)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === false)
+
+      // should pass
+      await exchange.swap({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor: btcTokenAccount,
+        userTokenAccountIn: usdTokenAccount,
+        tokenFor: btcToken.publicKey,
+        tokenIn: usdToken.publicKey,
+        signers: [accountOwner]
+      })
     })
   })
 })
