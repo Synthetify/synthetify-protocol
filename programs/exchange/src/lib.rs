@@ -54,22 +54,10 @@ pub mod exchange {
                 liquidation_buffer: 172800, // about 24 Hours
             })
         }
+        #[access_control(halted(&self) collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
             msg!("Syntetify: DEPOSIT");
 
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
-
-            if !ctx
-                .accounts
-                .collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             // Transfer token
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
@@ -90,29 +78,16 @@ pub mod exchange {
             self.collateral_shares = self.collateral_shares.checked_add(new_shares).unwrap();
             Ok(())
         }
+        #[access_control(halted(&self)
+        usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
+        collateral_account(&self,&ctx.accounts.collateral_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
             msg!("Syntetify: MINT");
 
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
-
-            let mint_token_adddress = ctx.accounts.usd_token.key;
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
-            if !mint_token_adddress.eq(&ctx.accounts.assets_list.assets[0].asset_address) {
-                return Err(ErrorCode::NotSyntheticUsd.into());
-            }
-            if !collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
-            }
+
             let assets = &assets_list.assets;
             let exchange_account = &mut ctx.accounts.exchange_account;
             let slot = ctx.accounts.clock.slot;
@@ -161,25 +136,14 @@ pub mod exchange {
             token::mint_to(cpi_ctx, amount);
             Ok(())
         }
+        #[access_control(halted(&self)
+        collateral_account(&self,&ctx.accounts.collateral_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
             msg!("Syntetify: WITHDRAW");
 
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
-
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
-            if !collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
-            }
             let slot = ctx.accounts.clock.slot;
             let assets = &assets_list.assets;
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
@@ -226,12 +190,11 @@ pub mod exchange {
             token::transfer(cpi_ctx, amount);
             Ok(())
         }
+        #[access_control(halted(&self)
+        collateral_account(&self,&ctx.accounts.collateral_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
             msg!("Syntetify: SWAP");
-
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
 
             let exchange_account = &mut ctx.accounts.exchange_account;
             let token_address_in = ctx.accounts.token_in.key;
@@ -241,21 +204,11 @@ pub mod exchange {
             let assets = &assets_list.assets;
 
             let collateral_account = &ctx.accounts.collateral_account;
-            if !collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
             if token_address_for.eq(&assets[1].asset_address) {
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
             if token_address_in.eq(token_address_for) {
                 return Err(ErrorCode::WashTrade.into());
-            }
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
             }
             let asset_in_index = assets
                 .iter()
@@ -334,21 +287,15 @@ pub mod exchange {
             token::mint_to(cpi_ctx_mint, amount_for);
             Ok(())
         }
+        #[access_control(halted(&self) assets_list(&self,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
             msg!("Syntetify: BURN");
-
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
 
             let exchange_account = &mut ctx.accounts.exchange_account;
             let token_address = ctx.accounts.token_burn.key;
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
-            }
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let burn_asset_index = assets
                 .iter()
@@ -414,19 +361,17 @@ pub mod exchange {
                 Ok(())
             }
         }
+
+        #[access_control(halted(&self) 
+        assets_list(&self,&ctx.accounts.assets_list) 
+        usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
+        collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
             msg!("Syntetify: LIQUIDATE");
-
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
 
             let exchange_account = &mut ctx.accounts.exchange_account;
             let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
             let assets_list = &ctx.accounts.assets_list;
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
-            }
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
             if !signer.eq(&user_usd_account.owner) {
@@ -436,22 +381,12 @@ pub mod exchange {
 
             let assets = &assets_list.assets;
             let collateral_account = &ctx.accounts.collateral_account;
-            if !collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
+
             if !liquidation_account.eq(&self.liquidation_account) {
                 return Err(ErrorCode::ExchangeLiquidationAccount.into());
             }
 
             let usd_token = &assets[0];
-            if !ctx.accounts.usd_token.key.eq(&usd_token.asset_address) {
-                return Err(ErrorCode::NotSyntheticUsd.into());
-            }
-
             if exchange_account.liquidation_deadline > slot {
                 return Err(ErrorCode::LiquidationDeadline.into());
             }
@@ -561,29 +496,19 @@ pub mod exchange {
 
             Ok(())
         }
+        #[access_control(halted(&self)
+        collateral_account(&self,&ctx.accounts.collateral_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
         pub fn check_account_collateralization(
             &mut self,
             ctx: Context<CheckCollateralization>,
         ) -> Result<()> {
             msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
 
-            if self.halted {
-                return Err(ErrorCode::Halted.into());
-            }
-
             let assets_list = &ctx.accounts.assets_list;
             let collateral_account = &ctx.accounts.collateral_account;
             let exchange_account = &mut ctx.accounts.exchange_account;
-            if !collateral_account
-                .to_account_info()
-                .key
-                .eq(&self.collateral_account)
-            {
-                return Err(ErrorCode::CollateralAccountError.into());
-            }
-            if !assets_list.to_account_info().key.eq(&self.assets_list) {
-                return Err(ErrorCode::InvalidAssetsList.into());
-            }
+
             let assets = &assets_list.assets;
             let slot = ctx.accounts.clock.slot;
             let collateral_asset = &assets[1];
@@ -948,10 +873,52 @@ pub enum ErrorCode {
 
 // Access control modifiers.
 
-// Asserts the IDO is in the first phase.
+// Only admin access
 fn admin<'info>(state: &InternalState, ctx: &Context<AdminAction<'info>>) -> Result<()> {
     if !ctx.accounts.admin.key.eq(&state.admin) {
         return Err(ErrorCode::Unauthorized.into());
+    }
+    Ok(())
+}
+// Check if program is halted
+fn halted<'info>(state: &InternalState) -> Result<()> {
+    if state.halted {
+        return Err(ErrorCode::Halted.into());
+    }
+    Ok(())
+}
+// Assert right assets_list
+fn assets_list<'info>(
+    state: &InternalState,
+    assets_list: &CpiAccount<'info, AssetsList>,
+) -> Result<()> {
+    if !assets_list.to_account_info().key.eq(&state.assets_list) {
+        return Err(ErrorCode::InvalidAssetsList.into());
+    }
+    Ok(())
+}
+// Assert right collateral_account
+fn collateral_account<'info>(
+    state: &InternalState,
+    collateral_account: &CpiAccount<'info, TokenAccount>,
+) -> Result<()> {
+    if !collateral_account
+        .to_account_info()
+        .key
+        .eq(&state.collateral_account)
+    {
+        return Err(ErrorCode::CollateralAccountError.into());
+    }
+    Ok(())
+}
+// Assert right usd_token
+fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &CpiAccount<AssetsList>) -> Result<()> {
+    if !usd_token
+        .to_account_info()
+        .key
+        .eq(&assets_list.assets[0].asset_address)
+    {
+        return Err(ErrorCode::NotSyntheticUsd.into());
     }
     Ok(())
 }
