@@ -619,6 +619,7 @@ pub mod exchange {
             Ok(())
         }
         // admin methods
+        #[access_control(admin(&self, &ctx))]
         pub fn set_liquidation_buffer(
             &mut self,
             ctx: Context<AdminAction>,
@@ -626,12 +627,10 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify:Admin: SET LIQUIDATION BUFFER");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_liquidation_threshold(
             &mut self,
             ctx: Context<AdminAction>,
@@ -639,12 +638,10 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify:Admin: SET LIQUIDATION THRESHOLD");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.liquidation_threshold = liquidation_threshold;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_liquidation_penalty(
             &mut self,
             ctx: Context<AdminAction>,
@@ -652,12 +649,10 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify:Admin: SET LIQUIDATION PENALTY");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.liquidation_penalty = liquidation_penalty;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_collateralization_level(
             &mut self,
             ctx: Context<AdminAction>,
@@ -665,36 +660,27 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify:Admin: SET COLLATERALIZATION LEVEL");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.collateralization_level = collateralization_level;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
             msg!("Syntetify:Admin: SET FEE");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.fee = fee;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_max_delay(&mut self, ctx: Context<AdminAction>, max_delay: u32) -> Result<()> {
             msg!("Syntetify:Admin: SET MAX DELAY");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.max_delay = max_delay;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
         pub fn set_halted(&mut self, ctx: Context<AdminAction>, halted: bool) -> Result<()> {
             msg!("Syntetify:Admin: SET HALTED");
 
-            if !ctx.accounts.admin.key.eq(&self.admin) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             self.halted = halted;
             Ok(())
         }
@@ -958,4 +944,14 @@ pub enum ErrorCode {
     LiquidationDeadline,
     #[msg("Program is currently Halted")]
     Halted,
+}
+
+// Access control modifiers.
+
+// Asserts the IDO is in the first phase.
+fn admin<'info>(state: &InternalState, ctx: &Context<AdminAction<'info>>) -> Result<()> {
+    if !ctx.accounts.admin.key.eq(&state.admin) {
+        return Err(ErrorCode::Unauthorized.into());
+    }
+    Ok(())
 }
