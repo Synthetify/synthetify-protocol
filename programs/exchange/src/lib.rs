@@ -657,6 +657,7 @@ pub struct Withdraw<'info> {
     pub collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub to: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
@@ -684,6 +685,7 @@ pub struct Mint<'info> {
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub to: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     pub manager_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -712,6 +714,7 @@ pub struct Deposit<'info> {
     pub collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
 }
@@ -731,6 +734,7 @@ pub struct Liquidate<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
@@ -754,6 +758,7 @@ pub struct BurnToken<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub token_burn: AccountInfo<'info>,
@@ -782,6 +787,7 @@ pub struct Swap<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: CpiAccount<'info, AssetsList>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub token_in: AccountInfo<'info>,
