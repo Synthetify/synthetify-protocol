@@ -4,14 +4,13 @@ mod utils;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use manager::{Asset, AssetsList, SetAssetSupply};
-use math::*;
 use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::convert::TryInto;
 
-    use crate::math::{calculate_debt, get_collateral_shares};
+    use crate::math::{amount_to_discount, amount_to_shares, calculate_amount_mint_in_usd, calculate_burned_shares, calculate_debt, calculate_liquidation, calculate_max_burned_in_token, calculate_max_user_debt_in_usd, calculate_max_withdraw_in_usd, calculate_max_withdrawable, calculate_new_shares, calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd, usd_to_token_amount};
 
     use super::*;
     #[state(400)] // To ensure upgradability state is about 2x bigger than required
@@ -59,23 +58,26 @@ pub mod exchange {
             msg!("Syntetify: DEPOSIT");
 
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
-            // Transfer token
-            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-            let signer = &[&seeds[..]];
-            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::transfer(cpi_ctx, amount);
-            let new_shares = get_collateral_shares(
-                &exchange_collateral_balance,
-                &amount,
-                &self.collateral_shares,
-            );
             let exchange_account = &mut ctx.accounts.exchange_account;
 
+            // Get shares based on deposited amount
+            let new_shares = calculate_new_shares(
+                self.collateral_shares,
+                exchange_collateral_balance,
+                amount,
+            );
+            // Adjust program and user collateral_shares
             exchange_account.collateral_shares = exchange_account
                 .collateral_shares
                 .checked_add(new_shares)
                 .unwrap();
             self.collateral_shares = self.collateral_shares.checked_add(new_shares).unwrap();
+
+            // Transfer token
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::transfer(cpi_ctx, amount);
             Ok(())
         }
         #[access_control(halted(&self)
@@ -95,7 +97,8 @@ pub mod exchange {
 
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-
+            // We can only mint xUSD
+            // Both xUSD and collateral token have static index in assets array
             let mint_asset = &assets[0];
             let collateral_asset = &assets[1];
 
@@ -109,10 +112,19 @@ pub mod exchange {
                 self.collateralization_level,
                 collateral_amount,
             );
+
             if max_user_debt < amount.checked_add(user_debt).unwrap() {
                 return Err(ErrorCode::MintLimit.into());
             }
+
+            // Adjust program and user debt_shares
             let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount);
+            self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
+            exchange_account.debt_shares = exchange_account
+                .debt_shares
+                .checked_add(new_shares)
+                .unwrap();
+
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_program = ctx.accounts.manager_program.clone();
@@ -120,20 +132,16 @@ pub mod exchange {
                 assets_list: ctx.accounts.assets_list.clone().into(),
                 exchange_authority: ctx.accounts.exchange_authority.clone().into(),
             };
-            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
+            // Adjust supply of xUSD
+            let set_supply_cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
             manager::cpi::set_asset_supply(
-                cpi_ctx,
+                set_supply_cpi_ctx,
                 0u8, // xUSD always have 0 index
                 mint_asset.supply.checked_add(amount).unwrap(),
             );
-            self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
-            exchange_account.debt_shares = exchange_account
-                .debt_shares
-                .checked_add(new_shares)
-                .unwrap();
-
-            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::mint_to(cpi_ctx, amount);
+            // Mint xUSD to user
+            let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::mint_to(mint_cpi_ctx, amount);
             Ok(())
         }
         #[access_control(halted(&self)
@@ -145,14 +153,16 @@ pub mod exchange {
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
             let slot = ctx.accounts.clock.slot;
-            let assets = &assets_list.assets;
-            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
-
             let exchange_account = &mut ctx.accounts.exchange_account;
+            let assets = &assets_list.assets;
 
+            
+            
+            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
 
+            // collateral_asset have static index
             let collateral_asset = &assets[1];
 
             let collateral_amount = calculate_user_collateral_in_token(
@@ -172,22 +182,27 @@ pub mod exchange {
             );
             let max_withdrawable =
                 calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+
             if max_withdrawable < amount {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
+
             let shares_to_burn =
                 amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
-            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-            let signer = &[&seeds[..]];
-
+            
+            // Adjust program and user debt_shares
             self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
             exchange_account.collateral_shares = exchange_account
-                .collateral_shares
-                .checked_sub(shares_to_burn)
-                .unwrap();
-
+            .collateral_shares
+            .checked_sub(shares_to_burn)
+            .unwrap();
+                
+            // Send withdrawn collateral to user
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::transfer(cpi_ctx, amount);
+
             Ok(())
         }
         #[access_control(halted(&self)
@@ -197,19 +212,21 @@ pub mod exchange {
             msg!("Syntetify: SWAP");
 
             let exchange_account = &mut ctx.accounts.exchange_account;
+            let collateral_account = &ctx.accounts.collateral_account;
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
 
-            let collateral_account = &ctx.accounts.collateral_account;
             if token_address_for.eq(&assets[1].asset_address) {
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
+            // Swaping for same assets is forbidden
             if token_address_in.eq(token_address_for) {
                 return Err(ErrorCode::WashTrade.into());
             }
+            //Get indexes of both assets
             let asset_in_index = assets
                 .iter()
                 .position(|x| x.asset_address == *token_address_in)
@@ -219,6 +236,7 @@ pub mod exchange {
                 .position(|x| x.asset_address == *token_address_for)
                 .unwrap();
 
+            // Check is oracles have been updated
             check_feed_update(
                 &assets,
                 asset_in_index,
@@ -227,12 +245,13 @@ pub mod exchange {
                 slot,
             )
             .unwrap();
+
             let collateral_amount = calculate_user_collateral_in_token(
                 exchange_account.collateral_shares,
                 self.collateral_shares,
                 collateral_account.amount,
             );
-
+            // Get effective_fee base on user collateral balance
             let discount = amount_to_discount(collateral_amount);
             let effective_fee = self
                 .fee
@@ -246,6 +265,7 @@ pub mod exchange {
                 )
                 .unwrap();
 
+            // Output amount ~ 100% - fee of input
             let amount_for = calculate_swap_out_amount(
                 &assets[asset_in_index],
                 &assets[asset_for_index],
@@ -260,6 +280,7 @@ pub mod exchange {
                 assets_list: ctx.accounts.assets_list.clone().into(),
                 exchange_authority: ctx.accounts.exchange_authority.clone().into(),
             };
+            // Set new supply output token
             let cpi_ctx_for =
                 CpiContext::new(cpi_program.clone(), cpi_accounts.clone()).with_signer(signer);
             manager::cpi::set_asset_supply(
@@ -270,18 +291,19 @@ pub mod exchange {
                     .checked_add(amount_for)
                     .unwrap(),
             );
+            // Set new supply input token
             let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
-
             manager::cpi::set_asset_supply(
                 cpi_ctx_in,
                 asset_in_index.try_into().unwrap(),
                 assets[asset_in_index].supply.checked_sub(amount).unwrap(),
             );
-
+            // Burn input token
             let cpi_ctx_burn: CpiContext<Burn> =
                 CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::burn(cpi_ctx_burn, amount);
 
+            // Mint output token
             let cpi_ctx_mint: CpiContext<MintTo> =
                 CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::mint_to(cpi_ctx_mint, amount_for);
@@ -296,12 +318,14 @@ pub mod exchange {
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
-            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
+            // Get burned asset
             let burn_asset_index = assets
                 .iter()
                 .position(|x| x.asset_address == *token_address)
                 .unwrap();
             let burn_asset = &assets[burn_asset_index];
+
+            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
             let burned_shares = calculate_burned_shares(
@@ -310,11 +334,14 @@ pub mod exchange {
                 &exchange_account.debt_shares,
                 &amount,
             );
+
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
-            if burned_shares >= exchange_account.debt_shares {
-                let burned_amount = calculate_max_burned_in_token(&burn_asset, &user_debt);
 
+            // Check if user burned more than debt
+            if burned_shares >= exchange_account.debt_shares {
+                // Burn adjusted amount
+                let burned_amount = calculate_max_burned_in_token(&burn_asset, &user_debt);
                 self.debt_shares = self
                     .debt_shares
                     .checked_sub(exchange_account.debt_shares)
@@ -337,6 +364,7 @@ pub mod exchange {
                 token::burn(cpi_ctx, burned_amount);
                 Ok(())
             } else {
+                // Burn intended amount
                 exchange_account.debt_shares = exchange_account
                     .debt_shares
                     .checked_sub(burned_shares)
@@ -374,19 +402,25 @@ pub mod exchange {
             let assets_list = &ctx.accounts.assets_list;
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
+            let collateral_account = &ctx.accounts.collateral_account;
+            let slot = ctx.accounts.clock.slot;
+            let assets = &assets_list.assets;
+
+            // xUSD as collateral_asset have static indexes
+            let usd_token = &assets[0];
+            let collateral_asset = &assets[1];
+
+            // Signer need to be owner of source amount
             if !signer.eq(&user_usd_account.owner) {
                 return Err(ErrorCode::InvalidSigner.into());
             }
-            let slot = ctx.accounts.clock.slot;
 
-            let assets = &assets_list.assets;
-            let collateral_account = &ctx.accounts.collateral_account;
-
+            // Check program liquidation account
             if !liquidation_account.eq(&self.liquidation_account) {
                 return Err(ErrorCode::ExchangeLiquidationAccount.into());
             }
 
-            let usd_token = &assets[0];
+            // Time given user to adjust collateral ratio passed
             if exchange_account.liquidation_deadline > slot {
                 return Err(ErrorCode::LiquidationDeadline.into());
             }
@@ -396,30 +430,30 @@ pub mod exchange {
                 self.collateral_shares,
                 collateral_account.amount,
             );
-            let collateral_asset = &assets[1];
 
             let collateral_amount_in_usd =
                 calculate_amount_mint_in_usd(&collateral_asset, collateral_amount_in_token);
 
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
-
+            
+            // Check if collateral ratio is user 200%
             check_liquidation(
                 collateral_amount_in_usd,
                 user_debt,
                 self.liquidation_threshold,
             )
             .unwrap();
+
             let (burned_amount, user_reward_usd, system_reward_usd) = calculate_liquidation(
                 collateral_amount_in_usd,
                 user_debt,
                 self.collateralization_level,
                 self.liquidation_penalty,
             );
+            // Get amount of collateral send to luquidator and system account
             let amount_to_liquidator = usd_to_token_amount(&collateral_asset, user_reward_usd);
             let amount_to_system = usd_to_token_amount(&collateral_asset, system_reward_usd);
-            msg!("amount_to_liquidator  {}", amount_to_liquidator);
-            msg!("amount_to_system  {}", amount_to_system);
 
             let burned_debt_shares = amount_to_shares(self.debt_shares, debt, burned_amount);
             let burned_collateral_shares = amount_to_shares(
@@ -428,6 +462,7 @@ pub mod exchange {
                 amount_to_system.checked_add(amount_to_liquidator).unwrap(),
             );
 
+            // Adjust shares of collateral and debt
             self.collateral_shares = self
                 .collateral_shares
                 .checked_sub(burned_collateral_shares)
@@ -441,11 +476,14 @@ pub mod exchange {
                 .collateral_shares
                 .checked_sub(burned_collateral_shares)
                 .unwrap();
+
+            // Remove liquidation_deadline from liquidated account
             exchange_account.liquidation_deadline = u64::MAX;
+
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer_seeds = &[&seeds[..]];
             {
-                // burn usd
+                // burn xUSD
                 let manager_program = ctx.accounts.manager_program.clone();
                 let cpi_accounts = SetAssetSupply {
                     assets_list: ctx.accounts.assets_list.clone().into(),
@@ -467,10 +505,9 @@ pub mod exchange {
                 let token_program = ctx.accounts.token_program.to_account_info();
                 let burn = CpiContext::new(token_program, burn_accounts).with_signer(signer_seeds);
                 token::burn(burn, burned_amount);
-                msg!("burned_amount {}", burned_amount);
             }
             {
-                // transfer to liquidator
+                // transfer collateral to liquidator
                 let liquidator_accounts = Transfer {
                     from: ctx.accounts.collateral_account.to_account_info(),
                     to: ctx.accounts.user_collateral_account.to_account_info(),
@@ -482,7 +519,7 @@ pub mod exchange {
                 token::transfer(transfer, amount_to_liquidator);
             }
             {
-                // transfer to system
+                // transfer collateral to system
                 let system_accounts = Transfer {
                     from: ctx.accounts.collateral_account.to_account_info(),
                     to: ctx.accounts.liquidation_account.to_account_info(),
@@ -529,6 +566,8 @@ pub mod exchange {
                 user_debt,
                 self.liquidation_threshold,
             );
+            // If account is undercollaterized set liquidation_deadline
+            // After liquidation_deadline slot account can be liquidated 
             match result {
                 Ok(_) => {
                     if exchange_account.liquidation_deadline == u64::MAX {

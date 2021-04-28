@@ -40,7 +40,7 @@ pub fn check_liquidation(
         .checked_div(100)
         .unwrap()
         >= user_collateral as u128;
-    if (is_safe) {
+    if is_safe {
         return Ok(());
     } else {
         return Err(ErrorCode::InvalidLiquidation.into());

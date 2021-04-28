@@ -7,22 +7,6 @@ const ORACLE_OFFSET: u8 = 4;
 // Min decimals for asset = 6
 const ACCURACY: u8 = 6;
 
-pub fn get_collateral_shares(
-    collateral_amount: &u64,
-    to_deposit_amount: &u64,
-    collateral_shares: &u64,
-) -> u64 {
-    if *collateral_shares == 0u64 {
-        return *to_deposit_amount;
-    }
-    let shares = (*to_deposit_amount as u128)
-        .checked_mul(*collateral_shares as u128)
-        .unwrap()
-        .checked_div(*collateral_amount as u128)
-        .unwrap();
-    return shares.try_into().unwrap();
-}
-
 pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
     for asset in assets.iter() {
@@ -95,14 +79,14 @@ pub fn calculate_max_user_debt_in_usd(
     .unwrap();
 }
 
-pub fn calculate_new_shares(shares: u64, debt: u64, minted_amount_usd: u64) -> u64 {
-    if shares == 0u64 {
-        return minted_amount_usd;
+pub fn calculate_new_shares(all_shares: u64, full_amount: u64, new_amount: u64) -> u64 {
+    if all_shares == 0u64 {
+        return new_amount;
     }
-    let new_shares = (shares as u128)
-        .checked_mul(minted_amount_usd as u128)
+    let new_shares = (all_shares as u128)
+        .checked_mul(new_amount as u128)
         .unwrap()
-        .checked_div(debt as u128)
+        .checked_div(full_amount as u128)
         .unwrap();
 
     return new_shares.try_into().unwrap();
@@ -191,6 +175,7 @@ pub fn calculate_swap_out_amount(
                 .unwrap(),
         )
         .unwrap();
+    // If assets have different decimals we need to scale them.
     let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
@@ -305,14 +290,14 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_get_collateral_shares() {
+    fn test_calculate_new_shares() {
         // Zero shares
         {
             let collateral_shares = 0u64;
             let collateral_amount = 0u64;
             let to_deposit_amount = 10u64.pow(6);
             let new_shares =
-                get_collateral_shares(&collateral_amount, &to_deposit_amount, &collateral_shares);
+                calculate_new_shares(collateral_amount, to_deposit_amount, collateral_shares);
             // Initial shares = deposited amount
             assert_eq!(new_shares, to_deposit_amount)
         }
@@ -322,7 +307,7 @@ mod tests {
             let collateral_amount = 10u64.pow(6);
             let to_deposit_amount = 10u64.pow(6);
             let new_shares =
-                get_collateral_shares(&collateral_amount, &to_deposit_amount, &collateral_shares);
+                calculate_new_shares(collateral_amount, to_deposit_amount, collateral_shares);
             // Deposit same amount so new shares should eq existing
             assert_eq!(new_shares, collateral_shares)
         }
@@ -332,7 +317,7 @@ mod tests {
             let collateral_amount = 100_000_000 * 1u64.pow(6);
             let to_deposit_amount = 10_000_000 * 1u64.pow(6);
             let new_shares =
-                get_collateral_shares(&collateral_amount, &to_deposit_amount, &collateral_shares);
+                calculate_new_shares(collateral_amount, to_deposit_amount, collateral_shares);
             // Deposit  1/10 of existing balance
             assert_eq!(new_shares, collateral_shares.div(10))
         }
