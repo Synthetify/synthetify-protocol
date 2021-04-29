@@ -263,7 +263,8 @@ export const createAccountWithCollateral = async ({
   const depositIx = await exchange.depositInstruction({
     amount: amount,
     exchangeAccount,
-    userCollateralAccount: userCollateralTokenAccount
+    userCollateralAccount: userCollateralTokenAccount,
+    owner: accountOwner.publicKey
   })
   const approveIx = Token.createApproveInstruction(
     collateralToken.programId,

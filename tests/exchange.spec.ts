@@ -164,7 +164,8 @@ describe('exchange', () => {
       const depositIx = await exchange.depositInstruction({
         amount,
         exchangeAccount,
-        userCollateralAccount: userCollateralTokenAccount
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,
@@ -207,7 +208,8 @@ describe('exchange', () => {
       const depositIx = await exchange.depositInstruction({
         amount,
         exchangeAccount,
-        userCollateralAccount: userCollateralTokenAccount
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,
@@ -251,7 +253,8 @@ describe('exchange', () => {
       const depositIx = await exchange.depositInstruction({
         amount: amount.mul(new BN(2)),
         exchangeAccount,
-        userCollateralAccount: userCollateralTokenAccount
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,
@@ -1409,7 +1412,8 @@ describe('exchange', () => {
       const depositIx = await exchange.depositInstruction({
         amount,
         exchangeAccount,
-        userCollateralAccount: userCollateralTokenAccount
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,

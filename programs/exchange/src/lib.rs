@@ -59,6 +59,13 @@ pub mod exchange {
 
             let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             let exchange_account = &mut ctx.accounts.exchange_account;
+            let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+            
+            let tx_signer = ctx.accounts.owner.key;
+            // Signer need to be owner of source account
+            if !tx_signer.eq(&user_collateral_account.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
 
             // Get shares based on deposited amount
             let new_shares = calculate_new_shares(
@@ -156,8 +163,6 @@ pub mod exchange {
             let exchange_account = &mut ctx.accounts.exchange_account;
             let assets = &assets_list.assets;
 
-            
-            
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
@@ -218,7 +223,13 @@ pub mod exchange {
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
+            let user_token_account_in = &ctx.accounts.user_token_account_in;
+            let tx_signer = ctx.accounts.owner.key;
 
+            // Signer need to be owner of source account
+            if !tx_signer.eq(&user_token_account_in.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
             if token_address_for.eq(&assets[1].asset_address) {
                 return Err(ErrorCode::SyntheticCollateral.into());
             }
@@ -318,6 +329,15 @@ pub mod exchange {
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
+
+            let tx_signer = ctx.accounts.owner.key;
+            let user_token_account_burn = &ctx.accounts.user_token_account_burn;
+
+             // Signer need to be owner of source account
+             if !tx_signer.eq(&user_token_account_burn.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
+
             // Get burned asset
             let burn_asset_index = assets
                 .iter()
@@ -360,6 +380,8 @@ pub mod exchange {
                     burn_asset.supply.checked_sub(burned_amount).unwrap(),
                 );
                 // Burn token
+                // We do not use full allowance maybe its better to burn full allowance
+                // and mint matching amount
                 let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
                 token::burn(cpi_ctx, burned_amount);
                 Ok(())
@@ -519,7 +541,7 @@ pub mod exchange {
                 token::transfer(transfer, amount_to_liquidator);
             }
             {
-                // transfer collateral to system
+                // transfer collateral to liquidation_account
                 let system_accounts = Transfer {
                     from: ctx.accounts.collateral_account.to_account_info(),
                     to: ctx.accounts.liquidation_account.to_account_info(),
@@ -755,6 +777,9 @@ pub struct Deposit<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
+    // owner can deposit to any exchange_account
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -802,7 +827,7 @@ pub struct BurnToken<'info> {
     #[account(mut)]
     pub token_burn: AccountInfo<'info>,
     #[account(mut)]
-    pub user_token_account_burn: AccountInfo<'info>,
+    pub user_token_account_burn: CpiAccount<'info,TokenAccount>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]
@@ -833,7 +858,7 @@ pub struct Swap<'info> {
     #[account(mut)]
     pub token_for: AccountInfo<'info>,
     #[account(mut)]
-    pub user_token_account_in: AccountInfo<'info>,
+    pub user_token_account_in: CpiAccount<'info,TokenAccount>,
     #[account(mut)]
     pub user_token_account_for: AccountInfo<'info>,
     #[account(mut, has_one = owner)]

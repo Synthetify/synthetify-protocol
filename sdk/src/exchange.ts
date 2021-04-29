@@ -203,11 +203,13 @@ export class Exchange {
   public async depositInstruction({
     amount,
     exchangeAccount,
-    userCollateralAccount
+    userCollateralAccount,
+    owner
   }: DepositInstruction) {
     // @ts-expect-error
     return (await this.program.state.instruction.deposit(amount, {
       accounts: {
+        owner: owner,
         exchangeAccount: exchangeAccount,
         collateralAccount: this.state.collateralAccount,
         userCollateralAccount: userCollateralAccount,
@@ -647,6 +649,7 @@ export interface WithdrawInstruction {
 export interface DepositInstruction {
   exchangeAccount: PublicKey
   userCollateralAccount: PublicKey
+  owner: PublicKey
   amount: BN
 }
 export interface Init {
