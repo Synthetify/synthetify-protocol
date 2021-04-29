@@ -29,6 +29,9 @@ pub mod manager {
             if !self.admin.eq(ctx.accounts.signer.key) {
                 return Err(ErrorCode::Unauthorized.into());
             }
+            if ctx.accounts.assets_list.initialized {
+                return Err(ErrorCode::Initialized.into());
+            }
             let usd_asset = Asset {
                 decimals: 6,
                 asset_address: usd_token,
@@ -64,6 +67,9 @@ pub mod manager {
         ) -> Result<()> {
             if !self.admin.eq(ctx.accounts.signer.key) {
                 return Err(ErrorCode::Unauthorized.into());
+            }
+            if !ctx.accounts.assets_list.initialized {
+                return Err(ErrorCode::Uninitialized.into());
             }
             let new_asset = Asset {
                 decimals: new_asset_decimals,
@@ -216,6 +222,10 @@ pub enum ErrorCode {
     ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
+    #[msg("Assets list already initialized")]
+    Initialized,
+    #[msg("Assets list is not initialized")]
+    Uninitialized,
     #[msg("No asset with such address was found")]
     NoAssetFound,
     #[msg("Asset max_supply crossed")]
