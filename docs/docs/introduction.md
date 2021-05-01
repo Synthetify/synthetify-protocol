@@ -3,7 +3,7 @@ title: Introduction
 slug: /
 ---
 
-### Synthetify
+### Synthetify !!!
 
 **Synthetify** is decentralized synthetic assets protocol build on [Solana](https://solana.com/) blockchain. The protocol allows for creation and exchange of synthetic assets that closely track the price of specific assets. Synthetic tokens are based on [SPL-Token](https://spl.solana.com/token) standard that gives them ability to be easily integrated with other DeFi applications like AMM.
 
