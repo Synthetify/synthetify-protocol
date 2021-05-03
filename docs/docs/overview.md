@@ -31,5 +31,7 @@ This example explains the core mechanism of Synthetify and the risks of particip
 ![Table of sums for the example](https://i.imgur.com/avSuATV.jpg)
 
 **Step 1** Both Alice and Olivia have the same amount of debt (50%). Entire debt is equal to $10k. Olivia holds $5k synthetic USD and Alice holds $5k synthetic SOL.
+
 **Step 2** The price of xSOL doubles making Alice’s balance worth $10k this causes debt to rise to $15k. Olivia still holds xUSD and the value of this token is stable.
+
 **Step 3** Both Alice and Olivia are still responsible for the entire debt of the protocol each for 50% of it. Debt increased by $5k so the debt of Alice and Olivia will rise by $2.5k. When we match positions against owned debt for Alice and Olivia, we see that Alice ended up with $2,5k profit and Olivia lost $2,5k since her debt increased by this amount.
