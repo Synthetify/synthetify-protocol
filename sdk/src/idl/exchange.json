@@ -393,7 +393,7 @@
             "isSigner": false
           },
           {
-            "name": "tokenBurn",
+            "name": "usdToken",
             "isMut": true,
             "isSigner": false
           },
@@ -738,5 +738,8 @@
       "name": "Halted",
       "msg": "Program is currently Halted"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "Hy8ZwhqRF8zJsnNXwu1NMyBYkg3CphqSEdn4kh4YGeQK"
+  }
 }

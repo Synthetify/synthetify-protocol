@@ -5,9 +5,11 @@ import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Account,
   PublicKey,
+  sendAndConfirmRawTransaction,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
-  Transaction
+  Transaction,
+  TransactionInstruction
 } from '@solana/web3.js'
 import { assert, expect } from 'chai'
 import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
@@ -1189,7 +1191,6 @@ describe('exchange', () => {
         amount: usdMintAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
-        tokenBurn: usdToken.publicKey,
         userTokenAccountBurn: usdTokenAccount,
         signers: [accountOwner]
       })
@@ -1250,7 +1251,6 @@ describe('exchange', () => {
         amount: usdMintAmount.add(transferAmount),
         exchangeAccount,
         owner: accountOwner.publicKey,
-        tokenBurn: usdToken.publicKey,
         userTokenAccountBurn: usdTokenAccount,
         signers: [accountOwner]
       })
@@ -1290,49 +1290,13 @@ describe('exchange', () => {
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
-          tokenBurn: usdToken.publicKey,
           userTokenAccountBurn: usdTokenAccount,
           signers: []
         })
       )
     })
-    it('Burn wrong token', async () => {
+    it.only('Burn wrong token', async () => {
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        usdTokenAccount,
-        userCollateralTokenAccount,
-        usdMintAmount
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
-
-      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
-      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
-
-      await assertThrowsAsync(
-        exchange.burn({
-          amount: usdMintAmount,
-          exchangeAccount,
-          owner: accountOwner.publicKey,
-          tokenBurn: ethToken.publicKey,
-          userTokenAccountBurn: usdTokenAccount,
-          signers: [accountOwner]
-        })
-      )
-    })
-    it('Burn btc token', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
-
       const {
         accountOwner,
         exchangeAccount,
@@ -1350,12 +1314,12 @@ describe('exchange', () => {
       })
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
       const userBtcTokenAccount = await btcToken.getAccountInfo(btcTokenAccount)
       assert.ok(userBtcTokenAccount.amount.eq(new BN(0)))
-      const userUsdTokenAccount = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccount.amount.eq(usdMintAmount))
-      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountData.debtShares.gt(new BN(0)))
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
@@ -1381,24 +1345,44 @@ describe('exchange', () => {
       )
       const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
       assert.ok(userBtcTokenAccountBefore.amount.eq(btcAmountOut))
-      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+      // @ts-expect-error
+      const burnIx = await (exchange.program.state.instruction.burn(btcAmountOut, {
+        accounts: {
+          exchangeAuthority: exchangeAuthority,
+          usdToken: btcToken.publicKey,
+          userTokenAccountBurn: btcTokenAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          clock: SYSVAR_CLOCK_PUBKEY,
+          exchangeAccount: exchangeAccount,
+          owner: accountOwner.publicKey,
+          assetsList: exchange.state.assetsList,
+          managerProgram: exchange.manager.programId
+        }
+      }) as TransactionInstruction)
+      const updateIx = await exchange.manager.updatePricesInstruction(exchange.state.assetsList)
 
-      await exchange.burn({
-        amount: btcAmountOut,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        tokenBurn: btcToken.publicKey,
-        userTokenAccountBurn: btcTokenAccount,
-        signers: [accountOwner]
+      const approveIx = await Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        btcTokenAccount,
+        exchange.exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(btcAmountOut)
+      )
+      const updateTx = new Transaction().add(updateIx)
+      const burnTx = new Transaction().add(approveIx).add(burnIx)
+      // @ts-expect-error
+      const txs = await exchange.processOperations([updateTx, burnTx])
+      txs[1].partialSign(accountOwner)
+      await connection.sendRawTransaction(txs[0].serialize(), {
+        skipPreflight: true
       })
-      // We should endup with some debt
-      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountAfter.debtShares.gt(new BN(0)))
-      assert.ok(exchangeAccountAfter.debtShares.lt(exchangeAccountBefore.debtShares))
-
-      // Burned all BTC
-      const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
-      assert.ok(userBtcTokenAccountAfter.amount.eq(new BN(0)))
+      await sleep(600)
+      await assertThrowsAsync(
+        sendAndConfirmRawTransaction(connection, txs[1].serialize(), {
+          skipPreflight: true
+        })
+      )
     })
   })
   describe('System Halted', async () => {
@@ -1572,7 +1556,6 @@ describe('exchange', () => {
           amount: usdMintAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
-          tokenBurn: usdToken.publicKey,
           userTokenAccountBurn: usdTokenAccount,
           signers: [accountOwner]
         })
@@ -1588,7 +1571,6 @@ describe('exchange', () => {
         amount: usdMintAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
-        tokenBurn: usdToken.publicKey,
         userTokenAccountBurn: usdTokenAccount,
         signers: [accountOwner]
       })

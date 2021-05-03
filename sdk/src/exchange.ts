@@ -306,14 +306,13 @@ export class Exchange {
     amount,
     exchangeAccount,
     owner,
-    tokenBurn,
     userTokenAccountBurn
   }: BurnInstruction) {
     // @ts-expect-error
     return await (this.program.state.instruction.burn(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        tokenBurn: tokenBurn,
+        usdToken: this.assetsList.assets[0].assetAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
         clock: SYSVAR_CLOCK_PUBKEY,
@@ -495,20 +494,12 @@ export class Exchange {
       skipPreflight: true
     })
   }
-  public async burn({
-    amount,
-    exchangeAccount,
-    owner,
-    tokenBurn,
-    userTokenAccountBurn,
-    signers
-  }: Burn) {
+  public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
     const burnIx = await this.burnInstruction({
       amount,
       exchangeAccount,
       owner,
-      tokenBurn,
       userTokenAccountBurn
     })
     const approveIx = await Token.createApproveInstruction(
@@ -600,7 +591,6 @@ export interface Swap {
 export interface Burn {
   exchangeAccount: PublicKey
   owner: PublicKey
-  tokenBurn: PublicKey
   userTokenAccountBurn: PublicKey
   amount: BN
   signers?: Array<Account>
@@ -636,7 +626,6 @@ export interface LiquidateInstruction {
 export interface BurnInstruction {
   exchangeAccount: PublicKey
   owner: PublicKey
-  tokenBurn: PublicKey
   userTokenAccountBurn: PublicKey
   amount: BN
 }

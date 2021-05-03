@@ -267,13 +267,26 @@
     },
     {
       "code": 102,
+      "name": "Initialized",
+      "msg": "Assets list already initialized"
+    },
+    {
+      "code": 103,
+      "name": "Uninitialized",
+      "msg": "Assets list is not initialized"
+    },
+    {
+      "code": 104,
       "name": "NoAssetFound",
       "msg": "No asset with such address was found"
     },
     {
-      "code": 103,
+      "code": 105,
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "2ZzGktyKcE3gCYJTcasq7dD1MVCLMj1NbSiLucr7bk3X"
+  }
 }

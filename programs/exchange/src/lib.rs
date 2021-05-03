@@ -320,12 +320,13 @@ pub mod exchange {
             token::mint_to(cpi_ctx_mint, amount_for);
             Ok(())
         }
-        #[access_control(halted(&self) assets_list(&self,&ctx.accounts.assets_list))]
+        #[access_control(halted(&self) 
+        assets_list(&self,&ctx.accounts.assets_list) 
+        usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
             msg!("Syntetify: BURN");
 
             let exchange_account = &mut ctx.accounts.exchange_account;
-            let token_address = ctx.accounts.token_burn.key;
             let slot = ctx.accounts.clock.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
@@ -337,13 +338,8 @@ pub mod exchange {
              if !tx_signer.eq(&user_token_account_burn.owner) {
                 return Err(ErrorCode::InvalidSigner.into());
             }
-
-            // Get burned asset
-            let burn_asset_index = assets
-                .iter()
-                .position(|x| x.asset_address == *token_address)
-                .unwrap();
-            let burn_asset = &assets[burn_asset_index];
+            // xUSD got static index 0
+            let burn_asset = &assets[0];
 
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
@@ -376,7 +372,7 @@ pub mod exchange {
                 let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
-                    burn_asset_index.try_into().unwrap(),
+                    0u8, // xUSD got static index 0
                     burn_asset.supply.checked_sub(burned_amount).unwrap(),
                 );
                 // Burn token
@@ -402,7 +398,7 @@ pub mod exchange {
 
                 manager::cpi::set_asset_supply(
                     cpi_ctx_in,
-                    burn_asset_index.try_into().unwrap(),
+                    0u8, // xUSD got static index 0
                     burn_asset.supply.checked_sub(amount).unwrap(),
                 );
                 // Burn token
@@ -825,7 +821,7 @@ pub struct BurnToken<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
-    pub token_burn: AccountInfo<'info>,
+    pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub user_token_account_burn: CpiAccount<'info,TokenAccount>,
     #[account(mut, has_one = owner)]
@@ -838,7 +834,7 @@ pub struct BurnToken<'info> {
 impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
     fn from(accounts: &BurnToken<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
         let cpi_accounts = Burn {
-            mint: accounts.token_burn.to_account_info(),
+            mint: accounts.usd_token.to_account_info(),
             to: accounts.user_token_account_burn.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
