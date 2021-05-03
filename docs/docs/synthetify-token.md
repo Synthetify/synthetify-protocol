@@ -12,3 +12,5 @@ Each trade has a static fee - currently 0.3% and no matter the size of the trade
 ### Listing new assets
 
 Adding new assets to Synthetify exchange requires existence of a reliable price oracle for this asset. Currently, Synthetify team controls what assets are listed on the exchange but in the future this decision will be moved to governance instance.
+
+![Assets Exchange Symbolic Represantation](https://i.imgur.com/Th7VFtz.png)
