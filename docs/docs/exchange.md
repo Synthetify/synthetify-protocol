@@ -12,15 +12,4 @@ SNY is the only collateral token currently supported by Synthetify platform. The
 
 The SNY Token is planned to have a total supply of **100,000,000**. We plan do introduce perpetual inflation in the future. The initial distribution of SNY will be as follows:
 
-![Piechart of Token Distribution](https://i.imgur.com/XeDClHn.jpeg)
-
-* 20% Synthetify Team
-* 1% Family Sale
-* 5% Private Sale
-* 20% Company Reserve
-* 10% Dynamic Reserves
-* 10% Exchange Liquidity
-* 10% Liquidity Mining
-* 24% IEO/IDO/Auction
-
-*Team, Family and Private Sale tokens are subject to 4 years lockup program with 10% of tokens unlocked immediately and the rest vested on a block by block basis.
+![Table of Token Distribution](https://i.imgur.com/hT7UZ6H.png)
