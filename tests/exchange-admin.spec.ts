@@ -37,7 +37,7 @@ import {
   U64_MAX
 } from './utils'
 
-describe('liquidation', () => {
+describe('staking', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -56,8 +56,11 @@ describe('liquidation', () => {
   let exchangeAuthority: PublicKey
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
+  let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
+  const stakingRoundLength = 10
+  const amountPerRound = new BN(100)
 
   let initialCollateralPrice = new BN(2 * 1e4)
   before(async () => {
@@ -80,6 +83,7 @@ describe('liquidation', () => {
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
+    stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -108,7 +112,10 @@ describe('liquidation', () => {
       collateralAccount,
       liquidationAccount,
       collateralToken: collateralToken.publicKey,
-      nonce
+      nonce,
+      amountPerRound: amountPerRound,
+      stakingRoundLength: stakingRoundLength,
+      stakingFundAccount: stakingFundAccount
     })
     exchange = await Exchange.build(
       connection,

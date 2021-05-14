@@ -107,16 +107,21 @@ export class Exchange {
     collateralAccount,
     collateralToken,
     nonce,
-    liquidationAccount
+    liquidationAccount,
+    amountPerRound,
+    stakingRoundLength,
+    stakingFundAccount
   }: Init) {
     // @ts-expect-error
-    await this.program.state.rpc.new(nonce, {
+    await this.program.state.rpc.new(nonce, stakingRoundLength, amountPerRound, {
       accounts: {
         admin: admin,
         collateralToken: collateralToken,
         collateralAccount: collateralAccount,
         assetsList: assetsList,
-        liquidationAccount: liquidationAccount
+        clock: SYSVAR_CLOCK_PUBKEY,
+        liquidationAccount: liquidationAccount,
+        stakingFundAccount: stakingFundAccount
       }
     })
   }
@@ -214,7 +219,8 @@ export class Exchange {
         collateralAccount: this.state.collateralAccount,
         userCollateralAccount: userCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAuthority: this.exchangeAuthority
+        exchangeAuthority: this.exchangeAuthority,
+        clock: SYSVAR_CLOCK_PUBKEY
       }
     })) as TransactionInstruction
   }
@@ -320,6 +326,33 @@ export class Exchange {
         owner: owner,
         assetsList: this.state.assetsList,
         managerProgram: this.manager.programId
+      }
+    }) as TransactionInstruction)
+  }
+  public async claimRewardsInstruction(exchangeAccount: PublicKey) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.claimRewards({
+      accounts: {
+        clock: SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount
+      }
+    }) as TransactionInstruction)
+  }
+  public async withdrawRewardsInstruction({
+    exchangeAccount,
+    owner,
+    userTokenAccount
+  }: WithdrawRewardsInstruction) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.withdrawRewards({
+      accounts: {
+        clock: SYSVAR_CLOCK_PUBKEY,
+        exchangeAccount: exchangeAccount,
+        exchangeAuthority: this.exchangeAuthority,
+        owner: owner,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        userTokenAccount: userTokenAccount,
+        stakingFundAccount: this.state.staking.fundAccount
       }
     }) as TransactionInstruction)
   }
@@ -562,6 +595,32 @@ export class Exchange {
       skipPreflight: true
     })
   }
+  public async withdrawRewards({
+    exchangeAccount,
+    owner,
+    signers,
+    userTokenAccount
+  }: WithdrawRewards) {
+    const withdrawIx = await this.withdrawRewardsInstruction({
+      userTokenAccount,
+      exchangeAccount,
+      owner
+    })
+    const withdrawTx = new Transaction().add(withdrawIx)
+    const txs = await this.processOperations([withdrawTx])
+    signers ? txs[0].partialSign(...signers) : null
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
+      skipPreflight: true
+    })
+  }
+  public async claimRewards(exchangeAccount: PublicKey) {
+    const claimRewardsIx = await this.claimRewardsInstruction(exchangeAccount)
+    const tx = new Transaction().add(claimRewardsIx)
+    const txs = await this.processOperations([tx])
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
+      skipPreflight: true
+    })
+  }
 }
 export interface Mint {
   exchangeAccount: PublicKey
@@ -602,6 +661,12 @@ export interface Withdraw {
   amount: BN
   signers?: Array<Account>
 }
+export interface WithdrawRewards {
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  userTokenAccount: PublicKey
+  signers?: Array<Account>
+}
 export interface MintInstruction {
   exchangeAccount: PublicKey
   owner: PublicKey
@@ -629,6 +694,11 @@ export interface BurnInstruction {
   userTokenAccountBurn: PublicKey
   amount: BN
 }
+export interface WithdrawRewardsInstruction {
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  userTokenAccount: PublicKey
+}
 export interface WithdrawInstruction {
   exchangeAccount: PublicKey
   owner: PublicKey
@@ -644,6 +714,9 @@ export interface DepositInstruction {
 export interface Init {
   admin: PublicKey
   nonce: number
+  stakingRoundLength: number
+  stakingFundAccount: PublicKey
+  amountPerRound: BN
   assetsList: PublicKey
   collateralToken: PublicKey
   collateralAccount: PublicKey
@@ -665,10 +738,32 @@ export interface ExchangeState {
   liquidationPenalty: number
   liquidationThreshold: number
   liquidationBuffer: number
+  staking: Staking
+}
+export interface Staking {
+  fundAccount: PublicKey
+  roundLength: number
+  amountPerRound: BN
+  finishedRound: StakingRound
+  currentRound: StakingRound
+  nextRound: StakingRound
+}
+export interface StakingRound {
+  start: BN
+  amount: BN
+  allPoints: BN
 }
 export interface ExchangeAccount {
   owner: PublicKey
   debtShares: BN
   collateralShares: BN
   liquidationDeadline: BN
+  userStakingData: UserStaking
+}
+export interface UserStaking {
+  amountToClaim: BN
+  finishedRoundPoints: BN
+  currentRoundPoints: BN
+  nextRoundPoints: BN
+  lastUpdate: BN
 }

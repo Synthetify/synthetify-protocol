@@ -10,12 +10,19 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 pub mod exchange {
     use std::convert::TryInto;
 
-    use crate::math::{amount_to_discount, amount_to_shares, calculate_amount_mint_in_usd, calculate_burned_shares, calculate_debt, calculate_liquidation, calculate_max_burned_in_token, calculate_max_user_debt_in_usd, calculate_max_withdraw_in_usd, calculate_max_withdrawable, calculate_new_shares, calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd, usd_to_token_amount};
+    use crate::math::{
+        amount_to_discount, amount_to_shares, calculate_amount_mint_in_usd,
+        calculate_burned_shares, calculate_debt, calculate_liquidation,
+        calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
+        calculate_max_withdraw_in_usd, calculate_max_withdrawable, calculate_new_shares,
+        calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd,
+        usd_to_token_amount,
+    };
 
     use super::*;
-    #[state(400)] // To ensure upgradability state is about 2x bigger than required
+    #[state(640)] // To ensure upgradability state is about 2x bigger than required
     pub struct InternalState {
-        // size = 204
+        // size = 320
         //8 Account signature
         pub admin: Pubkey,                //32
         pub halted: bool,                 //1
@@ -32,9 +39,15 @@ pub mod exchange {
         pub liquidation_penalty: u8,      //1   in % range 0-25%
         pub liquidation_threshold: u8,    //1   in % should range from 130-200%
         pub liquidation_buffer: u32,      //4   time given user to fix collateralization ratio
+        pub staking: Staking,             //116
     }
     impl InternalState {
-        pub fn new(ctx: Context<New>, nonce: u8) -> Result<Self> {
+        pub fn new(
+            ctx: Context<New>,
+            nonce: u8,
+            staking_round_length: u32,
+            amount_per_round: u64,
+        ) -> Result<Self> {
             Ok(Self {
                 admin: *ctx.accounts.admin.key,
                 halted: false,
@@ -50,17 +63,51 @@ pub mod exchange {
                 fee: 300,
                 liquidation_penalty: 15,
                 liquidation_threshold: 200,
-                liquidation_buffer: 172800, // about 24 Hours
+                liquidation_buffer: 172800, // about 24 Hours,
+                staking: Staking {
+                    round_length: staking_round_length,
+                    amount_per_round: amount_per_round,
+                    fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
+                    finished_round: StakingRound {
+                        all_points: 0,
+                        amount: 0,
+                        start: 0,
+                    },
+                    current_round: StakingRound {
+                        all_points: 0,
+                        amount: 0,
+                        start: ctx.accounts.clock.slot,
+                    },
+                    next_round: StakingRound {
+                        all_points: 0,
+                        amount: amount_per_round,
+                        start: ctx
+                            .accounts
+                            .clock
+                            .slot
+                            .checked_add(staking_round_length.into())
+                            .unwrap(),
+                    },
+                },
             })
         }
         #[access_control(halted(&self) collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
             msg!("Syntetify: DEPOSIT");
 
-            let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             let exchange_account = &mut ctx.accounts.exchange_account;
+
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
+            let exchange_collateral_balance = ctx.accounts.collateral_account.amount;
             let user_collateral_account = &mut ctx.accounts.user_collateral_account;
-            
+
             let tx_signer = ctx.accounts.owner.key;
             // Signer need to be owner of source account
             if !tx_signer.eq(&user_collateral_account.owner) {
@@ -68,11 +115,8 @@ pub mod exchange {
             }
 
             // Get shares based on deposited amount
-            let new_shares = calculate_new_shares(
-                self.collateral_shares,
-                exchange_collateral_balance,
-                amount,
-            );
+            let new_shares =
+                calculate_new_shares(self.collateral_shares, exchange_collateral_balance, amount);
             // Adjust program and user collateral_shares
             exchange_account.collateral_shares = exchange_account
                 .collateral_shares
@@ -93,13 +137,19 @@ pub mod exchange {
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
             msg!("Syntetify: MINT");
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
 
             let assets = &assets_list.assets;
-            let exchange_account = &mut ctx.accounts.exchange_account;
-            let slot = ctx.accounts.clock.slot;
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
 
             let user_debt =
@@ -131,6 +181,9 @@ pub mod exchange {
                 .debt_shares
                 .checked_add(new_shares)
                 .unwrap();
+            // Change points for next staking round
+            exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
+            self.staking.next_round.all_points = self.debt_shares;
 
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
@@ -157,10 +210,17 @@ pub mod exchange {
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
             msg!("Syntetify: WITHDRAW");
 
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
             let collateral_account = &ctx.accounts.collateral_account;
             let assets_list = &ctx.accounts.assets_list;
-            let slot = ctx.accounts.clock.slot;
-            let exchange_account = &mut ctx.accounts.exchange_account;
             let assets = &assets_list.assets;
 
             let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
@@ -194,14 +254,14 @@ pub mod exchange {
 
             let shares_to_burn =
                 amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
-            
+
             // Adjust program and user debt_shares
             self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
             exchange_account.collateral_shares = exchange_account
-            .collateral_shares
-            .checked_sub(shares_to_burn)
-            .unwrap();
-                
+                .collateral_shares
+                .checked_sub(shares_to_burn)
+                .unwrap();
+
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
@@ -216,7 +276,14 @@ pub mod exchange {
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
             msg!("Syntetify: SWAP");
 
+            let slot = ctx.accounts.clock.slot;
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
             let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
             let collateral_account = &ctx.accounts.collateral_account;
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
@@ -320,22 +387,28 @@ pub mod exchange {
             token::mint_to(cpi_ctx_mint, amount_for);
             Ok(())
         }
-        #[access_control(halted(&self) 
-        assets_list(&self,&ctx.accounts.assets_list) 
+        #[access_control(halted(&self)
+        assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
             msg!("Syntetify: BURN");
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
             let exchange_account = &mut ctx.accounts.exchange_account;
-            let slot = ctx.accounts.clock.slot;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
 
             let tx_signer = ctx.accounts.owner.key;
             let user_token_account_burn = &ctx.accounts.user_token_account_burn;
 
-             // Signer need to be owner of source account
-             if !tx_signer.eq(&user_token_account_burn.owner) {
+            // Signer need to be owner of source account
+            if !tx_signer.eq(&user_token_account_burn.owner) {
                 return Err(ErrorCode::InvalidSigner.into());
             }
             // xUSD got static index 0
@@ -362,7 +435,22 @@ pub mod exchange {
                     .debt_shares
                     .checked_sub(exchange_account.debt_shares)
                     .unwrap();
+
+                self.staking.next_round.all_points = self.debt_shares;
+                // Should be fine used checked math just in case
+                self.staking.current_round.all_points = self
+                    .staking
+                    .current_round
+                    .all_points
+                    .checked_sub(exchange_account.user_staking_data.current_round_points)
+                    .unwrap();
+
                 exchange_account.debt_shares = 0;
+                // Change points for next staking round
+                exchange_account.user_staking_data.next_round_points = 0;
+                // Change points for current staking round
+                exchange_account.user_staking_data.current_round_points = 0;
+
                 // Change supply
                 let cpi_program = ctx.accounts.manager_program.clone();
                 let cpi_accounts = SetAssetSupply {
@@ -388,6 +476,33 @@ pub mod exchange {
                     .checked_sub(burned_shares)
                     .unwrap();
                 self.debt_shares = self.debt_shares.checked_sub(burned_shares).unwrap();
+                self.staking.next_round.all_points = self.debt_shares;
+
+                // Change points for next staking round
+                exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
+                // Change points for current staking round
+                if exchange_account.user_staking_data.current_round_points >= burned_shares {
+                    exchange_account.user_staking_data.current_round_points = exchange_account
+                        .user_staking_data
+                        .current_round_points
+                        .checked_sub(burned_shares)
+                        .unwrap();
+                    self.staking.current_round.all_points = self
+                        .staking
+                        .current_round
+                        .all_points
+                        .checked_sub(burned_shares)
+                        .unwrap();
+                } else {
+                    self.staking.current_round.all_points = self
+                        .staking
+                        .current_round
+                        .all_points
+                        .checked_sub(exchange_account.user_staking_data.current_round_points)
+                        .unwrap();
+                    exchange_account.user_staking_data.current_round_points = 0;
+                }
+
                 // Change supply
                 let cpi_program = ctx.accounts.manager_program.clone();
                 let cpi_accounts = SetAssetSupply {
@@ -408,20 +523,27 @@ pub mod exchange {
             }
         }
 
-        #[access_control(halted(&self) 
-        assets_list(&self,&ctx.accounts.assets_list) 
+        #[access_control(halted(&self)
+        assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
         collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
             msg!("Syntetify: LIQUIDATE");
 
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
             let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
             let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
             let assets_list = &ctx.accounts.assets_list;
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
             let collateral_account = &ctx.accounts.collateral_account;
-            let slot = ctx.accounts.clock.slot;
             let assets = &assets_list.assets;
 
             // xUSD as collateral_asset have static indexes
@@ -454,7 +576,7 @@ pub mod exchange {
 
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
-            
+
             // Check if collateral ratio is user 200%
             check_liquidation(
                 collateral_amount_in_usd,
@@ -494,6 +616,24 @@ pub mod exchange {
                 .collateral_shares
                 .checked_sub(burned_collateral_shares)
                 .unwrap();
+
+            // Remove staking for liquidation
+            self.staking.next_round.all_points = self.debt_shares;
+            self.staking.current_round.all_points = self
+                .staking
+                .current_round
+                .all_points
+                .checked_sub(exchange_account.user_staking_data.current_round_points)
+                .unwrap();
+            self.staking.finished_round.all_points = self
+                .staking
+                .finished_round
+                .all_points
+                .checked_sub(exchange_account.user_staking_data.finished_round_points)
+                .unwrap();
+            exchange_account.user_staking_data.finished_round_points = 0u64;
+            exchange_account.user_staking_data.current_round_points = 0u64;
+            exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
 
             // Remove liquidation_deadline from liquidated account
             exchange_account.liquidation_deadline = u64::MAX;
@@ -560,12 +700,19 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
 
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
             let assets_list = &ctx.accounts.assets_list;
             let collateral_account = &ctx.accounts.collateral_account;
-            let exchange_account = &mut ctx.accounts.exchange_account;
 
             let assets = &assets_list.assets;
-            let slot = ctx.accounts.clock.slot;
             let collateral_asset = &assets[1];
 
             let collateral_amount_in_token = calculate_user_collateral_in_token(
@@ -585,7 +732,7 @@ pub mod exchange {
                 self.liquidation_threshold,
             );
             // If account is undercollaterized set liquidation_deadline
-            // After liquidation_deadline slot account can be liquidated 
+            // After liquidation_deadline slot account can be liquidated
             match result {
                 Ok(_) => {
                     if exchange_account.liquidation_deadline == u64::MAX {
@@ -598,6 +745,71 @@ pub mod exchange {
                 }
             }
 
+            Ok(())
+        }
+
+        #[access_control(halted(&self))]
+        pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
+            msg!("Syntetify: CLAIM REWARDS");
+
+            let slot = ctx.accounts.clock.slot;
+
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            let exchange_account = &mut ctx.accounts.exchange_account;
+
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
+            if self.staking.finished_round.amount > 0 {
+                let reward_amount = self
+                    .staking
+                    .finished_round
+                    .amount
+                    .checked_mul(exchange_account.user_staking_data.finished_round_points)
+                    .unwrap()
+                    .checked_div(self.staking.finished_round.all_points)
+                    .unwrap();
+
+                exchange_account.user_staking_data.amount_to_claim = exchange_account
+                    .user_staking_data
+                    .amount_to_claim
+                    .checked_add(reward_amount)
+                    .unwrap();
+                exchange_account.user_staking_data.finished_round_points = 0;
+            }
+
+            Ok(())
+        }
+        #[access_control(halted(&self) fund_account(&self,&ctx.accounts.staking_fund_account))]
+        pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
+            msg!("Syntetify: WITHDRAW REWARDS");
+
+            let slot = ctx.accounts.clock.slot;
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+
+            let exchange_account = &mut ctx.accounts.exchange_account;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
+
+            if exchange_account.user_staking_data.amount_to_claim == 0u64 {
+                return Err(ErrorCode::NoRewards.into());
+            }
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer_seeds = &[&seeds[..]];
+
+            // Transfer rewards
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.staking_fund_account.to_account_info(),
+                to: ctx.accounts.user_token_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let cpi_program = ctx.accounts.token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
+            token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim);
+            // Reset rewards amount
+            exchange_account.user_staking_data.amount_to_claim = 0u64;
             Ok(())
         }
         // admin methods
@@ -676,6 +888,7 @@ pub mod exchange {
         exchange_account.debt_shares = 0;
         exchange_account.collateral_shares = 0;
         exchange_account.liquidation_deadline = u64::MAX;
+        exchange_account.user_staking_data = UserStaking::default();
         Ok(())
     }
 }
@@ -686,6 +899,8 @@ pub struct New<'info> {
     pub collateral_account: AccountInfo<'info>,
     pub assets_list: AccountInfo<'info>,
     pub liquidation_account: AccountInfo<'info>,
+    pub staking_fund_account: CpiAccount<'info, TokenAccount>,
+    pub clock: Sysvar<'info, Clock>,
 }
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {
@@ -698,12 +913,14 @@ pub struct CreateExchangeAccount<'info> {
     pub state: ProgramState<'info, InternalState>,
     pub system_program: AccountInfo<'info>,
 }
+
 #[associated]
 pub struct ExchangeAccount {
     pub owner: Pubkey,
     pub debt_shares: u64,
     pub collateral_shares: u64,
     pub liquidation_deadline: u64,
+    pub user_staking_data: UserStaking,
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -777,6 +994,7 @@ pub struct Deposit<'info> {
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
+    pub clock: Sysvar<'info, Clock>,
 }
 impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Deposit<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -823,7 +1041,7 @@ pub struct BurnToken<'info> {
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
-    pub user_token_account_burn: CpiAccount<'info,TokenAccount>,
+    pub user_token_account_burn: CpiAccount<'info, TokenAccount>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]
@@ -854,7 +1072,7 @@ pub struct Swap<'info> {
     #[account(mut)]
     pub token_for: AccountInfo<'info>,
     #[account(mut)]
-    pub user_token_account_in: CpiAccount<'info,TokenAccount>,
+    pub user_token_account_in: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub user_token_account_for: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -896,13 +1114,56 @@ pub struct CheckCollateralization<'info> {
     pub clock: Sysvar<'info, Clock>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
-
+#[derive(Accounts)]
+pub struct ClaimRewards<'info> {
+    #[account(mut)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub clock: Sysvar<'info, Clock>,
+}
+#[derive(Accounts)]
+pub struct WithdrawRewards<'info> {
+    pub clock: Sysvar<'info, Clock>,
+    #[account(mut, has_one = owner)]
+    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub user_token_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub staking_fund_account: CpiAccount<'info, TokenAccount>,
+}
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+pub struct StakingRound {
+    pub start: u64,      // 8
+    pub amount: u64,     // 8
+    pub all_points: u64, // 8
+}
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+pub struct Staking {
+    pub fund_account: Pubkey,         //32
+    pub round_length: u32,            //4
+    pub amount_per_round: u64,        //8
+    pub finished_round: StakingRound, //24
+    pub current_round: StakingRound,  //24
+    pub next_round: StakingRound,     //24
+}
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+pub struct UserStaking {
+    pub amount_to_claim: u64,       //8
+    pub finished_round_points: u64, //8
+    pub current_round_points: u64,  //8
+    pub next_round_points: u64,     //8
+    pub last_update: u64,           //8
+}
 #[error]
 pub enum ErrorCode {
     #[msg("Your error message")]
@@ -935,6 +1196,10 @@ pub enum ErrorCode {
     LiquidationDeadline,
     #[msg("Program is currently Halted")]
     Halted,
+    #[msg("No rewards to claim")]
+    NoRewards,
+    #[msg("Invalid fund_account")]
+    FundAccountError,
 }
 
 // Access control modifiers.
@@ -985,6 +1250,21 @@ fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &CpiAccount<AssetsList
         .eq(&assets_list.assets[0].asset_address)
     {
         return Err(ErrorCode::NotSyntheticUsd.into());
+    }
+    Ok(())
+}
+
+// Assert right fundAccount
+fn fund_account<'info>(
+    state: &InternalState,
+    fund_account: &CpiAccount<'info, TokenAccount>,
+) -> Result<()> {
+    if !fund_account
+        .to_account_info()
+        .key
+        .eq(&state.staking.fund_account)
+    {
+        return Err(ErrorCode::FundAccountError.into());
     }
     Ok(())
 }

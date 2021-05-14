@@ -109,6 +109,12 @@
           {
             "name": "liquidationBuffer",
             "type": "u32"
+          },
+          {
+            "name": "staking",
+            "type": {
+              "defined": "Staking"
+            }
           }
         ]
       }
@@ -141,12 +147,30 @@
             "name": "liquidationAccount",
             "isMut": false,
             "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
           }
         ],
         "args": [
           {
             "name": "nonce",
             "type": "u8"
+          },
+          {
+            "name": "stakingRoundLength",
+            "type": "u32"
+          },
+          {
+            "name": "amountPerRound",
+            "type": "u64"
           }
         ]
       },
@@ -180,6 +204,11 @@
           },
           {
             "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "clock",
             "isMut": false,
             "isSigner": false
           }
@@ -523,6 +552,63 @@
         "args": []
       },
       {
+        "name": "claimRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "withdrawRewards",
+        "accounts": [
+          {
+            "name": "clock",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -657,6 +743,100 @@
           {
             "name": "liquidationDeadline",
             "type": "u64"
+          },
+          {
+            "name": "userStakingData",
+            "type": {
+              "defined": "UserStaking"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "StakingRound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "start",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "allPoints",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Staking",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fundAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "roundLength",
+            "type": "u32"
+          },
+          {
+            "name": "amountPerRound",
+            "type": "u64"
+          },
+          {
+            "name": "finishedRound",
+            "type": {
+              "defined": "StakingRound"
+            }
+          },
+          {
+            "name": "currentRound",
+            "type": {
+              "defined": "StakingRound"
+            }
+          },
+          {
+            "name": "nextRound",
+            "type": {
+              "defined": "StakingRound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserStaking",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amountToClaim",
+            "type": "u64"
+          },
+          {
+            "name": "finishedRoundPoints",
+            "type": "u64"
+          },
+          {
+            "name": "currentRoundPoints",
+            "type": "u64"
+          },
+          {
+            "name": "nextRoundPoints",
+            "type": "u64"
+          },
+          {
+            "name": "lastUpdate",
+            "type": "u64"
           }
         ]
       }
@@ -737,9 +917,16 @@
       "code": 114,
       "name": "Halted",
       "msg": "Program is currently Halted"
+    },
+    {
+      "code": 115,
+      "name": "NoRewards",
+      "msg": "No rewards to claim"
+    },
+    {
+      "code": 116,
+      "name": "FundAccountError",
+      "msg": "Invalid fund_account"
     }
-  ],
-  "metadata": {
-    "address": "Hy8ZwhqRF8zJsnNXwu1NMyBYkg3CphqSEdn4kh4YGeQK"
-  }
+  ]
 }

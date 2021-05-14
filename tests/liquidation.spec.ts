@@ -56,6 +56,7 @@ describe('liquidation', () => {
   let exchangeAuthority: PublicKey
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
+  let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
 
@@ -84,6 +85,7 @@ describe('liquidation', () => {
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
+    stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -112,7 +114,10 @@ describe('liquidation', () => {
       collateralAccount,
       liquidationAccount,
       collateralToken: collateralToken.publicKey,
-      nonce
+      nonce,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
+      stakingFundAccount: stakingFundAccount
     })
     exchange = await Exchange.build(
       connection,

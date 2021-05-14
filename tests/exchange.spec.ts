@@ -54,6 +54,7 @@ describe('exchange', () => {
   let exchangeAuthority: PublicKey
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
+  let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
   before(async () => {
@@ -76,6 +77,7 @@ describe('exchange', () => {
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
+    stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -104,7 +106,10 @@ describe('exchange', () => {
       collateralAccount,
       liquidationAccount,
       collateralToken: collateralToken.publicKey,
-      nonce
+      nonce,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
+      stakingFundAccount: stakingFundAccount
     })
     exchange = await Exchange.build(
       connection,
@@ -185,6 +190,7 @@ describe('exchange', () => {
       const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
         collateralAccount
       )
+
       // Increase by deposited amount
       assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
 
@@ -1295,7 +1301,7 @@ describe('exchange', () => {
         })
       )
     })
-    it.only('Burn wrong token', async () => {
+    it('Burn wrong token', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const {
         accountOwner,
