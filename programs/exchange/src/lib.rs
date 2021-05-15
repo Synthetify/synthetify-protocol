@@ -1,4 +1,4 @@
-mod math;
+pub mod math;
 mod utils;
 
 use anchor_lang::prelude::*;

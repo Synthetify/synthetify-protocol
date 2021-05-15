@@ -73,7 +73,7 @@ export class Manager {
       signers: [assetListAccount],
       instructions: [
         // @ts-expect-error
-        await this.program.account.assetsList.createInstruction(assetListAccount, size * 105 + 45)
+        await this.program.account.assetsList.createInstruction(assetListAccount, size * 109 + 45)
       ]
     })
     return assetListAccount.publicKey

@@ -1,0 +1,56 @@
+{
+  "version": "0.0.0",
+  "name": "pyth",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [
+        {
+          "name": "price",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "i64"
+        },
+        {
+          "name": "expo",
+          "type": "u8"
+        },
+        {
+          "name": "conf",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setPrice",
+      "accounts": [
+        {
+          "name": "price",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "i64"
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 100,
+      "name": "Hello",
+      "msg": "This is an error message clients will automatically display"
+    }
+  ],
+  "metadata": {
+    "address": "GNJgoHdxPU9bJnfKWiAVNdRksRvc91AsGm869h7uuMYF"
+  }
+}

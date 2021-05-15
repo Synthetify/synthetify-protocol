@@ -2,10 +2,10 @@ use std::{convert::TryInto, ops::Mul};
 
 use crate::*;
 use manager::Asset;
+use manager::PRICE_OFFSET;
 
-const ORACLE_OFFSET: u8 = 4;
 // Min decimals for asset = 6
-const ACCURACY: u8 = 6;
+pub const ACCURACY: u8 = 6;
 
 pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
@@ -19,7 +19,7 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
                 .checked_mul(asset.supply as u128)
                 .unwrap(),
             10u128
-                .checked_pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         );
     }
@@ -49,7 +49,7 @@ pub fn calculate_amount_mint_in_usd(mint_asset: &Asset, amount: u64) -> u64 {
         .unwrap()
         .checked_div(
             10u128
-                .checked_pow((mint_asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .checked_pow((mint_asset.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         )
         .unwrap();
@@ -66,7 +66,7 @@ pub fn calculate_max_user_debt_in_usd(
         .unwrap()
         .checked_div(
             10u128
-                .checked_pow((collateral_asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .checked_pow((collateral_asset.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         )
         .unwrap();
@@ -123,7 +123,7 @@ pub fn calculate_user_collateral_in_token(
 pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
     // collateral and usd have same number of decimals
     let tokens = (user_max_withdraw_in_usd as u128)
-        .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+        .checked_mul(10u128.pow(PRICE_OFFSET.into()))
         .unwrap()
         .checked_div(collateral_asset.price as u128)
         .unwrap();
@@ -198,7 +198,7 @@ pub fn calculate_burned_shares(
         .unwrap()
         .checked_div(
             10u128
-                .checked_pow((asset.decimals + ORACLE_OFFSET - ACCURACY).into())
+                .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         )
         .unwrap();
@@ -216,7 +216,7 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
             (*user_debt as u128)
                 .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
-                .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+                .checked_mul(10u128.pow(PRICE_OFFSET.into()))
                 .unwrap(),
             asset.price as u128,
         );
@@ -224,7 +224,7 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
     } else {
         let burned_amount_token = div_up(
             (*user_debt as u128)
-                .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+                .checked_mul(10u128.pow(PRICE_OFFSET.into()))
                 .unwrap()
                 .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap(),
@@ -235,7 +235,7 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
 }
 pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
     let amount = (amount as u128)
-        .checked_mul(10u128.pow(ORACLE_OFFSET.into()))
+        .checked_mul(10u128.pow(PRICE_OFFSET.into()))
         .unwrap()
         .checked_div(asset.price as u128)
         .unwrap();
@@ -329,7 +329,7 @@ mod tests {
             // debt 1000
             let asset_1 = Asset {
                 // oracle offset set as 4
-                price: 10 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 10 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100 * 10u64.pow(6),
                 last_update: slot - 10,
                 decimals: 6,
@@ -337,7 +337,7 @@ mod tests {
             };
             // debt 2400
             let asset_2 = Asset {
-                price: 12 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 12 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 200 * 10u64.pow(6),
                 last_update: 100,
                 decimals: 6,
@@ -345,7 +345,7 @@ mod tests {
             };
             // debt 1000
             let asset_3 = Asset {
-                price: 20 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 20 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 50 * 10u64.pow(8),
                 last_update: 100,
                 decimals: 8,
@@ -363,7 +363,7 @@ mod tests {
             let slot = 100;
             // debt 200_000_000
             let asset_1 = Asset {
-                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100_000_000 * 10u64.pow(6),
                 last_update: slot - 10,
                 decimals: 6,
@@ -371,7 +371,7 @@ mod tests {
             };
             // debt 5_000_000_000
             let asset_2 = Asset {
-                price: 50_000 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100_000 * 10u64.pow(8),
                 last_update: 100,
                 decimals: 8,
@@ -379,7 +379,7 @@ mod tests {
             };
             // debt 1_000_000
             let asset_3 = Asset {
-                price: (1 * 10u64.pow(ORACLE_OFFSET.into())),
+                price: (1 * 10u64.pow(PRICE_OFFSET.into())),
                 supply: 1_000_000 * 10u64.pow(8),
                 last_update: 100,
                 decimals: 8,
@@ -396,7 +396,7 @@ mod tests {
             let slot = 100;
             // debt 200_000_000
             let asset_1 = Asset {
-                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100_000_000 * 10u64.pow(8),
                 last_update: slot - 10,
                 decimals: 8,
@@ -404,7 +404,7 @@ mod tests {
             };
             // debt 5_000_000_000
             let asset_2 = Asset {
-                price: 50_000 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100_000 * 10u64.pow(8),
                 last_update: 100,
                 decimals: 8,
@@ -412,7 +412,7 @@ mod tests {
             };
             // debt 0.0001
             let asset_3 = Asset {
-                price: (0.0001 * 10u64.pow(ORACLE_OFFSET.into()) as f64) as u64,
+                price: (0.0001 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
                 supply: 1 * 10u64.pow(6),
                 last_update: 100,
                 decimals: 6,
@@ -420,7 +420,7 @@ mod tests {
             };
             // debt 0.152407...
             let asset_4 = Asset {
-                price: (1.2345 * 10u64.pow(ORACLE_OFFSET.into()) as f64) as u64,
+                price: (1.2345 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
                 supply: (0.12345678 * 10u64.pow(8) as f64) as u64,
                 last_update: 100,
                 decimals: 8,
@@ -437,7 +437,7 @@ mod tests {
             let slot = 100;
             // debt 198807739,182321
             let asset_1 = Asset {
-                price: (1.567 * 10u64.pow(ORACLE_OFFSET.into()) as f64) as u64,
+                price: (1.567 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
                 supply: (126871562.97531672 * 10u64.pow(8) as f64) as u64,
                 last_update: slot - 10,
                 decimals: 8,
@@ -445,7 +445,7 @@ mod tests {
             };
             // debt 733398054,012891
             let asset_2 = Asset {
-                price: (51420.19 * 10u64.pow(ORACLE_OFFSET.into()) as f64) as u64,
+                price: (51420.19 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
                 supply: (14262.842164 * 10u64.pow(6) as f64) as u64,
                 last_update: 100,
                 decimals: 6,
@@ -453,7 +453,7 @@ mod tests {
             };
             // debt 5138,531149
             let asset_3 = Asset {
-                price: (3.9672 * 10u64.pow(ORACLE_OFFSET.into()) as f64) as u64,
+                price: (3.9672 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
                 supply: (1295.25386912 * 10u64.pow(8) as f64) as u64,
                 last_update: 100,
                 decimals: 8,
@@ -471,7 +471,7 @@ mod tests {
     fn test_calculate_debt_error() {
         let slot = 100;
         let asset_1 = Asset {
-            price: 10 * 10u64.pow(ORACLE_OFFSET.into()),
+            price: 10 * 10u64.pow(PRICE_OFFSET.into()),
             supply: 100 * 10u64.pow(8),
             last_update: slot - 10,
             decimals: 8,
@@ -480,7 +480,7 @@ mod tests {
         };
         // debt 1000
         let asset_2 = Asset {
-            price: 12 * 10u64.pow(ORACLE_OFFSET.into()),
+            price: 12 * 10u64.pow(PRICE_OFFSET.into()),
             supply: 200 * 10u64.pow(8),
             last_update: 100,
             decimals: 8,
@@ -551,7 +551,7 @@ mod tests {
         {
             let asset = Asset {
                 decimals: 6,
-                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
             let result = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
@@ -570,7 +570,7 @@ mod tests {
         {
             let asset = Asset {
                 decimals: 6,
-                price: 2 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
             let result = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
@@ -625,17 +625,17 @@ mod tests {
         {
             let assetUSD = Asset {
                 decimals: 6,
-                price: 1 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 1 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
             let assetBTC = Asset {
                 decimals: 8,
-                price: 50000 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
             let assetETH = Asset {
                 decimals: 7,
-                price: 2000 * 10u64.pow(ORACLE_OFFSET.into()),
+                price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
             let fee = 300u32;

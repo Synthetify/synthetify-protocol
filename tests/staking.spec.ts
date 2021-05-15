@@ -7,16 +7,15 @@ import { BN, Exchange, Manager, Network } from '@synthetify/sdk'
 
 import {
   createAssetsList,
-  createPriceFeed,
   createToken,
   sleep,
-  ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd
 } from './utils'
+import { createPriceFeed } from './oracleUtils'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
@@ -26,7 +25,7 @@ describe('liquidation', () => {
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
-  const oracleProgram = anchor.workspace.Oracle as Program
+  const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
@@ -44,7 +43,7 @@ describe('liquidation', () => {
   const amountPerRound = new BN(100)
   const stakingRoundLength = 20
 
-  let initialCollateralPrice = new BN(2 * 1e4)
+  let initialCollateralPrice = 2
   let nextRoundStart: BN
 
   before(async () => {
@@ -55,9 +54,9 @@ describe('liquidation', () => {
     nonce = _nonce
     exchangeAuthority = _mintAuthority
     collateralTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: initialCollateralPrice
+      initPrice: initialCollateralPrice,
+      expo: 6
     })
 
     collateralToken = await createToken({

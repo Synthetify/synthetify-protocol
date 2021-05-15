@@ -16,10 +16,8 @@ import { BN, calculateLiquidation, Exchange, Manager, Network, signAndSend } fro
 
 import {
   createAssetsList,
-  createPriceFeed,
   createToken,
   sleep,
-  ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
@@ -36,6 +34,7 @@ import {
   assertThrowsAsync,
   U64_MAX
 } from './utils'
+import { createPriceFeed } from './oracleUtils'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -45,7 +44,7 @@ describe('staking', () => {
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
-  const oracleProgram = anchor.workspace.Oracle as Program
+  const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
@@ -62,7 +61,7 @@ describe('staking', () => {
   const stakingRoundLength = 10
   const amountPerRound = new BN(100)
 
-  let initialCollateralPrice = new BN(2 * 1e4)
+  let initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
@@ -71,9 +70,9 @@ describe('staking', () => {
     nonce = _nonce
     exchangeAuthority = _mintAuthority
     collateralTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: initialCollateralPrice
+      initPrice: initialCollateralPrice,
+      expo: 6
     })
 
     collateralToken = await createToken({

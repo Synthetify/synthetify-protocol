@@ -16,10 +16,8 @@ import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
-  createPriceFeed,
   createToken,
   sleep,
-  ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
@@ -34,6 +32,7 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync
 } from './utils'
+import { createPriceFeed } from './oracleUtils'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -43,7 +42,7 @@ describe('exchange', () => {
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
-  const oracleProgram = anchor.workspace.Oracle as Program
+  const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
@@ -65,9 +64,8 @@ describe('exchange', () => {
     nonce = _nonce
     exchangeAuthority = _mintAuthority
     collateralTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: new BN(2 * 1e4)
+      initPrice: 2
     })
 
     collateralToken = await createToken({
@@ -621,9 +619,9 @@ describe('exchange', () => {
         decimals: 8
       })
       const btcFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(50000 * 1e4)
+        initPrice: 50000,
+        expo: 9
       })
       ethToken = await createToken({
         connection,
@@ -632,9 +630,9 @@ describe('exchange', () => {
         decimals: 6
       })
       const zeroMaxSupplyTokenFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(20 * 1e4)
+        initPrice: 20,
+        expo: 4
       })
       zeroMaxSupplyToken = await createToken({
         connection,
@@ -643,9 +641,9 @@ describe('exchange', () => {
         decimals: 6
       })
       const ethFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(2000 * 1e4)
+        initPrice: 2000,
+        expo: 8
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 
@@ -1117,9 +1115,9 @@ describe('exchange', () => {
         decimals: 8
       })
       const btcFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(50000 * 1e4)
+        initPrice: 50000,
+        expo: 9
       })
       ethToken = await createToken({
         connection,
@@ -1128,9 +1126,9 @@ describe('exchange', () => {
         decimals: 6
       })
       const ethFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(2000 * 1e4)
+        initPrice: 2000,
+        expo: 8
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
       await manager.addNewAsset({
@@ -1589,9 +1587,9 @@ describe('exchange', () => {
         decimals: 8
       })
       const btcFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(50000 * 1e4)
+        initPrice: 50000,
+        expo: 9
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 

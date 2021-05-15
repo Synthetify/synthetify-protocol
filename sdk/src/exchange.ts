@@ -163,7 +163,6 @@ export class Exchange {
     }
     const state = await this.getState()
     const debt = calculateDebt(this.assetsList)
-
     return userAccount.debtShares.mul(debt).div(state.debtShares)
   }
   public async createExchangeAccount(owner: PublicKey) {

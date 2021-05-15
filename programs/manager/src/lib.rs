@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
-use oracle::PriceFeed;
+use pyth::pc::Price;
+pub const PRICE_OFFSET: u8 = 6;
+// use
 #[program]
 pub mod manager {
-    use std::{borrow::BorrowMut, convert::TryInto};
+    use std::convert::TryInto;
 
     use super::*;
     #[state]
@@ -37,10 +39,11 @@ pub mod manager {
                 asset_address: usd_token,
                 feed_address: Pubkey::default(), // unused
                 last_update: std::u64::MAX,      // we dont update usd price
-                price: 1 * 10u64.pow(4),
+                price: 1 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 0,
                 max_supply: std::u64::MAX, // no limit for usd asset
                 settlement_slot: u64::MAX,
+                confidence: 0,
             };
             let collateral_asset = Asset {
                 decimals: 6,
@@ -51,6 +54,7 @@ pub mod manager {
                 supply: 0,                 // unused
                 max_supply: std::u64::MAX, // no limit for collateral asset
                 settlement_slot: u64::MAX,
+                confidence: 0,
             };
             ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
             ctx.accounts.assets_list.initialized = true;
@@ -80,6 +84,7 @@ pub mod manager {
                 supply: 0,
                 max_supply: new_asset_max_supply,
                 settlement_slot: u64::MAX,
+                confidence: 0,
             };
 
             ctx.accounts.assets_list.assets.push(new_asset);
@@ -132,7 +137,7 @@ pub mod manager {
     }
     pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> ProgramResult {
         for oracle_account in ctx.remaining_accounts {
-            let price_feed: CpiAccount<PriceFeed> = CpiAccount::try_from(oracle_account)?;
+            let price_feed = Price::load(oracle_account)?;
             let feed_address = oracle_account.key;
             let asset = ctx
                 .accounts
@@ -142,7 +147,32 @@ pub mod manager {
                 .find(|x| x.feed_address == *feed_address);
             match asset {
                 Some(asset) => {
-                    asset.price = price_feed.price;
+                    let offset = (PRICE_OFFSET as i32).checked_add(price_feed.expo).unwrap();
+                    if offset >= 0 {
+                        let scaled_price = price_feed
+                            .agg
+                            .price
+                            .checked_div(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap();
+                        asset.price = scaled_price.try_into().unwrap();
+                    } else {
+                        let scaled_price = price_feed
+                            .agg
+                            .price
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
+                        asset.price = scaled_price.try_into().unwrap();
+                    }
+
+                    // confidence 0-10000 -> 100 = 1% / 10000 = 100%
+                    asset.confidence = (price_feed.agg.conf as u128)
+                        .checked_mul(10u128.pow(5))
+                        .unwrap()
+                        .checked_div(price_feed.agg.price.try_into().unwrap())
+                        .unwrap()
+                        .try_into()
+                        .unwrap();
+
                     asset.last_update = ctx.accounts.clock.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
@@ -208,8 +238,9 @@ pub struct Asset {
     pub last_update: u64,      // 8
     pub max_supply: u64,       // 8
     pub settlement_slot: u64,  // 8 unused
+    pub confidence: u32,       // 4 unused
 }
-// This will need 45 + x*105 bytes for each asset
+// This will need 45 + x*109 bytes for each asset
 #[account]
 pub struct AssetsList {
     pub initialized: bool,

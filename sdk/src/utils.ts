@@ -11,7 +11,7 @@ import {
 import { AssetsList } from './manager'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 4
+export const ORACLE_OFFSET = 6
 export const ACCURACY = 6
 
 export const signAndSend = async (

@@ -5,13 +5,13 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from 
 import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
 import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
 import assert from 'assert'
+import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
-export const ORACLE_ADMIN = new Account()
 export const EXCHANGE_ADMIN = new Account()
 export const ASSETS_MANAGER_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 4
+export const ORACLE_OFFSET = 6
 export const ACCURACY = 6
 export const U64_MAX = new BN('18446744073709551615')
 
@@ -26,13 +26,11 @@ export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 export const calculateDebt = (assetsList: AssetsList) => {
-  return assetsList.assets.reduce(
-    (acc, asset) =>
-      acc.add(
-        asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
-      ),
-    new BN(0)
-  )
+  return assetsList.assets.reduce((acc, asset) => {
+    return acc.add(
+      asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+    )
+  }, new BN(0))
 }
 export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
   // decimals of token = 6
@@ -88,28 +86,6 @@ export const createToken = async ({
     TokenInstructions.TOKEN_PROGRAM_ID
   )
   return token
-}
-interface ICreatePriceFeed {
-  oracleProgram: Program
-  admin: PublicKey
-  initPrice: BN
-}
-export const createPriceFeed = async ({
-  oracleProgram,
-  admin,
-  initPrice = new BN(2 * 1e4)
-}: ICreatePriceFeed) => {
-  const collateralTokenFeed = new Account()
-
-  await oracleProgram.rpc.create(admin, initPrice, {
-    accounts: {
-      priceFeed: collateralTokenFeed.publicKey,
-      rent: SYSVAR_RENT_PUBKEY
-    },
-    signers: [collateralTokenFeed],
-    instructions: [await oracleProgram.account.priceFeed.createInstruction(collateralTokenFeed)]
-  })
-  return collateralTokenFeed.publicKey
 }
 export interface ICreateAssetsList {
   manager: Manager
@@ -188,9 +164,8 @@ export const addNewAssets = async ({
       decimals: newAssetDecimals
     })
     const newTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: new BN(2 * 1e4)
+      initPrice: 2
     })
 
     await manager.addNewAsset({

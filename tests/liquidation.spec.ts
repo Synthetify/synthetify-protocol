@@ -16,10 +16,8 @@ import { BN, calculateLiquidation, Exchange, Manager, Network, signAndSend } fro
 
 import {
   createAssetsList,
-  createPriceFeed,
   createToken,
   sleep,
-  ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
@@ -36,6 +34,7 @@ import {
   assertThrowsAsync,
   U64_MAX
 } from './utils'
+import { createPriceFeed, setFeedPrice } from './oracleUtils'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
@@ -45,7 +44,7 @@ describe('liquidation', () => {
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
-  const oracleProgram = anchor.workspace.Oracle as Program
+  const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
@@ -64,7 +63,7 @@ describe('liquidation', () => {
   let liquidatorUsdAccount: PublicKey
   let liquidatorCollateralAccount: PublicKey
 
-  let initialCollateralPrice = new BN(2 * 1e4)
+  let initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
@@ -73,9 +72,9 @@ describe('liquidation', () => {
     nonce = _nonce
     exchangeAuthority = _mintAuthority
     collateralTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: initialCollateralPrice
+      initPrice: initialCollateralPrice,
+      expo: 6
     })
 
     collateralToken = await createToken({
@@ -86,7 +85,6 @@ describe('liquidation', () => {
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
-
     const data = await createAssetsList({
       exchangeAuthority,
       assetsAdmin: ASSETS_MANAGER_ADMIN,
@@ -96,6 +94,7 @@ describe('liquidation', () => {
       manager,
       wallet
     })
+
     assetsList = data.assetsList
     usdToken = data.usdToken
 
@@ -162,15 +161,7 @@ describe('liquidation', () => {
   })
   describe('#liquidate()', async () => {
     afterEach(async () => {
-      await oracleProgram.rpc.setPrice(initialCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
-      // update prices
-      await manager.updatePrices(assetsList)
+      await setFeedPrice(oracleProgram, initialCollateralPrice, collateralTokenFeed)
     })
     beforeEach(async () => {
       // change liquidation buffor for sake of tests
@@ -194,24 +185,18 @@ describe('liquidation', () => {
         collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
         amount: collateralAmount
       })
-
       const assetsListData = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+      assert.ok(assetsListData.assets[1].price.eq(new BN(initialCollateralPrice * 1e6)))
 
-      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-      await oracleProgram.rpc.setPrice(newCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
+
       // update prices
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
 
       const assetsListDataUpdated = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
+      assert.ok(assetsListDataUpdated.assets[1].price.eq(new BN(newCollateralPrice * 1e6)))
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
@@ -219,8 +204,13 @@ describe('liquidation', () => {
         userCollateralBalance,
         assetsListDataUpdated.assets[1]
       )
+
       assert.ok(
-        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
+        collateralUsdValue.eq(
+          userCollateralBalance
+            .mul(new BN(newCollateralPrice * 1e6))
+            .div(new BN(10 ** ORACLE_OFFSET))
+        )
       )
       const exchangeDebt = calculateDebt(assetsListDataUpdated)
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
@@ -304,8 +294,8 @@ describe('liquidation', () => {
       const sytemLiquidationAccountData = await collateralToken.getAccountInfo(liquidationAccount)
       const sytemLiquidationValue = sytemLiquidationAccountData.amount
         .mul(assetsListDataAfter.assets[1].price)
-        .addn(10 ** 4 - 1) // round up
-        .div(new BN(10 ** 4))
+        .addn(10 ** ORACLE_OFFSET - 1) // round up
+        .div(new BN(10 ** ORACLE_OFFSET))
 
       // system account should get part of liquidation
       assert.ok(sytemLiquidationValue.eq(systemRewardUsd))
@@ -315,8 +305,8 @@ describe('liquidation', () => {
 
       const liquidatorLiquidationValue = liquidatorLiquidationAccountData.amount
         .mul(assetsListDataAfter.assets[1].price)
-        .addn(10 ** 4 - 1) // round up
-        .div(new BN(10 ** 4))
+        .addn(10 ** ORACLE_OFFSET - 1) // round up
+        .div(new BN(10 ** ORACLE_OFFSET))
       // liquidator should get part of liquidation
       assert.ok(liquidatorLiquidationValue.eq(userRewardUsd))
 
@@ -349,14 +339,9 @@ describe('liquidation', () => {
         amount: collateralAmount
       })
 
-      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-      await oracleProgram.rpc.setPrice(newCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
+
       // update prices
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
@@ -442,22 +427,14 @@ describe('liquidation', () => {
       })
 
       const assetsListData = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
 
-      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-      await oracleProgram.rpc.setPrice(newCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
       // update prices
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
 
       const assetsListDataUpdated = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
@@ -465,9 +442,7 @@ describe('liquidation', () => {
         userCollateralBalance,
         assetsListDataUpdated.assets[1]
       )
-      assert.ok(
-        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
-      )
+
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
       const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
@@ -501,7 +476,7 @@ describe('liquidation', () => {
       })
 
       const assetsListData = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
+      assert.ok(assetsListData.assets[1].price.eq(new BN(initialCollateralPrice * 1e6)))
 
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
@@ -542,22 +517,14 @@ describe('liquidation', () => {
       })
 
       const assetsListData = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
 
-      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-      await oracleProgram.rpc.setPrice(newCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
       // update prices
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
 
       const assetsListDataUpdated = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
@@ -565,9 +532,7 @@ describe('liquidation', () => {
         userCollateralBalance,
         assetsListDataUpdated.assets[1]
       )
-      assert.ok(
-        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
-      )
+
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
       const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
@@ -606,31 +571,20 @@ describe('liquidation', () => {
       })
 
       const assetsListData = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(initialCollateralPrice))
 
-      const newCollateralPrice = initialCollateralPrice.div(new BN(5))
-      await oracleProgram.rpc.setPrice(newCollateralPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
       // update prices
       await manager.updatePrices(assetsList)
       const state = await exchange.getState()
 
       const assetsListDataUpdated = await manager.getAssetsList(assetsList)
-      assert.ok(assetsListDataUpdated.assets[1].price.eq(newCollateralPrice))
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
       const collateralUsdValue = tokenToUsdValue(
         userCollateralBalance,
         assetsListDataUpdated.assets[1]
-      )
-      assert.ok(
-        collateralUsdValue.eq(userCollateralBalance.mul(newCollateralPrice).div(new BN(10 ** 4)))
       )
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))

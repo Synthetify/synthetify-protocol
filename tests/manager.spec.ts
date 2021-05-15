@@ -12,10 +12,8 @@ import {
 import { assert, expect } from 'chai'
 import { Manager } from '@synthetify/sdk'
 import {
-  createPriceFeed,
   createToken,
   sleep,
-  ORACLE_ADMIN,
   ASSETS_MANAGER_ADMIN,
   DEFAULT_PUBLIC_KEY,
   createAssetsList,
@@ -25,19 +23,20 @@ import {
   assertThrowsAsync
 } from './utils'
 import { Network } from '@synthetify/sdk/lib/network'
+import { createPriceFeed, setFeedPrice } from './oracleUtils'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
-const USDT_VALUE_U64 = new BN(10000)
+const USDT_VALUE_U64 = new BN(1000000)
 const ZERO_U64 = new BN(0)
 const errMessage = 'No asset with such address was found'
-const initCollateralOraclePrice = new BN(2 * 1e4)
+const initCollateralOraclePrice = 2
 const exchangeAuthorityAccount = new Account()
 
 describe('manager', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const managerProgram = anchor.workspace.Manager as Program
-  const oracleProgram = anchor.workspace.Oracle as Program
+  const oracleProgram = anchor.workspace.Pyth as Program
   const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
@@ -60,9 +59,9 @@ describe('manager', () => {
       decimals: 6
     })
     collateralTokenFeed = await createPriceFeed({
-      admin: ORACLE_ADMIN.publicKey,
       oracleProgram,
-      initPrice: new BN(2 * 1e4)
+      initPrice: initCollateralOraclePrice,
+      expo: 6
     })
 
     await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
@@ -153,9 +152,9 @@ describe('manager', () => {
         decimals: newAssetDecimals
       })
       const newTokenFeed = await createPriceFeed({
-        admin: ORACLE_ADMIN.publicKey,
         oracleProgram,
-        initPrice: new BN(2 * 1e4)
+        initPrice: 2,
+        expo: 6
       })
 
       await manager.addNewAsset({
@@ -308,7 +307,7 @@ describe('manager', () => {
     })
   })
   describe('#set_assets_prices()', async () => {
-    const newPrice = new BN(6 * 1e4)
+    const newPrice = 6
     it('Should not change prices', async () => {
       const assetListBefore = await manager.getAssetsList(assetsList)
 
@@ -319,14 +318,7 @@ describe('manager', () => {
         })
 
       feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
-
-      await oracleProgram.rpc.setPrice(newPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
       await assertThrowsAsync(
         managerProgram.rpc.setAssetsPrices({
@@ -344,14 +336,7 @@ describe('manager', () => {
     })
     it('Should change prices', async () => {
       const assetListBefore = await manager.getAssetsList(assetsList)
-
-      await oracleProgram.rpc.setPrice(newPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
       const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
@@ -361,13 +346,13 @@ describe('manager', () => {
       const collateralAsset = assetList.assets[1]
 
       // Check new price
-      assert.ok(collateralAsset.price.eq(newPrice))
+      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
     it('Test 30 assets', async () => {
-      const anotherPrice = new BN(8 * 1e4)
+      const anotherPrice = 8
       const assetsListSize = 30
       const createAssetsListParams: ICreateAssetsList = {
         exchangeAuthority: exchangeAuthorityAccount.publicKey,
@@ -396,14 +381,7 @@ describe('manager', () => {
       }
 
       await addNewAssets(addNewAssetParams)
-
-      await oracleProgram.rpc.setPrice(anotherPrice, {
-        accounts: {
-          admin: ORACLE_ADMIN.publicKey,
-          priceFeed: collateralTokenFeed
-        },
-        signers: [ORACLE_ADMIN]
-      })
+      await setFeedPrice(oracleProgram, anotherPrice, collateralTokenFeed)
 
       await manager.updatePrices(newAssetsList)
       const assetList = await manager.getAssetsList(newAssetsList)
@@ -413,7 +391,7 @@ describe('manager', () => {
       assert.ok(assetList.assets.length === assetsListSize)
 
       // Check new price
-      assert.ok(collateralAsset.price.eq(anotherPrice))
+      assert.ok(collateralAsset.price.eq(new BN(anotherPrice * 1e6)))
     })
   })
 })
