@@ -56,7 +56,7 @@ describe('liquidation', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: initialCollateralPrice,
-      expo: 6
+      expo: -6
     })
 
     collateralToken = await createToken({

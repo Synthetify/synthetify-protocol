@@ -152,8 +152,9 @@ pub mod manager {
                         let scaled_price = price_feed
                             .agg
                             .price
-                            .checked_div(10i64.pow(offset.try_into().unwrap()))
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
                             .unwrap();
+
                         asset.price = scaled_price.try_into().unwrap();
                     } else {
                         let scaled_price = price_feed
@@ -161,6 +162,7 @@ pub mod manager {
                             .price
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
                             .unwrap();
+
                         asset.price = scaled_price.try_into().unwrap();
                     }
 

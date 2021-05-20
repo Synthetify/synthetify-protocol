@@ -66,6 +66,7 @@ describe('exchange', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: 2
+      // expo: -6
     })
 
     collateralToken = await createToken({
@@ -621,7 +622,7 @@ describe('exchange', () => {
       const btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
-        expo: 9
+        expo: -9
       })
       ethToken = await createToken({
         connection,
@@ -632,7 +633,7 @@ describe('exchange', () => {
       const zeroMaxSupplyTokenFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 20,
-        expo: 4
+        expo: -4
       })
       zeroMaxSupplyToken = await createToken({
         connection,
@@ -643,7 +644,7 @@ describe('exchange', () => {
       const ethFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 2000,
-        expo: 8
+        expo: -8
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 
@@ -1117,7 +1118,7 @@ describe('exchange', () => {
       const btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
-        expo: 9
+        expo: -9
       })
       ethToken = await createToken({
         connection,
@@ -1128,7 +1129,7 @@ describe('exchange', () => {
       const ethFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 2000,
-        expo: 8
+        expo: -8
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
       await manager.addNewAsset({
@@ -1589,7 +1590,7 @@ describe('exchange', () => {
       const btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
-        expo: 9
+        expo: -9
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 

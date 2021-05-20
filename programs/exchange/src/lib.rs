@@ -158,7 +158,6 @@ pub mod exchange {
             // Both xUSD and collateral token have static index in assets array
             let mint_asset = &assets[0];
             let collateral_asset = &assets[1];
-
             let collateral_amount = calculate_user_collateral_in_token(
                 exchange_account.collateral_shares,
                 self.collateral_shares,
@@ -169,7 +168,6 @@ pub mod exchange {
                 self.collateralization_level,
                 collateral_amount,
             );
-
             if max_user_debt < amount.checked_add(user_debt).unwrap() {
                 return Err(ErrorCode::MintLimit.into());
             }

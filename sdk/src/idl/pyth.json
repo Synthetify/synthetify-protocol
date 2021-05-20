@@ -18,7 +18,7 @@
         },
         {
           "name": "expo",
-          "type": "u8"
+          "type": "i32"
         },
         {
           "name": "conf",
@@ -49,8 +49,5 @@
       "name": "Hello",
       "msg": "This is an error message clients will automatically display"
     }
-  ],
-  "metadata": {
-    "address": "GNJgoHdxPU9bJnfKWiAVNdRksRvc91AsGm869h7uuMYF"
-  }
+  ]
 }

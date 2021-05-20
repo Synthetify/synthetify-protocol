@@ -61,7 +61,7 @@ describe('manager', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: initCollateralOraclePrice,
-      expo: 6
+      expo: -6
     })
 
     await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
@@ -154,7 +154,7 @@ describe('manager', () => {
       const newTokenFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 2,
-        expo: 6
+        expo: -6
       })
 
       await manager.addNewAsset({

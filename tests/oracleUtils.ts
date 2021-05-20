@@ -1,5 +1,4 @@
 import { Buffer } from 'buffer'
-import { Account, PublicKey } from '@solana/web3.js'
 import { BN, Program, web3 } from '@project-serum/anchor'
 
 export const Magic = 0xa1b2c3d4
@@ -10,7 +9,7 @@ export const CorpAction = ['NoCorpAct']
 export const PriceType = ['Unknown', 'Price', 'TWAP', 'Volatility']
 
 const empty32Buffer = Buffer.alloc(32)
-const PKorNull = (data: Buffer) => (data.equals(empty32Buffer) ? null : new PublicKey(data))
+const PKorNull = (data: Buffer) => (data.equals(empty32Buffer) ? null : new web3.PublicKey(data))
 
 interface ICreatePriceFeed {
   oracleProgram: Program
@@ -22,11 +21,11 @@ export const createPriceFeed = async ({
   oracleProgram,
   initPrice,
   confidence,
-  expo = 7
+  expo = -4,
 }: ICreatePriceFeed) => {
-  const conf = confidence || new BN((initPrice / 10) * 10 ** expo)
-  const collateralTokenFeed = new Account()
-  await oracleProgram.rpc.initialize(new BN(initPrice * 10 ** expo), expo, conf, {
+  const conf = confidence || new BN((initPrice / 10) * 10 ** -expo)
+  const collateralTokenFeed = new web3.Account()
+  await oracleProgram.rpc.initialize(new BN(initPrice * 10 ** -expo), expo, conf, {
     accounts: { price: collateralTokenFeed.publicKey },
     signers: [collateralTokenFeed],
     instructions: [
@@ -35,46 +34,50 @@ export const createPriceFeed = async ({
         newAccountPubkey: collateralTokenFeed.publicKey,
         space: 1712,
         lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(1712),
-        programId: oracleProgram.programId
-      })
-    ]
+        programId: oracleProgram.programId,
+      }),
+    ],
   })
   return collateralTokenFeed.publicKey
 }
 export const setFeedPrice = async (
   oracleProgram: Program,
   newPrice: number,
-  priceFeed: PublicKey
+  priceFeed: web3.PublicKey
 ) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
   const data = parsePriceData(info.data)
   await oracleProgram.rpc.setPrice(new BN(newPrice * 10 ** -data.exponent), {
-    accounts: { price: priceFeed }
+    accounts: { price: priceFeed },
   })
+}
+export const getFeedData = async (oracleProgram: Program, priceFeed: web3.PublicKey) => {
+  const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  return parsePriceData(info.data)
 }
 
 export const parseMappingData = (data: Buffer) => {
-  // pyth magic number
+  // Pyth magic number.
   const magic = data.readUInt32LE(0)
-  // program version
+  // Program version.
   const version = data.readUInt32LE(4)
-  // account type
+  // Account type.
   const type = data.readUInt32LE(8)
-  // account used size
+  // Account used size.
   const size = data.readUInt32LE(12)
-  // number of product accounts
+  // Number of product accounts.
   const numProducts = data.readUInt32LE(16)
-  // unused
+  // Unused.
   // const unused = accountInfo.data.readUInt32LE(20)
-  // TODO: check and use this
-  // next mapping account (if any)
+  // TODO: check and use this.
+  // Next mapping account (if any).
   const nextMappingAccount = PKorNull(data.slice(24, 56))
-  // read each symbol account
+  // Read each symbol account.
   let offset = 56
   const productAccountKeys = []
   for (let i = 0; i < numProducts; i++) {
     const productAccountBytes = data.slice(offset, offset + 32)
-    const productAccountKey = new PublicKey(productAccountBytes)
+    const productAccountKey = new web3.PublicKey(productAccountBytes)
     offset += 32
     productAccountKeys.push(productAccountKey)
   }
@@ -84,7 +87,7 @@ export const parseMappingData = (data: Buffer) => {
     type,
     size,
     nextMappingAccount,
-    productAccountKeys
+    productAccountKeys,
   }
 }
 
@@ -93,17 +96,17 @@ interface ProductAttributes {
 }
 
 export const parseProductData = (data: Buffer) => {
-  // pyth magic number
+  // Pyth magic number.
   const magic = data.readUInt32LE(0)
-  // program version
+  // Program version.
   const version = data.readUInt32LE(4)
-  // account type
+  // Account type.
   const type = data.readUInt32LE(8)
-  // price account size
+  // Price account size.
   const size = data.readUInt32LE(12)
-  // first price account in list
+  // First price account in list.
   const priceAccountBytes = data.slice(16, 48)
-  const priceAccountKey = new PublicKey(priceAccountBytes)
+  const priceAccountKey = new web3.PublicKey(priceAccountBytes)
   const product: ProductAttributes = {}
   let idx = 48
   while (idx < data.length) {
@@ -123,17 +126,17 @@ export const parseProductData = (data: Buffer) => {
 }
 
 const parsePriceInfo = (data: Buffer, exponent: number) => {
-  // aggregate price
+  // Aggregate price.
   const priceComponent = data.readBigUInt64LE(0)
   const price = Number(priceComponent) * 10 ** exponent
-  // aggregate confidence
+  // Aggregate confidence.
   const confidenceComponent = data.readBigUInt64LE(8)
   const confidence = Number(confidenceComponent) * 10 ** exponent
-  // aggregate status
+  // Aggregate status.
   const status = data.readUInt32LE(16)
-  // aggregate corporate action
+  // Aggregate corporate action.
   const corporateAction = data.readUInt32LE(20)
-  // aggregate publish slot
+  // Aggregate publish slot.
   const publishSlot = data.readBigUInt64LE(24)
   return {
     priceComponent,
@@ -142,39 +145,39 @@ const parsePriceInfo = (data: Buffer, exponent: number) => {
     confidence,
     status,
     corporateAction,
-    publishSlot
+    publishSlot,
   }
 }
 
 export const parsePriceData = (data: Buffer) => {
-  // pyth magic number
+  // Pyth magic number.
   const magic = data.readUInt32LE(0)
-  // program version
+  // Program version.
   const version = data.readUInt32LE(4)
-  // account type
+  // Account type.
   const type = data.readUInt32LE(8)
-  // price account size
+  // Price account size.
   const size = data.readUInt32LE(12)
-  // price or calculation type
+  // Price or calculation type.
   const priceType = data.readUInt32LE(16)
-  // price exponent
+  // Price exponent.
   const exponent = data.readInt32LE(20)
-  // number of component prices
+  // Number of component prices.
   const numComponentPrices = data.readUInt32LE(24)
-  // unused
+  // Unused.
   // const unused = accountInfo.data.readUInt32LE(28)
-  // currently accumulating price slot
+  // Currently accumulating price slot.
   const currentSlot = data.readBigUInt64LE(32)
-  // valid on-chain slot of aggregate price
+  // Valid on-chain slot of aggregate price.
   const validSlot = data.readBigUInt64LE(40)
-  // product id / reference account
-  const productAccountKey = new PublicKey(data.slice(48, 80))
-  // next price account in list
-  const nextPriceAccountKey = new PublicKey(data.slice(80, 112))
-  // aggregate price updater
-  const aggregatePriceUpdaterAccountKey = new PublicKey(data.slice(112, 144))
+  // Product id / reference account.
+  const productAccountKey = new web3.PublicKey(data.slice(48, 80))
+  // Next price account in list.
+  const nextPriceAccountKey = new web3.PublicKey(data.slice(80, 112))
+  // Aggregate price updater.
+  const aggregatePriceUpdaterAccountKey = new web3.PublicKey(data.slice(112, 144))
   const aggregatePriceInfo = parsePriceInfo(data.slice(144, 176), exponent)
-  // price components - up to 16
+  // Urice components - up to 16.
   const priceComponents = []
   let offset = 176
   let shouldContinue = true
@@ -205,6 +208,6 @@ export const parsePriceData = (data: Buffer) => {
     nextPriceAccountKey,
     aggregatePriceUpdaterAccountKey,
     ...aggregatePriceInfo,
-    priceComponents
+    priceComponents,
   }
 }
