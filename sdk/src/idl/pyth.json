@@ -49,5 +49,8 @@
       "name": "Hello",
       "msg": "This is an error message clients will automatically display"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "8XMb2Fvot4FiERQ6XxNhfoeVeCQ7UyBBKjZzr459bdvv"
+  }
 }

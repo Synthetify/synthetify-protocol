@@ -8,10 +8,10 @@ export enum Network {
 }
 
 export const DEV_NET = {
-  exchange: new PublicKey('4Kk77Wf4MZCaWxt9Anm2FwtqG9WpgePZzixS4G1uKvxz'),
-  oracle: new PublicKey('7U2Ue9gTqhBxWnWPPEAVyLe4fiij9EjnJfuMA5Rm8LvG'),
-  manager: new PublicKey('Dt6hw2QcyNkyick4Gm17Ub5sxtgKU6LFNrQRrpxLmJZX'),
-  exchangeAuthority: new PublicKey('6u2H1tDwwdD4p3Cy5DkaRq8cd6h8Yto7SbYgCuf7Aevj')
+  exchange: new PublicKey('7nQjxBds85XHHA73Y8Nvvs7Dat7Vs1L4cuXJ8yksCTpP'),
+  oracle: new PublicKey('8XMb2Fvot4FiERQ6XxNhfoeVeCQ7UyBBKjZzr459bdvv'),
+  manager: new PublicKey('3pWcxWE2p1tpvG9H1ZqUo8x9FH8FwqRggQnPQFuRLkRf'),
+  exchangeAuthority: new PublicKey('4nddjKsbFxFcsNRin4XGayArV3nFgXayA8KojYyW7DJb')
 }
 export const TEST_NET = {
   exchange: new PublicKey('9buhRrePiSBr6no7mR8is5UAx19YXjLTJuPcuvg2LSSd'),

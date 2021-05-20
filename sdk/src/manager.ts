@@ -1,6 +1,6 @@
 import { DEV_NET, Network, TEST_NET } from './network'
 import idl from './idl/manager.json'
-import { BN, Idl, Program, Provider, web3 } from '@project-serum/anchor'
+import { BN, Idl, Program, Provider, web3 } from '@synthetify/anchor'
 import { IWallet } from '.'
 import { DEFAULT_PUBLIC_KEY } from './utils'
 import {
