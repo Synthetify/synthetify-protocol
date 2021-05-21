@@ -20,10 +20,12 @@ import {
   ICreateAssetsList,
   IAddNewAssets,
   addNewAssets,
-  assertThrowsAsync
+  assertThrowsAsync,
+  newAccountWithLamports
 } from './utils'
 import { Network } from '@synthetify/sdk/lib/network'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
+import { signAndSend } from '../sdk/src'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(1000000)
@@ -44,8 +46,9 @@ describe('manager', () => {
   let usdToken: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
-
+  let PAYER_ACCOUNT: Account
   before(async () => {
+    PAYER_ACCOUNT = await newAccountWithLamports(connection)
     collateralToken = await createToken({
       connection,
       payer: wallet,
@@ -294,6 +297,7 @@ describe('manager', () => {
     it('New max supply should be set', async () => {
       const beforeAssetList = await manager.getAssetsList(assetsList)
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+
       await manager.setAssetMaxSupply({
         assetAddress: beforeAsset.assetAddress,
         assetsAdmin: ASSETS_MANAGER_ADMIN,
@@ -304,6 +308,33 @@ describe('manager', () => {
       const afterAssetList = await manager.getAssetsList(assetsList)
 
       assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
+    })
+  })
+  describe('#set_price_feed()', async () => {
+    it('New price_feed should be set', async () => {
+      const newPriceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 2,
+        expo: -6
+      })
+      const beforeAssetList = await manager.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const ix = await manager.setPriceFeedInstruction({
+        assetsList,
+        priceFeed: newPriceFeed,
+        signer: ASSETS_MANAGER_ADMIN.publicKey,
+        tokenAddress: beforeAsset.assetAddress
+      })
+      await signAndSend(
+        new Transaction().add(ix),
+        [PAYER_ACCOUNT, ASSETS_MANAGER_ADMIN],
+        connection
+      )
+      const afterAssetList = await manager.getAssetsList(assetsList)
+
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+      )
     })
   })
   describe('#set_assets_prices()', async () => {

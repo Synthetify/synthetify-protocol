@@ -184,7 +184,7 @@ export const addNewAssets = async ({
   return newAssetsResults
 }
 
-const newAccountWithLamports = async (connection, lamports = 1e10) => {
+export const newAccountWithLamports = async (connection, lamports = 1e10) => {
   const account = new web3.Account()
 
   let retries = 30

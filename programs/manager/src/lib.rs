@@ -113,6 +113,28 @@ pub mod manager {
             }
             Ok(())
         }
+        pub fn set_price_feed(
+            &mut self,
+            ctx: Context<SetPriceFeed>,
+            asset_address: Pubkey,
+        ) -> Result<()> {
+            if !self.admin.eq(ctx.accounts.signer.key) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+
+            let asset = ctx
+                .accounts
+                .assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.asset_address == asset_address);
+
+            match asset {
+                Some(asset) => asset.feed_address = *ctx.accounts.price_feed.key,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            }
+            Ok(())
+        }
     }
     pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
         let assets_list = &mut ctx.accounts.assets_list;
@@ -228,6 +250,14 @@ pub struct SetMaxSupply<'info> {
     pub signer: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
+}
+#[derive(Accounts)]
+pub struct SetPriceFeed<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub price_feed: AccountInfo<'info>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]

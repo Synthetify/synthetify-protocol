@@ -183,6 +183,32 @@
             "type": "u64"
           }
         ]
+      },
+      {
+        "name": "setPriceFeed",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "priceFeed",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          }
+        ]
       }
     ]
   },
@@ -291,6 +317,6 @@
     }
   ],
   "metadata": {
-    "address": "3pWcxWE2p1tpvG9H1ZqUo8x9FH8FwqRggQnPQFuRLkRf"
+    "address": "FT5c4KRBcmav3QR763SBzyNEVXss1txg4sPGD9T474x1"
   }
 }

@@ -78,6 +78,21 @@ export class Manager {
     })
     return assetListAccount.publicKey
   }
+  public async setPriceFeedInstruction({
+    assetsList,
+    priceFeed,
+    signer,
+    tokenAddress
+  }: SetPriceFeedInstruction) {
+    // @ts-expect-error
+    return (await this.program.state.instruction.setPriceFeed(tokenAddress, {
+      accounts: {
+        signer: signer,
+        assetsList: assetsList,
+        priceFeed: priceFeed
+      }
+    })) as TransactionInstruction
+  }
 
   public async initializeAssetsList({
     assetsAdmin,
@@ -227,4 +242,10 @@ export interface AddNewAsset {
   tokenDecimals: number
   maxSupply: BN
   assetsAdmin: Account
+}
+export interface SetPriceFeedInstruction {
+  assetsList: PublicKey
+  priceFeed: PublicKey
+  tokenAddress: PublicKey
+  signer: PublicKey
 }
