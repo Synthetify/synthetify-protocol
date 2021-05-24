@@ -1,6 +1,6 @@
 import { DEV_NET, Network, TEST_NET } from './network'
 import idl from './idl/exchange.json'
-import { BN, Idl, Program, Provider, utils } from '@synthetify/anchor'
+import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, sleep, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'

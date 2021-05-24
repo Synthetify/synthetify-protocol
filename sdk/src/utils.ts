@@ -1,4 +1,4 @@
-import { BN, Provider } from '@synthetify/anchor'
+import { BN, Provider } from '@project-serum/anchor'
 import { u64 } from '@solana/spl-token'
 import {
   PublicKey,

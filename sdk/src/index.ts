@@ -1,4 +1,4 @@
-import { BN } from '@synthetify/anchor'
+import { BN } from '@project-serum/anchor'
 import { Manager, Asset } from './manager'
 import { Exchange } from './exchange'
 import { Network, DEV_NET, TEST_NET } from './network'
