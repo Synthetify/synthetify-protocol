@@ -19,7 +19,7 @@ pub mod manager {
                 initialized: false,
             })
         }
-
+        #[access_control(admin(&self, &ctx.accounts.signer))]
         pub fn create_list(
             &mut self,
             ctx: Context<InitializeAssetsList>,
@@ -28,9 +28,6 @@ pub mod manager {
             collateral_token_feed: Pubkey,
             usd_token: Pubkey,
         ) -> Result<()> {
-            if !self.admin.eq(ctx.accounts.signer.key) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             if ctx.accounts.assets_list.initialized {
                 return Err(ErrorCode::Initialized.into());
             }
@@ -61,6 +58,7 @@ pub mod manager {
             ctx.accounts.assets_list.exchange_authority = exchange_authority;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
         pub fn add_new_asset(
             &mut self,
             ctx: Context<AddNewAsset>,
@@ -69,9 +67,6 @@ pub mod manager {
             new_asset_decimals: u8,
             new_asset_max_supply: u64,
         ) -> Result<()> {
-            if !self.admin.eq(ctx.accounts.signer.key) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
             if !ctx.accounts.assets_list.initialized {
                 return Err(ErrorCode::Uninitialized.into());
             }
@@ -90,16 +85,13 @@ pub mod manager {
             ctx.accounts.assets_list.assets.push(new_asset);
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
         pub fn set_max_supply(
             &mut self,
             ctx: Context<SetMaxSupply>,
             asset_address: Pubkey,
             new_max_supply: u64,
         ) -> Result<()> {
-            if !self.admin.eq(ctx.accounts.signer.key) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
-
             let asset = ctx
                 .accounts
                 .assets_list
@@ -113,15 +105,12 @@ pub mod manager {
             }
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
         pub fn set_price_feed(
             &mut self,
             ctx: Context<SetPriceFeed>,
             asset_address: Pubkey,
         ) -> Result<()> {
-            if !self.admin.eq(ctx.accounts.signer.key) {
-                return Err(ErrorCode::Unauthorized.into());
-            }
-
             let asset = ctx
                 .accounts
                 .assets_list
@@ -293,4 +282,12 @@ pub enum ErrorCode {
     NoAssetFound,
     #[msg("Asset max_supply crossed")]
     MaxSupply,
+}
+
+// Only admin access
+fn admin<'info>(state: &InternalState, signer: &AccountInfo<'info>) -> Result<()> {
+    if !signer.key.eq(&state.admin) {
+        return Err(ErrorCode::Unauthorized.into());
+    }
+    Ok(())
 }
