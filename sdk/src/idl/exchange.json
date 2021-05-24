@@ -609,6 +609,42 @@
         "args": []
       },
       {
+        "name": "withdrawLiquidationPenalty",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "to",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "liquidationAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -717,6 +753,38 @@
           {
             "name": "halted",
             "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "setStakingAmountPerRound",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amountPerRound",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "setStakingRoundLength",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "roundLength",
+            "type": "u32"
           }
         ]
       }
@@ -845,91 +913,86 @@
   "errors": [
     {
       "code": 100,
-      "name": "ErrorType",
-      "msg": "Your error message"
-    },
-    {
-      "code": 101,
       "name": "Unauthorized",
       "msg": "You are not admin"
     },
     {
-      "code": 102,
+      "code": 101,
       "name": "NotSyntheticUsd",
       "msg": "Not synthetic USD asset"
     },
     {
-      "code": 103,
+      "code": 102,
       "name": "OutdatedOracle",
       "msg": "Oracle price is outdated"
     },
     {
-      "code": 104,
+      "code": 103,
       "name": "MintLimit",
       "msg": "Mint limit"
     },
     {
-      "code": 105,
+      "code": 104,
       "name": "WithdrawLimit",
       "msg": "Withdraw limit"
     },
     {
-      "code": 106,
+      "code": 105,
       "name": "CollateralAccountError",
       "msg": "Invalid collateral_account"
     },
     {
-      "code": 107,
+      "code": 106,
       "name": "SyntheticCollateral",
       "msg": "Synthetic collateral is not supported"
     },
     {
-      "code": 108,
+      "code": 107,
       "name": "InvalidAssetsList",
       "msg": "Invalid Assets List"
     },
     {
-      "code": 109,
+      "code": 108,
       "name": "InvalidLiquidation",
       "msg": "Invalid Liquidation"
     },
     {
-      "code": 110,
+      "code": 109,
       "name": "InvalidSigner",
       "msg": "Invalid signer"
     },
     {
-      "code": 111,
+      "code": 110,
       "name": "WashTrade",
       "msg": "Wash trade"
     },
     {
-      "code": 112,
+      "code": 111,
       "name": "ExchangeLiquidationAccount",
       "msg": "Invalid exchange liquidation account"
     },
     {
-      "code": 113,
+      "code": 112,
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
     },
     {
-      "code": 114,
+      "code": 113,
       "name": "Halted",
       "msg": "Program is currently Halted"
     },
     {
-      "code": 115,
+      "code": 114,
       "name": "NoRewards",
       "msg": "No rewards to claim"
     },
     {
-      "code": 116,
+      "code": 115,
       "name": "FundAccountError",
       "msg": "Invalid fund_account"
     }
   ],
   "metadata": {
-    "address": "Hb8QLiLJhhp5Ueff7x6saEB8nC2xkeCVxeB1wUqTKKx"
+    "address": "HLe3tdLJiRncQJDPhB4T4W1G9xWXbKqCASx3CHUZxZZr"
   }
 }

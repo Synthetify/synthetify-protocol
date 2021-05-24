@@ -910,6 +910,28 @@ pub mod exchange {
             self.halted = halted;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx))]
+        pub fn set_staking_amount_per_round(
+            &mut self,
+            ctx: Context<AdminAction>,
+            amount_per_round: u64,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin:Staking: SET AMOUNT PER ROUND");
+
+            self.staking.amount_per_round = amount_per_round;
+            Ok(())
+        }
+        #[access_control(admin(&self, &ctx))]
+        pub fn set_staking_round_length(
+            &mut self,
+            ctx: Context<AdminAction>,
+            round_length: u32,
+        ) -> Result<()> {
+            msg!("Syntetify:Admin:Staking: SET ROUND LENGTH");
+
+            self.staking.round_length = round_length;
+            Ok(())
+        }
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,

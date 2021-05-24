@@ -425,6 +425,22 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setStakingAmountPerRound(amount: BN) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setStakingAmountPerRound(amount, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
+  public async setStakingRoundLength(length: number) {
+    // @ts-expect-error
+    return await (this.program.state.instruction.setStakingRoundLength(length, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment

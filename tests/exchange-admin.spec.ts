@@ -257,4 +257,36 @@ describe('staking', () => {
       assert.ok(state.halted === halted)
     })
   })
+  describe('#setStakingAmountPerRound()', async () => {
+    it('Fail without admin signature', async () => {
+      const amount = new BN(12399)
+      const ix = await exchange.setStakingAmountPerRound(amount)
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      const state = await exchange.getState()
+      assert.ok(!state.staking.amountPerRound.eq(amount))
+    })
+    it('change value', async () => {
+      const amount = new BN(12399)
+      const ix = await exchange.setStakingAmountPerRound(amount)
+      await await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.staking.amountPerRound.eq(amount))
+    })
+  })
+  describe('#setStakingRoundLength()', async () => {
+    it('Fail without admin signature', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength !== length)
+    })
+    it('change value', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength === length)
+    })
+  })
 })
