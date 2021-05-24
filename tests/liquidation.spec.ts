@@ -169,7 +169,7 @@ describe('liquidation', () => {
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
-    it('should liquidate', async () => {
+    it.only('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const {
         accountOwner,
@@ -321,6 +321,38 @@ describe('liquidation', () => {
       const exchangeDebtAfter = calculateDebt(assetsListDataAfter)
       // debt of exchange should reduce
       assert.ok(exchangeDebtAfter.eq(exchangeDebt.sub(maxBurnUsd)))
+
+      // Withdraw liquidation penalty
+      const withdrawPenaltyDestination = await collateralToken.createAccount(exchangeAuthority)
+
+      // @ts-expect-error
+      const withdrawPenaltyIx = await exchangeProgram.state.instruction.withdrawLiquidationPenalty(
+        sytemLiquidationAccountData.amount,
+        {
+          accounts: {
+            admin: EXCHANGE_ADMIN.publicKey,
+            exchangeAuthority: exchangeAuthority,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            liquidationAccount: liquidationAccount,
+            to: withdrawPenaltyDestination
+          }
+        }
+      )
+      // Fail without admin signature
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(withdrawPenaltyIx), [wallet], connection)
+      )
+      await signAndSend(
+        new Transaction().add(withdrawPenaltyIx),
+        [wallet, EXCHANGE_ADMIN],
+        connection
+      )
+      assert.ok((await collateralToken.getAccountInfo(liquidationAccount)).amount.eq(new BN(0)))
+      assert.ok(
+        (await collateralToken.getAccountInfo(withdrawPenaltyDestination)).amount.eq(
+          sytemLiquidationAccountData.amount
+        )
+      )
     })
     it('check halted', async () => {
       const collateralAmount = new BN(1000 * 1e6)

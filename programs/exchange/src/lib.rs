@@ -810,6 +810,40 @@ pub mod exchange {
             exchange_account.user_staking_data.amount_to_claim = 0u64;
             Ok(())
         }
+        #[access_control(halted(&self))]
+        pub fn withdraw_liquidation_penalty(
+            &mut self,
+            ctx: Context<WithdrawLiquidationPenalty>,
+            amount: u64,
+        ) -> Result<()> {
+            msg!("Syntetify: WITHDRAW LIQUIDATION PENALTY");
+
+            if !ctx.accounts.admin.key.eq(&self.admin) {
+                return Err(ErrorCode::Unauthorized.into());
+            }
+            if !ctx
+                .accounts
+                .liquidation_account
+                .to_account_info()
+                .key
+                .eq(&self.liquidation_account)
+            {
+                return Err(ErrorCode::ExchangeLiquidationAccount.into());
+            }
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer_seeds = &[&seeds[..]];
+
+            // Transfer
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.liquidation_account.to_account_info(),
+                to: ctx.accounts.to.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let cpi_program = ctx.accounts.token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
+            token::transfer(cpi_ctx, amount);
+            Ok(())
+        }
         // admin methods
         #[access_control(admin(&self, &ctx))]
         pub fn set_liquidation_buffer(
@@ -1134,6 +1168,18 @@ pub struct WithdrawRewards<'info> {
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]
+pub struct WithdrawLiquidationPenalty<'info> {
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub liquidation_account: CpiAccount<'info, TokenAccount>,
+}
+#[derive(Accounts)]
 pub struct AdminAction<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -1164,8 +1210,6 @@ pub struct UserStaking {
 }
 #[error]
 pub enum ErrorCode {
-    #[msg("Your error message")]
-    ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
     #[msg("Not synthetic USD asset")]
