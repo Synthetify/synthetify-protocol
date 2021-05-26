@@ -5,7 +5,6 @@ import {
   Account,
   PublicKey,
   SYSVAR_RENT_PUBKEY,
-  SYSVAR_CLOCK_PUBKEY,
   sendAndConfirmTransaction,
   Transaction
 } from '@solana/web3.js'

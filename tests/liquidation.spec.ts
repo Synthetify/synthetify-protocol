@@ -6,7 +6,6 @@ import {
   Account,
   PublicKey,
   sendAndConfirmRawTransaction,
-  SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction
@@ -642,7 +641,6 @@ describe('liquidation', () => {
         accounts: {
           exchangeAuthority: exchange.exchangeAuthority,
           tokenProgram: TOKEN_PROGRAM_ID,
-          clock: SYSVAR_CLOCK_PUBKEY,
           exchangeAccount: exchangeAccount,
           signer: liquidator.publicKey,
           usdToken: usdToken.publicKey,

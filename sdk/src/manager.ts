@@ -9,7 +9,6 @@ import {
   ConfirmOptions,
   Account,
   SYSVAR_RENT_PUBKEY,
-  SYSVAR_CLOCK_PUBKEY,
   TransactionInstruction
 } from '@solana/web3.js'
 export class Manager {
@@ -179,8 +178,7 @@ export class Manager {
     return await this.program.rpc.setAssetsPrices({
       remainingAccounts: feedAddresses,
       accounts: {
-        assetsList: assetsList,
-        clock: SYSVAR_CLOCK_PUBKEY
+        assetsList: assetsList
       }
     })
   }
@@ -194,8 +192,7 @@ export class Manager {
     return (await this.program.instruction.setAssetsPrices({
       remainingAccounts: feedAddresses,
       accounts: {
-        assetsList: assetsList,
-        clock: SYSVAR_CLOCK_PUBKEY
+        assetsList: assetsList
       }
     })) as TransactionInstruction
   }

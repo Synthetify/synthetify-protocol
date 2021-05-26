@@ -6,7 +6,6 @@ import {
   Account,
   PublicKey,
   sendAndConfirmRawTransaction,
-  SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction
@@ -1357,7 +1356,6 @@ describe('exchange', () => {
           usdToken: btcToken.publicKey,
           userTokenAccountBurn: btcTokenAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
-          clock: SYSVAR_CLOCK_PUBKEY,
           exchangeAccount: exchangeAccount,
           owner: accountOwner.publicKey,
           assetsList: exchange.state.assetsList,
