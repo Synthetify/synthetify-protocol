@@ -6,7 +6,6 @@ import {
   Account,
   PublicKey,
   sendAndConfirmRawTransaction,
-  SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction
@@ -63,12 +62,12 @@ describe('staking', () => {
 
   let initialCollateralPrice = 2
   before(async () => {
-    const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+    const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
-    exchangeAuthority = _mintAuthority
+    exchangeAuthority = _exchangeAuthority
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: initialCollateralPrice,

@@ -55,11 +55,6 @@
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "clock",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": []
@@ -317,6 +312,6 @@
     }
   ],
   "metadata": {
-    "address": "Cb7gTBZYDBptXYm1swZKpQQgj9gerguTxMqh9EhxJKtk"
+    "address": "2qgTH9335R2LbYeipF3X2AFCdfeccZ1xHPa1N7cbvJvR"
   }
 }

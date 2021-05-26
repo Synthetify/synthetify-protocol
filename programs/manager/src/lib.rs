@@ -177,7 +177,7 @@ pub mod manager {
                         asset.price = scaled_price.try_into().unwrap();
                     }
 
-                    // confidence 0-10000 -> 100 = 1% / 10000 = 100%
+                    // confidence 0-100000 -> 100 = 1% / 10000 = 100%
                     asset.confidence = (price_feed.agg.conf as u128)
                         .checked_mul(10u128.pow(5))
                         .unwrap()
@@ -186,7 +186,7 @@ pub mod manager {
                         .try_into()
                         .unwrap();
 
-                    asset.last_update = ctx.accounts.clock.slot;
+                    asset.last_update = Clock::get()?.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
             }
@@ -208,7 +208,6 @@ pub struct SetAssetSupply<'info> {
 pub struct SetAssetsPrices<'info> {
     #[account(mut)]
     pub assets_list: ProgramAccount<'info, AssetsList>,
-    pub clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]

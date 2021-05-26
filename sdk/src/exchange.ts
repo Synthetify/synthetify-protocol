@@ -13,7 +13,6 @@ import {
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
   TransactionInstruction,
-  SYSVAR_CLOCK_PUBKEY,
   Transaction,
   sendAndConfirmRawTransaction
 } from '@solana/web3.js'
@@ -119,7 +118,6 @@ export class Exchange {
         collateralToken: collateralToken,
         collateralAccount: collateralAccount,
         assetsList: assetsList,
-        clock: SYSVAR_CLOCK_PUBKEY,
         liquidationAccount: liquidationAccount,
         stakingFundAccount: stakingFundAccount
       }
@@ -218,8 +216,7 @@ export class Exchange {
         collateralAccount: this.state.collateralAccount,
         userCollateralAccount: userCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAuthority: this.exchangeAuthority,
-        clock: SYSVAR_CLOCK_PUBKEY
+        exchangeAuthority: this.exchangeAuthority
       }
     })) as TransactionInstruction
   }
@@ -230,7 +227,6 @@ export class Exchange {
         exchangeAuthority: this.exchangeAuthority,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
@@ -247,7 +243,6 @@ export class Exchange {
         usdToken: this.assetsList.assets[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
@@ -274,7 +269,6 @@ export class Exchange {
         userTokenAccountFor: userTokenAccountFor,
         userTokenAccountIn: userTokenAccountIn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
@@ -294,7 +288,6 @@ export class Exchange {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         signer: signer,
         usdToken: this.assetsList.assets[0].assetAddress,
@@ -320,7 +313,6 @@ export class Exchange {
         usdToken: this.assetsList.assets[0].assetAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
@@ -332,7 +324,6 @@ export class Exchange {
     // @ts-expect-error
     return await (this.program.state.instruction.claimRewards({
       accounts: {
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount
       }
     }) as TransactionInstruction)
@@ -345,7 +336,6 @@ export class Exchange {
     // @ts-expect-error
     return await (this.program.state.instruction.withdrawRewards({
       accounts: {
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         exchangeAuthority: this.exchangeAuthority,
         owner: owner,
@@ -359,7 +349,6 @@ export class Exchange {
     // @ts-expect-error
     return await (this.program.state.instruction.checkAccountCollateralization({
       accounts: {
-        clock: SYSVAR_CLOCK_PUBKEY,
         exchangeAccount: exchangeAccount,
         assetsList: this.state.assetsList,
         collateralAccount: this.state.collateralAccount

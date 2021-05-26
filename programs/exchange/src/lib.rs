@@ -48,6 +48,7 @@ pub mod exchange {
             staking_round_length: u32,
             amount_per_round: u64,
         ) -> Result<Self> {
+            let slot = Clock::get()?.slot;
             Ok(Self {
                 admin: *ctx.accounts.admin.key,
                 halted: false,
@@ -76,17 +77,12 @@ pub mod exchange {
                     current_round: StakingRound {
                         all_points: 0,
                         amount: 0,
-                        start: ctx.accounts.clock.slot,
+                        start: slot,
                     },
                     next_round: StakingRound {
                         all_points: 0,
                         amount: amount_per_round,
-                        start: ctx
-                            .accounts
-                            .clock
-                            .slot
-                            .checked_add(staking_round_length.into())
-                            .unwrap(),
+                        start: slot.checked_add(staking_round_length.into()).unwrap(),
                     },
                 },
             })
@@ -97,7 +93,7 @@ pub mod exchange {
 
             let exchange_account = &mut ctx.accounts.exchange_account;
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -137,7 +133,7 @@ pub mod exchange {
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
             msg!("Syntetify: MINT");
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -208,7 +204,7 @@ pub mod exchange {
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
             msg!("Syntetify: WITHDRAW");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -274,7 +270,7 @@ pub mod exchange {
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
             msg!("Syntetify: SWAP");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
@@ -285,7 +281,7 @@ pub mod exchange {
             let collateral_account = &ctx.accounts.collateral_account;
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
             let assets_list = &ctx.accounts.assets_list;
             let assets = &assets_list.assets;
             let user_token_account_in = &ctx.accounts.user_token_account_in;
@@ -390,7 +386,7 @@ pub mod exchange {
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
             msg!("Syntetify: BURN");
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -528,7 +524,7 @@ pub mod exchange {
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
             msg!("Syntetify: LIQUIDATE");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -698,7 +694,7 @@ pub mod exchange {
         ) -> Result<()> {
             msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -750,7 +746,7 @@ pub mod exchange {
         pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
             msg!("Syntetify: CLAIM REWARDS");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
@@ -783,7 +779,7 @@ pub mod exchange {
         pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
             msg!("Syntetify: WITHDRAW REWARDS");
 
-            let slot = ctx.accounts.clock.slot;
+            let slot = Clock::get()?.slot;
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
@@ -954,7 +950,6 @@ pub struct New<'info> {
     pub assets_list: AccountInfo<'info>,
     pub liquidation_account: AccountInfo<'info>,
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
-    pub clock: Sysvar<'info, Clock>,
 }
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {
@@ -989,7 +984,6 @@ pub struct Withdraw<'info> {
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
-    pub clock: Sysvar<'info, Clock>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
 }
@@ -1018,7 +1012,6 @@ pub struct Mint<'info> {
     pub manager_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
-    pub clock: Sysvar<'info, Clock>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
@@ -1048,7 +1041,6 @@ pub struct Deposit<'info> {
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
-    pub clock: Sysvar<'info, Clock>,
 }
 impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Deposit<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -1078,7 +1070,6 @@ pub struct Liquidate<'info> {
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    pub clock: Sysvar<'info, Clock>,
     pub manager_program: AccountInfo<'info>,
     #[account(mut)]
     pub collateral_account: CpiAccount<'info, TokenAccount>,
@@ -1100,7 +1091,6 @@ pub struct BurnToken<'info> {
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    pub clock: Sysvar<'info, Clock>,
     pub manager_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
@@ -1133,7 +1123,6 @@ pub struct Swap<'info> {
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    pub clock: Sysvar<'info, Clock>,
     pub manager_program: AccountInfo<'info>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
@@ -1165,18 +1154,15 @@ pub struct CheckCollateralization<'info> {
     #[account(mut)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     pub assets_list: CpiAccount<'info, AssetsList>,
-    pub clock: Sysvar<'info, Clock>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
     #[account(mut)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
-    pub clock: Sysvar<'info, Clock>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
-    pub clock: Sysvar<'info, Clock>,
     #[account(mut, has_one = owner)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     #[account(signer)]

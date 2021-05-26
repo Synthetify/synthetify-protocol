@@ -152,11 +152,6 @@
             "name": "stakingFundAccount",
             "isMut": false,
             "isSigner": false
-          },
-          {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
           }
         ],
         "args": [
@@ -206,11 +201,6 @@
             "name": "exchangeAuthority",
             "isMut": false,
             "isSigner": false
-          },
-          {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
           }
         ],
         "args": [
@@ -256,11 +246,6 @@
           {
             "name": "exchangeAccount",
             "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "clock",
-            "isMut": false,
             "isSigner": false
           },
           {
@@ -312,11 +297,6 @@
           {
             "name": "exchangeAccount",
             "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "clock",
-            "isMut": false,
             "isSigner": false
           },
           {
@@ -381,11 +361,6 @@
             "isSigner": true
           },
           {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "managerProgram",
             "isMut": false,
             "isSigner": false
@@ -440,11 +415,6 @@
             "name": "owner",
             "isMut": false,
             "isSigner": true
-          },
-          {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
           },
           {
             "name": "managerProgram",
@@ -503,11 +473,6 @@
             "isSigner": true
           },
           {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "managerProgram",
             "isMut": false,
             "isSigner": false
@@ -539,11 +504,6 @@
             "isSigner": false
           },
           {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "collateralAccount",
             "isMut": false,
             "isSigner": false
@@ -558,11 +518,6 @@
             "name": "exchangeAccount",
             "isMut": true,
             "isSigner": false
-          },
-          {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
           }
         ],
         "args": []
@@ -570,11 +525,6 @@
       {
         "name": "withdrawRewards",
         "accounts": [
-          {
-            "name": "clock",
-            "isMut": false,
-            "isSigner": false
-          },
           {
             "name": "exchangeAccount",
             "isMut": true,
@@ -993,6 +943,6 @@
     }
   ],
   "metadata": {
-    "address": "HLe3tdLJiRncQJDPhB4T4W1G9xWXbKqCASx3CHUZxZZr"
+    "address": "EUVrKsn9dwSr2NuX513shapBgCxFU6Byjs7xfXugXuzT"
   }
 }
