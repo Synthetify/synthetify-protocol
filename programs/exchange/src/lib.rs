@@ -60,7 +60,9 @@ pub mod exchange {
                 assets_list: *ctx.accounts.assets_list.key,
                 liquidation_account: *ctx.accounts.liquidation_account.key,
                 collateralization_level: 1000,
-                max_delay: 10,
+                // once we will not be able to fit all data into one transaction we will
+                // use max_delay to allow split updating oracles and exchange operation
+                max_delay: 0,
                 fee: 300,
                 liquidation_penalty: 15,
                 liquidation_threshold: 200,

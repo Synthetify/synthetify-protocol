@@ -129,7 +129,7 @@ describe('exchange', () => {
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
-    assert.ok(state.maxDelay === 10)
+    assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
     assert.ok(state.liquidationPenalty === 15)
     assert.ok(state.liquidationThreshold === 200)

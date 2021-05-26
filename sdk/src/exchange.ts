@@ -445,16 +445,10 @@ export class Exchange {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
     const checkIx = await this.checkAccountInstruction(exchangeAccount)
 
-    const updateTx = new Transaction().add(updateIx)
-    const checkTx = new Transaction().add(checkIx)
-    const txs = await this.processOperations([updateTx, checkTx])
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const checkTx = new Transaction().add(updateIx).add(checkIx)
+    const txs = await this.processOperations([checkTx])
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async liquidate({
     exchangeAccount,
@@ -479,17 +473,11 @@ export class Exchange {
       [],
       tou64(allowanceAmount)
     )
-    const updateTx = new Transaction().add(updateIx)
-    const liquidateTx = new Transaction().add(approveIx).add(liquidateIx)
-    const txs = await this.processOperations([updateTx, liquidateTx])
-    signers ? txs[1].partialSign(...signers) : null
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const liquidateTx = new Transaction().add(updateIx).add(approveIx).add(liquidateIx)
+    const txs = await this.processOperations([liquidateTx])
+    signers ? txs[0].partialSign(...signers) : null
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async swap({
     amount,
@@ -519,17 +507,11 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const updateTx = new Transaction().add(updateIx)
-    const swapTx = new Transaction().add(approveIx).add(swapIx)
-    const txs = await this.processOperations([updateTx, swapTx])
-    signers ? txs[1].partialSign(...signers) : null
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const swapTx = new Transaction().add(updateIx).add(approveIx).add(swapIx)
+    const txs = await this.processOperations([swapTx])
+    signers ? txs[0].partialSign(...signers) : null
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -547,17 +529,11 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const updateTx = new Transaction().add(updateIx)
-    const burnTx = new Transaction().add(approveIx).add(burnIx)
-    const txs = await this.processOperations([updateTx, burnTx])
-    signers ? txs[1].partialSign(...signers) : null
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const burnTx = new Transaction().add(updateIx).add(approveIx).add(burnIx)
+    const txs = await this.processOperations([burnTx])
+    signers ? txs[0].partialSign(...signers) : null
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -567,17 +543,11 @@ export class Exchange {
       owner,
       to
     })
-    const updateTx = new Transaction().add(updateIx)
-    const mintTx = new Transaction().add(mintIx)
-    const txs = await this.processOperations([updateTx, mintTx])
-    signers ? txs[1].partialSign(...signers) : null
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const mintTx = new Transaction().add(updateIx).add(mintIx)
+    const txs = await this.processOperations([mintTx])
+    signers ? txs[0].partialSign(...signers) : null
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
     const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
@@ -587,17 +557,11 @@ export class Exchange {
       owner,
       to
     })
-    const updateTx = new Transaction().add(updateIx)
-    const withdrawTx = new Transaction().add(withdrawIx)
-    const txs = await this.processOperations([updateTx, withdrawTx])
-    signers ? txs[1].partialSign(...signers) : null
-    await this.connection.sendRawTransaction(txs[0].serialize(), {
-      skipPreflight: true
-    })
-    await sleep(600)
-    return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-      skipPreflight: true
-    })
+    const withdrawTx = new Transaction().add(updateIx).add(withdrawIx)
+    const txs = await this.processOperations([withdrawTx])
+    signers ? txs[0].partialSign(...signers) : null
+
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async withdrawRewards({
     exchangeAccount,
@@ -613,6 +577,7 @@ export class Exchange {
     const withdrawTx = new Transaction().add(withdrawIx)
     const txs = await this.processOperations([withdrawTx])
     signers ? txs[0].partialSign(...signers) : null
+
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
       skipPreflight: true
     })
