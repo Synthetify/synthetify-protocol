@@ -326,6 +326,16 @@ mod tests {
     fn test_calculate_debt_success() {
         {
             let slot = 100;
+            // debt 0 - no assets
+            let assets: Vec<Asset> = vec![];
+            let result = calculate_debt(&assets, slot, 100);
+            match result {
+                Ok(debt) => assert_eq!(debt, 0),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
+        {
+            let slot = 100;
             // debt 1000
             let asset_1 = Asset {
                 // oracle offset set as 4
