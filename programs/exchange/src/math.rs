@@ -505,6 +505,18 @@ mod tests {
     fn test_calculate_user_debt() {
         {
             let user_account = ExchangeAccount {
+                debt_shares: 0,
+                owner: Pubkey::default(),
+                collateral_shares: 1,
+                ..Default::default()
+            };
+            let debt = 1_000_000;
+
+            let result = calculate_user_debt_in_usd(&user_account, debt, 0);
+            assert_eq!(result, 0);
+        }
+        {
+            let user_account = ExchangeAccount {
                 debt_shares: 100,
                 owner: Pubkey::default(),
                 collateral_shares: 1,
