@@ -1252,6 +1252,8 @@ pub enum ErrorCode {
     NoRewards,
     #[msg("Invalid fund_account")]
     FundAccountError,
+    #[msg("Debt of assets is overflow")]
+    DebtOverflow,
 }
 
 // Access control modifiers.

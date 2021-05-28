@@ -23,6 +23,9 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
                 .unwrap(),
         );
     }
+    if debt > std::u64::MAX as u128 {
+        return Err(ErrorCode::DebtOverflow.into());
+    }
     Ok(debt as u64)
 }
 
@@ -479,27 +482,67 @@ mod tests {
     }
     #[test]
     fn test_calculate_debt_error() {
-        let slot = 100;
-        let asset_1 = Asset {
-            price: 10 * 10u64.pow(PRICE_OFFSET.into()),
-            supply: 100 * 10u64.pow(8),
-            last_update: slot - 10,
-            decimals: 8,
-            feed_address: Pubkey::new_unique(),
-            ..Default::default()
-        };
-        // debt 1000
-        let asset_2 = Asset {
-            price: 12 * 10u64.pow(PRICE_OFFSET.into()),
-            supply: 200 * 10u64.pow(8),
-            last_update: 100,
-            decimals: 8,
-            ..Default::default()
-        };
-        // debt 2400
-        let assets: Vec<Asset> = vec![asset_1, asset_2];
-        let result = calculate_debt(&assets, slot, 0);
-        assert!(result.is_err());
+        {
+            let slot = 100;
+            let asset_1 = Asset {
+                price: 10 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 100 * 10u64.pow(8),
+                last_update: slot - 10,
+                decimals: 8,
+                feed_address: Pubkey::new_unique(),
+                ..Default::default()
+            };
+            // debt 1000
+            let asset_2 = Asset {
+                price: 12 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 200 * 10u64.pow(8),
+                last_update: 100,
+                decimals: 8,
+                ..Default::default()
+            };
+            // debt 2400
+            let assets: Vec<Asset> = vec![asset_1, asset_2];
+            let result = calculate_debt(&assets, slot, 0);
+            assert!(result.is_err());
+        }
+        {
+            // single asset debt overflow
+            let slot = 100;
+            // 1000001
+            let more_than_one_with_offset = 10u64.pow(PRICE_OFFSET.into()) + 1;
+            let asset_1 = Asset {
+                price: more_than_one_with_offset,
+                supply: std::u64::MAX,
+                last_update: slot - 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let assets: Vec<Asset> = vec![asset_1];
+            let result = calculate_debt(&assets, slot, 100);
+            assert!(result.is_err());
+        }
+        {
+            // multiple assets debt overflow
+            let slot = 100;
+            let one_tenth_with_offset = 10u64.pow((PRICE_OFFSET - 1u8).into());
+            let asset_1 = Asset {
+                price: 5 * one_tenth_with_offset,
+                supply: std::u64::MAX,
+                last_update: slot - 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let asset_2 = Asset {
+                price: 5 * one_tenth_with_offset,
+                supply: std::u64::MAX,
+                last_update: slot - 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let assets: Vec<Asset> = vec![asset_1, asset_2];
+            let result = calculate_debt(&assets, slot, 100);
+            assert!(result.is_err());
+        }
     }
     #[test]
     fn test_calculate_user_debt() {
