@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ops::Mul};
+use std::convert::TryInto;
 
 use crate::*;
 use manager::Asset;
@@ -211,7 +211,7 @@ pub fn calculate_burned_shares(
 }
 pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
     let decimal_difference = asset.decimals as i32 - ACCURACY as i32;
-    if (decimal_difference >= 0) {
+    if decimal_difference >= 0 {
         let burned_amount_token = div_up(
             (*user_debt as u128)
                 .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))

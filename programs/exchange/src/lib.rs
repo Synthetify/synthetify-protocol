@@ -3,7 +3,7 @@ mod utils;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
-use manager::{Asset, AssetsList, SetAssetSupply};
+use manager::{AssetsList, SetAssetSupply};
 use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
@@ -126,7 +126,8 @@ pub mod exchange {
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::transfer(cpi_ctx, amount);
+
+            token::transfer(cpi_ctx, amount)?;
             Ok(())
         }
         #[access_control(halted(&self)
@@ -194,10 +195,10 @@ pub mod exchange {
                 set_supply_cpi_ctx,
                 0u8, // xUSD always have 0 index
                 mint_asset.supply.checked_add(amount).unwrap(),
-            );
+            )?;
             // Mint xUSD to user
             let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::mint_to(mint_cpi_ctx, amount);
+            token::mint_to(mint_cpi_ctx, amount)?;
             Ok(())
         }
         #[access_control(halted(&self)
@@ -262,7 +263,7 @@ pub mod exchange {
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::transfer(cpi_ctx, amount);
+            token::transfer(cpi_ctx, amount)?;
 
             Ok(())
         }
@@ -364,23 +365,23 @@ pub mod exchange {
                     .supply
                     .checked_add(amount_for)
                     .unwrap(),
-            );
+            )?;
             // Set new supply input token
             let cpi_ctx_in = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
             manager::cpi::set_asset_supply(
                 cpi_ctx_in,
                 asset_in_index.try_into().unwrap(),
                 assets[asset_in_index].supply.checked_sub(amount).unwrap(),
-            );
+            )?;
             // Burn input token
             let cpi_ctx_burn: CpiContext<Burn> =
                 CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::burn(cpi_ctx_burn, amount);
+            token::burn(cpi_ctx_burn, amount)?;
 
             // Mint output token
             let cpi_ctx_mint: CpiContext<MintTo> =
                 CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::mint_to(cpi_ctx_mint, amount_for);
+            token::mint_to(cpi_ctx_mint, amount_for)?;
             Ok(())
         }
         #[access_control(halted(&self)
@@ -458,12 +459,12 @@ pub mod exchange {
                     cpi_ctx_in,
                     0u8, // xUSD got static index 0
                     burn_asset.supply.checked_sub(burned_amount).unwrap(),
-                );
+                )?;
                 // Burn token
                 // We do not use full allowance maybe its better to burn full allowance
                 // and mint matching amount
                 let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-                token::burn(cpi_ctx, burned_amount);
+                token::burn(cpi_ctx, burned_amount)?;
                 Ok(())
             } else {
                 // Burn intended amount
@@ -511,10 +512,10 @@ pub mod exchange {
                     cpi_ctx_in,
                     0u8, // xUSD got static index 0
                     burn_asset.supply.checked_sub(amount).unwrap(),
-                );
+                )?;
                 // Burn token
                 let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-                token::burn(cpi_ctx, amount);
+                token::burn(cpi_ctx, amount)?;
                 Ok(())
             }
         }
@@ -650,7 +651,7 @@ pub mod exchange {
                     cpi_ctx_in,
                     0u8, // xUSD always have 0 index
                     usd_token.supply.checked_sub(burned_amount).unwrap(),
-                );
+                )?;
                 let burn_accounts = Burn {
                     mint: ctx.accounts.usd_token.to_account_info(),
                     to: ctx.accounts.user_usd_account.to_account_info(),
@@ -658,7 +659,7 @@ pub mod exchange {
                 };
                 let token_program = ctx.accounts.token_program.to_account_info();
                 let burn = CpiContext::new(token_program, burn_accounts).with_signer(signer_seeds);
-                token::burn(burn, burned_amount);
+                token::burn(burn, burned_amount)?;
             }
             {
                 // transfer collateral to liquidator
@@ -670,7 +671,7 @@ pub mod exchange {
                 let token_program = ctx.accounts.token_program.to_account_info();
                 let transfer =
                     CpiContext::new(token_program, liquidator_accounts).with_signer(signer_seeds);
-                token::transfer(transfer, amount_to_liquidator);
+                token::transfer(transfer, amount_to_liquidator)?;
             }
             {
                 // transfer collateral to liquidation_account
@@ -682,7 +683,7 @@ pub mod exchange {
                 let token_program = ctx.accounts.token_program.to_account_info();
                 let transfer =
                     CpiContext::new(token_program, system_accounts).with_signer(signer_seeds);
-                token::transfer(transfer, amount_to_system);
+                token::transfer(transfer, amount_to_system)?;
             }
 
             Ok(())
@@ -803,7 +804,7 @@ pub mod exchange {
             };
             let cpi_program = ctx.accounts.token_program.to_account_info();
             let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-            token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim);
+            token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim)?;
             // Reset rewards amount
             exchange_account.user_staking_data.amount_to_claim = 0u64;
             Ok(())
@@ -839,7 +840,7 @@ pub mod exchange {
             };
             let cpi_program = ctx.accounts.token_program.to_account_info();
             let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-            token::transfer(cpi_ctx, amount);
+            token::transfer(cpi_ctx, amount)?;
             Ok(())
         }
         // admin methods
