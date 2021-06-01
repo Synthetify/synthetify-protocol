@@ -415,9 +415,9 @@ pub mod exchange {
 
             let burned_shares = calculate_burned_shares(
                 &burn_asset,
-                &user_debt,
-                &exchange_account.debt_shares,
-                &amount,
+                user_debt,
+                exchange_account.debt_shares,
+                amount,
             );
 
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
