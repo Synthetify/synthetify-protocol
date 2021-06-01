@@ -578,6 +578,45 @@ mod tests {
         }
     }
     #[test]
+    fn test_calculate_amount_mint_in_usd() {
+        {
+            // 2_000_000
+            let asset = Asset {
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 1_000_000_000 * 10u64.pow(8),
+                last_update: 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let result = calculate_amount_mint_in_usd(&asset, 1_000_000);
+            assert_eq!(result, 2_000_000);
+        }
+        {
+            // 2697,551...
+            let asset = Asset {
+                price: 1_984_953,
+                supply: 1_000_000_000 * 10u64.pow(8),
+                last_update: 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let result = calculate_amount_mint_in_usd(&asset, 1359);
+            assert_eq!(result, 2697);
+        }
+        {
+            // 13986,000014
+            let asset = Asset {
+                price: 14 * 10u64.pow(3),
+                supply: 1_000_000_000 * 10u64.pow(8),
+                last_update: 10,
+                decimals: 9,
+                ..Default::default()
+            };
+            let result = calculate_amount_mint_in_usd(&asset, 999_000_001);
+            assert_eq!(result, 13986);
+        }
+    }
+    #[test]
     fn test_calculate_user_collateral_in_token() {
         {
             let result = calculate_user_collateral_in_token(10, 100, 100);
