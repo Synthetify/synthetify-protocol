@@ -323,6 +323,30 @@ mod tests {
         }
     }
     #[test]
+    fn test_calculate_max_withdraw_in_usd() {
+        {
+            // user_debt == max_user_debt
+            let debt = 999_999_999;
+            let max_debt = 999_999_999;
+            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &1000);
+            assert_eq!(result, 0);
+        }
+        {
+            // user_debt > max_user_debt
+            let debt = 1_000_000_000;
+            let max_debt = 900_000_000;
+            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &1000);
+            assert_eq!(result, 0);
+        }
+        {
+            // round down case
+            let debt = 900_000_123;
+            let max_debt = 1_000_000_000;
+            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &750);
+            assert_eq!(result, 749999077);
+        }
+    }
+    #[test]
     fn test_calculate_debt_success() {
         {
             let slot = 100;
