@@ -88,7 +88,6 @@ export class Exchange {
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
-    // @ts-expect-error
     this.program.state.subscribe('singleGossip').on('change', (state: ExchangeState) => {
       fn(state)
     })
@@ -111,7 +110,6 @@ export class Exchange {
     stakingRoundLength,
     stakingFundAccount
   }: Init) {
-    // @ts-expect-error
     await this.program.state.rpc.new(nonce, stakingRoundLength, amountPerRound, {
       accounts: {
         admin: admin,
@@ -124,17 +122,17 @@ export class Exchange {
     })
   }
   public async getState() {
-    const state = (await this.program.state()) as ExchangeState
+    const state = (await this.program.state.fetch()) as ExchangeState
     // need to add hooks on change
     this.state = state
     this.assetsList = await this.manager.getAssetsList(this.state.assetsList)
     return state
   }
   public async getExchangeAccount(exchangeAccount: PublicKey) {
-    return (await this.program.account.exchangeAccount(exchangeAccount)) as ExchangeAccount
+    return (await this.program.account.exchangeAccount.fetch(exchangeAccount)) as ExchangeAccount
   }
   public async getUserCollateralBalance(exchangeAccount: PublicKey) {
-    const userAccount = (await this.program.account.exchangeAccount(
+    const userAccount = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
     )) as ExchangeAccount
     if (userAccount.collateralShares.eq(new BN(0))) {
@@ -153,7 +151,7 @@ export class Exchange {
       .div(state.collateralShares)
   }
   public async getUserDebtBalance(exchangeAccount: PublicKey) {
-    const userAccount = (await this.program.account.exchangeAccount(
+    const userAccount = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
     )) as ExchangeAccount
     if (userAccount.collateralShares.eq(new BN(0))) {
@@ -164,7 +162,6 @@ export class Exchange {
     return userAccount.debtShares.mul(debt).div(state.debtShares)
   }
   public async createExchangeAccount(owner: PublicKey) {
-    //@ts-expect-error
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     await this.program.rpc.createExchangeAccount(owner, {
@@ -180,7 +177,6 @@ export class Exchange {
     return account
   }
   public async createExchangeAccountInstruction(owner: PublicKey) {
-    //@ts-expect-error
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     const ix = (await this.program.instruction.createExchangeAccount(owner, {
@@ -196,7 +192,6 @@ export class Exchange {
     return { account, ix }
   }
   public async getExchangeAccountAddress(owner: PublicKey) {
-    //@ts-expect-error
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
     return account
@@ -208,7 +203,6 @@ export class Exchange {
     userCollateralAccount,
     owner
   }: DepositInstruction) {
-    // @ts-expect-error
     return (await this.program.state.instruction.deposit(amount, {
       accounts: {
         owner: owner,
@@ -221,7 +215,6 @@ export class Exchange {
     })) as TransactionInstruction
   }
   public async withdrawInstruction({ amount, exchangeAccount, owner, to }: WithdrawInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
@@ -236,7 +229,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async mintInstruction({ amount, exchangeAccount, owner, to }: MintInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.mint(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
@@ -260,7 +252,6 @@ export class Exchange {
     userTokenAccountFor,
     userTokenAccountIn
   }: SwapInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.swap(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
@@ -283,7 +274,6 @@ export class Exchange {
     userCollateralAccount,
     userUsdAccount
   }: LiquidateInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.liquidate({
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
@@ -306,7 +296,6 @@ export class Exchange {
     owner,
     userTokenAccountBurn
   }: BurnInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.burn(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
@@ -321,7 +310,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async claimRewardsInstruction(exchangeAccount: PublicKey) {
-    // @ts-expect-error
     return await (this.program.state.instruction.claimRewards({
       accounts: {
         exchangeAccount: exchangeAccount
@@ -333,7 +321,6 @@ export class Exchange {
     owner,
     userTokenAccount
   }: WithdrawRewardsInstruction) {
-    // @ts-expect-error
     return await (this.program.state.instruction.withdrawRewards({
       accounts: {
         exchangeAccount: exchangeAccount,
@@ -346,7 +333,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async checkAccountInstruction(exchangeAccount: PublicKey) {
-    // @ts-expect-error
     return await (this.program.state.instruction.checkAccountCollateralization({
       accounts: {
         exchangeAccount: exchangeAccount,
@@ -356,7 +342,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setLiquidationBufferInstruction(newLiquidationBuffer: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setLiquidationBuffer(newLiquidationBuffer, {
       accounts: {
         admin: this.state.admin
@@ -364,7 +349,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
       accounts: {
         admin: this.state.admin
@@ -372,7 +356,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
       accounts: {
         admin: this.state.admin
@@ -380,7 +363,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setCollateralizationLevelInstruction(newCollateralizationLevel: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setCollateralizationLevel(
       newCollateralizationLevel,
       {
@@ -391,7 +373,6 @@ export class Exchange {
     ) as TransactionInstruction)
   }
   public async setFeeInstruction(newFee: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setFee(newFee, {
       accounts: {
         admin: this.state.admin
@@ -399,7 +380,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setMaxDelayInstruction(newMaxDelay: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setMaxDelay(newMaxDelay, {
       accounts: {
         admin: this.state.admin
@@ -407,7 +387,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setHaltedInstruction(halted: boolean) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setHalted(halted, {
       accounts: {
         admin: this.state.admin
@@ -415,7 +394,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setStakingAmountPerRound(amount: BN) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setStakingAmountPerRound(amount, {
       accounts: {
         admin: this.state.admin
@@ -423,7 +401,6 @@ export class Exchange {
     }) as TransactionInstruction)
   }
   public async setStakingRoundLength(length: number) {
-    // @ts-expect-error
     return await (this.program.state.instruction.setStakingRoundLength(length, {
       accounts: {
         admin: this.state.admin

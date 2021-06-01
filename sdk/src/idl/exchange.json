@@ -941,8 +941,5 @@
       "name": "FundAccountError",
       "msg": "Invalid fund_account"
     }
-  ],
-  "metadata": {
-    "address": "EUVrKsn9dwSr2NuX513shapBgCxFU6Byjs7xfXugXuzT"
-  }
+  ]
 }
