@@ -93,15 +93,15 @@ pub fn calculate_new_shares(all_shares: u64, full_amount: u64, new_amount: u64) 
     return new_shares.try_into().unwrap();
 }
 pub fn calculate_max_withdraw_in_usd(
-    max_user_debt_in_usd: &u64,
-    user_debt_in_usd: &u64,
-    collateralization_level: &u32,
+    max_user_debt_in_usd: u64,
+    user_debt_in_usd: u64,
+    collateralization_level: u32,
 ) -> u64 {
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
     }
     return (max_user_debt_in_usd - user_debt_in_usd)
-        .checked_mul(*collateralization_level as u64)
+        .checked_mul(collateralization_level as u64)
         .unwrap()
         .checked_div(100)
         .unwrap();
@@ -339,25 +339,26 @@ mod tests {
     }
     #[test]
     fn test_calculate_max_withdraw_in_usd() {
+        // user_debt == max_user_debt
         {
-            // user_debt == max_user_debt
             let debt = 999_999_999;
             let max_debt = 999_999_999;
-            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &1000);
+            let result = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
             assert_eq!(result, 0);
         }
+        // user_debt > max_user_debt
         {
-            // user_debt > max_user_debt
             let debt = 1_000_000_000;
             let max_debt = 900_000_000;
-            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &1000);
+            let result = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
             assert_eq!(result, 0);
         }
+        // user_debt < max_user_debt
         {
-            // round down case
             let debt = 900_000_123;
             let max_debt = 1_000_000_000;
-            let result = calculate_max_withdraw_in_usd(&max_debt, &debt, &750);
+            let result = calculate_max_withdraw_in_usd(max_debt, debt, 750);
+            // 749999077,5 (round down)
             assert_eq!(result, 749999077);
         }
     }
@@ -630,6 +631,18 @@ mod tests {
             let result = calculate_amount_mint_in_usd(&asset, 999_000_001);
             assert_eq!(result, 13986);
         }
+        {
+            // 1_290_000_000
+            let asset = Asset {
+                price: 129 * 10u64.pow(5),
+                supply: 1_000_000_000 * 10u64.pow(8),
+                last_update: 10,
+                decimals: 7,
+                ..Default::default()
+            };
+            let result = calculate_amount_mint_in_usd(&asset, 1_000_000_000);
+            assert_eq!(result, 1_290_000_000);
+        }
     }
     #[test]
     fn test_calculate_user_collateral_in_token() {
@@ -780,6 +793,13 @@ mod tests {
             let amount = 0;
             let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
             assert_eq!(burned_shares, 0);
+        }
+    }
+
+    #[test]
+    fn test_calculate_max_burned_in_token() {
+        {
+            println!("calculate");
         }
     }
 

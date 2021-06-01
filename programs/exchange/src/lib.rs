@@ -238,9 +238,9 @@ pub mod exchange {
                 collateral_amount,
             );
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-                &max_user_debt,
-                &user_debt,
-                &self.collateralization_level,
+                max_user_debt,
+                user_debt,
+                self.collateralization_level,
             );
             let max_withdrawable =
                 calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
