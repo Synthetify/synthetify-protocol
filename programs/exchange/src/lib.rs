@@ -956,7 +956,7 @@ pub struct New<'info> {
 }
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(associated = admin, with = state,payer=payer)]
+    #[account(init,associated = admin, with = state,payer=payer)]
     pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]

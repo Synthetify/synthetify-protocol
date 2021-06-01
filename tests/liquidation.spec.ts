@@ -1,6 +1,5 @@
 import * as anchor from '@project-serum/anchor'
 import { Program, Provider } from '@project-serum/anchor'
-import { State } from '@project-serum/anchor/dist/rpc'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Account,
@@ -324,7 +323,6 @@ describe('liquidation', () => {
       // Withdraw liquidation penalty
       const withdrawPenaltyDestination = await collateralToken.createAccount(exchangeAuthority)
 
-      // @ts-expect-error
       const withdrawPenaltyIx = await exchangeProgram.state.instruction.withdrawLiquidationPenalty(
         sytemLiquidationAccountData.amount,
         {
@@ -636,7 +634,6 @@ describe('liquidation', () => {
         manager,
         wallet
       })
-      // @ts-expect-error
       const liquidateIx = await (exchange.program.state.instruction.liquidate({
         accounts: {
           exchangeAuthority: exchange.exchangeAuthority,

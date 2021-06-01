@@ -46,14 +46,13 @@ export class Manager {
     }
   }
   public async init(admin: PublicKey) {
-    // @ts-expect-error
     await this.program.state.rpc.new(admin)
   }
   public async getState() {
-    return (await this.program.state()) as { admin: PublicKey; initialized: boolean }
+    return (await this.program.state.fetch()) as { admin: PublicKey; initialized: boolean }
   }
   public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
-    return await this.program.account.assetsList(assetsList)
+    return (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
   }
   public onAssetsListChange(address: PublicKey, fn: (list: AssetsList) => void) {
     this.program.account.assetsList
@@ -71,7 +70,6 @@ export class Manager {
       },
       signers: [assetListAccount],
       instructions: [
-        // @ts-expect-error
         await this.program.account.assetsList.createInstruction(assetListAccount, size * 109 + 45)
       ]
     })
@@ -83,7 +81,6 @@ export class Manager {
     signer,
     tokenAddress
   }: SetPriceFeedInstruction) {
-    // @ts-expect-error
     return (await this.program.state.instruction.setPriceFeed(tokenAddress, {
       accounts: {
         signer: signer,
@@ -101,7 +98,6 @@ export class Manager {
     exchangeAuthority,
     usdToken
   }: InitializeAssetList) {
-    // @ts-expect-error
     return await this.program.state.rpc.createList(
       exchangeAuthority,
       collateralToken,
@@ -136,7 +132,6 @@ export class Manager {
     assetAddress,
     newMaxSupply
   }: SetAssetMaxSupply) {
-    // @ts-expect-error
     return await this.program.state.rpc.setMaxSupply(assetAddress, newMaxSupply, {
       accounts: {
         signer: assetsAdmin.publicKey,
@@ -153,7 +148,6 @@ export class Manager {
     tokenDecimals,
     tokenFeed
   }: AddNewAsset) {
-    // @ts-expect-error
     return await this.program.state.rpc.addNewAsset(
       tokenFeed,
       tokenAddress,
