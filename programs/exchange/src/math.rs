@@ -189,12 +189,16 @@ pub fn calculate_swap_out_amount(
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
-    user_debt: &u64,
-    user_shares: &u64,
-    amount: &u64,
+    user_debt: u64,
+    user_shares: u64,
+    amount: u64,
 ) -> u64 {
+    if user_debt == 0 {
+        return 0u64;
+    }
+
     let burn_amount_in_usd = (asset.price as u128)
-        .checked_mul(*amount as u128)
+        .checked_mul(amount as u128)
         .unwrap()
         .checked_div(
             10u128
@@ -203,9 +207,9 @@ pub fn calculate_burned_shares(
         )
         .unwrap();
     let burned_shares = burn_amount_in_usd
-        .checked_mul(*user_shares as u128)
+        .checked_mul(user_shares as u128)
         .unwrap()
-        .checked_div(*user_debt as u128)
+        .checked_div(user_debt as u128)
         .unwrap();
     return burned_shares.try_into().unwrap();
 }
@@ -733,6 +737,41 @@ mod tests {
             assert_eq!(result, 24_850_2250);
         }
     }
+
+    #[test]
+    fn test_calculate_burned_shares() {
+        {
+            // 7772,10263
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 100 * 10u64.pow(6),
+                last_update: 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let user_debt = 1598;
+            let user_shares = 90;
+            let amount = 9857;
+            let burned_shares = calculate_burned_shares(&asset, &user_debt, &user_shares, &amount);
+            assert_eq!(burned_shares, 7772);
+        }
+        {
+            // user_debt = 0
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 100 * 10u64.pow(6),
+                last_update: 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let user_debt = 0;
+            let user_shares = 0;
+            let amount = 0;
+            let burned_shares = calculate_burned_shares(&asset, &user_debt, &user_shares, &amount);
+            assert_eq!(burned_shares, 0);
+        }
+    }
+
     #[test]
     fn test_calculate_liquidation() {
         {
