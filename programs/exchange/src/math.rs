@@ -680,14 +680,37 @@ mod tests {
     }
     #[test]
     fn test_calculate_max_user_debt_in_usd() {
+        // no collateral no debt
+        {
+            let asset = Asset {
+                decimals: 6,
+                price: 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let max_user_debt = calculate_max_user_debt_in_usd(&asset, 1000, 0);
+            assert_eq!(max_user_debt, 0u64);
+        }
+        // large numbers
         {
             let asset = Asset {
                 decimals: 6,
                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let result = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
-            assert_eq!(result, 20_000_000)
+            // debt = 1/10 collateral
+            let max_user_debt = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
+            assert_eq!(max_user_debt, 20_000_000)
+        }
+        // valid debt rounding
+        {
+            let asset = Asset {
+                decimals: 6,
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            // 140660744,358...
+            let max_user_debt = calculate_max_user_debt_in_usd(&asset, 780, 78_368_129);
+            assert_eq!(max_user_debt, 140660744)
         }
     }
     #[test]
