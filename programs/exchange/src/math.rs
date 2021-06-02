@@ -214,11 +214,11 @@ pub fn calculate_burned_shares(
         .unwrap();
     return burned_shares.try_into().unwrap();
 }
-pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
+pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: u64) -> u64 {
     let decimal_difference = asset.decimals as i32 - ACCURACY as i32;
     if decimal_difference >= 0 {
         let burned_amount_token = div_up(
-            (*user_debt as u128)
+            (user_debt as u128)
                 .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
                 .checked_mul(10u128.pow(PRICE_OFFSET.into()))
@@ -228,10 +228,10 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: &u64) -> u64 {
         return burned_amount_token.try_into().unwrap();
     } else {
         let burned_amount_token = div_up(
-            (*user_debt as u128)
+            (user_debt as u128)
                 .checked_mul(10u128.pow(PRICE_OFFSET.into()))
                 .unwrap()
-                .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
+                .checked_div(10u128.pow(decimal_difference.abs().try_into().unwrap()))
                 .unwrap(),
             asset.price as u128,
         );
@@ -343,23 +343,23 @@ mod tests {
         {
             let debt = 999_999_999;
             let max_debt = 999_999_999;
-            let result = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
-            assert_eq!(result, 0);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
+            assert_eq!(max_withdraw, 0);
         }
         // user_debt > max_user_debt
         {
             let debt = 1_000_000_000;
             let max_debt = 900_000_000;
-            let result = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
-            assert_eq!(result, 0);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
+            assert_eq!(max_withdraw, 0);
         }
         // user_debt < max_user_debt
         {
             let debt = 900_000_123;
             let max_debt = 1_000_000_000;
-            let result = calculate_max_withdraw_in_usd(max_debt, debt, 750);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 750);
             // 749999077,5 (round down)
-            assert_eq!(result, 749999077);
+            assert_eq!(max_withdraw, 749999077);
         }
     }
     #[test]
@@ -604,8 +604,8 @@ mod tests {
                 decimals: 6,
                 ..Default::default()
             };
-            let result = calculate_amount_mint_in_usd(&asset, 1_000_000);
-            assert_eq!(result, 2_000_000);
+            let amount_mint = calculate_amount_mint_in_usd(&asset, 1_000_000);
+            assert_eq!(amount_mint, 2_000_000);
         }
         {
             // 2697,551...
@@ -616,8 +616,8 @@ mod tests {
                 decimals: 6,
                 ..Default::default()
             };
-            let result = calculate_amount_mint_in_usd(&asset, 1359);
-            assert_eq!(result, 2697);
+            let amount_mint = calculate_amount_mint_in_usd(&asset, 1359);
+            assert_eq!(amount_mint, 2697);
         }
         {
             // 13986,000014
@@ -628,8 +628,8 @@ mod tests {
                 decimals: 9,
                 ..Default::default()
             };
-            let result = calculate_amount_mint_in_usd(&asset, 999_000_001);
-            assert_eq!(result, 13986);
+            let amount_mint = calculate_amount_mint_in_usd(&asset, 999_000_001);
+            assert_eq!(amount_mint, 13986);
         }
         {
             // 1_290_000_000
@@ -640,8 +640,8 @@ mod tests {
                 decimals: 7,
                 ..Default::default()
             };
-            let result = calculate_amount_mint_in_usd(&asset, 1_000_000_000);
-            assert_eq!(result, 1_290_000_000);
+            let amount_mint = calculate_amount_mint_in_usd(&asset, 1_000_000_000);
+            assert_eq!(amount_mint, 1_290_000_000);
         }
     }
     #[test]
@@ -795,11 +795,49 @@ mod tests {
             assert_eq!(burned_shares, 0);
         }
     }
-
     #[test]
     fn test_calculate_max_burned_in_token() {
+        // asset.decimals > ACCURACY
         {
-            println!("calculate");
+            let asset = Asset {
+                price: 14,
+                supply: 10u64.pow(16),
+                last_update: 10,
+                decimals: ACCURACY + 2,
+                ..Default::default()
+            };
+            let user_debt = 1_000;
+            let max_burned = calculate_max_burned_in_token(&asset, user_debt);
+            // 7142857142,85...
+            assert_eq!(max_burned, 7142857143);
+        }
+        // asset.decimals == ACCURACY
+        {
+            let asset = Asset {
+                price: 17 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 100 * 10u64.pow(6),
+                last_update: 10,
+                decimals: ACCURACY,
+                ..Default::default()
+            };
+            let user_debt = 10_000;
+            let max_burned = calculate_max_burned_in_token(&asset, user_debt);
+            // 588,235...
+            assert_eq!(max_burned, 589);
+        }
+        // asset.decimals < ACCURACY
+        {
+            let asset = Asset {
+                price: 78,
+                supply: 10u64.pow(6),
+                last_update: 10,
+                decimals: 2,
+                ..Default::default()
+            };
+            let user_debt = 10_000;
+            let max_burned = calculate_max_burned_in_token(&asset, user_debt);
+            // 12820,512...
+            assert_eq!(max_burned, 12821);
         }
     }
 
