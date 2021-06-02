@@ -761,7 +761,6 @@ mod tests {
             assert_eq!(result, 24_850_2250);
         }
     }
-
     #[test]
     fn test_calculate_burned_shares() {
         {
@@ -838,6 +837,38 @@ mod tests {
             let max_burned = calculate_max_burned_in_token(&asset, user_debt);
             // 12820,512...
             assert_eq!(max_burned, 12821);
+        }
+    }
+    #[test]
+    fn test_usd_to_token_amount() {
+        // round down
+        {
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 10u64.pow(6),
+                last_update: 10,
+                decimals: 6,
+                ..Default::default()
+            };
+            let amount = 100;
+            let token_amount = usd_to_token_amount(&asset, amount);
+            // 7,142...
+            assert_eq!(token_amount, 7);
+        }
+        // large amount
+        {
+            let asset = Asset {
+                price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+                supply: 10u64.pow(12),
+                last_update: 10,
+                decimals: 10,
+                ..Default::default()
+            };
+
+            let amount = 1_003_900_802;
+            let token_amount = usd_to_token_amount(&asset, amount);
+            // 11031876,945...
+            assert_eq!(token_amount, 11031876);
         }
     }
 
