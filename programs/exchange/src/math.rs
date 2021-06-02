@@ -688,8 +688,17 @@ mod tests {
                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let result = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
-            assert_eq!(result, 50 * 10u64.pow(6))
+            let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
+            assert_eq!(max_withdrawable, 0u64);
+        }
+        {
+            let asset = Asset {
+                decimals: 6,
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
+            assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
         }
     }
     #[test]
