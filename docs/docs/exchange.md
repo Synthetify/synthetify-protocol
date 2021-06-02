@@ -12,4 +12,9 @@ SNY is the only collateral token currently supported by Synthetify platform. The
 
 The SNY Token is planned to have a total supply of **100,000,000**. We plan do introduce perpetual inflation in the future. The initial distribution of SNY will be as follows:
 
-![Table of Token Distribution](https://i.imgur.com/hT7UZ6H.png)
+![Table of Token Distribution](https://i.imgur.com/pRkSQlI.png)
+
+Below you can see SNY token distribution over time. Liquidity mining and Synthetify Debt Pool tokens unlocking dates are estimates and are dependent on the date of Synthetify platform launch.
+
+![Diagram of Token Distribution](https://i.imgur.com/axFJoR7.png)
+
