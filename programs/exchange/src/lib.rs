@@ -344,8 +344,8 @@ pub mod exchange {
             let amount_for = calculate_swap_out_amount(
                 &assets[asset_in_index],
                 &assets[asset_for_index],
-                &amount,
-                &effective_fee,
+                amount,
+                effective_fee,
             );
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];

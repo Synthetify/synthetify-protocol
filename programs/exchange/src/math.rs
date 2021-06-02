@@ -164,18 +164,18 @@ pub fn amount_to_discount(amount: u64) -> u8 {
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
-    amount: &u64,
-    fee: &u32, // in range from 0-99 | 30/10000 => 0.3% fee
+    amount: u64,
+    fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
     let amount_before_fee = (asset_in.price as u128)
-        .checked_mul(*amount as u128)
+        .checked_mul(amount as u128)
         .unwrap()
         .checked_div(asset_for.price as u128)
         .unwrap();
     let amount = amount_before_fee
         .checked_sub(
             amount_before_fee
-                .checked_mul(*fee as u128)
+                .checked_mul(fee as u128)
                 .unwrap()
                 .checked_div(100000)
                 .unwrap(),
@@ -831,12 +831,11 @@ mod tests {
                 ..Default::default()
             };
             let fee = 300u32;
-            let result =
-                calculate_swap_out_amount(&assetUSD, &assetBTC, &(50000 * 10u64.pow(6)), &fee);
+            let result = calculate_swap_out_amount(&assetUSD, &assetBTC, 50000 * 10u64.pow(6), fee);
             assert_eq!(result, 0_99700000);
-            let result = calculate_swap_out_amount(&assetBTC, &assetUSD, &(1 * 10u64.pow(8)), &fee);
+            let result = calculate_swap_out_amount(&assetBTC, &assetUSD, 1 * 10u64.pow(8), fee);
             assert_eq!(result, 49850_000_000);
-            let result = calculate_swap_out_amount(&assetBTC, &assetETH, &99700000, &fee);
+            let result = calculate_swap_out_amount(&assetBTC, &assetETH, 99700000, fee);
             assert_eq!(result, 24_850_2250);
         }
     }
