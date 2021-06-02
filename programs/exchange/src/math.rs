@@ -132,6 +132,10 @@ pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in
     return tokens.try_into().unwrap();
 }
 pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
+    // full_amount is always != 0 if all_shares > 0
+    if all_shares == 0 {
+        return 0;
+    }
     let shares = (amount as u128)
         .checked_mul(all_shares as u128)
         .unwrap()
@@ -703,9 +707,31 @@ mod tests {
     }
     #[test]
     fn test_amount_to_shares() {
+        // not initialized shares
         {
-            let result = amount_to_shares(10, 100, 10);
-            assert_eq!(result, 1)
+            let amount = amount_to_shares(0, 0, 0);
+            assert_eq!(amount, 0)
+        }
+        // zero amount
+        {
+            let amount = amount_to_shares(100, 100 * 10u64.pow(6), 0);
+            assert_eq!(amount, 0)
+        }
+        // basic
+        {
+            let amount = amount_to_shares(10, 100, 10);
+            // 1/10 of all_shares
+            assert_eq!(amount, 1)
+        }
+        // large numbers
+        {
+            let amount = amount_to_shares(
+                10u64.pow(6),
+                1_000_000_000 * 10u64.pow(6),
+                198_112 * 10u64.pow(6),
+            );
+            // 198,112
+            assert_eq!(amount, 198)
         }
     }
     #[test]
