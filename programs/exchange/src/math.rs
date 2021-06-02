@@ -111,6 +111,7 @@ pub fn calculate_user_collateral_in_token(
     collateral_shares: u64,
     balance: u64,
 ) -> u64 {
+    // collateral_shares is always != 0 if user_collateral_shares > 0
     if user_collateral_shares == 0 {
         return 0;
     }
@@ -646,17 +647,37 @@ mod tests {
     }
     #[test]
     fn test_calculate_user_collateral_in_token() {
+        // zero user_shares
         {
-            let result = calculate_user_collateral_in_token(10, 100, 100);
-            assert_eq!(result, 10)
+            let user_collateral = calculate_user_collateral_in_token(0, 1000, 1000);
+            assert_eq!(user_collateral, 0)
         }
+        // zero collateral_shares
         {
-            let result = calculate_user_collateral_in_token(
+            let user_collateral = calculate_user_collateral_in_token(0, 0, 0);
+            assert_eq!(user_collateral, 0)
+        }
+        // basic
+        {
+            let user_collateral = calculate_user_collateral_in_token(10, 100, 100);
+            // user_collateral = 1/10 balnace
+            assert_eq!(user_collateral, 10)
+        }
+        // large numbers
+        {
+            let user_collateral = calculate_user_collateral_in_token(
                 1_000_000 * 10u64.pow(6),
                 100_000_000 * 10u64.pow(6),
                 100_000_000 * 10u64.pow(6),
             );
-            assert_eq!(result, 1_000_000 * 10u64.pow(6))
+            // user_collateral = 1/100 balnace
+            assert_eq!(user_collateral, 1_000_000 * 10u64.pow(6))
+        }
+        // valid token rounding
+        {
+            let user_collateral = calculate_user_collateral_in_token(11, 9871, 1_987_786);
+            // 2215,139...
+            assert_eq!(user_collateral, 2215)
         }
     }
     #[test]
