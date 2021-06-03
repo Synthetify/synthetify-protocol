@@ -185,11 +185,11 @@ pub fn calculate_swap_out_amount(
     let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        let scaled_amount = amount / (decimal_change);
+        let scaled_amount = amount.checked_div(decimal_change).unwrap();
         return scaled_amount.try_into().unwrap();
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
-        let scaled_amount = amount * (decimal_change);
+        let scaled_amount = amount.checked_mul(decimal_change).unwrap();
         return scaled_amount.try_into().unwrap();
     }
 }
@@ -552,7 +552,6 @@ mod tests {
             let user_account = ExchangeAccount {
                 debt_shares: 0,
                 owner: Pubkey::default(),
-                collateral_shares: 1,
                 ..Default::default()
             };
             let debt = 1_000_000;
@@ -564,7 +563,6 @@ mod tests {
             let user_account = ExchangeAccount {
                 debt_shares: 100,
                 owner: Pubkey::default(),
-                collateral_shares: 1,
                 ..Default::default()
             };
             let debt = 4400_162356;
@@ -576,7 +574,6 @@ mod tests {
             let user_account = ExchangeAccount {
                 debt_shares: 1525783,
                 owner: Pubkey::default(),
-                collateral_shares: 1,
                 ..Default::default()
             };
             let debt = 932210931_726361;
@@ -588,7 +585,6 @@ mod tests {
             let user_account = ExchangeAccount {
                 debt_shares: 9234567898765432,
                 owner: Pubkey::default(),
-                collateral_shares: 1,
                 ..Default::default()
             };
             let debt = 526932210931_726361;
@@ -836,8 +832,6 @@ mod tests {
             // 7772,102...
             let asset = Asset {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 100 * 10u64.pow(6),
-                last_update: 10,
                 decimals: 6,
                 ..Default::default()
             };
@@ -851,8 +845,6 @@ mod tests {
             // user_debt = 0
             let asset = Asset {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 100 * 10u64.pow(6),
-                last_update: 10,
                 decimals: 6,
                 ..Default::default()
             };
@@ -869,8 +861,6 @@ mod tests {
         {
             let asset = Asset {
                 price: 14,
-                supply: 10u64.pow(16),
-                last_update: 10,
                 decimals: ACCURACY + 2,
                 ..Default::default()
             };
@@ -883,8 +873,6 @@ mod tests {
         {
             let asset = Asset {
                 price: 17 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 100 * 10u64.pow(6),
-                last_update: 10,
                 decimals: ACCURACY,
                 ..Default::default()
             };
@@ -897,8 +885,6 @@ mod tests {
         {
             let asset = Asset {
                 price: 78,
-                supply: 10u64.pow(6),
-                last_update: 10,
                 decimals: 2,
                 ..Default::default()
             };
@@ -914,8 +900,6 @@ mod tests {
         {
             let asset = Asset {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 10u64.pow(6),
-                last_update: 10,
                 decimals: 6,
                 ..Default::default()
             };
@@ -928,8 +912,6 @@ mod tests {
         {
             let asset = Asset {
                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 10u64.pow(12),
-                last_update: 10,
                 decimals: 10,
                 ..Default::default()
             };
