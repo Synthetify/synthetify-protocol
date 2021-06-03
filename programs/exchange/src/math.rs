@@ -236,7 +236,7 @@ pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: u64) -> u64 {
             (user_debt as u128)
                 .checked_mul(10u128.pow(PRICE_OFFSET.into()))
                 .unwrap()
-                .checked_div(10u128.pow(decimal_difference.abs().try_into().unwrap()))
+                .checked_div(10u128.pow((-decimal_difference).try_into().unwrap()))
                 .unwrap(),
             asset.price as u128,
         );
@@ -363,7 +363,7 @@ mod tests {
             let debt = 900_000_123;
             let max_debt = 1_000_000_000;
             let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 750);
-            // 749999077,5 (round down)
+            // 749999077,5
             assert_eq!(max_withdraw, 749999077);
         }
     }
@@ -567,7 +567,6 @@ mod tests {
                 collateral_shares: 1,
                 ..Default::default()
             };
-
             let debt = 4400_162356;
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
@@ -604,8 +603,6 @@ mod tests {
             // 2_000_000
             let asset = Asset {
                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-                supply: 1_000_000_000 * 10u64.pow(8),
-                last_update: 10,
                 decimals: 6,
                 ..Default::default()
             };
@@ -616,8 +613,6 @@ mod tests {
             // 2697,551...
             let asset = Asset {
                 price: 1_984_953,
-                supply: 1_000_000_000 * 10u64.pow(8),
-                last_update: 10,
                 decimals: 6,
                 ..Default::default()
             };
@@ -628,8 +623,6 @@ mod tests {
             // 13986,000014
             let asset = Asset {
                 price: 14 * 10u64.pow(3),
-                supply: 1_000_000_000 * 10u64.pow(8),
-                last_update: 10,
                 decimals: 9,
                 ..Default::default()
             };
@@ -640,8 +633,6 @@ mod tests {
             // 1_290_000_000
             let asset = Asset {
                 price: 129 * 10u64.pow(5),
-                supply: 1_000_000_000 * 10u64.pow(8),
-                last_update: 10,
                 decimals: 7,
                 ..Default::default()
             };
@@ -842,7 +833,7 @@ mod tests {
     #[test]
     fn test_calculate_burned_shares() {
         {
-            // 7772,10263
+            // 7772,102...
             let asset = Asset {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
                 supply: 100 * 10u64.pow(6),
