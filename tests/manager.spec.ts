@@ -1,18 +1,11 @@
 import * as anchor from '@project-serum/anchor'
 import { BN, Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import {
-  Account,
-  PublicKey,
-  SYSVAR_RENT_PUBKEY,
-  sendAndConfirmTransaction,
-  Transaction
-} from '@solana/web3.js'
-import { assert, expect } from 'chai'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { assert } from 'chai'
 import { Manager } from '@synthetify/sdk'
 import {
   createToken,
-  sleep,
   ASSETS_MANAGER_ADMIN,
   DEFAULT_PUBLIC_KEY,
   createAssetsList,
@@ -29,7 +22,6 @@ import { signAndSend } from '../sdk/src'
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(1000000)
 const ZERO_U64 = new BN(0)
-const errMessage = 'No asset with such address was found'
 const initCollateralOraclePrice = 2
 const exchangeAuthorityAccount = new Account()
 

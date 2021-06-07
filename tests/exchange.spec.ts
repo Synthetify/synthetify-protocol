@@ -5,11 +5,10 @@ import {
   Account,
   PublicKey,
   sendAndConfirmRawTransaction,
-  SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction
 } from '@solana/web3.js'
-import { assert, expect } from 'chai'
+import { assert } from 'chai'
 import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
@@ -20,9 +19,6 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
-  DEFAULT_PUBLIC_KEY,
-  ORACLE_OFFSET,
-  ACCURACY,
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
@@ -1348,8 +1344,8 @@ describe('exchange', () => {
       )
       const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
       assert.ok(userBtcTokenAccountBefore.amount.eq(btcAmountOut))
-      // @ts-expect-error
-      const burnIx = await (exchange.program.state.instruction.burn(btcAmountOut, {
+
+      const burnIx = (await exchange.program.state.instruction.burn(btcAmountOut, {
         accounts: {
           exchangeAuthority: exchangeAuthority,
           usdToken: btcToken.publicKey,
@@ -1360,10 +1356,10 @@ describe('exchange', () => {
           assetsList: exchange.state.assetsList,
           managerProgram: exchange.manager.programId
         }
-      }) as TransactionInstruction)
+      })) as TransactionInstruction
       const updateIx = await exchange.manager.updatePricesInstruction(exchange.state.assetsList)
 
-      const approveIx = await Token.createApproveInstruction(
+      const approveIx = Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         btcTokenAccount,
         exchange.exchangeAuthority,

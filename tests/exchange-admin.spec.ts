@@ -1,36 +1,17 @@
 import * as anchor from '@project-serum/anchor'
-import { Program, Provider } from '@project-serum/anchor'
-import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import {
-  Account,
-  PublicKey,
-  sendAndConfirmRawTransaction,
-  SYSVAR_RENT_PUBKEY,
-  Transaction,
-  TransactionInstruction
-} from '@solana/web3.js'
-import { assert, expect, should } from 'chai'
-import { BN, calculateLiquidation, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
+import { Program } from '@project-serum/anchor'
+import { Token } from '@solana/spl-token'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { assert } from 'chai'
+import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
-  sleep,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
-  tou64,
-  createAccountWithCollateral,
-  DEFAULT_PUBLIC_KEY,
-  ORACLE_OFFSET,
-  ACCURACY,
-  calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
-  calculateAmountAfterFee,
-  toEffectiveFee,
-  createAccountWithCollateralAndMaxMintUsd,
-  tokenToUsdValue,
-  assertThrowsAsync,
-  U64_MAX
+  assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
