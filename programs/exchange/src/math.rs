@@ -14,6 +14,7 @@ pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
+        // rounding up to be sure that debt is not less than minted tokens
         debt += div_up(
             (asset.price as u128)
                 .checked_mul(asset.supply as u128)
@@ -34,6 +35,7 @@ pub fn calculate_user_debt_in_usd(
     if debt_shares == 0 {
         return 0;
     }
+    // rounding up to be sure that user debt is not less than user minted tokens
     let user_debt = div_up(
         (debt as u128)
             .checked_mul(user_account.debt_shares as u128)
@@ -221,6 +223,7 @@ pub fn calculate_burned_shares(
 }
 pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: u64) -> u64 {
     let decimal_difference = asset.decimals as i32 - ACCURACY as i32;
+    // rounding up to be sure that burned amount is not less than user debt
     if decimal_difference >= 0 {
         let burned_amount_token = div_up(
             (user_debt as u128)
@@ -281,6 +284,7 @@ pub fn calculate_liquidation(
         .unwrap())
     .checked_div(100)
     .unwrap();
+    // rounding up - reward is calculated in favor of the system
     let system_reward_usd = div_up(
         max_burned_amount
             .checked_mul((penalty_to_system).into())
