@@ -5,11 +5,10 @@ import {
   Account,
   PublicKey,
   sendAndConfirmRawTransaction,
-  SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction
 } from '@solana/web3.js'
-import { assert, expect, should } from 'chai'
+import { assert } from 'chai'
 import { BN, calculateLiquidation, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
 
 import {
@@ -19,14 +18,9 @@ import {
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
-  createAccountWithCollateral,
-  DEFAULT_PUBLIC_KEY,
   ORACLE_OFFSET,
-  ACCURACY,
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
-  calculateAmountAfterFee,
-  toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   tokenToUsdValue,
   assertThrowsAsync,
@@ -169,12 +163,7 @@ describe('liquidation', () => {
     })
     it.only('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userCollateralTokenAccount,
-        usdMintAmount
-      } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         collateralAccount,
         collateralToken,
         exchangeAuthority,
@@ -353,12 +342,7 @@ describe('liquidation', () => {
     })
     it('check halted', async () => {
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userCollateralTokenAccount,
-        usdMintAmount
-      } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         collateralAccount,
         collateralToken,
         exchangeAuthority,
@@ -383,7 +367,7 @@ describe('liquidation', () => {
         assetsListDataUpdated.assets[1]
       )
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+      const { maxBurnUsd } = calculateLiquidation(
         collateralUsdValue,
         userDebtBalance,
         state.collateralizationLevel,
@@ -455,8 +439,6 @@ describe('liquidation', () => {
         amount: collateralAmount
       })
 
-      const assetsListData = await manager.getAssetsList(assetsList)
-
       const newCollateralPrice = initialCollateralPrice / 5
       await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
       // update prices
@@ -474,7 +456,7 @@ describe('liquidation', () => {
 
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+      const { maxBurnUsd } = calculateLiquidation(
         collateralUsdValue,
         userDebtBalance,
         state.collateralizationLevel,
@@ -515,7 +497,7 @@ describe('liquidation', () => {
       const collateralUsdValue = tokenToUsdValue(userCollateralBalance, assetsListData.assets[1])
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+      const { maxBurnUsd } = calculateLiquidation(
         collateralUsdValue,
         userDebtBalance,
         state.collateralizationLevel,
@@ -564,7 +546,7 @@ describe('liquidation', () => {
 
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+      const { maxBurnUsd } = calculateLiquidation(
         collateralUsdValue,
         userDebtBalance,
         state.collateralizationLevel,
@@ -584,12 +566,7 @@ describe('liquidation', () => {
     })
     it('fail wrong asset list', async () => {
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        exchangeAccount,
-        usdMintAmount,
-        userCollateralTokenAccount,
-        usdTokenAccount
-      } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         collateralAccount,
         collateralToken,
         exchangeAuthority,
@@ -598,8 +575,6 @@ describe('liquidation', () => {
         collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
         amount: collateralAmount
       })
-
-      const assetsListData = await manager.getAssetsList(assetsList)
 
       const newCollateralPrice = initialCollateralPrice / 5
       await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
@@ -617,7 +592,7 @@ describe('liquidation', () => {
       )
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd, systemRewardUsd, userRewardUsd } = calculateLiquidation(
+      const { maxBurnUsd } = calculateLiquidation(
         collateralUsdValue,
         userDebtBalance,
         state.collateralizationLevel,
@@ -634,7 +609,7 @@ describe('liquidation', () => {
         manager,
         wallet
       })
-      const liquidateIx = await (exchange.program.state.instruction.liquidate({
+      const liquidateIx = (await exchange.program.state.instruction.liquidate({
         accounts: {
           exchangeAuthority: exchange.exchangeAuthority,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -648,8 +623,8 @@ describe('liquidation', () => {
           collateralAccount: exchange.state.collateralAccount,
           liquidationAccount: exchange.state.liquidationAccount
         }
-      }) as TransactionInstruction)
-      const approveIx = await Token.createApproveInstruction(
+      })) as TransactionInstruction
+      const approveIx = Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         liquidatorUsdAccount,
         exchange.exchangeAuthority,
