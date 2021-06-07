@@ -714,8 +714,8 @@ mod tests {
         {
             let amount = amount_to_shares(
                 10u64.pow(6),
-                1_000_000_000 * 10u64.pow(6),
-                198_112 * 10u64.pow(6),
+                1_000_000_000 * 10u64.pow(10),
+                198_112 * 10u64.pow(10),
             );
             // 198,112
             assert_eq!(amount, 198)
@@ -916,10 +916,10 @@ mod tests {
                 ..Default::default()
             };
 
-            let amount = 1_003_900_802;
+            let amount = 1_003_900_802 * 10u64.pow(10);
             let token_amount = usd_to_token_amount(&asset, amount);
-            // 11031876,945...
-            assert_eq!(token_amount, 11031876);
+            // 110318769450549450
+            assert_eq!(token_amount, 110318769450549450)
         }
     }
 
