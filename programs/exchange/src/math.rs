@@ -195,13 +195,8 @@ pub fn calculate_swap_out_amount(
         return scaled_amount.try_into().unwrap();
     }
 }
-pub fn calculate_burned_shares(
-    asset: &Asset,
-    user_debt: u64,
-    user_shares: u64,
-    amount: u64,
-) -> u64 {
-    if user_debt == 0 {
+pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, amount: u64) -> u64 {
+    if all_debt == 0 {
         return 0u64;
     }
 
@@ -215,9 +210,9 @@ pub fn calculate_burned_shares(
         )
         .unwrap();
     let burned_shares = burn_amount_in_usd
-        .checked_mul(user_shares as u128)
+        .checked_mul(all_shares as u128)
         .unwrap()
-        .checked_div(user_debt as u128)
+        .checked_div(all_debt as u128)
         .unwrap();
     return burned_shares.try_into().unwrap();
 }
@@ -832,6 +827,7 @@ mod tests {
     }
     #[test]
     fn test_calculate_burned_shares() {
+        // all_debt
         {
             // 7772,102...
             let asset = Asset {
@@ -839,12 +835,13 @@ mod tests {
                 decimals: 6,
                 ..Default::default()
             };
-            let user_debt = 1598;
-            let user_shares = 90;
+            let all_debt = 1598;
+            let all_shares = 90;
             let amount = 9857;
-            let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
+            let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
             assert_eq!(burned_shares, 7772);
         }
+        // user_debt
         {
             // user_debt = 0
             let asset = Asset {
