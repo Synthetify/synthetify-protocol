@@ -342,6 +342,19 @@ mod tests {
             // deposit 0
             assert_eq!(new_shares, 0u64)
         }
+        // Valid rounding
+        {
+            let collateral_shares = 10_001 * 10u64.pow(6);
+            let collateral_amount = 988_409 * 10u64.pow(6);
+            let to_deposit_amount = 579_112;
+            let new_shares = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // 5859,617...
+            assert_eq!(new_shares, 5859)
+        }
         // Test on big numbers
         {
             let collateral_shares = 100_000_000 * 10u64.pow(6);
