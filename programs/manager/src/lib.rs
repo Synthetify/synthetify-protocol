@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use pyth::pc::Price;
+mod math;
 pub const PRICE_OFFSET: u8 = 6;
 // use
 #[program]
@@ -177,14 +178,8 @@ pub mod manager {
                         asset.price = scaled_price.try_into().unwrap();
                     }
 
-                    // confidence 0-100000 -> 100 = 1% / 10000 = 100%
-                    asset.confidence = (price_feed.agg.conf as u128)
-                        .checked_mul(10u128.pow(5))
-                        .unwrap()
-                        .checked_div(price_feed.agg.price.try_into().unwrap())
-                        .unwrap()
-                        .try_into()
-                        .unwrap();
+                    asset.confidence =
+                        math::calculate_confidence(price_feed.agg.conf, price_feed.agg.price);
 
                     asset.last_update = Clock::get()?.slot;
                 }
