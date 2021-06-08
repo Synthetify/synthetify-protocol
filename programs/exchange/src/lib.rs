@@ -238,9 +238,9 @@ pub mod exchange {
                 collateral_amount,
             );
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-                &max_user_debt,
-                &user_debt,
-                &self.collateralization_level,
+                max_user_debt,
+                user_debt,
+                self.collateralization_level,
             );
             let max_withdrawable =
                 calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
@@ -344,8 +344,8 @@ pub mod exchange {
             let amount_for = calculate_swap_out_amount(
                 &assets[asset_in_index],
                 &assets[asset_for_index],
-                &amount,
-                &effective_fee,
+                amount,
+                effective_fee,
             );
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
             let signer = &[&seeds[..]];
@@ -416,9 +416,9 @@ pub mod exchange {
 
             let burned_shares = calculate_burned_shares(
                 &burn_asset,
-                &user_debt,
-                &exchange_account.debt_shares,
-                &amount,
+                user_debt,
+                exchange_account.debt_shares,
+                amount,
             );
 
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
@@ -427,7 +427,7 @@ pub mod exchange {
             // Check if user burned more than debt
             if burned_shares >= exchange_account.debt_shares {
                 // Burn adjusted amount
-                let burned_amount = calculate_max_burned_in_token(&burn_asset, &user_debt);
+                let burned_amount = calculate_max_burned_in_token(&burn_asset, user_debt);
                 self.debt_shares = self
                     .debt_shares
                     .checked_sub(exchange_account.debt_shares)
