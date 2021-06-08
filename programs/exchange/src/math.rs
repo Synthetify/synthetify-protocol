@@ -80,8 +80,11 @@ pub fn calculate_max_user_debt_in_usd(
     .try_into()
     .unwrap();
 }
-
-pub fn calculate_new_shares(all_shares: u64, full_amount: u64, new_amount: u64) -> u64 {
+pub fn calculate_new_shares_by_rounding_down(
+    all_shares: u64,
+    full_amount: u64,
+    new_amount: u64,
+) -> u64 {
     //  full_amount is always != 0 if all_shares > 0
     if all_shares == 0u64 {
         return new_amount;
@@ -299,14 +302,17 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_calculate_new_shares() {
+    fn test_calculate_new_shares_by_rounding_down() {
         // Initialize shares
         {
             let collateral_shares = 0u64;
             let collateral_amount = 0u64;
             let to_deposit_amount = 10u64.pow(6);
-            let new_shares =
-                calculate_new_shares(collateral_shares, collateral_amount, to_deposit_amount);
+            let new_shares = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
             // Initial shares = deposited amount
             assert_eq!(new_shares, to_deposit_amount)
         }
@@ -315,8 +321,11 @@ mod tests {
             let collateral_shares = 10u64.pow(6);
             let collateral_amount = 10u64.pow(6);
             let to_deposit_amount = 10u64.pow(6);
-            let new_shares =
-                calculate_new_shares(collateral_shares, collateral_amount, to_deposit_amount);
+            let new_shares = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
             // Deposit same amount so new shares should eq existing
             assert_eq!(new_shares, collateral_shares)
         }
@@ -325,8 +334,11 @@ mod tests {
             let collateral_shares = 10u64.pow(6);
             let collateral_amount = 10u64.pow(6);
             let to_deposit_amount = 0u64;
-            let new_shares =
-                calculate_new_shares(collateral_shares, collateral_amount, to_deposit_amount);
+            let new_shares = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
             // deposit 0
             assert_eq!(new_shares, 0u64)
         }
@@ -335,8 +347,11 @@ mod tests {
             let collateral_shares = 100_000_000 * 10u64.pow(6);
             let collateral_amount = 100_000_000 * 10u64.pow(6);
             let to_deposit_amount = 10_000_000 * 10u64.pow(6);
-            let new_shares =
-                calculate_new_shares(collateral_shares, collateral_amount, to_deposit_amount);
+            let new_shares = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
             // Deposit  1/10 of existing balance
             assert_eq!(new_shares, collateral_shares.div(10))
         }
