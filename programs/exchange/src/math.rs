@@ -97,6 +97,24 @@ pub fn calculate_new_shares_by_rounding_down(
 
     return new_shares.try_into().unwrap();
 }
+pub fn calculate_new_shares_by_rounding_up(
+    all_shares: u64,
+    full_amount: u64,
+    new_amount: u64,
+) -> u64 {
+    //  full_amount is always != 0 if all_shares > 0
+    if all_shares == 0u64 {
+        return new_amount;
+    }
+    let new_shares = div_up(
+        (all_shares as u128)
+            .checked_mul(new_amount as u128)
+            .unwrap(),
+        full_amount as u128,
+    );
+
+    return new_shares.try_into().unwrap();
+}
 pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
     user_debt_in_usd: u64,
@@ -302,71 +320,101 @@ mod tests {
 
     use super::*;
     #[test]
-    fn test_calculate_new_shares_by_rounding_down() {
+    fn test_calculate_new_shares() {
         // Initialize shares
         {
             let collateral_shares = 0u64;
             let collateral_amount = 0u64;
             let to_deposit_amount = 10u64.pow(6);
-            let new_shares = calculate_new_shares_by_rounding_down(
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
                 collateral_shares,
                 collateral_amount,
                 to_deposit_amount,
             );
             // Initial shares = deposited amount
-            assert_eq!(new_shares, to_deposit_amount)
+            assert_eq!(new_shares_rounding_down, to_deposit_amount);
+            assert_eq!(new_shares_rounding_up, to_deposit_amount);
         }
         // With existing shares
         {
             let collateral_shares = 10u64.pow(6);
             let collateral_amount = 10u64.pow(6);
             let to_deposit_amount = 10u64.pow(6);
-            let new_shares = calculate_new_shares_by_rounding_down(
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
                 collateral_shares,
                 collateral_amount,
                 to_deposit_amount,
             );
             // Deposit same amount so new shares should eq existing
-            assert_eq!(new_shares, collateral_shares)
+            assert_eq!(new_shares_rounding_down, collateral_shares);
+            assert_eq!(new_shares_rounding_up, collateral_shares);
         }
         // Zero new shares
         {
             let collateral_shares = 10u64.pow(6);
             let collateral_amount = 10u64.pow(6);
             let to_deposit_amount = 0u64;
-            let new_shares = calculate_new_shares_by_rounding_down(
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
                 collateral_shares,
                 collateral_amount,
                 to_deposit_amount,
             );
             // deposit 0
-            assert_eq!(new_shares, 0u64)
+            assert_eq!(new_shares_rounding_down, 0u64);
+            assert_eq!(new_shares_rounding_up, 0u64);
         }
         // Valid rounding
         {
             let collateral_shares = 10_001 * 10u64.pow(6);
             let collateral_amount = 988_409 * 10u64.pow(6);
             let to_deposit_amount = 579_112;
-            let new_shares = calculate_new_shares_by_rounding_down(
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
                 collateral_shares,
                 collateral_amount,
                 to_deposit_amount,
             );
             // 5859,617...
-            assert_eq!(new_shares, 5859)
+            assert_eq!(new_shares_rounding_down, 5859);
+            assert_eq!(new_shares_rounding_up, 5860);
         }
         // Test on big numbers
         {
             let collateral_shares = 100_000_000 * 10u64.pow(6);
             let collateral_amount = 100_000_000 * 10u64.pow(6);
             let to_deposit_amount = 10_000_000 * 10u64.pow(6);
-            let new_shares = calculate_new_shares_by_rounding_down(
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
                 collateral_shares,
                 collateral_amount,
                 to_deposit_amount,
             );
             // Deposit  1/10 of existing balance
-            assert_eq!(new_shares, collateral_shares.div(10))
+            assert_eq!(new_shares_rounding_down, collateral_shares.div(10));
+            assert_eq!(new_shares_rounding_up, collateral_shares.div(10));
         }
     }
     #[test]
