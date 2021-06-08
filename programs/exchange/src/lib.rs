@@ -15,8 +15,9 @@ pub mod exchange {
         calculate_burned_shares, calculate_debt, calculate_liquidation,
         calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_down, calculate_swap_out_amount,
-        calculate_user_collateral_in_token, calculate_user_debt_in_usd, usd_to_token_amount,
+        calculate_new_shares_by_rounding_down, calculate_new_shares_by_rounding_up,
+        calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd,
+        usd_to_token_amount,
     };
 
     use super::*;
@@ -176,7 +177,7 @@ pub mod exchange {
 
             // Adjust program and user debt_shares
             let new_shares =
-                calculate_new_shares_by_rounding_down(self.debt_shares, total_debt, amount);
+                calculate_new_shares_by_rounding_up(self.debt_shares, total_debt, amount);
             self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
             exchange_account.debt_shares = exchange_account
                 .debt_shares
