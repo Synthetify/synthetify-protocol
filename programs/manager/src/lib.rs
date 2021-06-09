@@ -245,7 +245,7 @@ pub struct SetPriceFeed<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Asset {
-    pub feed_address: Pubkey,  // 32
+    pub feed_address: Pubkey,  // 32 Pyth oracle account address
     pub asset_address: Pubkey, // 32
     pub price: u64,            // 8
     pub supply: u64,           // 8

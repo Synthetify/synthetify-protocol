@@ -32,13 +32,13 @@ pub mod exchange {
         pub collateral_token: Pubkey,     //32
         pub collateral_account: Pubkey,   //32
         pub assets_list: Pubkey,          //32
-        pub collateralization_level: u32, //4   in % should range from 300%-1000%
-        pub max_delay: u32,               //4   max blocks of delay 100 blocks ~ 1 min
-        pub fee: u32,                     //4   300 = 0.3%
+        pub collateralization_level: u32, //4   In % should range from 300%-1000%
+        pub max_delay: u32,               //4   Delay bettwen last oracle update 100 blocks ~ 1 min
+        pub fee: u32,                     //4   Default fee per swap 300 => 0.3%
         pub liquidation_account: Pubkey,  //32
-        pub liquidation_penalty: u8,      //1   in % range 0-25%
-        pub liquidation_threshold: u8,    //1   in % should range from 130-200%
-        pub liquidation_buffer: u32,      //4   time given user to fix collateralization ratio
+        pub liquidation_penalty: u8,      //1   In % range 0-25%
+        pub liquidation_threshold: u8,    //1   In % should range from 130-200%
+        pub liquidation_buffer: u32,      //4   Time given user to fix collateralization ratio
         pub staking: Staking,             //116
     }
     impl InternalState {
@@ -968,11 +968,11 @@ pub struct CreateExchangeAccount<'info> {
 
 #[associated]
 pub struct ExchangeAccount {
-    pub owner: Pubkey,
-    pub debt_shares: u64,
-    pub collateral_shares: u64,
-    pub liquidation_deadline: u64,
-    pub user_staking_data: UserStaking,
+    pub owner: Pubkey,                  // Identity controling account
+    pub debt_shares: u64,               // Shares representing part of entire debt pool
+    pub collateral_shares: u64,         // Shares representing part of entire collateral account
+    pub liquidation_deadline: u64,      // Slot number after which account can be liquidated
+    pub user_staking_data: UserStaking, // Staking information
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -1198,23 +1198,23 @@ pub struct AdminAction<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct StakingRound {
-    pub start: u64,      // 8
-    pub amount: u64,     // 8
-    pub all_points: u64, // 8
+    pub start: u64,      // 8 Slot when round starts
+    pub amount: u64,     // 8 Amount of SNY distributed in this round
+    pub all_points: u64, // 8 All points used to calculate user share in staking rewards
 }
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct Staking {
-    pub fund_account: Pubkey,         //32
-    pub round_length: u32,            //4
-    pub amount_per_round: u64,        //8
+    pub fund_account: Pubkey,         //32 Source account of SNY tokens
+    pub round_length: u32,            //4 Length of round in slots
+    pub amount_per_round: u64,        //8 Amount of SNY distributed per round
     pub finished_round: StakingRound, //24
     pub current_round: StakingRound,  //24
     pub next_round: StakingRound,     //24
 }
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
 pub struct UserStaking {
-    pub amount_to_claim: u64,       //8
-    pub finished_round_points: u64, //8
+    pub amount_to_claim: u64,       //8 Amount of SNY accumulated by account
+    pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
     pub current_round_points: u64,  //8
     pub next_round_points: u64,     //8
     pub last_update: u64,           //8
