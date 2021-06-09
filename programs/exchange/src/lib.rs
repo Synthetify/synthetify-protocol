@@ -11,9 +11,9 @@ pub mod exchange {
     use std::convert::TryInto;
 
     use crate::math::{
-        amount_to_discount, amount_to_shares, calculate_amount_mint_in_usd,
-        calculate_burned_shares, calculate_debt, calculate_liquidation,
-        calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
+        amount_to_discount, amount_to_shares_by_rounding_down, amount_to_shares_by_rounding_up,
+        calculate_amount_mint_in_usd, calculate_burned_shares, calculate_debt,
+        calculate_liquidation, calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_max_withdrawable,
         calculate_new_shares_by_rounding_down, calculate_new_shares_by_rounding_up,
         calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd,
@@ -114,6 +114,7 @@ pub mod exchange {
             }
 
             // Get shares based on deposited amount
+            // Rounding down - collateral is deposited in favor of the system
             let new_shares = calculate_new_shares_by_rounding_down(
                 self.collateral_shares,
                 exchange_collateral_balance,
@@ -176,6 +177,7 @@ pub mod exchange {
             }
 
             // Adjust program and user debt_shares
+            // Rounding up - debt is created in favor of the system
             let new_shares =
                 calculate_new_shares_by_rounding_up(self.debt_shares, total_debt, amount);
             self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
@@ -254,8 +256,12 @@ pub mod exchange {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
 
-            let shares_to_burn =
-                amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
+            // Rounding up - collateral is withdrawn in favor of the system
+            let shares_to_burn = amount_to_shares_by_rounding_up(
+                self.collateral_shares,
+                collateral_account.amount,
+                amount,
+            );
 
             // Adjust program and user debt_shares
             self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
@@ -419,6 +425,7 @@ pub mod exchange {
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
+            // Rounding down - debt is burned in favor of the system
             let burned_shares = calculate_burned_shares(
                 &burn_asset,
                 user_debt,
@@ -597,8 +604,11 @@ pub mod exchange {
             let amount_to_liquidator = usd_to_token_amount(&collateral_asset, user_reward_usd);
             let amount_to_system = usd_to_token_amount(&collateral_asset, system_reward_usd);
 
-            let burned_debt_shares = amount_to_shares(self.debt_shares, debt, burned_amount);
-            let burned_collateral_shares = amount_to_shares(
+            // Rounding down - debt is burned in favor of the system
+            let burned_debt_shares =
+                amount_to_shares_by_rounding_down(self.debt_shares, debt, burned_amount);
+            // Rounding up - collateral is withdrawn in favor of the system
+            let burned_collateral_shares = amount_to_shares_by_rounding_up(
                 self.collateral_shares,
                 collateral_account.amount,
                 amount_to_system.checked_add(amount_to_liquidator).unwrap(),

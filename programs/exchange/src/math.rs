@@ -154,7 +154,7 @@ pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in
         .unwrap();
     return tokens.try_into().unwrap();
 }
-pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
+pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     // full_amount is always != 0 if all_shares > 0
     if all_shares == 0 {
         return 0;
@@ -164,6 +164,17 @@ pub fn amount_to_shares(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
         .unwrap()
         .checked_div(full_amount as u128)
         .unwrap();
+    return shares.try_into().unwrap();
+}
+pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
+    // full_amount is always != 0 if all_shares > 0
+    if all_shares == 0 {
+        return 0;
+    }
+    let shares = div_up(
+        (amount as u128).checked_mul(all_shares as u128).unwrap(),
+        full_amount as u128,
+    );
     return shares.try_into().unwrap();
 }
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
@@ -235,6 +246,32 @@ pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, am
         .unwrap()
         .checked_div(all_debt as u128)
         .unwrap();
+    return burned_shares.try_into().unwrap();
+}
+pub fn calculate_burned_shares_by_rounding_up(
+    asset: &Asset,
+    all_debt: u64,
+    all_shares: u64,
+    amount: u64,
+) -> u64 {
+    if all_debt == 0 {
+        return 0u64;
+    }
+    let burn_amount_in_usd = (asset.price as u128)
+        .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(
+            10u128
+                .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
+        .unwrap();
+
+    let burned_shares = div_up(
+        burn_amount_in_usd.checked_mul(all_shares as u128).unwrap(),
+        all_debt as u128,
+    );
+
     return burned_shares.try_into().unwrap();
 }
 pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: u64) -> u64 {
@@ -771,23 +808,23 @@ mod tests {
     fn test_amount_to_shares() {
         // not initialized shares
         {
-            let amount = amount_to_shares(0, 0, 0);
+            let amount = amount_to_shares_by_rounding_down(0, 0, 0);
             assert_eq!(amount, 0)
         }
         // zero amount
         {
-            let amount = amount_to_shares(100, 100 * 10u64.pow(6), 0);
+            let amount = amount_to_shares_by_rounding_down(100, 100 * 10u64.pow(6), 0);
             assert_eq!(amount, 0)
         }
         // basic
         {
-            let amount = amount_to_shares(10, 100, 10);
+            let amount = amount_to_shares_by_rounding_down(10, 100, 10);
             // 1/10 of all_shares
             assert_eq!(amount, 1)
         }
         // large numbers
         {
-            let amount = amount_to_shares(
+            let amount = amount_to_shares_by_rounding_down(
                 10u64.pow(6),
                 1_000_000_000 * 10u64.pow(10),
                 198_112 * 10u64.pow(10),
