@@ -53,3 +53,4 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm run test:full
+          cargo test
