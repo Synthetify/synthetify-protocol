@@ -202,10 +202,13 @@ describe('liquidation', () => {
       
       assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
 
+      let rewardClaims = []
+
       for (let user of usersAccounts) {
         const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(
           user.exchangeAccount
         )
+        rewardClaims.push(exchangeAccountDataRewardClaim)
         assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
         assert.ok(
@@ -214,26 +217,30 @@ describe('liquidation', () => {
           )
         )
       }
-      /*
-
       // Mint reward
       await collateralToken.mintTo(
         stakingFundAccount,
         CollateralTokenMinter,
         [],
-        tou64(amountPerRound)
+        tou64(amountPerRound.mul(new BN(amountOfAccounts)))
       )
-      await exchange.withdrawRewards({
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccount: userCollateralTokenAccount,
-        signers: [accountOwner]
-      })
-      assert.ok(
-        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+
+
+
+      await Promise.all(usersAccounts.map(async (user, index) => {
+        await exchange.withdrawRewards({
+          exchangeAccount: user.exchangeAccount,
+          owner: user.accountOwner.publicKey,
+          userTokenAccount: user.userCollateralTokenAccount,
+          signers: [user.accountOwner]
+        })
+        assert.ok(
+          (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
+            rewardClaims[index].userStakingData.amountToClaim
+          )
         )
-      )
+      }))
+      /*
 
       const {
         exchangeAccount: exchangeAccount2nd
