@@ -1100,6 +1100,7 @@ describe('exchange', () => {
     })
   })
   describe('#burn()', async () => {
+    const debtBurnAccuracy = new BN(10)
     let btcToken: Token
     let ethToken: Token
     before(async () => {
@@ -1197,7 +1198,8 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountAfter.debtShares.eq(new BN(0)))
+      // debtShares should be close to 0
+      assert.ok(exchangeAccountAfter.debtShares.lt(debtBurnAccuracy))
     })
     it('Burn more than debt - should return rest', async () => {
       const collateralAmount = new BN(1000 * 1e6)
@@ -1256,7 +1258,9 @@ describe('exchange', () => {
 
       // We should end with transfered amount
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccountAfter.amount.eq(transferAmount))
+      // amount should be close to transferAmount
+      assert.ok(userUsdTokenAccountAfter.amount.lt(transferAmount.add(debtBurnAccuracy)))
+      assert.ok(userUsdTokenAccountAfter.amount.gt(transferAmount.sub(debtBurnAccuracy)))
 
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountAfter.debtShares.eq(new BN(0)))
