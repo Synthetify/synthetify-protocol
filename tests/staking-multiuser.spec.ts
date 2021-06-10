@@ -43,6 +43,7 @@ describe('liquidation', () => {
 
   const amountPerRound = new BN(100)
   const stakingRoundLength = 30
+  const amountOfAccounts = 2
 
   let initialCollateralPrice = 2
   let nextRoundStart: BN
@@ -143,7 +144,7 @@ describe('liquidation', () => {
 
       let usersAccounts = []
 
-      for (let i = 0; i < 1; i++)
+      for (let i = 0; i < amountOfAccounts; i++)
         usersAccounts.push(
           await createAccountWithCollateralAndMaxMintUsd({
             collateralAccount,
@@ -190,17 +191,16 @@ describe('liquidation', () => {
       }
 
       // Wait for round to end
-      await sleep((stakingRoundLength - 5) * 500)
+      await sleep(25 * 500)
       // Claim rewards
       await Promise.all(usersAccounts.map(user => exchange.claimRewards(user.exchangeAccount)))
 
       const state = await exchange.getState()
-      assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6)))
-      assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6)))
-      assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6)))
+      assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
+      assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
+      assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
       
       assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
-      /*
 
       for (let user of usersAccounts) {
         const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(
@@ -214,7 +214,6 @@ describe('liquidation', () => {
           )
         )
       }
-      */
       /*
 
       // Mint reward
