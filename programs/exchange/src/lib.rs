@@ -92,7 +92,7 @@ pub mod exchange {
         }
         #[access_control(halted(&self) collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
-            msg!("Syntetify: DEPOSIT");
+            msg!("Synthetify: DEPOSIT");
 
             let exchange_account = &mut ctx.accounts.exchange_account;
 
@@ -140,7 +140,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
-            msg!("Syntetify: MINT");
+            msg!("Synthetify: MINT");
             let slot = Clock::get()?.slot;
 
             // Adjust staking round
@@ -212,7 +212,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-            msg!("Syntetify: WITHDRAW");
+            msg!("Synthetify: WITHDRAW");
 
             let slot = Clock::get()?.slot;
 
@@ -282,7 +282,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
-            msg!("Syntetify: SWAP");
+            msg!("Synthetify: SWAP");
 
             let slot = Clock::get()?.slot;
             // Adjust staking round
@@ -399,7 +399,7 @@ pub mod exchange {
         assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
-            msg!("Syntetify: BURN");
+            msg!("Synthetify: BURN");
             let slot = Clock::get()?.slot;
 
             // Adjust staking round
@@ -537,7 +537,7 @@ pub mod exchange {
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
         collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
-            msg!("Syntetify: LIQUIDATE");
+            msg!("Synthetify: LIQUIDATE");
 
             let slot = Clock::get()?.slot;
 
@@ -710,7 +710,7 @@ pub mod exchange {
             &mut self,
             ctx: Context<CheckCollateralization>,
         ) -> Result<()> {
-            msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
+            msg!("Synthetify: CHECK ACCOUNT COLLATERALIZATION");
 
             let slot = Clock::get()?.slot;
 
@@ -762,7 +762,7 @@ pub mod exchange {
 
         #[access_control(halted(&self))]
         pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
-            msg!("Syntetify: CLAIM REWARDS");
+            msg!("Synthetify: CLAIM REWARDS");
 
             let slot = Clock::get()?.slot;
 
@@ -795,7 +795,7 @@ pub mod exchange {
         }
         #[access_control(halted(&self) fund_account(&self,&ctx.accounts.staking_fund_account))]
         pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
-            msg!("Syntetify: WITHDRAW REWARDS");
+            msg!("Synthetify: WITHDRAW REWARDS");
 
             let slot = Clock::get()?.slot;
             // Adjust staking round
@@ -830,7 +830,7 @@ pub mod exchange {
             ctx: Context<WithdrawLiquidationPenalty>,
             amount: u64,
         ) -> Result<()> {
-            msg!("Syntetify: WITHDRAW LIQUIDATION PENALTY");
+            msg!("Synthetify: WITHDRAW LIQUIDATION PENALTY");
 
             if !ctx.accounts.admin.key.eq(&self.admin) {
                 return Err(ErrorCode::Unauthorized.into());
@@ -865,7 +865,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_buffer: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION BUFFER");
+            msg!("Synthetify:Admin: SET LIQUIDATION BUFFER");
 
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
@@ -876,7 +876,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_threshold: u8,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION THRESHOLD");
+            msg!("Synthetify:Admin: SET LIQUIDATION THRESHOLD");
 
             self.liquidation_threshold = liquidation_threshold;
             Ok(())
@@ -887,7 +887,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_penalty: u8,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION PENALTY");
+            msg!("Synthetify:Admin: SET LIQUIDATION PENALTY");
 
             self.liquidation_penalty = liquidation_penalty;
             Ok(())
@@ -898,28 +898,28 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             collateralization_level: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET COLLATERALIZATION LEVEL");
+            msg!("Synthetify:Admin: SET COLLATERALIZATION LEVEL");
 
             self.collateralization_level = collateralization_level;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
-            msg!("Syntetify:Admin: SET FEE");
+            msg!("Synthetify:Admin: SET FEE");
 
             self.fee = fee;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_max_delay(&mut self, ctx: Context<AdminAction>, max_delay: u32) -> Result<()> {
-            msg!("Syntetify:Admin: SET MAX DELAY");
+            msg!("Synthetify:Admin: SET MAX DELAY");
 
             self.max_delay = max_delay;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_halted(&mut self, ctx: Context<AdminAction>, halted: bool) -> Result<()> {
-            msg!("Syntetify:Admin: SET HALTED");
+            msg!("Synthetify:Admin: SET HALTED");
 
             self.halted = halted;
             Ok(())
@@ -930,7 +930,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             amount_per_round: u64,
         ) -> Result<()> {
-            msg!("Syntetify:Admin:Staking: SET AMOUNT PER ROUND");
+            msg!("Synthetify:Admin:Staking: SET AMOUNT PER ROUND");
 
             self.staking.amount_per_round = amount_per_round;
             Ok(())
@@ -941,7 +941,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             round_length: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin:Staking: SET ROUND LENGTH");
+            msg!("Synthetify:Admin:Staking: SET ROUND LENGTH");
 
             self.staking.round_length = round_length;
             Ok(())
