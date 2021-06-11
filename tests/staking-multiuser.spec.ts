@@ -8,13 +8,12 @@ import { BN, Exchange, Manager, Network } from '@synthetify/sdk'
 import {
   createAssetsList,
   createToken,
-  sleep,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  IAccountWithCollateralandMint
+  skipSlots
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -167,7 +166,7 @@ describe('liquidation', () => {
 
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
-      await sleep((nextRoundStart.toNumber() - (await connection.getSlot()) + 1) * 500)
+      await skipSlots(nextRoundStart.toNumber() - (await connection.getSlot()) + 1, connection)
       // Burn should reduce next round stake
       const amountBurn = new BN(100 * 1e6)
 
@@ -191,7 +190,7 @@ describe('liquidation', () => {
       }
 
       // Wait for round to end
-      await sleep(25 * 500) //FIXME? maybe should be dynamic?
+      await skipSlots(stakingRoundLength, connection)
       // Claim rewards
       await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
 
@@ -257,7 +256,7 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
       // Wait for nextRound to end
-      await sleep(25 * 500)
+      await skipSlots(stakingRoundLength, connection)
 
       await Promise.all(
         usersAccounts.map(async (user) => {
@@ -278,7 +277,7 @@ describe('liquidation', () => {
       )
 
       // Wait for nextRound to end
-      await sleep(15 * 500)
+      await skipSlots(stakingRoundLength, connection)
       await Promise.all(
         usersAccounts.map(async (user) => {
           await exchange.claimRewards(user.exchangeAccount)
