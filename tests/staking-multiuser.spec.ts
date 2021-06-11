@@ -231,7 +231,7 @@ describe('liquidation', () => {
         stakingFundAccount,
         CollateralTokenMinter,
         [],
-        tou64(amountPerRound.mul(new BN(amountOfAccounts)))
+        tou64(amountPerRound)
       )
 
       await Promise.all(
