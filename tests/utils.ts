@@ -319,13 +319,3 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
     await sleep(400)
   }
 }
-
-export const skipSlots = async (amount: number, connection: Connection): Promise<null> => {
-  const slot = (await connection.getSlot()) + amount
-
-  while (true) {
-    if ((await connection.getSlot()) >= slot) return
-
-    await sleep(400)
-  }
-}
