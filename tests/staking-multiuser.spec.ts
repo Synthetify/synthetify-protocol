@@ -142,25 +142,28 @@ describe('liquidation', () => {
 
       const collateralAmount = new BN(1000 * 1e6)
 
-      let usersAccounts = []
 
-      for (let i = 0; i < amountOfAccounts; i++) usersAccounts.push(i)
+      // Creates promises for users (for asynchronicity )
+      let usersAccountsPromises = []
 
-      usersAccounts = await Promise.all(
-        usersAccounts.map(
-          async (i) =>
-            await createAccountWithCollateralAndMaxMintUsd({
-              collateralAccount,
-              collateralToken,
-              exchangeAuthority,
-              exchange,
-              collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-              amount: collateralAmount,
-              usdToken
-            })
-        )
+      for (let i = 0; i < amountOfAccounts; i++) usersAccountsPromises.push(
+        (async () =>
+        await createAccountWithCollateralAndMaxMintUsd({
+          collateralAccount,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount,
+          usdToken
+        }))()
       )
 
+      //Resolving promises
+      const usersAccounts = await Promise.all(usersAccountsPromises)
+
+
+      // Checking points for each user after first round
       const nextRoundPointsCorrectness = await Promise.all(
         usersAccounts.map(async (user) =>
           (
@@ -190,6 +193,8 @@ describe('liquidation', () => {
           signers: [user.accountOwner]
         })
 
+
+        // Check if burn worked
         assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
         const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(user.exchangeAccount)
         assert.ok(
@@ -199,14 +204,13 @@ describe('liquidation', () => {
           exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
         )
       }
-
       // Check if in the right round
-      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
-      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
-      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+      const secondRountStart = nextRoundStart.add(new BN(stakingRoundLength))
+      assert.ok(secondRountStart.gtn(await connection.getSlot()))
+      assert.ok(secondRountStart.ltn((await connection.getSlot()) + stakingRoundLength))
 
       // Wait for round to end
-      await skipToSlot(nextRoundStart.toNumber(), connection)
+      await skipToSlot(secondRountStart.toNumber(), connection)
 
       // Claim rewards
       await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
@@ -258,12 +262,12 @@ describe('liquidation', () => {
       )
 
       // Check if in the right round
-      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
-      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
-      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+      const thirdRoundStart = nextRoundStart.add(new BN(2*stakingRoundLength))
+      assert.ok(thirdRoundStart.gtn(await connection.getSlot()))
+      assert.ok(thirdRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
 
       // Wait for round to end
-      await skipToSlot(nextRoundStart.toNumber(), connection)
+      await skipToSlot(thirdRoundStart.toNumber(), connection)
 
       await Promise.all(
         usersAccounts.map(async (user) => {
@@ -278,29 +282,34 @@ describe('liquidation', () => {
       for (let account of exchangeAccounts) account.userStakingData.amountToClaim.eq(new BN(100))
 
       // Check if in the right round
-      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
-      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
-      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+      const fourthRoundStart = nextRoundStart.add(new BN(3*stakingRoundLength))
+      assert.ok(fourthRoundStart.gtn(await connection.getSlot()))
+      assert.ok(fourthRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
 
       // Wait for round to end
-      await skipToSlot(nextRoundStart.toNumber(), connection)
+      await skipToSlot(fourthRoundStart.toNumber(), connection)
 
+
+      // Claiming rewards
       await Promise.all(
         usersAccounts.map(async (user) => {
           await exchange.claimRewards(user.exchangeAccount)
         })
       )
 
+      // Getting user data
       const exchangeAccountsDataAfterRewards = await Promise.all(
         usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
       )
 
+      
+      // Checking if claimed amount is correct
       const expectedAmountToClaim = amountPerRound
         .div(new BN(amountOfAccounts))
         .add(amountPerRound.div(new BN(amountOfAccounts)))
 
-      for (let account of exchangeAccountsDataAfterRewards)
+        for (let account of exchangeAccountsDataAfterRewards)
         assert.ok(account.userStakingData.amountToClaim.eq(expectedAmountToClaim))
-    })
+      })
   })
 })
