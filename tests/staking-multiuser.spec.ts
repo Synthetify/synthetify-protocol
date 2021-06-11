@@ -13,7 +13,7 @@ import {
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  skipSlots
+  skipToSlot,
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -41,7 +41,7 @@ describe('liquidation', () => {
   let nonce: number
 
   const amountPerRound = new BN(100)
-  const stakingRoundLength = 30
+  const stakingRoundLength = 20
   const amountOfAccounts = 10
 
   let initialCollateralPrice = 2
@@ -173,9 +173,13 @@ describe('liquidation', () => {
 
       assert.ok(nextRoundPointsCorrectness.every((i) => i))
 
+      // Check if in the right round
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+
       // Wait for start of new round
-      await skipSlots(nextRoundStart.toNumber() - (await connection.getSlot()) + 1, connection)
+      await skipToSlot(nextRoundStart.toNumber(), connection)
+
       // Burn should reduce next round stake
       const amountBurn = new BN(100 * 1e6)
 
@@ -198,8 +202,14 @@ describe('liquidation', () => {
         )
       }
 
+      // Check if in the right round
+      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
+      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+
       // Wait for round to end
-      await skipSlots(stakingRoundLength, connection)
+      await skipToSlot(nextRoundStart.toNumber(), connection)
+
       // Claim rewards
       await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
 
@@ -264,8 +274,13 @@ describe('liquidation', () => {
       const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
-      // Wait for nextRound to end
-      await skipSlots(stakingRoundLength, connection)
+      // Check if in the right round
+      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
+      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+
+      // Wait for round to end
+      await skipToSlot(nextRoundStart.toNumber(), connection)
 
       await Promise.all(
         usersAccounts.map(async (user) => {
@@ -285,8 +300,14 @@ describe('liquidation', () => {
         )
       )
 
-      // Wait for nextRound to end
-      await skipSlots(stakingRoundLength, connection)
+      // Check if in the right round
+      nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
+      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      assert.ok(nextRoundStart.ltn((await connection.getSlot()) + stakingRoundLength))
+
+      // Wait for round to end
+      await skipToSlot(nextRoundStart.toNumber(), connection)
+
       await Promise.all(
         usersAccounts.map(async (user) => {
           await exchange.claimRewards(user.exchangeAccount)
