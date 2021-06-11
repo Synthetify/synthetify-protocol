@@ -11,10 +11,11 @@ pub mod exchange {
     use std::convert::TryInto;
 
     use crate::math::{
-        amount_to_discount, amount_to_shares, calculate_amount_mint_in_usd,
-        calculate_burned_shares, calculate_debt, calculate_liquidation,
-        calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
-        calculate_max_withdraw_in_usd, calculate_max_withdrawable, calculate_new_shares,
+        amount_to_discount, amount_to_shares_by_rounding_down, amount_to_shares_by_rounding_up,
+        calculate_amount_mint_in_usd, calculate_burned_shares, calculate_debt,
+        calculate_liquidation, calculate_max_burned_in_token, calculate_max_user_debt_in_usd,
+        calculate_max_withdraw_in_usd, calculate_max_withdrawable,
+        calculate_new_shares_by_rounding_down, calculate_new_shares_by_rounding_up,
         calculate_swap_out_amount, calculate_user_collateral_in_token, calculate_user_debt_in_usd,
         usd_to_token_amount,
     };
@@ -91,7 +92,7 @@ pub mod exchange {
         }
         #[access_control(halted(&self) collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
-            msg!("Syntetify: DEPOSIT");
+            msg!("Synthetify: DEPOSIT");
 
             let exchange_account = &mut ctx.accounts.exchange_account;
 
@@ -113,8 +114,12 @@ pub mod exchange {
             }
 
             // Get shares based on deposited amount
-            let new_shares =
-                calculate_new_shares(self.collateral_shares, exchange_collateral_balance, amount);
+            // Rounding down - collateral is deposited in favor of the system
+            let new_shares = calculate_new_shares_by_rounding_down(
+                self.collateral_shares,
+                exchange_collateral_balance,
+                amount,
+            );
             // Adjust program and user collateral_shares
             exchange_account.collateral_shares = exchange_account
                 .collateral_shares
@@ -135,7 +140,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
-            msg!("Syntetify: MINT");
+            msg!("Synthetify: MINT");
             let slot = Clock::get()?.slot;
 
             // Adjust staking round
@@ -172,7 +177,9 @@ pub mod exchange {
             }
 
             // Adjust program and user debt_shares
-            let new_shares = calculate_new_shares(self.debt_shares, total_debt, amount);
+            // Rounding up - debt is created in favor of the system
+            let new_shares =
+                calculate_new_shares_by_rounding_up(self.debt_shares, total_debt, amount);
             self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
             exchange_account.debt_shares = exchange_account
                 .debt_shares
@@ -205,7 +212,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-            msg!("Syntetify: WITHDRAW");
+            msg!("Synthetify: WITHDRAW");
 
             let slot = Clock::get()?.slot;
 
@@ -249,8 +256,12 @@ pub mod exchange {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
 
-            let shares_to_burn =
-                amount_to_shares(self.collateral_shares, collateral_account.amount, amount);
+            // Rounding up - collateral is withdrawn in favor of the system
+            let shares_to_burn = amount_to_shares_by_rounding_up(
+                self.collateral_shares,
+                collateral_account.amount,
+                amount,
+            );
 
             // Adjust program and user debt_shares
             self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
@@ -271,7 +282,7 @@ pub mod exchange {
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
-            msg!("Syntetify: SWAP");
+            msg!("Synthetify: SWAP");
 
             let slot = Clock::get()?.slot;
             // Adjust staking round
@@ -388,7 +399,7 @@ pub mod exchange {
         assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
-            msg!("Syntetify: BURN");
+            msg!("Synthetify: BURN");
             let slot = Clock::get()?.slot;
 
             // Adjust staking round
@@ -414,6 +425,7 @@ pub mod exchange {
             let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
+            // Rounding down - debt is burned in favor of the system
             let burned_shares = calculate_burned_shares(
                 &burn_asset,
                 user_debt,
@@ -525,7 +537,7 @@ pub mod exchange {
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
         collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn liquidate(&mut self, ctx: Context<Liquidate>) -> Result<()> {
-            msg!("Syntetify: LIQUIDATE");
+            msg!("Synthetify: LIQUIDATE");
 
             let slot = Clock::get()?.slot;
 
@@ -592,8 +604,11 @@ pub mod exchange {
             let amount_to_liquidator = usd_to_token_amount(&collateral_asset, user_reward_usd);
             let amount_to_system = usd_to_token_amount(&collateral_asset, system_reward_usd);
 
-            let burned_debt_shares = amount_to_shares(self.debt_shares, debt, burned_amount);
-            let burned_collateral_shares = amount_to_shares(
+            // Rounding down - debt is burned in favor of the system
+            let burned_debt_shares =
+                amount_to_shares_by_rounding_down(self.debt_shares, debt, burned_amount);
+            // Rounding up - collateral is withdrawn in favor of the system
+            let burned_collateral_shares = amount_to_shares_by_rounding_up(
                 self.collateral_shares,
                 collateral_account.amount,
                 amount_to_system.checked_add(amount_to_liquidator).unwrap(),
@@ -695,7 +710,7 @@ pub mod exchange {
             &mut self,
             ctx: Context<CheckCollateralization>,
         ) -> Result<()> {
-            msg!("Syntetify: CHECK ACCOUNT COLLATERALIZATION");
+            msg!("Synthetify: CHECK ACCOUNT COLLATERALIZATION");
 
             let slot = Clock::get()?.slot;
 
@@ -747,7 +762,7 @@ pub mod exchange {
 
         #[access_control(halted(&self))]
         pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
-            msg!("Syntetify: CLAIM REWARDS");
+            msg!("Synthetify: CLAIM REWARDS");
 
             let slot = Clock::get()?.slot;
 
@@ -780,7 +795,7 @@ pub mod exchange {
         }
         #[access_control(halted(&self) fund_account(&self,&ctx.accounts.staking_fund_account))]
         pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
-            msg!("Syntetify: WITHDRAW REWARDS");
+            msg!("Synthetify: WITHDRAW REWARDS");
 
             let slot = Clock::get()?.slot;
             // Adjust staking round
@@ -815,7 +830,7 @@ pub mod exchange {
             ctx: Context<WithdrawLiquidationPenalty>,
             amount: u64,
         ) -> Result<()> {
-            msg!("Syntetify: WITHDRAW LIQUIDATION PENALTY");
+            msg!("Synthetify: WITHDRAW LIQUIDATION PENALTY");
 
             if !ctx.accounts.admin.key.eq(&self.admin) {
                 return Err(ErrorCode::Unauthorized.into());
@@ -850,7 +865,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_buffer: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION BUFFER");
+            msg!("Synthetify:Admin: SET LIQUIDATION BUFFER");
 
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
@@ -861,7 +876,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_threshold: u8,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION THRESHOLD");
+            msg!("Synthetify:Admin: SET LIQUIDATION THRESHOLD");
 
             self.liquidation_threshold = liquidation_threshold;
             Ok(())
@@ -872,7 +887,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             liquidation_penalty: u8,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET LIQUIDATION PENALTY");
+            msg!("Synthetify:Admin: SET LIQUIDATION PENALTY");
 
             self.liquidation_penalty = liquidation_penalty;
             Ok(())
@@ -883,28 +898,28 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             collateralization_level: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin: SET COLLATERALIZATION LEVEL");
+            msg!("Synthetify:Admin: SET COLLATERALIZATION LEVEL");
 
             self.collateralization_level = collateralization_level;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
-            msg!("Syntetify:Admin: SET FEE");
+            msg!("Synthetify:Admin: SET FEE");
 
             self.fee = fee;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_max_delay(&mut self, ctx: Context<AdminAction>, max_delay: u32) -> Result<()> {
-            msg!("Syntetify:Admin: SET MAX DELAY");
+            msg!("Synthetify:Admin: SET MAX DELAY");
 
             self.max_delay = max_delay;
             Ok(())
         }
         #[access_control(admin(&self, &ctx))]
         pub fn set_halted(&mut self, ctx: Context<AdminAction>, halted: bool) -> Result<()> {
-            msg!("Syntetify:Admin: SET HALTED");
+            msg!("Synthetify:Admin: SET HALTED");
 
             self.halted = halted;
             Ok(())
@@ -915,7 +930,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             amount_per_round: u64,
         ) -> Result<()> {
-            msg!("Syntetify:Admin:Staking: SET AMOUNT PER ROUND");
+            msg!("Synthetify:Admin:Staking: SET AMOUNT PER ROUND");
 
             self.staking.amount_per_round = amount_per_round;
             Ok(())
@@ -926,7 +941,7 @@ pub mod exchange {
             ctx: Context<AdminAction>,
             round_length: u32,
         ) -> Result<()> {
-            msg!("Syntetify:Admin:Staking: SET ROUND LENGTH");
+            msg!("Synthetify:Admin:Staking: SET ROUND LENGTH");
 
             self.staking.round_length = round_length;
             Ok(())
