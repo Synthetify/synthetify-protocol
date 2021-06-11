@@ -8,12 +8,12 @@ import { BN, Exchange, Manager, Network } from '@synthetify/sdk'
 import {
   createAssetsList,
   createToken,
-  sleep,
   ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
-  createAccountWithCollateralAndMaxMintUsd
+  createAccountWithCollateralAndMaxMintUsd,
+  skipSlots
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -161,7 +161,10 @@ describe('liquidation', () => {
       )
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
-      await sleep((nextRoundStart.toNumber() - (await connection.getSlot()) + 1) * 500)
+      await skipSlots(
+        (nextRoundStart.toNumber() - (await connection.getSlot()) + 1),
+        connection
+      )
       // Burn should reduce next round stake
       const amountBurn = new BN(100 * 1e6)
       await exchange.burn({
@@ -178,7 +181,8 @@ describe('liquidation', () => {
         exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
       )
       // Wait for round to end
-      await sleep(15 * 500)
+      await skipSlots(18, connection)
+
       // Claim rewards
       await exchange.claimRewards(exchangeAccount)
       const state = await exchange.getState()
@@ -227,7 +231,7 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
       // Wait for nextRound to end
-      await sleep(15 * 500)
+      await skipSlots(18, connection)
 
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
@@ -242,7 +246,7 @@ describe('liquidation', () => {
         )
       )
       // Wait for nextRound to end
-      await sleep(15 * 500)
+      await skipSlots(18, connection)
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
 
