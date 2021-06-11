@@ -41,7 +41,8 @@ describe('liquidation', () => {
   let nonce: number
 
   const amountPerRound = new BN(100)
-  const stakingRoundLength = 20
+  const stakingRoundLength = 30
+  const amountOfAccounts = 10
 
   let initialCollateralPrice = 2
   let nextRoundStart: BN
@@ -134,67 +135,97 @@ describe('liquidation', () => {
     assert.ok(state.staking.amountPerRound.eq(amountPerRound))
     assert.ok(state.staking.roundLength === stakingRoundLength)
   })
-  describe.only('Staking', async () => {
+  describe.only('Multi user staking', async () => {
     it('test flow', async () => {
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
-      const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        usdTokenAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
 
-      assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
-          new BN(200 * 1e6)
+      const collateralAmount = new BN(1000 * 1e6)
+
+      // Creates promises for users (for asynchronicity )
+      let usersAccountsPromises = []
+
+      for (let i = 0; i < amountOfAccounts; i++)
+        usersAccountsPromises.push(
+          (async () =>
+            await createAccountWithCollateralAndMaxMintUsd({
+              collateralAccount,
+              collateralToken,
+              exchangeAuthority,
+              exchange,
+              collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+              amount: collateralAmount,
+              usdToken
+            }))()
+        )
+
+      //Resolving promises
+      const usersAccounts = await Promise.all(usersAccountsPromises)
+
+      // Checking points for each user after first round
+      const nextRoundPointsCorrectness = await Promise.all(
+        usersAccounts.map(async (user) =>
+          (
+            await exchange.getExchangeAccount(user.exchangeAccount)
+          ).userStakingData.nextRoundPoints.eq(new BN(200 * 1e6))
         )
       )
-      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+
+      assert.ok(nextRoundPointsCorrectness.every((i) => i))
+
       // Wait for start of new round
       await skipToSlot(nextRoundStart.toNumber(), connection)
+
       // Burn should reduce next round stake
       const amountBurn = new BN(100 * 1e6)
-      await exchange.burn({
-        amount: amountBurn,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccountBurn: usdTokenAccount,
-        signers: [accountOwner]
-      })
-      assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
-      const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(new BN(100 * 1e6)))
-      assert.ok(
-        exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
-      )
+
+      for (let user of usersAccounts) {
+        await exchange.burn({
+          amount: amountBurn,
+          exchangeAccount: user.exchangeAccount,
+          owner: user.accountOwner.publicKey,
+          userTokenAccountBurn: user.usdTokenAccount,
+          signers: [user.accountOwner]
+        })
+
+        // Check if burn worked
+        const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(user.exchangeAccount)
+        assert.ok(
+          exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(new BN(100 * 1e6))
+        )
+        assert.ok(
+          exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
+        )
+      }
+
       // Wait for round to end
-      const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
-      await skipToSlot(secondRound, connection)
+      await skipToSlot(nextRoundStart.add(new BN(stakingRoundLength)).toNumber(), connection)
 
       // Claim rewards
-      await exchange.claimRewards(exchangeAccount)
+      await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
+
       const state = await exchange.getState()
-      assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6)))
-      assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6)))
-      assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6)))
+      assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
+      assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
+      assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
 
       assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
-      const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
-      assert.ok(
-        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
-      )
+      let rewardClaims = []
+
+      for (let user of usersAccounts) {
+        const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(
+          user.exchangeAccount
+        )
+        rewardClaims.push(exchangeAccountDataRewardClaim)
+        assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
+
+        assert.ok(
+          (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
+            new BN(0)
+          )
+        )
+      }
       // Mint reward
       await collateralToken.mintTo(
         stakingFundAccount,
@@ -202,58 +233,60 @@ describe('liquidation', () => {
         [],
         tou64(amountPerRound)
       )
-      await exchange.withdrawRewards({
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccount: userCollateralTokenAccount,
-        signers: [accountOwner]
-      })
-      assert.ok(
-        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
-        )
+
+      await Promise.all(
+        usersAccounts.map(async (user, index) => {
+          await exchange.withdrawRewards({
+            exchangeAccount: user.exchangeAccount,
+            owner: user.accountOwner.publicKey,
+            userTokenAccount: user.userCollateralTokenAccount,
+            signers: [user.accountOwner]
+          })
+          assert.ok(
+            (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
+              rewardClaims[index].userStakingData.amountToClaim
+            )
+          )
+        })
       )
 
-      const {
-        exchangeAccount: exchangeAccount2nd
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
-      const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
-      assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
+      // Wait for round to end
+      await skipToSlot(nextRoundStart.add(new BN(2 * stakingRoundLength)).toNumber(), connection)
 
-      // Wait for nextRound to end
-      await skipToSlot(secondRound + stakingRoundLength, connection)
+      await Promise.all(
+        usersAccounts.map(async (user) => {
+          await exchange.claimRewards(user.exchangeAccount)
+        })
+      )
 
-      await exchange.claimRewards(exchangeAccount)
-      await exchange.claimRewards(exchangeAccount2nd)
-      assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
-          new BN(100)
-        )
+      const exchangeAccounts = await Promise.all(
+        usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
       )
-      assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
-          new BN(0)
-        )
-      )
-      // Wait for nextRound to end
-      await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
-      await exchange.claimRewards(exchangeAccount)
-      await exchange.claimRewards(exchangeAccount2nd)
 
-      const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
-      const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
-        exchangeAccount2nd
+      for (let account of exchangeAccounts) account.userStakingData.amountToClaim.eq(new BN(100))
+
+      // Wait for round to end
+      await skipToSlot(nextRoundStart.add(new BN(3 * stakingRoundLength)).toNumber(), connection)
+
+      // Claiming rewards
+      await Promise.all(
+        usersAccounts.map(async (user) => {
+          await exchange.claimRewards(user.exchangeAccount)
+        })
       )
-      assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
-      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
+
+      // Getting user data
+      const exchangeAccountsDataAfterRewards = await Promise.all(
+        usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
+      )
+
+      // Checking if claimed amount is correct
+      const expectedAmountToClaim = amountPerRound
+        .div(new BN(amountOfAccounts))
+        .add(amountPerRound.div(new BN(amountOfAccounts)))
+
+      for (let account of exchangeAccountsDataAfterRewards)
+        assert.ok(account.userStakingData.amountToClaim.eq(expectedAmountToClaim))
     })
   })
 })

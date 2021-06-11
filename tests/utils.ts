@@ -311,3 +311,19 @@ export async function assertThrowsAsync(fn: Promise<any>, regExp?) {
     assert.throws(f, regExp)
   }
 }
+
+export const skipToSlot = async (slot: number, connection: Connection): Promise<null> => {
+  const startSlot = await connection.getSlot()
+
+  // Checks if given slot hasn't already passed
+  if (startSlot == slot) throw 'already at this slot '
+
+  if (startSlot > slot) throw 'slot has already passed'
+
+  // Wait for slot
+  while (true) {
+    if ((await connection.getSlot()) >= slot) return
+
+    await sleep(400)
+  }
+}
