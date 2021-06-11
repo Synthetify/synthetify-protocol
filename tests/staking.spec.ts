@@ -161,10 +161,7 @@ describe('liquidation', () => {
       )
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
-      await skipToSlot(await connection.getSlot() +
-        (nextRoundStart.toNumber() - (await connection.getSlot()) + 1),
-        connection
-      )
+      await skipToSlot(nextRoundStart.toNumber(), connection)
       // Burn should reduce next round stake
       const amountBurn = new BN(100 * 1e6)
       await exchange.burn({
@@ -181,7 +178,8 @@ describe('liquidation', () => {
         exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
       )
       // Wait for round to end
-      await skipToSlot(await connection.getSlot() +18, connection)
+      const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
+      await skipToSlot(secondRound, connection)
 
       // Claim rewards
       await exchange.claimRewards(exchangeAccount)
@@ -231,7 +229,7 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
       // Wait for nextRound to end
-      await skipToSlot(await connection.getSlot() +18, connection)
+      await skipToSlot(secondRound + stakingRoundLength, connection)
 
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
@@ -246,7 +244,7 @@ describe('liquidation', () => {
         )
       )
       // Wait for nextRound to end
-      await skipToSlot(await connection.getSlot() +18, connection)
+      await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
 
