@@ -42,7 +42,7 @@ describe('liquidation', () => {
 
   const amountPerRound = new BN(100)
   const stakingRoundLength = 30
-  const amountOfAccounts = 2
+  const amountOfAccounts = 10
 
   let initialCollateralPrice = 2
   let nextRoundStart: BN
@@ -139,30 +139,39 @@ describe('liquidation', () => {
     it('test flow', async () => {
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
+
       const collateralAmount = new BN(1000 * 1e6)
 
       let usersAccounts = []
 
-      for (let i = 0; i < amountOfAccounts; i++)
-        usersAccounts.push(
-          await createAccountWithCollateralAndMaxMintUsd({
-            collateralAccount,
-            collateralToken,
-            exchangeAuthority,
-            exchange,
-            collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-            amount: collateralAmount,
-            usdToken
-          })
-        )
+      for (let i = 0; i < amountOfAccounts; i++) usersAccounts.push(i)
 
-      for (let user of usersAccounts) {
-        assert.ok(
+      usersAccounts = await Promise.all(
+        usersAccounts.map(
+          async (i) =>
+            await createAccountWithCollateralAndMaxMintUsd({
+              collateralAccount,
+              collateralToken,
+              exchangeAuthority,
+              exchange,
+              collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+              amount: collateralAmount,
+              usdToken
+            })
+        )
+      )
+
+      usersAccounts.push()
+
+      const nextRoundPointsCorrectness = await Promise.all(
+        usersAccounts.map(async (user) =>
           (
             await exchange.getExchangeAccount(user.exchangeAccount)
           ).userStakingData.nextRoundPoints.eq(new BN(200 * 1e6))
         )
-      }
+      )
+
+      assert.ok(nextRoundPointsCorrectness.every((i) => i))
 
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
@@ -293,10 +302,18 @@ describe('liquidation', () => {
         exchangeAccount2nd
       )
 
-      for (let account of exchangeAccountsDataAfterRewards)
-        assert.ok(account.userStakingData.amountToClaim.eq(new BN(75)))
+      const expectedAmountToClaim = amountPerRound
+        .div(new BN(amountOfAccounts + 2))
+        .add(amountPerRound.div(new BN(amountOfAccounts)))
 
-      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(50)))
+      for (let account of exchangeAccountsDataAfterRewards)
+        assert.ok(account.userStakingData.amountToClaim.eq(expectedAmountToClaim))
+
+      assert.ok(
+        exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(
+          new BN((2 * 100) / (amountOfAccounts + 2))
+        )
+      )
     })
   })
 })
