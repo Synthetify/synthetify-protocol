@@ -13,7 +13,7 @@ import {
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  skipSlots
+  skipToSlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -161,7 +161,7 @@ describe('liquidation', () => {
       )
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
-      await skipSlots(
+      await skipToSlot(await connection.getSlot() +
         (nextRoundStart.toNumber() - (await connection.getSlot()) + 1),
         connection
       )
@@ -181,7 +181,7 @@ describe('liquidation', () => {
         exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
       )
       // Wait for round to end
-      await skipSlots(18, connection)
+      await skipToSlot(await connection.getSlot() +18, connection)
 
       // Claim rewards
       await exchange.claimRewards(exchangeAccount)
@@ -231,7 +231,7 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
       // Wait for nextRound to end
-      await skipSlots(18, connection)
+      await skipToSlot(await connection.getSlot() +18, connection)
 
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
@@ -246,7 +246,7 @@ describe('liquidation', () => {
         )
       )
       // Wait for nextRound to end
-      await skipSlots(18, connection)
+      await skipToSlot(await connection.getSlot() +18, connection)
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
 
