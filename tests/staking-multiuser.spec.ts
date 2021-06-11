@@ -41,7 +41,7 @@ describe('liquidation', () => {
   let nonce: number
 
   const amountPerRound = new BN(100)
-  const stakingRoundLength = 20
+  const stakingRoundLength = 30
   const amountOfAccounts = 10
 
   let initialCollateralPrice = 2
@@ -161,8 +161,6 @@ describe('liquidation', () => {
         )
       )
 
-      usersAccounts.push()
-
       const nextRoundPointsCorrectness = await Promise.all(
         usersAccounts.map(async (user) =>
           (
@@ -259,21 +257,6 @@ describe('liquidation', () => {
         })
       )
 
-      const {
-        exchangeAccount: exchangeAccount2nd
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
-
-      const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
-      assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
-
       // Check if in the right round
       nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
@@ -287,18 +270,12 @@ describe('liquidation', () => {
           await exchange.claimRewards(user.exchangeAccount)
         })
       )
-      await exchange.claimRewards(exchangeAccount2nd)
 
-      let exchangeAccounts = await Promise.all(
+      const exchangeAccounts = await Promise.all(
         usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
       )
 
       for (let account of exchangeAccounts) account.userStakingData.amountToClaim.eq(new BN(100))
-      assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
-          new BN(0)
-        )
-      )
 
       // Check if in the right round
       nextRoundStart = nextRoundStart.add(new BN(stakingRoundLength))
@@ -313,28 +290,17 @@ describe('liquidation', () => {
           await exchange.claimRewards(user.exchangeAccount)
         })
       )
-      await exchange.claimRewards(exchangeAccount2nd)
 
       const exchangeAccountsDataAfterRewards = await Promise.all(
         usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
       )
 
-      const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
-        exchangeAccount2nd
-      )
-
       const expectedAmountToClaim = amountPerRound
-        .div(new BN(amountOfAccounts + 2))
+        .div(new BN(amountOfAccounts))
         .add(amountPerRound.div(new BN(amountOfAccounts)))
 
       for (let account of exchangeAccountsDataAfterRewards)
         assert.ok(account.userStakingData.amountToClaim.eq(expectedAmountToClaim))
-
-      assert.ok(
-        exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(
-          new BN((2 * 100) / (amountOfAccounts + 2))
-        )
-      )
     })
   })
 })
