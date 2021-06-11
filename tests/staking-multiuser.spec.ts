@@ -191,15 +191,15 @@ describe('liquidation', () => {
       }
 
       // Wait for round to end
-      await sleep(25 * 500)
+      await sleep(25 * 500) //FIXME? maybe should be dynamic?
       // Claim rewards
-      await Promise.all(usersAccounts.map(user => exchange.claimRewards(user.exchangeAccount)))
+      await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
 
       const state = await exchange.getState()
       assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
       assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
       assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
-      
+
       assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
 
       let rewardClaims = []
@@ -225,22 +225,21 @@ describe('liquidation', () => {
         tou64(amountPerRound.mul(new BN(amountOfAccounts)))
       )
 
-
-
-      await Promise.all(usersAccounts.map(async (user, index) => {
-        await exchange.withdrawRewards({
-          exchangeAccount: user.exchangeAccount,
-          owner: user.accountOwner.publicKey,
-          userTokenAccount: user.userCollateralTokenAccount,
-          signers: [user.accountOwner]
-        })
-        assert.ok(
-          (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
-            rewardClaims[index].userStakingData.amountToClaim
+      await Promise.all(
+        usersAccounts.map(async (user, index) => {
+          await exchange.withdrawRewards({
+            exchangeAccount: user.exchangeAccount,
+            owner: user.accountOwner.publicKey,
+            userTokenAccount: user.userCollateralTokenAccount,
+            signers: [user.accountOwner]
+          })
+          assert.ok(
+            (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
+              rewardClaims[index].userStakingData.amountToClaim
+            )
           )
-        )
-      }))
-      /*
+        })
+      )
 
       const {
         exchangeAccount: exchangeAccount2nd
@@ -253,36 +252,52 @@ describe('liquidation', () => {
         amount: collateralAmount,
         usdToken
       })
+
       const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
       assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
 
       // Wait for nextRound to end
-      await sleep(15 * 500)
+      await sleep(25 * 500)
 
-      await exchange.claimRewards(exchangeAccount)
-      await exchange.claimRewards(exchangeAccount2nd)
-      assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
-          new BN(100)
-        )
+      await Promise.all(
+        usersAccounts.map(async (user) => {
+          await exchange.claimRewards(user.exchangeAccount)
+        })
       )
+      await exchange.claimRewards(exchangeAccount2nd)
+
+      let exchangeAccounts = await Promise.all(
+        usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
+      )
+
+      for (let account of exchangeAccounts) account.userStakingData.amountToClaim.eq(new BN(100))
       assert.ok(
         (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
           new BN(0)
         )
       )
+
       // Wait for nextRound to end
       await sleep(15 * 500)
-      await exchange.claimRewards(exchangeAccount)
+      await Promise.all(
+        usersAccounts.map(async (user) => {
+          await exchange.claimRewards(user.exchangeAccount)
+        })
+      )
       await exchange.claimRewards(exchangeAccount2nd)
 
-      const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
+      const exchangeAccountsDataAfterRewards = await Promise.all(
+        usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
+      )
+
       const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
         exchangeAccount2nd
       )
-      assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
-      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
-      */
+
+      for (let account of exchangeAccountsDataAfterRewards)
+        assert.ok(account.userStakingData.amountToClaim.eq(new BN(75)))
+
+      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(50)))
     })
   })
 })
