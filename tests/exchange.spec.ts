@@ -131,6 +131,7 @@ describe('exchange', () => {
     assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.collateralShares.eq(new BN(0)))
+    assert.ok(state.accountVersion === 0)
   })
   it('Account Creation', async () => {
     const accountOwner = new Account().publicKey
@@ -141,6 +142,7 @@ describe('exchange', () => {
     assert.ok(userExchangeAccount.owner.equals(accountOwner))
     // Initial values
     assert.ok(userExchangeAccount.debtShares.eq(new BN(0)))
+    assert.ok(userExchangeAccount.version === 0)
     assert.ok(userExchangeAccount.collateralShares.eq(new BN(0)))
   })
   describe('#deposit()', async () => {

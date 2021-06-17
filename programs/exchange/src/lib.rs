@@ -21,9 +21,9 @@ pub mod exchange {
     };
 
     use super::*;
-    #[state(640)] // To ensure upgradability state is about 2x bigger than required
+    #[state(642)] // To ensure upgradability state is about 2x bigger than required
     pub struct InternalState {
-        // size = 320
+        // size = 321
         //8 Account signature
         pub admin: Pubkey,                //32
         pub halted: bool,                 //1
@@ -40,6 +40,7 @@ pub mod exchange {
         pub liquidation_penalty: u8,      //1   In % range 0-25%
         pub liquidation_threshold: u8,    //1   In % should range from 130-200%
         pub liquidation_buffer: u32,      //4   Time given user to fix collateralization ratio
+        pub account_version: u8,          //1 Version of account supported by program
         pub staking: Staking,             //116
     }
     impl InternalState {
@@ -68,6 +69,7 @@ pub mod exchange {
                 liquidation_penalty: 15,
                 liquidation_threshold: 200,
                 liquidation_buffer: 172800, // about 24 Hours,
+                account_version: 0,
                 staking: Staking {
                     round_length: staking_round_length,
                     amount_per_round: amount_per_round,
@@ -90,7 +92,9 @@ pub mod exchange {
                 },
             })
         }
-        #[access_control(halted(&self) collateral_account(&self,&ctx.accounts.collateral_account))]
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        collateral_account(&self,&ctx.accounts.collateral_account))]
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
             msg!("Synthetify: DEPOSIT");
 
@@ -136,6 +140,7 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
@@ -209,6 +214,7 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
@@ -279,6 +285,7 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn swap(&mut self, ctx: Context<Swap>, amount: u64) -> Result<()> {
@@ -396,6 +403,7 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
         pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
@@ -533,6 +541,7 @@ pub mod exchange {
         }
 
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         assets_list(&self,&ctx.accounts.assets_list)
         usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
         collateral_account(&self,&ctx.accounts.collateral_account))]
@@ -704,6 +713,7 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
         collateral_account(&self,&ctx.accounts.collateral_account)
         assets_list(&self,&ctx.accounts.assets_list))]
         pub fn check_account_collateralization(
@@ -760,7 +770,7 @@ pub mod exchange {
             Ok(())
         }
 
-        #[access_control(halted(&self))]
+        #[access_control(halted(&self) version(&self,&ctx.accounts.exchange_account))]
         pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
             msg!("Synthetify: CLAIM REWARDS");
 
@@ -793,7 +803,9 @@ pub mod exchange {
 
             Ok(())
         }
-        #[access_control(halted(&self) fund_account(&self,&ctx.accounts.staking_fund_account))]
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        fund_account(&self,&ctx.accounts.staking_fund_account))]
         pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
             msg!("Synthetify: WITHDRAW REWARDS");
 
@@ -955,6 +967,7 @@ pub mod exchange {
         exchange_account.owner = owner;
         exchange_account.debt_shares = 0;
         exchange_account.collateral_shares = 0;
+        exchange_account.version = 0;
         exchange_account.liquidation_deadline = u64::MAX;
         exchange_account.user_staking_data = UserStaking::default();
         Ok(())
@@ -985,6 +998,7 @@ pub struct CreateExchangeAccount<'info> {
 #[derive(Default)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controling account
+    pub version: u8,                    // Version of account struct
     pub debt_shares: u64,               // Shares representing part of entire debt pool
     pub collateral_shares: u64,         // Shares representing part of entire collateral account
     pub liquidation_deadline: u64,      // Slot number after which account can be liquidated
@@ -1269,6 +1283,8 @@ pub enum ErrorCode {
     NoRewards,
     #[msg("Invalid fund_account")]
     FundAccountError,
+    #[msg("Invalid version of user account")]
+    AccountVersion,
 }
 
 // Access control modifiers.
@@ -1334,6 +1350,16 @@ fn fund_account<'info>(
         .eq(&state.staking.fund_account)
     {
         return Err(ErrorCode::FundAccountError.into());
+    }
+    Ok(())
+}
+// Check is user account have correct version
+fn version<'info>(
+    state: &InternalState,
+    exchange_account: &ProgramAccount<'info, ExchangeAccount>,
+) -> Result<()> {
+    if !exchange_account.version == state.account_version {
+        return Err(ErrorCode::AccountVersion.into());
     }
     Ok(())
 }

@@ -684,6 +684,7 @@ export interface ExchangeState {
   liquidationPenalty: number
   liquidationThreshold: number
   liquidationBuffer: number
+  accountVersion: number
   staking: Staking
 }
 export interface Staking {
@@ -701,6 +702,7 @@ export interface StakingRound {
 }
 export interface ExchangeAccount {
   owner: PublicKey
+  version: number
   debtShares: BN
   collateralShares: BN
   liquidationDeadline: BN
