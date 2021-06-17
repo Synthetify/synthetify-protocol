@@ -1,8 +1,7 @@
-use std::cell::RefMut;
-
 use crate::*;
 use anchor_lang::prelude::AccountInfo;
 use bytemuck::{cast_slice_mut, from_bytes_mut, try_cast_slice_mut, Pod, Zeroable};
+use std::cell::RefMut;
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
@@ -18,6 +17,7 @@ pub enum PriceStatus {
     Halted,
     Auction,
 }
+
 impl Default for PriceStatus {
     fn default() -> Self {
         PriceStatus::Trading
@@ -29,11 +29,13 @@ impl Default for PriceStatus {
 pub enum CorpAction {
     NoCorpAct,
 }
+
 impl Default for CorpAction {
     fn default() -> Self {
         CorpAction::NoCorpAct
     }
 }
+
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct PriceInfo {
@@ -59,33 +61,44 @@ pub enum PriceType {
     TWAP,
     Volatility,
 }
+
 impl Default for PriceType {
     fn default() -> Self {
         PriceType::Price
     }
 }
+
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
 pub struct Price {
-    pub magic: u32,       // pyth magic number
-    pub ver: u32,         // program version
-    pub atype: u32,       // account type
-    pub size: u32,        // price account size
-    pub ptype: PriceType, // price or calculation type
-    pub expo: i32,        // price exponent
-    pub num: u32,         // number of component prices
+    pub magic: u32,       // Pyth magic number.
+    pub ver: u32,         // Program version.
+    pub atype: u32,       // Account type.
+    pub size: u32,        // Price account size.
+    pub ptype: PriceType, // Price or calculation type.
+    pub expo: i32,        // Price exponent.
+    pub num: u32,         // Number of component prices.
     pub unused: u32,
-    pub curr_slot: u64,  // currently accumulating price slot
-    pub valid_slot: u64, // valid slot-time of agg. price
-    pub prod: AccKey,
-    pub next: AccKey,
-    pub agg_pub: AccKey,
-    pub agg: PriceInfo,
-    pub comp: [PriceComp; 16],
+    pub curr_slot: u64,        // Currently accumulating price slot.
+    pub valid_slot: u64,       // Valid slot-time of agg. price.
+    pub twap: i64,             // Time-weighted average price.
+    pub avol: u64,             // Annualized price volatility.
+    pub drv0: i64,             // Space for future derived values.
+    pub drv1: i64,             // Space for future derived values.
+    pub drv2: i64,             // Space for future derived values.
+    pub drv3: i64,             // Space for future derived values.
+    pub drv4: i64,             // Space for future derived values.
+    pub drv5: i64,             // Space for future derived values.
+    pub prod: AccKey,          // Product account key.
+    pub next: AccKey,          // Next Price account in linked list.
+    pub agg_pub: AccKey,       // Quoter who computed last aggregate price.
+    pub agg: PriceInfo,        // Aggregate price info.
+    pub comp: [PriceComp; 32], // Price components one per quoter.
 }
+
 impl Price {
     #[inline]
-    pub fn load<'a>(price_feed: &'a AccountInfo) -> Result<RefMut<'a, Price>> {
+    pub fn load<'a>(price_feed: &'a AccountInfo) -> Result<RefMut<'a, Price>, ProgramError> {
         let account_data: RefMut<'a, [u8]>;
         let state: RefMut<'a, Self>;
 
@@ -97,7 +110,9 @@ impl Price {
         Ok(state)
     }
 }
+
 #[cfg(target_endian = "little")]
 unsafe impl Zeroable for Price {}
+
 #[cfg(target_endian = "little")]
 unsafe impl Pod for Price {}

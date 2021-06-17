@@ -33,9 +33,3 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub price: AccountInfo<'info>,
 }
-
-#[error]
-pub enum ErrorCode {
-    #[msg("This is an error message clients will automatically display")]
-    Hello,
-}
