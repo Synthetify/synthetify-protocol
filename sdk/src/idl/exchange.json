@@ -862,82 +862,82 @@
   ],
   "errors": [
     {
-      "code": 100,
+      "code": 300,
       "name": "Unauthorized",
       "msg": "You are not admin"
     },
     {
-      "code": 101,
+      "code": 301,
       "name": "NotSyntheticUsd",
       "msg": "Not synthetic USD asset"
     },
     {
-      "code": 102,
+      "code": 302,
       "name": "OutdatedOracle",
       "msg": "Oracle price is outdated"
     },
     {
-      "code": 103,
+      "code": 303,
       "name": "MintLimit",
       "msg": "Mint limit"
     },
     {
-      "code": 104,
+      "code": 304,
       "name": "WithdrawLimit",
       "msg": "Withdraw limit"
     },
     {
-      "code": 105,
+      "code": 305,
       "name": "CollateralAccountError",
       "msg": "Invalid collateral_account"
     },
     {
-      "code": 106,
+      "code": 306,
       "name": "SyntheticCollateral",
       "msg": "Synthetic collateral is not supported"
     },
     {
-      "code": 107,
+      "code": 307,
       "name": "InvalidAssetsList",
       "msg": "Invalid Assets List"
     },
     {
-      "code": 108,
+      "code": 308,
       "name": "InvalidLiquidation",
       "msg": "Invalid Liquidation"
     },
     {
-      "code": 109,
+      "code": 309,
       "name": "InvalidSigner",
       "msg": "Invalid signer"
     },
     {
-      "code": 110,
+      "code": 310,
       "name": "WashTrade",
       "msg": "Wash trade"
     },
     {
-      "code": 111,
+      "code": 311,
       "name": "ExchangeLiquidationAccount",
       "msg": "Invalid exchange liquidation account"
     },
     {
-      "code": 112,
+      "code": 312,
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
     },
     {
-      "code": 113,
+      "code": 313,
       "name": "Halted",
       "msg": "Program is currently Halted"
     },
     {
-      "code": 114,
+      "code": 314,
       "name": "NoRewards",
       "msg": "No rewards to claim"
     },
     {
-      "code": 115,
+      "code": 315,
       "name": "FundAccountError",
       "msg": "Invalid fund_account"
     }

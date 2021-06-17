@@ -281,32 +281,32 @@
   ],
   "errors": [
     {
-      "code": 100,
+      "code": 300,
       "name": "ErrorType",
       "msg": "Your error message"
     },
     {
-      "code": 101,
+      "code": 301,
       "name": "Unauthorized",
       "msg": "You are not admin"
     },
     {
-      "code": 102,
+      "code": 302,
       "name": "Initialized",
       "msg": "Assets list already initialized"
     },
     {
-      "code": 103,
+      "code": 303,
       "name": "Uninitialized",
       "msg": "Assets list is not initialized"
     },
     {
-      "code": 104,
+      "code": 304,
       "name": "NoAssetFound",
       "msg": "No asset with such address was found"
     },
     {
-      "code": 105,
+      "code": 305,
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     }

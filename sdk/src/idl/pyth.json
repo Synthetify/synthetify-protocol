@@ -45,7 +45,7 @@
   ],
   "errors": [
     {
-      "code": 100,
+      "code": 300,
       "name": "Hello",
       "msg": "This is an error message clients will automatically display"
     }

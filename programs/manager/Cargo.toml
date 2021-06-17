@@ -16,5 +16,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.7.0"
-pyth = { path = "../pyth", features = ["cpi"] }
+anchor-lang = "0.9.0"
+pyth = { path="../pyth", features=["cpi"] }

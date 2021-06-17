@@ -982,6 +982,7 @@ pub struct CreateExchangeAccount<'info> {
 }
 
 #[associated]
+#[derive(Default)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controling account
     pub debt_shares: u64,               // Shares representing part of entire debt pool
