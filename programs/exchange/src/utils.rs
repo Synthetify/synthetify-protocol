@@ -1,6 +1,11 @@
 use crate::*;
 use manager::Asset;
 
+const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
+pub const fn log2(n: u64) -> u64 {
+    (BITS - 1) - n.leading_zeros() as u64
+}
+
 pub fn check_feed_update(
     assets: &Vec<Asset>,
     index_a: usize,

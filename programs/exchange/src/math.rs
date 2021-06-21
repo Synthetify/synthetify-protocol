@@ -177,10 +177,7 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
     );
     return shares.try_into().unwrap();
 }
-const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
-pub const fn log2(n: u64) -> u64 {
-    (BITS - 1) - n.leading_zeros() as u64
-}
+
 pub fn amount_to_discount(amount: u64) -> u8 {
     // decimals of token = 6
     // we want discounts start from 2000 -> 4000 ...
