@@ -27,6 +27,7 @@ import {
   U64_MAX
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
+import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
@@ -161,7 +162,7 @@ describe('liquidation', () => {
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
-    it.only('should liquidate', async () => {
+    it('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         collateralAccount,
@@ -217,7 +218,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
       const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
@@ -244,7 +246,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
       // wait for liquidation deadline
       await sleep(6000)
@@ -326,7 +329,8 @@ describe('liquidation', () => {
       )
       // Fail without admin signature
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(withdrawPenaltyIx), [wallet], connection)
+        signAndSend(new Transaction().add(withdrawPenaltyIx), [wallet], connection),
+        ERRORS.SIGNATURE
       )
       await signAndSend(
         new Transaction().add(withdrawPenaltyIx),
@@ -381,7 +385,6 @@ describe('liquidation', () => {
       // set account liquidation deadline
       await exchange.checkAccount(exchangeAccount)
 
-      // trigger liquidation without waiting for liquidation deadline
       await assertThrowsAsync(
         exchange.liquidate({
           exchangeAccount,
@@ -390,7 +393,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
       // wait for liquidation deadline
       await sleep(6000)
@@ -409,7 +413,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ixUnlock = await exchange.setHaltedInstruction(false)
@@ -471,7 +476,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: []
-        })
+        }),
+        ERRORS.NO_SIGNERS
       )
     })
     it('fail liquidate safe user', async () => {
@@ -512,7 +518,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
     })
     it('fail too low allowance', async () => {
@@ -552,6 +559,15 @@ describe('liquidation', () => {
         state.collateralizationLevel,
         state.liquidationPenalty
       )
+      // change liquidation buffor for sake of test
+      const newLiquidationBuffer = 10
+      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      // set account liquidation deadline
+      await exchange.checkAccount(exchangeAccount)
+      // wait for liquidation deadline
+      await sleep(9000)
       // trigger liquidation
       await assertThrowsAsync(
         exchange.liquidate({
@@ -561,7 +577,8 @@ describe('liquidation', () => {
           userCollateralAccount: liquidatorCollateralAccount,
           userUsdAccount: liquidatorUsdAccount,
           signers: [liquidator]
-        })
+        }),
+        ERRORS.ALLOWANCE
       )
     })
     it('fail wrong asset list', async () => {
@@ -632,22 +649,17 @@ describe('liquidation', () => {
         [],
         tou64(maxBurnUsd)
       )
-      const updateTx = new Transaction().add(updateIx)
-      const liquidateTx = new Transaction().add(approveIx).add(liquidateIx)
+      const liquidateTx = new Transaction().add(updateIx).add(approveIx).add(liquidateIx)
       const blockhash = await connection.getRecentBlockhash(Provider.defaultOptions().commitment)
-      const txs = [updateTx, liquidateTx]
+      const txs = [liquidateTx]
       txs.forEach((tx) => {
         tx.feePayer = exchange.wallet.publicKey
         tx.recentBlockhash = blockhash.blockhash
       })
       exchange.wallet.signAllTransactions(txs)
-      txs[1].partialSign(liquidator)
-      const promisesTx = txs.map((tx) =>
-        sendAndConfirmRawTransaction(connection, tx.serialize(), {
-          skipPreflight: true
-        })
-      )
-      await assertThrowsAsync(Promise.all(promisesTx))
+      txs[0].partialSign(liquidator)
+      const promisesTx = txs.map((tx) => sendAndConfirmRawTransaction(connection, tx.serialize()))
+      await assertThrowsAsync(Promise.all(promisesTx), ERRORS_EXCHANGE.INVALID_ASSETS_LIST)
     })
   })
 })
