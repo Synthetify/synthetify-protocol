@@ -555,17 +555,13 @@ export class Exchange {
     const txs = await this.processOperations([withdrawTx])
     signers ? txs[0].partialSign(...signers) : null
 
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
-      skipPreflight: true
-    })
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async claimRewards(exchangeAccount: PublicKey) {
     const claimRewardsIx = await this.claimRewardsInstruction(exchangeAccount)
     const tx = new Transaction().add(claimRewardsIx)
     const txs = await this.processOperations([tx])
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
-      skipPreflight: true
-    })
+    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
 }
 export interface Mint {

@@ -27,6 +27,8 @@ import {
   assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { ERRORS, ERRORS_MANAGER } from '@synthetify/sdk/lib/utils'
+import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -272,7 +274,8 @@ describe('exchange', () => {
           new Transaction().add(approveIx).add(depositIx),
           [wallet, accountOwner],
           connection
-        )
+        ),
+        ERRORS.ALLOWANCE
       )
     })
   })
@@ -391,7 +394,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.MINT_LIMIT
       )
     })
   })
@@ -548,7 +552,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.WITHDRAW_LIMIT
       )
     })
     it('withdraw with debt', async () => {
@@ -600,7 +605,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.WITHDRAW_LIMIT
       )
     })
   })
@@ -997,7 +1003,8 @@ describe('exchange', () => {
           tokenFor: assetsListData.assets[0].assetAddress,
           tokenIn: assetsListData.assets[0].assetAddress,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.WASH_TRADE
       )
     })
     it('Swap over max supply', async () => {
@@ -1047,7 +1054,8 @@ describe('exchange', () => {
           tokenFor: zeroMaxSupplyToken.publicKey,
           tokenIn: usdToken.publicKey,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_MANAGER.MAX_SUPPLY
       )
     })
     it('Swap more than balance should fail', async () => {
@@ -1097,7 +1105,8 @@ describe('exchange', () => {
           tokenFor: btcAsset.assetAddress,
           tokenIn: assetsListData.assets[0].assetAddress,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS.ALLOWANCE
       )
     })
   })
@@ -1297,7 +1306,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           userTokenAccountBurn: usdTokenAccount,
           signers: []
-        })
+        }),
+        ERRORS.NO_SIGNERS
       )
     })
     it('Burn wrong token', async () => {
@@ -1423,7 +1433,8 @@ describe('exchange', () => {
           new Transaction().add(approveIx).add(depositIx),
           [wallet, accountOwner],
           connection
-        )
+        ),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
@@ -1469,7 +1480,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: usdTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
@@ -1515,7 +1527,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           to: userCollateralTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
@@ -1562,7 +1575,8 @@ describe('exchange', () => {
           owner: accountOwner.publicKey,
           userTokenAccountBurn: usdTokenAccount,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
@@ -1638,7 +1652,8 @@ describe('exchange', () => {
           tokenFor: btcToken.publicKey,
           tokenIn: usdToken.publicKey,
           signers: [accountOwner]
-        })
+        }),
+        ERRORS_EXCHANGE.HALTED
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)

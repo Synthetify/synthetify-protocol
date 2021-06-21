@@ -299,17 +299,24 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   }
 }
 
-export async function assertThrowsAsync(fn: Promise<any>, regExp?) {
-  let f = () => {}
+export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   try {
     await fn
   } catch (e) {
-    f = () => {
-      throw e
+    let err
+    if (e.code) {
+      err = '0x' + e.code.toString(16)
+    } else {
+      err = e.toString()
     }
-  } finally {
-    assert.throws(f, regExp)
+    if (word) {
+      if (err.indexOf(word) === -1) {
+        throw new Error('Invalid Error message')
+      }
+    }
+    return
   }
+  throw new Error('Function did not throw error')
 }
 
 export const skipToSlot = async (slot: number, connection: Connection): Promise<null> => {

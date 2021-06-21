@@ -18,6 +18,7 @@ import {
 import { Network } from '@synthetify/sdk/lib/network'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { signAndSend } from '../sdk/src'
+import { ERRORS, ERRORS_MANAGER } from '@synthetify/sdk/src/utils'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(1000000)
@@ -171,7 +172,8 @@ describe('manager', () => {
           assetIndex,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
-        })
+        }),
+        ERRORS_MANAGER.MAX_SUPPLY
       )
     })
     it('Should fail with wrong signer', async () => {
@@ -191,7 +193,8 @@ describe('manager', () => {
             exchangeAuthority: exchangeAuthorityAccount.publicKey
           },
           signers: [new Account()]
-        })
+        }),
+        ERRORS.SIGNER
       )
     })
     it('Should fail if asset not found', async () => {
@@ -205,7 +208,8 @@ describe('manager', () => {
           assetIndex: 254,
           newSupply,
           exchangeAuthority: exchangeAuthorityAccount
-        })
+        }),
+        ERRORS.PANICKED
       )
     })
   })
@@ -263,7 +267,7 @@ describe('manager', () => {
         newAssetLimit
       }
       // we hit limit of account size and cannot add another asset
-      await assertThrowsAsync(addNewAssets(addNewAssetParams))
+      await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
     })
   })
   describe('#set_max_supply()', async () => {
@@ -276,7 +280,8 @@ describe('manager', () => {
           assetsAdmin: ASSETS_MANAGER_ADMIN,
           assetsList,
           newMaxSupply: newAssetLimit
-        })
+        }),
+        ERRORS_MANAGER.NO_ASSET_FOUND
       )
 
       const afterAssetList = await manager.getAssetsList(assetsList)
@@ -348,7 +353,8 @@ describe('manager', () => {
           accounts: {
             assetsList: assetsList
           }
-        })
+        }),
+        ERRORS.PANICKED
       )
       const assetList = await manager.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]

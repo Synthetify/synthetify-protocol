@@ -13,7 +13,40 @@ import { AssetsList } from './manager'
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
 export const ACCURACY = 6
-
+export enum ERRORS {
+  SIGNATURE = 'Error: Signature verification failed',
+  SIGNER = 'Error: unknown signer',
+  PANICKED = 'Program failed to complete',
+  SERIALIZATION = '0xa4',
+  ALLOWANCE = 'custom program error: 0x1',
+  NO_SIGNERS = 'Error: No signers'
+}
+export enum ERRORS_EXCHANGE {
+  UNAUTHORIZED = '0x12c',
+  NOT_SYNTHETIC_USD = '0x12d',
+  OUTDATED_ORACLE = '0x12e',
+  MINT_LIMIT = '0x12f',
+  WITHDRAW_LIMIT = '0x130',
+  COLLATERAL_ACCOUNT_ERROR = '0x131',
+  SYNTHETIC_COLLATERAL = '0x132',
+  INVALID_ASSETS_LIST = '0x133',
+  INVALID_LIQUIDATION = '0x134',
+  INVALID_SIGNER = '0x135',
+  WASH_TRADE = '0x136',
+  EXCHANGE_LIQUIDATION_ACCOUNT = '0x137',
+  LIQUIDATION_DEADLINE = '0x138',
+  HALTED = '0x139',
+  NO_REWARDS = '0x13a',
+  FUND_ACCOUNT_ERROR = '0x13b',
+  ACCOUNT_VERSION = '0x13c'
+}
+export enum ERRORS_MANAGER {
+  UNAUTHORIZED = '0x12c',
+  INITIALIZED = '0x12d',
+  UNINITIALIZED = '0x12e',
+  NO_ASSET_FOUND = '0x12f',
+  MAX_SUPPLY = '0x130'
+}
 export const signAndSend = async (
   tx: Transaction,
   signers: Account[],

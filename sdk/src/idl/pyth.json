@@ -43,11 +43,7 @@
       ]
     }
   ],
-  "errors": [
-    {
-      "code": 300,
-      "name": "Hello",
-      "msg": "This is an error message clients will automatically display"
-    }
-  ]
+  "metadata": {
+    "address": "6rD77PnVGY5mewjP8C49j25s5hoXoxsNv3rmEpbjDvNN"
+  }
 }

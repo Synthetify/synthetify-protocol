@@ -141,6 +141,7 @@ pub mod manager {
     ) -> ProgramResult {
         let assets_list = &mut ctx.accounts.assets_list;
         let asset = &mut assets_list.assets[asset_index as usize];
+
         if new_supply.gt(&asset.max_supply) {
             return Err(ErrorCode::MaxSupply.into());
         }
@@ -264,8 +265,6 @@ pub struct AssetsList {
 }
 #[error]
 pub enum ErrorCode {
-    #[msg("Your error message")]
-    ErrorType,
     #[msg("You are not admin")]
     Unauthorized,
     #[msg("Assets list already initialized")]

@@ -14,6 +14,7 @@ import {
   assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { ERRORS } from '@synthetify/sdk/src/utils'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -128,7 +129,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newLiquidationBuffer = 999
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.liquidationBuffer !== newLiquidationBuffer)
     })
@@ -144,7 +148,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newLiquidationThreshold = 150
       const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.liquidationThreshold !== newLiquidationThreshold)
     })
@@ -160,7 +167,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newLiquidationPenalty = 9
       const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.liquidationPenalty !== newLiquidationPenalty)
     })
@@ -176,7 +186,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newCollateralizationLevel = 400
       const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.collateralizationLevel !== newCollateralizationLevel)
     })
@@ -192,7 +205,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newFee = 999
       const ix = await exchange.setFeeInstruction(newFee)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.fee !== newFee)
     })
@@ -208,7 +224,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const newMaxDelay = 999
       const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.maxDelay !== newMaxDelay)
     })
@@ -224,7 +243,10 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const halted = true
       const ix = await exchange.setHaltedInstruction(halted)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.halted !== halted)
     })
@@ -240,14 +262,17 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const amount = new BN(12399)
       const ix = await exchange.setStakingAmountPerRound(amount)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(!state.staking.amountPerRound.eq(amount))
     })
     it('change value', async () => {
       const amount = new BN(12399)
       const ix = await exchange.setStakingAmountPerRound(amount)
-      await await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.staking.amountPerRound.eq(amount))
     })
@@ -256,14 +281,17 @@ describe('staking', () => {
     it('Fail without admin signature', async () => {
       const length = 999912
       const ix = await exchange.setStakingRoundLength(length)
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
       const state = await exchange.getState()
       assert.ok(state.staking.roundLength !== length)
     })
     it('change value', async () => {
       const length = 999912
       const ix = await exchange.setStakingRoundLength(length)
-      await await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.staking.roundLength === length)
     })
