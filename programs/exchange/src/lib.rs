@@ -22,7 +22,7 @@ pub mod exchange {
     };
 
     use super::*;
-    #[state(642)] // To ensure upgradability state is about 2x bigger than required
+    #[state(zero_copy)] // To ensure upgradability state is about 2x bigger than required
     pub struct InternalState {
         // size = 321
         //8 Account signature
@@ -46,52 +46,53 @@ pub mod exchange {
     }
     impl InternalState {
         pub fn new(
+            &mut self,
             ctx: Context<New>,
-            nonce: u8,
-            staking_round_length: u32,
-            amount_per_round: u64,
-        ) -> Result<Self> {
+            _nonce: u8,
+            _staking_round_length: u32,
+            _amount_per_round: u64,
+        ) -> ProgramResult {
             let slot = Clock::get()?.slot;
-            Ok(Self {
-                admin: *ctx.accounts.admin.key,
-                halted: false,
-                nonce: nonce,
-                debt_shares: 0u64,
-                collateral_shares: 0u64,
-                collateral_token: *ctx.accounts.collateral_token.key,
-                collateral_account: *ctx.accounts.collateral_account.key,
-                assets_list: *ctx.accounts.assets_list.key,
-                liquidation_account: *ctx.accounts.liquidation_account.key,
-                collateralization_level: 1000,
-                // once we will not be able to fit all data into one transaction we will
-                // use max_delay to allow split updating oracles and exchange operation
-                max_delay: 0,
-                fee: 300,
-                liquidation_penalty: 15,
-                liquidation_threshold: 200,
-                liquidation_buffer: 172800, // about 24 Hours,
-                account_version: 0,
-                staking: Staking {
-                    round_length: staking_round_length,
-                    amount_per_round: amount_per_round,
-                    fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
-                    finished_round: StakingRound {
-                        all_points: 0,
-                        amount: 0,
-                        start: 0,
-                    },
-                    current_round: StakingRound {
-                        all_points: 0,
-                        amount: 0,
-                        start: slot,
-                    },
-                    next_round: StakingRound {
-                        all_points: 0,
-                        amount: amount_per_round,
-                        start: slot.checked_add(staking_round_length.into()).unwrap(),
-                    },
+            self.admin = *ctx.accounts.admin.key;
+
+            self.halted = false;
+            self.nonce = _nonce;
+            self.debt_shares = 0u64;
+            self.collateral_shares = 0u64;
+            self.collateral_token = *ctx.accounts.collateral_token.key;
+            self.collateral_account = *ctx.accounts.collateral_account.key;
+            self.assets_list = *ctx.accounts.assets_list.key;
+            self.liquidation_account = *ctx.accounts.liquidation_account.key;
+            self.collateralization_level = 1000;
+            // once we will not be able to fit all data into one transaction we will
+            // use max_delay to allow split updating oracles and exchange operation
+            self.max_delay = 0;
+            self.fee = 300;
+            self.liquidation_penalty = 15;
+            self.liquidation_threshold = 200;
+            self.liquidation_buffer = 172800; // about 24 Hours;
+            self.account_version = 0;
+            self.staking = Staking {
+                round_length: _staking_round_length,
+                amount_per_round: _amount_per_round,
+                fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
+                finished_round: StakingRound {
+                    all_points: 0,
+                    amount: 0,
+                    start: 0,
                 },
-            })
+                current_round: StakingRound {
+                    all_points: 0,
+                    amount: 0,
+                    start: slot,
+                },
+                next_round: StakingRound {
+                    all_points: 0,
+                    amount: _amount_per_round,
+                    start: slot.checked_add(_staking_round_length.into()).unwrap(),
+                },
+            };
+            Ok(())
         }
         #[access_control(halted(&self)
         version(&self,&ctx.accounts.exchange_account)
@@ -1133,7 +1134,7 @@ pub struct CreateExchangeAccount<'info> {
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
-    pub state: ProgramState<'info, InternalState>,
+    pub state: Loader<'info, InternalState>,
     pub system_program: AccountInfo<'info>,
 }
 
@@ -1364,14 +1365,15 @@ pub struct AdminAction<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
 }
-
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+#[zero_copy]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
 pub struct StakingRound {
     pub start: u64,      // 8 Slot when round starts
     pub amount: u64,     // 8 Amount of SNY distributed in this round
     pub all_points: u64, // 8 All points used to calculate user share in staking rewards
 }
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+#[zero_copy]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
 pub struct Staking {
     pub fund_account: Pubkey,         //32 Source account of SNY tokens
     pub round_length: u32,            //4 Length of round in slots
