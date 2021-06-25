@@ -3,88 +3,121 @@ import { BN, Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
-import { Manager } from '@synthetify/sdk'
+import { Exchange } from '@synthetify/sdk'
 import {
   createToken,
-  ASSETS_MANAGER_ADMIN,
   DEFAULT_PUBLIC_KEY,
   createAssetsList,
-  ICreateAssetsList,
   IAddNewAssets,
   addNewAssets,
   assertThrowsAsync,
-  newAccountWithLamports
+  newAccountWithLamports,
+  SYNTHETIFY_ECHANGE_SEED,
+  EXCHANGE_ADMIN
 } from './utils'
 import { Network } from '@synthetify/sdk/lib/network'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { signAndSend } from '../sdk/src'
-import { ERRORS, ERRORS_MANAGER } from '@synthetify/sdk/src/utils'
+import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 
 const MAX_U64 = new BN('ffffffffffffffff', 16)
 const USDT_VALUE_U64 = new BN(1000000)
 const ZERO_U64 = new BN(0)
-const initCollateralOraclePrice = 2
-const exchangeAuthorityAccount = new Account()
 
 describe('manager', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
-  const managerProgram = anchor.workspace.Manager as Program
+  const exchangeProgram = anchor.workspace.Exchange as Program
+  let exchange: Exchange
+
   const oracleProgram = anchor.workspace.Pyth as Program
-  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
+
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
+  let exchangeAuthority: PublicKey
+  let collateralAccount: PublicKey
+  let liquidationAccount: PublicKey
+  let stakingFundAccount: PublicKey
+  let CollateralTokenMinter: Account = wallet
   let PAYER_ACCOUNT: Account
+  let nonce: number
+  const stakingRoundLength = 10
+  const amountPerRound = new BN(100)
+
+  let initialCollateralPrice = 2
   before(async () => {
     PAYER_ACCOUNT = await newAccountWithLamports(connection)
-    collateralToken = await createToken({
-      connection,
-      payer: wallet,
-      mintAuthority: wallet.publicKey,
-      decimals: 6
-    })
-    usdToken = await createToken({
-      connection,
-      payer: wallet,
-      mintAuthority: wallet.publicKey,
-      decimals: 6
-    })
+
+    const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+      [SYNTHETIFY_ECHANGE_SEED],
+      exchangeProgram.programId
+    )
+    nonce = _nonce
+    exchangeAuthority = _exchangeAuthority
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
-      initPrice: initCollateralOraclePrice,
+      initPrice: initialCollateralPrice,
       expo: -6
     })
 
-    await manager.init(ASSETS_MANAGER_ADMIN.publicKey)
-
-    assetsList = await manager.createAssetsList(4)
-    await manager.initializeAssetsList({
-      assetsList,
-      collateralTokenFeed,
-      collateralToken: collateralToken.publicKey,
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
-      exchangeAuthority: exchangeAuthorityAccount.publicKey,
-      usdToken: usdToken.publicKey
+    collateralToken = await createToken({
+      connection,
+      payer: wallet,
+      mintAuthority: CollateralTokenMinter.publicKey
     })
+    collateralAccount = await collateralToken.createAccount(exchangeAuthority)
+    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
+    stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
+    // @ts-expect-error
+    exchange = new Exchange(
+      connection,
+      Network.LOCAL,
+      provider.wallet,
+      exchangeAuthority,
+      exchangeProgram.programId
+    )
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchange,
+      assetsSize: 3
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.init({
+      admin: EXCHANGE_ADMIN.publicKey,
+      assetsList,
+      collateralAccount,
+      liquidationAccount,
+      collateralToken: collateralToken.publicKey,
+      nonce,
+      amountPerRound: amountPerRound,
+      stakingRoundLength: stakingRoundLength,
+      stakingFundAccount: stakingFundAccount
+    })
+    exchange = await Exchange.build(
+      connection,
+      Network.LOCAL,
+      provider.wallet,
+      exchangeAuthority,
+      exchangeProgram.programId
+    )
   })
   it('Initialize', async () => {
     const initTokensDecimals = 6
-    const state = await manager.getState()
-    assert.ok(state.admin.equals(ASSETS_MANAGER_ADMIN.publicKey))
-
-    const assetsListData = await manager.getAssetsList(assetsList)
+    const assetsListData = await exchange.getAssetsList(assetsList)
     // Length should be 2
     assert.ok(assetsListData.assets.length === 2)
     // Authority of list
-    assert.ok(assetsListData.exchangeAuthority.equals(exchangeAuthorityAccount.publicKey))
-
     const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
-
-    // Collatera token checks
 
     // Check feed address
     assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
@@ -117,102 +150,7 @@ describe('manager', () => {
     // Check price
     assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
   })
-  describe('#set_asset_supply()', async () => {
-    it('Should change asset supply', async () => {
-      const beforeAssetList = await manager.getAssetsList(assetsList)
-      const beforeAsset = beforeAssetList.assets[0]
 
-      const newSupply = beforeAsset.supply.add(new BN(12345678))
-      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
-        asset.assetAddress.equals(beforeAsset.assetAddress)
-      )
-      await manager.setAssetSupply({
-        assetsList,
-        assetIndex,
-        newSupply,
-        exchangeAuthority: exchangeAuthorityAccount
-      })
-      const afterAssetList = await manager.getAssetsList(assetsList)
-      const afterAsset = afterAssetList.assets[0]
-      // Check new supply
-      assert.ok(afterAsset.supply.eq(newSupply))
-    })
-    it('Set asset supply over max', async () => {
-      const newAssetLimit = new BN(3 * 1e4)
-      const newAssetDecimals = 6
-      const newToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: wallet.publicKey,
-        decimals: newAssetDecimals
-      })
-      const newTokenFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 2,
-        expo: -6
-      })
-
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
-        assetsList,
-        maxSupply: newAssetLimit,
-        tokenAddress: newToken.publicKey,
-        tokenDecimals: newAssetDecimals,
-        tokenFeed: newTokenFeed
-      })
-      const newSupply = newAssetLimit.addn(1)
-
-      const beforeAssetList = await manager.getAssetsList(assetsList)
-      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
-        asset.assetAddress.equals(newToken.publicKey)
-      )
-      await assertThrowsAsync(
-        manager.setAssetSupply({
-          assetsList,
-          assetIndex,
-          newSupply,
-          exchangeAuthority: exchangeAuthorityAccount
-        }),
-        ERRORS_MANAGER.MAX_SUPPLY
-      )
-    })
-    it('Should fail with wrong signer', async () => {
-      const beforeAssetList = await manager.getAssetsList(assetsList)
-      const beforeAsset = beforeAssetList.assets[0]
-
-      const newSupply = beforeAsset.supply.add(new BN(12345678))
-
-      const assetIndex = beforeAssetList.assets.findIndex((asset) =>
-        asset.assetAddress.equals(beforeAsset.assetAddress)
-      )
-
-      await assertThrowsAsync(
-        managerProgram.rpc.setAssetSupply(assetIndex, newSupply, {
-          accounts: {
-            assetsList: assetsList,
-            exchangeAuthority: exchangeAuthorityAccount.publicKey
-          },
-          signers: [new Account()]
-        }),
-        ERRORS.SIGNER
-      )
-    })
-    it('Should fail if asset not found', async () => {
-      const beforeAssetList = await manager.getAssetsList(assetsList)
-      const beforeAsset = beforeAssetList.assets[0]
-
-      const newSupply = beforeAsset.supply.add(new BN(12345678))
-      await assertThrowsAsync(
-        manager.setAssetSupply({
-          assetsList,
-          assetIndex: 254,
-          newSupply,
-          exchangeAuthority: exchangeAuthorityAccount
-        }),
-        ERRORS.PANICKED
-      )
-    })
-  })
   describe('#add_new_asset()', async () => {
     it('Should add new asset ', async () => {
       const newAssetLimit = new BN(3 * 1e4)
@@ -221,17 +159,17 @@ describe('manager', () => {
         connection,
         wallet,
         oracleProgram,
-        manager,
+        exchange,
         assetsList,
         newAssetDecimals,
         newAssetLimit
       }
 
-      const beforeAssetList = await manager.getAssetsList(assetsList)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
 
       const newAssets = await addNewAssets(addNewAssetParams)
 
-      const afterAssetList = await manager.getAssetsList(assetsList)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
       const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
 
@@ -261,7 +199,7 @@ describe('manager', () => {
         connection,
         wallet,
         oracleProgram,
-        manager,
+        exchange,
         assetsList,
         newAssetDecimals,
         newAssetLimit
@@ -275,33 +213,33 @@ describe('manager', () => {
 
     it('Error should be throwed while setting new max supply', async () => {
       await assertThrowsAsync(
-        manager.setAssetMaxSupply({
+        exchange.setAssetMaxSupply({
           assetAddress: new Account().publicKey,
-          assetsAdmin: ASSETS_MANAGER_ADMIN,
+          exchangeAdmin: EXCHANGE_ADMIN,
           assetsList,
           newMaxSupply: newAssetLimit
         }),
-        ERRORS_MANAGER.NO_ASSET_FOUND
+        ERRORS_EXCHANGE.NO_ASSET_FOUND
       )
 
-      const afterAssetList = await manager.getAssetsList(assetsList)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.notOk(
         afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit)
       )
     })
     it('New max supply should be set', async () => {
-      const beforeAssetList = await manager.getAssetsList(assetsList)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
 
-      await manager.setAssetMaxSupply({
+      await exchange.setAssetMaxSupply({
         assetAddress: beforeAsset.assetAddress,
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+        exchangeAdmin: EXCHANGE_ADMIN,
         assetsList,
         newMaxSupply: newAssetLimit
       })
 
-      const afterAssetList = await manager.getAssetsList(assetsList)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
     })
@@ -313,20 +251,16 @@ describe('manager', () => {
         initPrice: 2,
         expo: -6
       })
-      const beforeAssetList = await manager.getAssetsList(assetsList)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-      const ix = await manager.setPriceFeedInstruction({
+      const ix = await exchange.setPriceFeedInstruction({
         assetsList,
         priceFeed: newPriceFeed,
-        signer: ASSETS_MANAGER_ADMIN.publicKey,
+        signer: EXCHANGE_ADMIN.publicKey,
         tokenAddress: beforeAsset.assetAddress
       })
-      await signAndSend(
-        new Transaction().add(ix),
-        [PAYER_ACCOUNT, ASSETS_MANAGER_ADMIN],
-        connection
-      )
-      const afterAssetList = await manager.getAssetsList(assetsList)
+      await signAndSend(new Transaction().add(ix), [PAYER_ACCOUNT, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.ok(
         afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
@@ -336,7 +270,7 @@ describe('manager', () => {
   describe('#set_assets_prices()', async () => {
     const newPrice = 6
     it('Should not change prices', async () => {
-      const assetListBefore = await manager.getAssetsList(assetsList)
+      const assetListBefore = await exchange.getAssetsList(assetsList)
 
       const feedAddresses = assetListBefore.assets
         .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
@@ -348,7 +282,7 @@ describe('manager', () => {
       await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
       await assertThrowsAsync(
-        managerProgram.rpc.setAssetsPrices({
+        exchangeProgram.rpc.setAssetsPrices({
           remainingAccounts: feedAddresses,
           accounts: {
             assetsList: assetsList
@@ -356,21 +290,21 @@ describe('manager', () => {
         }),
         ERRORS.PANICKED
       )
-      const assetList = await manager.getAssetsList(assetsList)
+      const assetList = await exchange.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
       // Check not changed price
       assert.ok(collateralAsset.price.eq(ZERO_U64))
     })
     it('Should change prices', async () => {
-      const assetListBefore = await manager.getAssetsList(assetsList)
+      const assetListBefore = await exchange.getAssetsList(assetsList)
       await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
       const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
-      await manager.updatePrices(assetsList)
+      await exchange.updatePrices(assetsList)
 
-      const assetList = await manager.getAssetsList(assetsList)
+      const assetList = await exchange.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
       // Check new price
@@ -378,48 +312,6 @@ describe('manager', () => {
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
-    })
-    it('Test 30 assets', async () => {
-      const anotherPrice = 8
-      const assetsListSize = 30
-      const createAssetsListParams: ICreateAssetsList = {
-        exchangeAuthority: exchangeAuthorityAccount.publicKey,
-        manager,
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
-        collateralToken,
-        collateralTokenFeed,
-        connection,
-        wallet,
-        assetsSize: assetsListSize
-      }
-
-      const data = await createAssetsList(createAssetsListParams)
-      const newAssetsList = data.assetsList
-      const newAssetLimit = new BN(3 * 1e4)
-      const newAssetDecimals = 8
-      const addNewAssetParams: IAddNewAssets = {
-        connection,
-        wallet,
-        oracleProgram,
-        manager,
-        assetsList: newAssetsList,
-        newAssetDecimals,
-        newAssetLimit,
-        newAssetsNumber: assetsListSize - 2 // Collateral and usd
-      }
-
-      await addNewAssets(addNewAssetParams)
-      await setFeedPrice(oracleProgram, anotherPrice, collateralTokenFeed)
-
-      await manager.updatePrices(newAssetsList)
-      const assetList = await manager.getAssetsList(newAssetsList)
-      const collateralAsset = assetList.assets[1]
-
-      // Check assets list lenght
-      assert.ok(assetList.assets.length === assetsListSize)
-
-      // Check new price
-      assert.ok(collateralAsset.price.eq(new BN(anotherPrice * 1e6)))
     })
   })
 })

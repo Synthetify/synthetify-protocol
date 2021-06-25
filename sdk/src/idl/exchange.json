@@ -42,6 +42,62 @@
           "type": "publicKey"
         }
       ]
+    },
+    {
+      "name": "createAssetsList",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "length",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "createList",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralToken",
+          "type": "publicKey"
+        },
+        {
+          "name": "collateralTokenFeed",
+          "type": "publicKey"
+        },
+        {
+          "name": "usdToken",
+          "type": "publicKey"
+        }
+      ]
+    },
+    {
+      "name": "setAssetsPrices",
+      "accounts": [
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "state": {
@@ -243,11 +299,6 @@
             "isSigner": false
           },
           {
-            "name": "managerProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "exchangeAccount",
             "isMut": true,
             "isSigner": false
@@ -365,11 +416,6 @@
             "isSigner": true
           },
           {
-            "name": "managerProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "collateralAccount",
             "isMut": false,
             "isSigner": false
@@ -419,11 +465,6 @@
             "name": "owner",
             "isMut": false,
             "isSigner": true
-          },
-          {
-            "name": "managerProgram",
-            "isMut": false,
-            "isSigner": false
           }
         ],
         "args": [
@@ -475,11 +516,6 @@
             "name": "signer",
             "isMut": false,
             "isSigner": true
-          },
-          {
-            "name": "managerProgram",
-            "isMut": false,
-            "isSigner": false
           },
           {
             "name": "collateralAccount",
@@ -741,10 +777,114 @@
             "type": "u32"
           }
         ]
+      },
+      {
+        "name": "addNewAsset",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "newAssetFeedAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newAssetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newAssetDecimals",
+            "type": "u8"
+          },
+          {
+            "name": "newAssetMaxSupply",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "setMaxSupply",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "newMaxSupply",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "setPriceFeed",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "priceFeed",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          }
+        ]
       }
     ]
   },
   "accounts": [
+    {
+      "name": "AssetsList",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": "Asset"
+              }
+            }
+          }
+        ]
+      }
+    },
     {
       "name": "ExchangeAccount",
       "type": {
@@ -866,6 +1006,50 @@
           }
         ]
       }
+    },
+    {
+      "name": "Asset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feedAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "lastUpdate",
+            "type": "u64"
+          },
+          {
+            "name": "maxSupply",
+            "type": "u64"
+          },
+          {
+            "name": "settlementSlot",
+            "type": "u64"
+          },
+          {
+            "name": "confidence",
+            "type": "u32"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -953,9 +1137,26 @@
       "code": 316,
       "name": "AccountVersion",
       "msg": "Invalid version of user account"
+    },
+    {
+      "code": 317,
+      "name": "Initialized",
+      "msg": "Assets list already initialized"
+    },
+    {
+      "code": 318,
+      "name": "Uninitialized",
+      "msg": "Assets list is not initialized"
+    },
+    {
+      "code": 319,
+      "name": "NoAssetFound",
+      "msg": "No asset with such address was found"
+    },
+    {
+      "code": 320,
+      "name": "MaxSupply",
+      "msg": "Asset max_supply crossed"
     }
-  ],
-  "metadata": {
-    "address": "FzhhsbvVVLsZGuEQBk7JFiALoKtcwJqYiTzBEQyti8R1"
-  }
+  ]
 }

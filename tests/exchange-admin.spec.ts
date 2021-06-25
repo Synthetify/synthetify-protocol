@@ -3,12 +3,11 @@ import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
+import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
-  ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync
@@ -21,7 +20,6 @@ describe('staking', () => {
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
   const managerProgram = anchor.workspace.Manager as Program
-  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -64,27 +62,26 @@ describe('staking', () => {
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      manager,
-      wallet
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     // @ts-expect-error
     exchange = new Exchange(
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchange
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
@@ -100,7 +97,6 @@ describe('staking', () => {
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )

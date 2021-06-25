@@ -4,7 +4,6 @@ import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, sleep, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { AssetsList, Manager } from './manager'
 import {
   Connection,
   PublicKey,
@@ -20,7 +19,6 @@ import {
 export class Exchange {
   connection: Connection
   network: Network
-  manager: Manager
   wallet: IWallet
   programId: PublicKey
   exchangeAuthority: PublicKey
@@ -34,7 +32,6 @@ export class Exchange {
     connection: Connection,
     network: Network,
     wallet: IWallet,
-    manager: Manager,
     exchangeAuthority?: PublicKey,
     programId?: PublicKey,
     opts?: ConfirmOptions
@@ -42,7 +39,6 @@ export class Exchange {
     this.connection = connection
     this.network = network
     this.wallet = wallet
-    this.manager = manager
     this.opts = opts
     const provider = new Provider(connection, wallet, opts || Provider.defaultOptions())
     switch (network) {
@@ -69,22 +65,13 @@ export class Exchange {
     connection: Connection,
     network: Network,
     wallet: IWallet,
-    manager: Manager,
     exchangeAuthority?: PublicKey,
     programId?: PublicKey,
     opts?: ConfirmOptions
   ) {
-    const instance = new Exchange(
-      connection,
-      network,
-      wallet,
-      manager,
-      exchangeAuthority,
-      programId,
-      opts
-    )
+    const instance = new Exchange(connection, network, wallet, exchangeAuthority, programId, opts)
     await instance.getState()
-    instance.assetsList = await instance.manager.getAssetsList(instance.state.assetsList)
+    instance.assetsList = await instance.getAssetsList(instance.state.assetsList)
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
@@ -125,7 +112,7 @@ export class Exchange {
     const state = (await this.program.state.fetch()) as ExchangeState
     // need to add hooks on change
     this.state = state
-    this.assetsList = await this.manager.getAssetsList(this.state.assetsList)
+    this.assetsList = await this.getAssetsList(this.state.assetsList)
     return state
   }
   public async getExchangeAccount(exchangeAccount: PublicKey) {
@@ -238,7 +225,6 @@ export class Exchange {
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
-        managerProgram: this.manager.programId,
         collateralAccount: this.state.collateralAccount
       }
     }) as TransactionInstruction)
@@ -263,7 +249,6 @@ export class Exchange {
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
-        managerProgram: this.manager.programId,
         collateralAccount: this.state.collateralAccount
       }
     }) as TransactionInstruction)
@@ -284,7 +269,6 @@ export class Exchange {
         assetsList: this.state.assetsList,
         userCollateralAccount: userCollateralAccount,
         userUsdAccount: userUsdAccount,
-        managerProgram: this.manager.programId,
         collateralAccount: this.state.collateralAccount,
         liquidationAccount: this.state.liquidationAccount
       }
@@ -304,8 +288,7 @@ export class Exchange {
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: this.state.assetsList,
-        managerProgram: this.manager.programId
+        assetsList: this.state.assetsList
       }
     }) as TransactionInstruction)
   }
@@ -419,7 +402,7 @@ export class Exchange {
     return txs
   }
   public async checkAccount(exchangeAccount: PublicKey) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const checkIx = await this.checkAccountInstruction(exchangeAccount)
 
     const checkTx = new Transaction().add(updateIx).add(checkIx)
@@ -435,7 +418,7 @@ export class Exchange {
     signers,
     allowanceAmount
   }: Liquidate) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const liquidateIx = await this.liquidateInstruction({
       exchangeAccount,
       signer,
@@ -466,7 +449,7 @@ export class Exchange {
     userTokenAccountIn,
     signers
   }: Swap) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const swapIx = await this.swapInstruction({
       amount,
       exchangeAccount,
@@ -491,7 +474,7 @@ export class Exchange {
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const burnIx = await this.burnInstruction({
       amount,
       exchangeAccount,
@@ -513,7 +496,7 @@ export class Exchange {
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const mintIx = await this.mintInstruction({
       amount,
       exchangeAccount,
@@ -527,7 +510,7 @@ export class Exchange {
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
-    const updateIx = await this.manager.updatePricesInstruction(this.state.assetsList)
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       amount,
       exchangeAccount,
@@ -563,7 +546,171 @@ export class Exchange {
     const txs = await this.processOperations([tx])
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
+
+  // Asset list
+  public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
+    return (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
+  }
+  public onAssetsListChange(address: PublicKey, fn: (list: AssetsList) => void) {
+    this.program.account.assetsList
+      .subscribe(address, 'singleGossip')
+      .on('change', (list: AssetsList) => {
+        fn(list)
+      })
+  }
+  public async createAssetsList(size: number) {
+    const assetListAccount = new Account()
+    await this.program.rpc.createAssetsList(size, {
+      accounts: {
+        assetsList: assetListAccount.publicKey,
+        rent: SYSVAR_RENT_PUBKEY
+      },
+      signers: [assetListAccount],
+      instructions: [
+        await this.program.account.assetsList.createInstruction(assetListAccount, size * 109 + 45)
+      ]
+    })
+    return assetListAccount.publicKey
+  }
+  public async setPriceFeedInstruction({
+    assetsList,
+    priceFeed,
+    signer,
+    tokenAddress
+  }: SetPriceFeedInstruction) {
+    return (await this.program.state.instruction.setPriceFeed(tokenAddress, {
+      accounts: {
+        signer: signer,
+        assetsList: assetsList,
+        priceFeed: priceFeed
+      }
+    })) as TransactionInstruction
+  }
+
+  public async initializeAssetsList({
+    assetsList,
+    collateralToken,
+    collateralTokenFeed,
+    usdToken
+  }: InitializeAssetList) {
+    return await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
+      accounts: {
+        assetsList: assetsList
+      }
+    })
+  }
+
+  public async setAssetMaxSupply({
+    assetsList,
+    exchangeAdmin,
+    assetAddress,
+    newMaxSupply
+  }: SetAssetMaxSupply) {
+    return await this.program.state.rpc.setMaxSupply(assetAddress, newMaxSupply, {
+      accounts: {
+        signer: exchangeAdmin.publicKey,
+        assetsList: assetsList
+      },
+      signers: [exchangeAdmin]
+    })
+  }
+  public async addNewAsset({
+    assetsList,
+    assetsAdmin,
+    maxSupply,
+    tokenAddress,
+    tokenDecimals,
+    tokenFeed
+  }: AddNewAsset) {
+    return await this.program.state.rpc.addNewAsset(
+      tokenFeed,
+      tokenAddress,
+      tokenDecimals,
+      maxSupply,
+      {
+        accounts: {
+          signer: assetsAdmin.publicKey,
+          assetsList: assetsList
+        },
+        signers: [assetsAdmin]
+      }
+    )
+  }
+  public async updatePrices(assetsList: PublicKey) {
+    const assetsListData = await this.getAssetsList(assetsList)
+    const feedAddresses = assetsListData.assets
+      .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+      .map((asset) => {
+        return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+      })
+    return await this.program.rpc.setAssetsPrices({
+      remainingAccounts: feedAddresses,
+      accounts: {
+        assetsList: assetsList
+      }
+    })
+  }
+  public async updatePricesInstruction(assetsList: PublicKey) {
+    const assetsListData = await this.getAssetsList(assetsList)
+    const feedAddresses = assetsListData.assets
+      .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+      .map((asset) => {
+        return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+      })
+    return (await this.program.instruction.setAssetsPrices({
+      remainingAccounts: feedAddresses,
+      accounts: {
+        assetsList: assetsList
+      }
+    })) as TransactionInstruction
+  }
 }
+export interface InitializeAssetList {
+  collateralToken: PublicKey
+  collateralTokenFeed: PublicKey
+  usdToken: PublicKey
+  assetsList: PublicKey
+}
+export interface Asset {
+  feedAddress: PublicKey
+  assetAddress: PublicKey
+  price: BN
+  supply: BN
+  lastUpdate: BN
+  maxSupply: BN
+  settlementSlot: BN
+  decimals: number
+}
+export interface AssetsList {
+  initialized: boolean
+  assets: Array<Asset>
+}
+export interface SetAssetSupply {
+  assetIndex: number
+  assetsList: PublicKey
+  newSupply: BN
+}
+export interface SetAssetMaxSupply {
+  assetAddress: PublicKey
+  assetsList: PublicKey
+  exchangeAdmin: Account
+  newMaxSupply: BN
+}
+export interface AddNewAsset {
+  tokenFeed: PublicKey
+  tokenAddress: PublicKey
+  assetsList: PublicKey
+  tokenDecimals: number
+  maxSupply: BN
+  assetsAdmin: Account
+}
+export interface SetPriceFeedInstruction {
+  assetsList: PublicKey
+  priceFeed: PublicKey
+  tokenAddress: PublicKey
+  signer: PublicKey
+}
+
 export interface Mint {
   exchangeAccount: PublicKey
   owner: PublicKey

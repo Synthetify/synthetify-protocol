@@ -9,13 +9,12 @@ import {
   TransactionInstruction
 } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Manager, Network, signAndSend } from '@synthetify/sdk'
+import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
   sleep,
-  ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
@@ -27,15 +26,13 @@ import {
   assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { ERRORS, ERRORS_MANAGER } from '@synthetify/sdk/lib/utils'
+import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
-  const managerProgram = anchor.workspace.Manager as Program
-  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -74,27 +71,26 @@ describe('exchange', () => {
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      manager,
-      wallet
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     // @ts-expect-error
     exchange = new Exchange(
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchange
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
@@ -110,7 +106,6 @@ describe('exchange', () => {
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )
@@ -313,7 +308,7 @@ describe('exchange', () => {
       assert.ok(exchangeStateAfter.debtShares.eq(usdMintAmount))
 
       // Increase asset supply
-      const assetsListAfter = await manager.getAssetsList(assetsList)
+      const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(assetsListAfter.assets[0].supply.eq(usdMintAmount))
 
       // Increase user xusd balance
@@ -337,7 +332,7 @@ describe('exchange', () => {
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
       const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
       const exchangeStateBefore = await exchange.getState()
-      const assetsListBefore = await manager.getAssetsList(assetsList)
+      const assetsListBefore = await exchange.getAssetsList(assetsList)
       const oldDebt = calculateDebt(assetsListBefore)
       const usdMintAmount = new BN(10 * 1e6)
       await exchange.mint({
@@ -360,7 +355,7 @@ describe('exchange', () => {
       assert.ok(exchangeStateAfter.debtShares.eq(exchangeStateBefore.debtShares.add(newShares)))
 
       // Increase asset supply
-      const assetsListAfter = await manager.getAssetsList(assetsList)
+      const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
         assetsListAfter.assets[0].supply.eq(assetsListBefore.assets[0].supply.add(usdMintAmount))
       )
@@ -650,24 +645,24 @@ describe('exchange', () => {
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: btcToken.publicKey,
         tokenDecimals: 8,
         tokenFeed: btcFeed
       })
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: ethToken.publicKey,
         tokenDecimals: 6,
         tokenFeed: ethFeed
       })
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: new BN(0),
         tokenAddress: zeroMaxSupplyToken.publicKey,
@@ -712,7 +707,7 @@ describe('exchange', () => {
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
       assert.ok(effectiveFee === 300) // discount 0%
@@ -740,7 +735,7 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await manager.getAssetsList(assetsList)
+      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
         assetsListDataAfter.assets[0].supply.eq(assetsListData.assets[0].supply.sub(usdMintAmount))
       )
@@ -817,7 +812,7 @@ describe('exchange', () => {
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(new BN(0)))
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
@@ -847,7 +842,7 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await manager.getAssetsList(assetsList)
+      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
         assetsListDataAfter.assets[0].supply.eq(assetsListData.assets[0].supply.sub(usdMintAmount))
       )
@@ -906,7 +901,7 @@ describe('exchange', () => {
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
       assert.ok(effectiveFee === 291) // discount 3%
@@ -934,7 +929,7 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await manager.getAssetsList(assetsList)
+      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
         assetsListDataAfter.assets[0].supply.eq(assetsListData.assets[0].supply.sub(usdMintAmount))
       )
@@ -992,7 +987,7 @@ describe('exchange', () => {
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
       await assertThrowsAsync(
         exchange.swap({
           amount: usdMintAmount,
@@ -1055,7 +1050,7 @@ describe('exchange', () => {
           tokenIn: usdToken.publicKey,
           signers: [accountOwner]
         }),
-        ERRORS_MANAGER.MAX_SUPPLY
+        ERRORS_EXCHANGE.MAX_SUPPLY
       )
     })
     it('Swap more than balance should fail', async () => {
@@ -1092,7 +1087,7 @@ describe('exchange', () => {
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
 
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
       const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
 
       await assertThrowsAsync(
@@ -1138,16 +1133,16 @@ describe('exchange', () => {
         expo: -8
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: btcToken.publicKey,
         tokenDecimals: 8,
         tokenFeed: btcFeed
       })
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: ethToken.publicKey,
@@ -1339,7 +1334,7 @@ describe('exchange', () => {
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
       assert.ok(effectiveFee === 300) // discount 0%
-      const assetsListData = await manager.getAssetsList(assetsList)
+      const assetsListData = await exchange.getAssetsList(assetsList)
 
       await exchange.swap({
         amount: usdMintAmount,
@@ -1369,11 +1364,10 @@ describe('exchange', () => {
           tokenProgram: TOKEN_PROGRAM_ID,
           exchangeAccount: exchangeAccount,
           owner: accountOwner.publicKey,
-          assetsList: exchange.state.assetsList,
-          managerProgram: exchange.manager.programId
+          assetsList: exchange.state.assetsList
         }
       })) as TransactionInstruction
-      const updateIx = await exchange.manager.updatePricesInstruction(exchange.state.assetsList)
+      const updateIx = await exchange.updatePricesInstruction(exchange.state.assetsList)
 
       const approveIx = Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
@@ -1607,8 +1601,8 @@ describe('exchange', () => {
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
 
-      await manager.addNewAsset({
-        assetsAdmin: ASSETS_MANAGER_ADMIN,
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: newAssetLimit,
         tokenAddress: btcToken.publicKey,

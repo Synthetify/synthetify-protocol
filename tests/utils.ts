@@ -2,14 +2,13 @@ import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
-import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
+import { Exchange, signAndSend } from '@synthetify/sdk'
 import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
-export const ASSETS_MANAGER_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
 export const ACCURACY = 6
@@ -88,8 +87,7 @@ export const createToken = async ({
   return token
 }
 export interface ICreateAssetsList {
-  manager: Manager
-  assetsAdmin: Account
+  exchange: Exchange
   collateralTokenFeed: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
@@ -102,7 +100,7 @@ export type AddNewAssetResult = {
   feedAddress: PublicKey
 }
 export interface IAddNewAssets {
-  manager: Manager
+  exchange: Exchange
   oracleProgram: Program
   connection: Connection
   wallet: Account
@@ -112,8 +110,7 @@ export interface IAddNewAssets {
   newAssetsNumber?: number
 }
 export const createAssetsList = async ({
-  manager,
-  assetsAdmin,
+  exchange,
   collateralToken,
   collateralTokenFeed,
   connection,
@@ -121,26 +118,17 @@ export const createAssetsList = async ({
   exchangeAuthority,
   assetsSize = 30
 }: ICreateAssetsList) => {
-  try {
-    // IF we test without previous tests
-    await manager.init(assetsAdmin.publicKey)
-  } catch (error) {
-    console.log('Dont worry about above error! ')
-  }
-
   const usdToken = await createToken({
     connection,
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await manager.createAssetsList(assetsSize)
+  const assetsList = await exchange.createAssetsList(assetsSize)
 
-  await manager.initializeAssetsList({
-    assetsAdmin,
+  await exchange.initializeAssetsList({
     assetsList,
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
-    exchangeAuthority,
     usdToken: usdToken.publicKey
   })
   return { assetsList, usdToken }
@@ -149,7 +137,7 @@ export const addNewAssets = async ({
   connection,
   wallet,
   oracleProgram,
-  manager,
+  exchange,
   assetsList,
   newAssetDecimals,
   newAssetLimit,
@@ -168,8 +156,8 @@ export const addNewAssets = async ({
       initPrice: 2
     })
 
-    await manager.addNewAsset({
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
+    await exchange.addNewAsset({
+      assetsAdmin: EXCHANGE_ADMIN,
       assetsList,
       maxSupply: newAssetLimit,
       tokenAddress: newToken.publicKey,

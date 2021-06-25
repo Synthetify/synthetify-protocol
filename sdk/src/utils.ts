@@ -8,7 +8,7 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { AssetsList } from './manager'
+import { AssetsList } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
@@ -38,14 +38,11 @@ export enum ERRORS_EXCHANGE {
   HALTED = '0x139',
   NO_REWARDS = '0x13a',
   FUND_ACCOUNT_ERROR = '0x13b',
-  ACCOUNT_VERSION = '0x13c'
-}
-export enum ERRORS_MANAGER {
-  UNAUTHORIZED = '0x12c',
-  INITIALIZED = '0x12d',
-  UNINITIALIZED = '0x12e',
-  NO_ASSET_FOUND = '0x12f',
-  MAX_SUPPLY = '0x130'
+  ACCOUNT_VERSION = '0x13c',
+  INITIALIZED = '0x13d',
+  UNINITIALIZED = '0x13e',
+  NO_ASSET_FOUND = '0x13f',
+  MAX_SUPPLY = '0x140'
 }
 export const signAndSend = async (
   tx: Transaction,

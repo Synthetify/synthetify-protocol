@@ -1,5 +1,4 @@
 use crate::*;
-use manager::Asset;
 
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
 pub const fn log2(n: u64) -> u64 {
@@ -88,6 +87,14 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 
     exchange_account.user_staking_data.last_update = staking.current_round.start + 1;
     return;
+}
+
+pub fn set_asset_supply(asset: &mut Asset, new_supply: u64) -> ProgramResult {
+    if new_supply.gt(&asset.max_supply) {
+        return Err(ErrorCode::MaxSupply.into());
+    }
+    asset.supply = new_supply;
+    Ok(())
 }
 
 #[cfg(test)]

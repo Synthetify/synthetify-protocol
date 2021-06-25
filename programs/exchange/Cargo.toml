@@ -19,4 +19,4 @@ default = []
 anchor-lang = "0.9.0"
 anchor-spl = "0.9.0"
 spl-token = { version="3.0.1", features=["no-entrypoint"] }
-manager = { path="../manager", features=["cpi"] }
+pyth = { path="../pyth", features=["cpi"] }
