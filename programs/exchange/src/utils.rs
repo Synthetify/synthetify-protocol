@@ -6,7 +6,7 @@ pub const fn log2(n: u64) -> u64 {
 }
 
 pub fn check_feed_update(
-    assets: &Vec<Asset>,
+    assets: &[Asset],
     index_a: usize,
     index_b: usize,
     max_delay: u32,

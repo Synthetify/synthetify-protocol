@@ -86,8 +86,7 @@ describe('manager', () => {
       collateralTokenFeed,
       connection,
       wallet,
-      exchange,
-      assetsSize: 3
+      exchange
     })
     assetsList = data.assetsList
     usdToken = data.usdToken
@@ -191,22 +190,22 @@ describe('manager', () => {
       // Check price
       assert.ok(newAsset.price.eq(ZERO_U64))
     })
-    it('Should not add new asset ', async () => {
-      const newAssetDecimals = 8
-      const newAssetLimit = new BN(3 * 1e4)
+    // it('Should not add new asset ', async () => {
+    //   const newAssetDecimals = 8
+    //   const newAssetLimit = new BN(3 * 1e4)
 
-      const addNewAssetParams: IAddNewAssets = {
-        connection,
-        wallet,
-        oracleProgram,
-        exchange,
-        assetsList,
-        newAssetDecimals,
-        newAssetLimit
-      }
-      // we hit limit of account size and cannot add another asset
-      await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
-    })
+    //   const addNewAssetParams: IAddNewAssets = {
+    //     connection,
+    //     wallet,
+    //     oracleProgram,
+    //     exchange,
+    //     assetsList,
+    //     newAssetDecimals,
+    //     newAssetLimit
+    //   }
+    //   // we hit limit of account size and cannot add another asset
+    //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
+    // })
   })
   describe('#set_max_supply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)

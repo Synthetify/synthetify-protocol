@@ -158,10 +158,10 @@ pub mod exchange {
             adjust_staking_account(exchange_account, &self.staking);
 
             let collateral_account = &ctx.accounts.collateral_account;
-            let assets_list = &mut ctx.accounts.assets_list;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+            let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let assets = &mut assets_list.assets;
-            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
 
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
@@ -222,10 +222,10 @@ pub mod exchange {
             adjust_staking_account(exchange_account, &self.staking);
 
             let collateral_account = &ctx.accounts.collateral_account;
-            let assets_list = &ctx.accounts.assets_list;
+            let assets_list = &ctx.accounts.assets_list.load_mut()?;
             let assets = &assets_list.assets;
 
-            let total_debt = calculate_debt(assets, slot, self.max_delay).unwrap();
+            let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
 
@@ -295,7 +295,7 @@ pub mod exchange {
             let token_address_in = ctx.accounts.token_in.key;
             let token_address_for = ctx.accounts.token_for.key;
             let slot = Clock::get()?.slot;
-            let assets_list = &mut ctx.accounts.assets_list;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let assets = &mut assets_list.assets;
             let user_token_account_in = &ctx.accounts.user_token_account_in;
             let tx_signer = ctx.accounts.owner.key;
@@ -323,7 +323,7 @@ pub mod exchange {
 
             // Check is oracles have been updated
             check_feed_update(
-                &assets,
+                assets,
                 asset_in_index,
                 asset_for_index,
                 self.max_delay,
@@ -395,7 +395,9 @@ pub mod exchange {
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
-            let assets_list = &mut ctx.accounts.assets_list;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+            let debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+
             let assets = &mut assets_list.assets;
 
             let tx_signer = ctx.accounts.owner.key;
@@ -405,7 +407,6 @@ pub mod exchange {
             if !tx_signer.eq(&user_token_account_burn.owner) {
                 return Err(ErrorCode::InvalidSigner.into());
             }
-            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             // xUSD got static index 0
             let burn_asset = &mut assets[0];
 
@@ -518,10 +519,12 @@ pub mod exchange {
             adjust_staking_account(exchange_account, &self.staking);
 
             let liquidation_account = ctx.accounts.liquidation_account.to_account_info().key;
-            let assets_list = &mut ctx.accounts.assets_list;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let signer = ctx.accounts.signer.key;
             let user_usd_account = &ctx.accounts.user_usd_account;
             let collateral_account = &ctx.accounts.collateral_account;
+
+            let debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let assets = &mut assets_list.assets;
 
             // xUSD as collateral_asset have static indexes
@@ -552,7 +555,6 @@ pub mod exchange {
             let collateral_amount_in_usd =
                 calculate_amount_mint_in_usd(&collateral_asset, collateral_amount_in_token);
 
-            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
             // Check if collateral ratio is user 200%
@@ -680,7 +682,7 @@ pub mod exchange {
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
-            let assets_list = &ctx.accounts.assets_list;
+            let assets_list = &ctx.accounts.assets_list.load_mut()?;
             let collateral_account = &ctx.accounts.collateral_account;
 
             let assets = &assets_list.assets;
@@ -694,7 +696,7 @@ pub mod exchange {
             let collateral_amount_in_usd =
                 calculate_amount_mint_in_usd(&collateral_asset, collateral_amount_in_token);
 
-            let debt = calculate_debt(&assets, slot, self.max_delay).unwrap();
+            let debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
             let result = check_liquidation(
@@ -916,7 +918,8 @@ pub mod exchange {
             new_asset_decimals: u8,
             new_asset_max_supply: u64,
         ) -> Result<()> {
-            if !ctx.accounts.assets_list.initialized {
+            let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+            if !assets_list.initialized {
                 return Err(ErrorCode::Uninitialized.into());
             }
             let new_asset = Asset {
@@ -931,7 +934,7 @@ pub mod exchange {
                 confidence: 0,
             };
 
-            ctx.accounts.assets_list.assets.push(new_asset);
+            assets_list.append(new_asset);
             Ok(())
         }
         #[access_control(admin(&self, &ctx.accounts.signer))]
@@ -941,9 +944,9 @@ pub mod exchange {
             asset_address: Pubkey,
             new_max_supply: u64,
         ) -> Result<()> {
-            let asset = ctx
-                .accounts
-                .assets_list
+            let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+            let asset = assets_list
                 .assets
                 .iter_mut()
                 .find(|x| x.asset_address == asset_address);
@@ -960,9 +963,9 @@ pub mod exchange {
             ctx: Context<SetPriceFeed>,
             asset_address: Pubkey,
         ) -> Result<()> {
-            let asset = ctx
-                .accounts
-                .assets_list
+            let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+            let asset = assets_list
                 .assets
                 .iter_mut()
                 .find(|x| x.asset_address == asset_address);
@@ -987,12 +990,9 @@ pub mod exchange {
         exchange_account.user_staking_data = UserStaking::default();
         Ok(())
     }
-    pub fn create_assets_list(ctx: Context<CreateAssetsList>, length: u32) -> ProgramResult {
-        let assets_list = &mut ctx.accounts.assets_list;
+    pub fn create_assets_list(ctx: Context<CreateAssetsList>) -> ProgramResult {
+        let assets_list = &mut ctx.accounts.assets_list.load_init()?;
         assets_list.initialized = false;
-        let default_asset = Asset::default();
-
-        assets_list.assets = vec![default_asset.clone(); length.try_into().unwrap()];
         Ok(())
     }
     // #[access_control(admin(&self, &ctx.accounts.signer))]
@@ -1002,7 +1002,9 @@ pub mod exchange {
         collateral_token_feed: Pubkey,
         usd_token: Pubkey,
     ) -> Result<()> {
-        if ctx.accounts.assets_list.initialized {
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+
+        if assets_list.initialized {
             return Err(ErrorCode::Initialized.into());
         }
         let usd_asset = Asset {
@@ -1027,17 +1029,18 @@ pub mod exchange {
             settlement_slot: u64::MAX,
             confidence: 0,
         };
-        ctx.accounts.assets_list.assets = vec![usd_asset, collateral_asset];
-        ctx.accounts.assets_list.initialized = true;
+        assets_list.append(usd_asset);
+        assets_list.append(collateral_asset);
+        assets_list.initialized = true;
         Ok(())
     }
     pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> ProgramResult {
+        msg!("SYNTHETIFY: SET ASSETS PRICES");
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         for oracle_account in ctx.remaining_accounts {
             let price_feed = Price::load(oracle_account)?;
             let feed_address = oracle_account.key;
-            let asset = ctx
-                .accounts
-                .assets_list
+            let asset = assets_list
                 .assets
                 .iter_mut()
                 .find(|x| x.feed_address == *feed_address);
@@ -1064,7 +1067,6 @@ pub mod exchange {
 
                     asset.confidence =
                         math::calculate_confidence(price_feed.agg.conf, price_feed.agg.price);
-
                     asset.last_update = Clock::get()?.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
@@ -1074,47 +1076,55 @@ pub mod exchange {
         Ok(())
     }
 }
-#[account]
+#[account(zero_copy)]
+#[derive(Default)]
 pub struct AssetsList {
     pub initialized: bool,
-    pub assets: Vec<Asset>,
+    pub head: u8,
+    pub assets: [Asset; 30],
+}
+impl AssetsList {
+    fn append(&mut self, msg: Asset) {
+        self.assets[(self.head) as usize] = msg;
+        self.head += 1;
+    }
 }
 #[derive(Accounts)]
 pub struct CreateAssetsList<'info> {
     #[account(init)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct AddNewAsset<'info> {
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct SetPriceFeed<'info> {
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -1151,7 +1161,7 @@ pub struct ExchangeAccount {
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub collateral_account: CpiAccount<'info, TokenAccount>,
@@ -1178,7 +1188,7 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 #[derive(Accounts)]
 pub struct Mint<'info> {
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
@@ -1233,7 +1243,7 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
 pub struct Liquidate<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
@@ -1255,7 +1265,7 @@ pub struct Liquidate<'info> {
 pub struct BurnToken<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
@@ -1282,7 +1292,7 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 pub struct Swap<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
@@ -1326,7 +1336,7 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 pub struct CheckCollateralization<'info> {
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
-    pub assets_list: ProgramAccount<'info, AssetsList>,
+    pub assets_list: Loader<'info, AssetsList>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]
@@ -1366,14 +1376,14 @@ pub struct AdminAction<'info> {
     pub admin: AccountInfo<'info>,
 }
 #[zero_copy]
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug)]
 pub struct StakingRound {
     pub start: u64,      // 8 Slot when round starts
     pub amount: u64,     // 8 Amount of SNY distributed in this round
     pub all_points: u64, // 8 All points used to calculate user share in staking rewards
 }
 #[zero_copy]
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug)]
 pub struct Staking {
     pub fund_account: Pubkey,         //32 Source account of SNY tokens
     pub round_length: u32,            //4 Length of round in slots
@@ -1383,7 +1393,7 @@ pub struct Staking {
     pub next_round: StakingRound,     //24
 }
 #[zero_copy]
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug)]
 pub struct UserStaking {
     pub amount_to_claim: u64,       //8 Amount of SNY accumulated by account
     pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
@@ -1391,7 +1401,8 @@ pub struct UserStaking {
     pub next_round_points: u64,     //8
     pub last_update: u64,           //8
 }
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+#[zero_copy]
+#[derive(PartialEq, Default, Debug)]
 pub struct Asset {
     pub feed_address: Pubkey,  // 32 Pyth oracle account address
     pub asset_address: Pubkey, // 32
@@ -1468,7 +1479,7 @@ fn halted<'info>(state: &InternalState) -> Result<()> {
 // Assert right assets_list
 fn assets_list<'info>(
     state: &InternalState,
-    assets_list: &ProgramAccount<'info, AssetsList>,
+    assets_list: &Loader<'info, AssetsList>,
 ) -> Result<()> {
     if !assets_list.to_account_info().key.eq(&state.assets_list) {
         return Err(ErrorCode::InvalidAssetsList.into());
@@ -1490,14 +1501,11 @@ fn collateral_account<'info>(
     Ok(())
 }
 // Assert right usd_token
-fn usd_token<'info>(
-    usd_token: &AccountInfo,
-    assets_list: &ProgramAccount<AssetsList>,
-) -> Result<()> {
+fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -> Result<()> {
     if !usd_token
         .to_account_info()
         .key
-        .eq(&assets_list.assets[0].asset_address)
+        .eq(&assets_list.load()?.assets[0].asset_address)
     {
         return Err(ErrorCode::NotSyntheticUsd.into());
     }

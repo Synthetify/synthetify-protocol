@@ -6,9 +6,11 @@ use crate::*;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 
-pub fn calculate_debt(assets: &Vec<Asset>, slot: u64, max_delay: u32) -> Result<u64> {
+pub fn calculate_debt(assets_list: &AssetsList, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
-    for asset in assets.iter() {
+    let assets = assets_list.assets;
+    let head = assets_list.head as usize;
+    for asset in assets[..head].iter() {
         if asset.last_update < (slot - max_delay as u64) {
             return Err(ErrorCode::OutdatedOracle.into());
         }
@@ -496,8 +498,10 @@ mod tests {
         {
             let slot = 100;
             // debt 0 - no assets
-            let assets: Vec<Asset> = vec![];
-            let result = calculate_debt(&assets, slot, 100);
+            let assets_list = AssetsList {
+                ..Default::default()
+            };
+            let result = calculate_debt(&assets_list, slot, 100);
             match result {
                 Ok(debt) => assert_eq!(debt, 0),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -505,6 +509,9 @@ mod tests {
         }
         {
             let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
             // debt 1000
             let asset_1 = Asset {
                 // oracle offset set as 4
@@ -531,8 +538,10 @@ mod tests {
                 ..Default::default()
             };
             // debt 4400
-            let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3];
-            let result = calculate_debt(&assets, slot, 100);
+            assets_list.append(asset_1);
+            assets_list.append(asset_2);
+            assets_list.append(asset_3);
+            let result = calculate_debt(&assets_list, slot, 100);
             match result {
                 Ok(debt) => assert_eq!(debt, 4400_000000),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -540,6 +549,9 @@ mod tests {
         }
         {
             let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
             // debt 200_000_000
             let asset_1 = Asset {
                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
@@ -564,8 +576,10 @@ mod tests {
                 decimals: 8,
                 ..Default::default()
             };
-            let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3];
-            let result = calculate_debt(&assets, slot, 100);
+            assets_list.append(asset_1);
+            assets_list.append(asset_2);
+            assets_list.append(asset_3);
+            let result = calculate_debt(&assets_list, slot, 100);
             match result {
                 Ok(debt) => assert_eq!(debt, 5201000000_000000),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -573,6 +587,9 @@ mod tests {
         }
         {
             let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
             // debt 200_000_000
             let asset_1 = Asset {
                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
@@ -605,8 +622,11 @@ mod tests {
                 decimals: 8,
                 ..Default::default()
             };
-            let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3, asset_4];
-            let result = calculate_debt(&assets, slot, 100);
+            assets_list.append(asset_1);
+            assets_list.append(asset_2);
+            assets_list.append(asset_3);
+            assets_list.append(asset_4);
+            let result = calculate_debt(&assets_list, slot, 100);
             match result {
                 Ok(debt) => assert_eq!(debt, 5200000000_152508),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -614,6 +634,9 @@ mod tests {
         }
         {
             let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
             // debt 198807739,182321
             let asset_1 = Asset {
                 price: (1.567 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
@@ -638,8 +661,10 @@ mod tests {
                 decimals: 8,
                 ..Default::default()
             };
-            let assets: Vec<Asset> = vec![asset_1, asset_2, asset_3];
-            let result = calculate_debt(&assets, slot, 100);
+            assets_list.append(asset_1);
+            assets_list.append(asset_2);
+            assets_list.append(asset_3);
+            let result = calculate_debt(&assets_list, slot, 100);
             match result {
                 Ok(debt) => assert_eq!(debt, 932210931_726364),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -649,6 +674,9 @@ mod tests {
     #[test]
     fn test_calculate_debt_error() {
         let slot = 100;
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
         let asset_1 = Asset {
             price: 10 * 10u64.pow(PRICE_OFFSET.into()),
             supply: 100 * 10u64.pow(8),
@@ -665,9 +693,10 @@ mod tests {
             decimals: 8,
             ..Default::default()
         };
+        assets_list.append(asset_1);
+        assets_list.append(asset_2);
         // debt 2400
-        let assets: Vec<Asset> = vec![asset_1, asset_2];
-        let result = calculate_debt(&assets, slot, 0);
+        let result = calculate_debt(&assets_list, slot, 0);
         assert!(result.is_err());
     }
     #[test]

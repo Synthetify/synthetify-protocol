@@ -3,7 +3,7 @@ import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
-import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
+import { Asset, AssetsList } from '@synthetify/sdk/lib/exchange'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
@@ -115,16 +115,14 @@ export const createAssetsList = async ({
   collateralTokenFeed,
   connection,
   wallet,
-  exchangeAuthority,
-  assetsSize = 30
+  exchangeAuthority
 }: ICreateAssetsList) => {
   const usdToken = await createToken({
     connection,
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await exchange.createAssetsList(assetsSize)
-
+  const assetsList = await exchange.createAssetsList()
   await exchange.initializeAssetsList({
     assetsList,
     collateralToken: collateralToken.publicKey,

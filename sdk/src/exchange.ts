@@ -549,7 +549,9 @@ export class Exchange {
 
   // Asset list
   public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
-    return (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
+    const assetList = (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
+    assetList.assets = assetList.assets.slice(0, assetList.head)
+    return assetList
   }
   public onAssetsListChange(address: PublicKey, fn: (list: AssetsList) => void) {
     this.program.account.assetsList
@@ -558,17 +560,15 @@ export class Exchange {
         fn(list)
       })
   }
-  public async createAssetsList(size: number) {
+  public async createAssetsList() {
     const assetListAccount = new Account()
-    await this.program.rpc.createAssetsList(size, {
+    await this.program.rpc.createAssetsList({
       accounts: {
         assetsList: assetListAccount.publicKey,
         rent: SYSVAR_RENT_PUBKEY
       },
       signers: [assetListAccount],
-      instructions: [
-        await this.program.account.assetsList.createInstruction(assetListAccount, size * 109 + 45)
-      ]
+      instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
     })
     return assetListAccount.publicKey
   }
@@ -683,6 +683,7 @@ export interface Asset {
 }
 export interface AssetsList {
   initialized: boolean
+  head: number
   assets: Array<Asset>
 }
 export interface SetAssetSupply {

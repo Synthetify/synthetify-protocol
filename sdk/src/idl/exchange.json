@@ -57,12 +57,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "length",
-          "type": "u32"
-        }
-      ]
+      "args": []
     },
     {
       "name": "createList",
@@ -875,11 +870,18 @@
             "type": "bool"
           },
           {
+            "name": "head",
+            "type": "u8"
+          },
+          {
             "name": "assets",
             "type": {
-              "vec": {
-                "defined": "Asset"
-              }
+              "array": [
+                {
+                  "defined": "Asset"
+                },
+                30
+              ]
             }
           }
         ]
@@ -1160,6 +1162,6 @@
     }
   ],
   "metadata": {
-    "address": "CYEcBg6cmmQS6h4ByiEHZNE1MtRRm9V5AB4ePzDapJmJ"
+    "address": "EnJancvena5jhiYhKXmGyhe8ddveXn8Vxzhdie9Yu7N8"
   }
 }
