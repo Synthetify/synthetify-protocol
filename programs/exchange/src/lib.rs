@@ -100,7 +100,7 @@ pub mod exchange {
         pub fn deposit(&mut self, ctx: Context<Deposit>, amount: u64) -> Result<()> {
             msg!("Synthetify: DEPOSIT");
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
 
             let slot = Clock::get()?.slot;
 
@@ -153,7 +153,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -217,7 +217,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -287,7 +287,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -391,7 +391,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -513,7 +513,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -676,7 +676,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -727,7 +727,7 @@ pub mod exchange {
 
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
 
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
@@ -762,7 +762,7 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account;
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
@@ -978,7 +978,7 @@ pub mod exchange {
         ctx: Context<CreateExchangeAccount>,
         owner: Pubkey,
     ) -> ProgramResult {
-        let exchange_account = &mut ctx.accounts.exchange_account;
+        let exchange_account = &mut ctx.accounts.exchange_account.load_init()?;
         exchange_account.owner = owner;
         exchange_account.debt_shares = 0;
         exchange_account.collateral_shares = 0;
@@ -1129,7 +1129,7 @@ pub struct New<'info> {
 #[derive(Accounts)]
 pub struct CreateExchangeAccount<'info> {
     #[account(init,associated = admin, with = state,payer=payer)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
@@ -1138,7 +1138,7 @@ pub struct CreateExchangeAccount<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-#[associated]
+#[associated(zero_copy)]
 #[derive(Default)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controling account
@@ -1160,7 +1160,7 @@ pub struct Withdraw<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
 }
@@ -1187,7 +1187,7 @@ pub struct Mint<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
@@ -1206,7 +1206,7 @@ impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(mut)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(mut)]
     pub collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -1243,7 +1243,7 @@ pub struct Liquidate<'info> {
     #[account(mut)]
     pub user_collateral_account: AccountInfo<'info>,
     #[account(mut)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut)]
@@ -1263,7 +1263,7 @@ pub struct BurnToken<'info> {
     #[account(mut)]
     pub user_token_account_burn: CpiAccount<'info, TokenAccount>,
     #[account(mut, has_one = owner)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
 }
@@ -1294,7 +1294,7 @@ pub struct Swap<'info> {
     #[account(mut)]
     pub user_token_account_for: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
@@ -1325,19 +1325,19 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 #[derive(Accounts)]
 pub struct CheckCollateralization<'info> {
     #[account(mut)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     pub assets_list: ProgramAccount<'info, AssetsList>,
     pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
     #[account(mut)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
     #[account(mut, has_one = owner)]
-    pub exchange_account: ProgramAccount<'info, ExchangeAccount>,
+    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
@@ -1382,7 +1382,8 @@ pub struct Staking {
     pub current_round: StakingRound,  //24
     pub next_round: StakingRound,     //24
 }
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Clone, Debug)]
+#[zero_copy]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Default, Debug)]
 pub struct UserStaking {
     pub amount_to_claim: u64,       //8 Amount of SNY accumulated by account
     pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
@@ -1520,9 +1521,9 @@ fn fund_account<'info>(
 // Check is user account have correct version
 fn version<'info>(
     state: &InternalState,
-    exchange_account: &ProgramAccount<'info, ExchangeAccount>,
+    exchange_account: &Loader<'info, ExchangeAccount>,
 ) -> Result<()> {
-    if !exchange_account.version == state.account_version {
+    if !exchange_account.load()?.version == state.account_version {
         return Err(ErrorCode::AccountVersion.into());
     }
     Ok(())
