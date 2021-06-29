@@ -44,7 +44,7 @@ describe('exchange', () => {
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  let collateralAccount: PublicKey
+  let reserveAccount: PublicKey
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
@@ -67,7 +67,7 @@ describe('exchange', () => {
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    collateralAccount = await collateralToken.createAccount(exchangeAuthority)
+    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
@@ -86,7 +86,8 @@ describe('exchange', () => {
       collateralTokenFeed,
       connection,
       wallet,
-      exchange
+      exchange,
+      reserveAccount
     })
     assetsList = data.assetsList
     usdToken = data.usdToken
@@ -94,9 +95,7 @@ describe('exchange', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
       liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -109,15 +108,14 @@ describe('exchange', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    const state = await exchange.getState()
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.liquidationAccount.equals(liquidationAccount))
-    assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
@@ -127,7 +125,6 @@ describe('exchange', () => {
     assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.collateralShares.eq(new BN(0)))
     assert.ok(state.accountVersion === 0)
   })
   it('Account Creation', async () => {
@@ -140,9 +137,9 @@ describe('exchange', () => {
     // Initial values
     assert.ok(userExchangeAccount.debtShares.eq(new BN(0)))
     assert.ok(userExchangeAccount.version === 0)
-    assert.ok(userExchangeAccount.collateralShares.eq(new BN(0)))
+    assert.ok(userExchangeAccount.collaterals.length === 0)
   })
-  describe('#deposit()', async () => {
+  describe.only('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -156,7 +153,7 @@ describe('exchange', () => {
       // Minted amount
       assert.ok(userCollateralTokenAccountInfo.amount.eq(amount))
       const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
-        collateralAccount
+        reserveAccount
       )
       // No previous deposits
       assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
@@ -164,7 +161,8 @@ describe('exchange', () => {
         amount,
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        reserveAddress: reserveAccount
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,
@@ -180,17 +178,14 @@ describe('exchange', () => {
         connection
       )
       const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
-        collateralAccount
+        reserveAccount
       )
 
       // Increase by deposited amount
       assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
 
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      // First deposit create same amount of shares as deposit amount
-      assert.ok(userExchangeAccountAfter.collateralShares.eq(amount))
-      const state = await exchange.getState()
-      assert.ok(state.collateralShares.eq(amount))
+      assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
     })
     it('Deposit collateral next', async () => {
       const accountOwner = new Account()
@@ -201,15 +196,14 @@ describe('exchange', () => {
       await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
 
       const exchangeCollateralTokenAccountInfoBefore = await collateralToken.getAccountInfo(
-        collateralAccount
+        reserveAccount
       )
-      const stateBefore = await exchange.getState()
-
       const depositIx = await exchange.depositInstruction({
         amount,
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        reserveAddress: reserveAccount
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,
@@ -225,7 +219,7 @@ describe('exchange', () => {
         connection
       )
       const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
-        collateralAccount
+        reserveAccount
       )
       // Increase by deposited amount
       assert.ok(
@@ -235,13 +229,8 @@ describe('exchange', () => {
       )
 
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      const createdShares = amount
-        .mul(stateBefore.collateralShares)
-        .div(exchangeCollateralTokenAccountInfoBefore.amount)
-      // First deposit create same amount of shares as deposit amount
-      assert.ok(userExchangeAccountAfter.collateralShares.eq(createdShares))
-      const state = await exchange.getState()
-      assert.ok(state.collateralShares.eq(stateBefore.collateralShares.add(createdShares)))
+
+      assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
     })
     it('Deposit more than allowance', async () => {
       const accountOwner = new Account()
@@ -254,7 +243,8 @@ describe('exchange', () => {
         amount: amount.mul(new BN(2)),
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        reserveAddress: reserveAccount
       })
       const approveIx = Token.createApproveInstruction(
         collateralToken.programId,

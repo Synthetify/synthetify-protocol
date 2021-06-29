@@ -90,10 +90,10 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 }
 
 pub fn set_asset_supply(asset: &mut Asset, new_supply: u64) -> ProgramResult {
-    if new_supply.gt(&asset.max_supply) {
+    if new_supply.gt(&asset.synthetic.max_supply) {
         return Err(ErrorCode::MaxSupply.into());
     }
-    asset.supply = new_supply;
+    asset.synthetic.supply = new_supply;
     Ok(())
 }
 

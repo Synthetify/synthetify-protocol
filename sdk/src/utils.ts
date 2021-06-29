@@ -94,7 +94,9 @@ export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.assets.reduce(
     (acc, asset) =>
       acc.add(
-        asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+        asset.synthetic.supply
+          .mul(asset.price)
+          .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
       ),
     new BN(0)
   )

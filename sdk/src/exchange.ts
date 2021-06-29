@@ -89,8 +89,6 @@ export class Exchange {
   public async init({
     admin,
     assetsList,
-    collateralAccount,
-    collateralToken,
     nonce,
     liquidationAccount,
     amountPerRound,
@@ -100,8 +98,6 @@ export class Exchange {
     await this.program.state.rpc.new(nonce, stakingRoundLength, amountPerRound, {
       accounts: {
         admin: admin,
-        collateralToken: collateralToken,
-        collateralAccount: collateralAccount,
         assetsList: assetsList,
         liquidationAccount: liquidationAccount,
         stakingFundAccount: stakingFundAccount
@@ -116,38 +112,43 @@ export class Exchange {
     return state
   }
   public async getExchangeAccount(exchangeAccount: PublicKey) {
-    return (await this.program.account.exchangeAccount.fetch(exchangeAccount)) as ExchangeAccount
-  }
-  public async getUserCollateralBalance(exchangeAccount: PublicKey) {
-    const userAccount = (await this.program.account.exchangeAccount.fetch(
+    const account = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
     )) as ExchangeAccount
-    if (userAccount.collateralShares.eq(new BN(0))) {
-      return new BN(0)
-    }
-    const state = await this.getState()
-    const collateralToken = new Token(
-      this.connection,
-      this.assetsList.assets[1].assetAddress,
-      TOKEN_PROGRAM_ID,
-      new Account()
-    )
-    const exchangeCollateralInfo = await collateralToken.getAccountInfo(state.collateralAccount)
-    return userAccount.collateralShares
-      .mul(new BN(exchangeCollateralInfo.amount.toString()))
-      .div(state.collateralShares)
+    account.collaterals = account.collaterals.slice(0, account.head)
+    return account
   }
-  public async getUserDebtBalance(exchangeAccount: PublicKey) {
-    const userAccount = (await this.program.account.exchangeAccount.fetch(
-      exchangeAccount
-    )) as ExchangeAccount
-    if (userAccount.collateralShares.eq(new BN(0))) {
-      return new BN(0)
-    }
-    const state = await this.getState()
-    const debt = calculateDebt(this.assetsList)
-    return userAccount.debtShares.mul(debt).div(state.debtShares)
-  }
+  // public async getUserCollateralBalance(exchangeAccount: PublicKey) {
+  //   const userAccount = (await this.program.account.exchangeAccount.fetch(
+  //     exchangeAccount
+  //   )) as ExchangeAccount
+  //   if (userAccount.collateralShares.eq(new BN(0))) {
+  //     return new BN(0)
+  //   }
+  //   const state = await this.getState()
+  //   const collateralToken = new Token(
+  //     this.connection,
+  //     this.assetsList.assets[1].collateral.collateralAddress,
+  //     TOKEN_PROGRAM_ID,
+  //     new Account()
+  //   )
+  //   // const exchangeCollateralInfo = await collateralToken.getAccountInfo(state.collateralAccount)
+  //   // return userAccount.collateralShares
+  //   //   .mul(new BN(exchangeCollateralInfo.amount.toString()))
+  //   //   .div(state.collateralShares)
+  //   return new BN(0)
+  // }
+  // public async getUserDebtBalance(exchangeAccount: PublicKey) {
+  //   const userAccount = (await this.program.account.exchangeAccount.fetch(
+  //     exchangeAccount
+  //   )) as ExchangeAccount
+  //   if (userAccount.collateralShares.eq(new BN(0))) {
+  //     return new BN(0)
+  //   }
+  //   const state = await this.getState()
+  //   const debt = calculateDebt(this.assetsList)
+  //   return userAccount.debtShares.mul(debt).div(state.debtShares)
+  // }
   public async createExchangeAccount(owner: PublicKey) {
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
@@ -188,16 +189,18 @@ export class Exchange {
     amount,
     exchangeAccount,
     userCollateralAccount,
-    owner
+    owner,
+    reserveAddress
   }: DepositInstruction) {
     return (await this.program.state.instruction.deposit(amount, {
       accounts: {
         owner: owner,
         exchangeAccount: exchangeAccount,
-        collateralAccount: this.state.collateralAccount,
         userCollateralAccount: userCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAuthority: this.exchangeAuthority
+        exchangeAuthority: this.exchangeAuthority,
+        reserveAddress: reserveAddress,
+        assetsList: this.state.assetsList
       }
     })) as TransactionInstruction
   }
@@ -210,8 +213,7 @@ export class Exchange {
         exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList,
-        managerProgram: this.programId,
-        collateralAccount: this.state.collateralAccount
+        managerProgram: this.programId
       }
     }) as TransactionInstruction)
   }
@@ -219,13 +221,12 @@ export class Exchange {
     return await (this.program.state.instruction.mint(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].assetAddress,
+        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: this.state.assetsList,
-        collateralAccount: this.state.collateralAccount
+        assetsList: this.state.assetsList
       }
     }) as TransactionInstruction)
   }
@@ -248,8 +249,7 @@ export class Exchange {
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: this.state.assetsList,
-        collateralAccount: this.state.collateralAccount
+        assetsList: this.state.assetsList
       }
     }) as TransactionInstruction)
   }
@@ -265,11 +265,10 @@ export class Exchange {
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
         signer: signer,
-        usdToken: this.assetsList.assets[0].assetAddress,
+        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
         assetsList: this.state.assetsList,
         userCollateralAccount: userCollateralAccount,
         userUsdAccount: userUsdAccount,
-        collateralAccount: this.state.collateralAccount,
         liquidationAccount: this.state.liquidationAccount
       }
     }) as TransactionInstruction)
@@ -283,7 +282,7 @@ export class Exchange {
     return await (this.program.state.instruction.burn(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].assetAddress,
+        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
@@ -319,8 +318,7 @@ export class Exchange {
     return await (this.program.state.instruction.checkAccountCollateralization({
       accounts: {
         exchangeAccount: exchangeAccount,
-        assetsList: this.state.assetsList,
-        collateralAccount: this.state.collateralAccount
+        assetsList: this.state.assetsList
       }
     }) as TransactionInstruction)
   }
@@ -591,11 +589,13 @@ export class Exchange {
     assetsList,
     collateralToken,
     collateralTokenFeed,
-    usdToken
+    usdToken,
+    reserveAccount
   }: InitializeAssetList) {
     return await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
-        assetsList: assetsList
+        assetsList: assetsList,
+        reserveAccount: reserveAccount
       }
     })
   }
@@ -670,22 +670,36 @@ export interface InitializeAssetList {
   collateralTokenFeed: PublicKey
   usdToken: PublicKey
   assetsList: PublicKey
+  reserveAccount: PublicKey
 }
 export interface Asset {
   feedAddress: PublicKey
-  assetAddress: PublicKey
   price: BN
-  supply: BN
   lastUpdate: BN
-  maxSupply: BN
-  settlementSlot: BN
-  decimals: number
+  confidence: number
+  synthetic: Synthetic
+  collateral: Collateral
 }
 export interface AssetsList {
   initialized: boolean
   head: number
   assets: Array<Asset>
 }
+export interface Collateral {
+  isCollateral: boolean
+  collateralAddress: PublicKey
+  reserveAddress: PublicKey
+  reserveBalance: BN
+  collateralRatio: number
+}
+export interface Synthetic {
+  assetAddress: PublicKey
+  supply: BN
+  maxSupply: BN
+  settlementSlot: BN
+  decimals: number
+}
+
 export interface SetAssetSupply {
   assetIndex: number
   assetsList: PublicKey
@@ -799,6 +813,7 @@ export interface DepositInstruction {
   exchangeAccount: PublicKey
   userCollateralAccount: PublicKey
   owner: PublicKey
+  reserveAddress: PublicKey
   amount: BN
 }
 export interface Init {
@@ -808,8 +823,6 @@ export interface Init {
   stakingFundAccount: PublicKey
   amountPerRound: BN
   assetsList: PublicKey
-  collateralToken: PublicKey
-  collateralAccount: PublicKey
   liquidationAccount: PublicKey
 }
 export interface ExchangeState {
@@ -817,10 +830,7 @@ export interface ExchangeState {
   halted: boolean
   nonce: number
   debtShares: BN
-  collateralShares: BN
   assetsList: PublicKey
-  collateralToken: PublicKey
-  collateralAccount: PublicKey
   liquidationAccount: PublicKey
   collateralizationLevel: number
   maxDelay: number
@@ -848,9 +858,15 @@ export interface ExchangeAccount {
   owner: PublicKey
   version: number
   debtShares: BN
-  collateralShares: BN
   liquidationDeadline: BN
   userStakingData: UserStaking
+  head: number
+  collaterals: Array<CollateralEntry>
+}
+export interface CollateralEntry {
+  amount: BN
+  collateralAddress: PublicKey
+  index: number
 }
 export interface UserStaking {
   amountToClaim: BN

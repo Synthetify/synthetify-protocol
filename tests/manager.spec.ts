@@ -27,7 +27,9 @@ const ZERO_U64 = new BN(0)
 describe('manager', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
+
   const exchangeProgram = anchor.workspace.Exchange as Program
+
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -39,7 +41,7 @@ describe('manager', () => {
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  let collateralAccount: PublicKey
+  let reserveAccount: PublicKey
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
@@ -56,6 +58,7 @@ describe('manager', () => {
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
+
     nonce = _nonce
     exchangeAuthority = _exchangeAuthority
     collateralTokenFeed = await createPriceFeed({
@@ -69,7 +72,8 @@ describe('manager', () => {
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    collateralAccount = await collateralToken.createAccount(exchangeAuthority)
+
+    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
     // @ts-expect-error
@@ -80,13 +84,15 @@ describe('manager', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
     const data = await createAssetsList({
       exchangeAuthority,
       collateralToken,
       collateralTokenFeed,
       connection,
       wallet,
-      exchange
+      exchange,
+      reserveAccount
     })
     assetsList = data.assetsList
     usdToken = data.usdToken
@@ -94,9 +100,7 @@ describe('manager', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
       liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -122,13 +126,7 @@ describe('manager', () => {
     assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
 
     // Check token address
-    assert.ok(collateralAsset.assetAddress.equals(collateralToken.publicKey))
-
-    // Check decimals
-    assert.ok(collateralAsset.decimals === initTokensDecimals)
-
-    // // Check asset limit
-    assert.ok(collateralAsset.maxSupply.eq(MAX_U64))
+    assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
 
     // Check price
     assert.ok(collateralAsset.price.eq(ZERO_U64))
@@ -138,13 +136,13 @@ describe('manager', () => {
     // USD token checks
 
     // Check token address
-    assert.ok(usdAsset.assetAddress.equals(usdToken.publicKey))
+    assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
 
     // Check decimals
-    assert.ok(usdAsset.decimals === initTokensDecimals)
+    assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
 
     // Check asset limit
-    assert.ok(usdAsset.maxSupply.eq(MAX_U64))
+    assert.ok(usdAsset.synthetic.maxSupply.eq(MAX_U64))
 
     // Check price
     assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
@@ -179,13 +177,13 @@ describe('manager', () => {
       assert.ok(newAsset.feedAddress.equals(newAssets[0].feedAddress))
 
       // Check token address
-      assert.ok(newAsset.assetAddress.equals(newAssets[0].assetAddress))
+      assert.ok(newAsset.synthetic.assetAddress.equals(newAssets[0].assetAddress))
 
       // Check decimals
-      assert.ok(newAsset.decimals === newAssetDecimals)
+      assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
 
       // Check asset limit
-      assert.ok(newAsset.maxSupply.eq(newAssetLimit))
+      assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
 
       // Check price
       assert.ok(newAsset.price.eq(ZERO_U64))
@@ -224,7 +222,9 @@ describe('manager', () => {
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.notOk(
-        afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit)
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
       )
     })
     it('New max supply should be set', async () => {
@@ -232,7 +232,7 @@ describe('manager', () => {
       let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
 
       await exchange.setAssetMaxSupply({
-        assetAddress: beforeAsset.assetAddress,
+        assetAddress: beforeAsset.synthetic.assetAddress,
         exchangeAdmin: EXCHANGE_ADMIN,
         assetsList,
         newMaxSupply: newAssetLimit
@@ -240,7 +240,11 @@ describe('manager', () => {
 
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
-      assert.ok(afterAssetList.assets[afterAssetList.assets.length - 1].maxSupply.eq(newAssetLimit))
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
+      )
     })
   })
   describe('#set_price_feed()', async () => {
@@ -256,7 +260,7 @@ describe('manager', () => {
         assetsList,
         priceFeed: newPriceFeed,
         signer: EXCHANGE_ADMIN.publicKey,
-        tokenAddress: beforeAsset.assetAddress
+        tokenAddress: beforeAsset.synthetic.assetAddress
       })
       await signAndSend(new Transaction().add(ix), [PAYER_ACCOUNT, EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)

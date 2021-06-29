@@ -66,6 +66,11 @@
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "reserveAccount",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -115,10 +120,6 @@
           },
           {
             "name": "debtShares",
-            "type": "u64"
-          },
-          {
-            "name": "collateralShares",
             "type": "u64"
           },
           {
@@ -184,16 +185,6 @@
             "isSigner": false
           },
           {
-            "name": "collateralToken",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
             "name": "assetsList",
             "isMut": false,
             "isSigner": false
@@ -233,7 +224,7 @@
             "isSigner": false
           },
           {
-            "name": "collateralAccount",
+            "name": "reserveAddress",
             "isMut": true,
             "isSigner": false
           },
@@ -248,321 +239,8 @@
             "isSigner": false
           },
           {
-            "name": "owner",
-            "isMut": false,
-            "isSigner": true
-          },
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          }
-        ],
-        "args": [
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
-        "name": "mint",
-        "accounts": [
-          {
-            "name": "assetsList",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "usdToken",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "to",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "owner",
-            "isMut": false,
-            "isSigner": true
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": false,
-            "isSigner": false
-          }
-        ],
-        "args": [
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
-        "name": "withdraw",
-        "accounts": [
-          {
-            "name": "assetsList",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "to",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "owner",
-            "isMut": false,
-            "isSigner": true
-          }
-        ],
-        "args": [
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
-        "name": "swap",
-        "accounts": [
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "assetsList",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "tokenIn",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenFor",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "userTokenAccountIn",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "userTokenAccountFor",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "owner",
-            "isMut": false,
-            "isSigner": true
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": false,
-            "isSigner": false
-          }
-        ],
-        "args": [
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
-        "name": "burn",
-        "accounts": [
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "assetsList",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "usdToken",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "userTokenAccountBurn",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "owner",
-            "isMut": false,
-            "isSigner": true
-          }
-        ],
-        "args": [
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      },
-      {
-        "name": "liquidate",
-        "accounts": [
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "assetsList",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "usdToken",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "userUsdAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "userCollateralAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "signer",
-            "isMut": false,
-            "isSigner": true
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "liquidationAccount",
-            "isMut": true,
-            "isSigner": false
-          }
-        ],
-        "args": []
-      },
-      {
-        "name": "checkAccountCollateralization",
-        "accounts": [
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
             "name": "assetsList",
             "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "collateralAccount",
-            "isMut": false,
-            "isSigner": false
-          }
-        ],
-        "args": []
-      },
-      {
-        "name": "claimRewards",
-        "accounts": [
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
-            "isSigner": false
-          }
-        ],
-        "args": []
-      },
-      {
-        "name": "withdrawRewards",
-        "accounts": [
-          {
-            "name": "exchangeAccount",
-            "isMut": true,
             "isSigner": false
           },
           {
@@ -573,52 +251,6 @@
           {
             "name": "exchangeAuthority",
             "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "userTokenAccount",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "stakingFundAccount",
-            "isMut": true,
-            "isSigner": false
-          }
-        ],
-        "args": []
-      },
-      {
-        "name": "withdrawLiquidationPenalty",
-        "accounts": [
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true
-          },
-          {
-            "name": "exchangeAuthority",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "tokenProgram",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "to",
-            "isMut": true,
-            "isSigner": false
-          },
-          {
-            "name": "liquidationAccount",
-            "isMut": true,
             "isSigner": false
           }
         ],
@@ -905,10 +537,6 @@
             "type": "u64"
           },
           {
-            "name": "collateralShares",
-            "type": "u64"
-          },
-          {
             "name": "liquidationDeadline",
             "type": "u64"
           },
@@ -917,12 +545,47 @@
             "type": {
               "defined": "UserStaking"
             }
+          },
+          {
+            "name": "head",
+            "type": "u8"
+          },
+          {
+            "name": "collaterals",
+            "type": {
+              "array": [
+                {
+                  "defined": "CollateralEntry"
+                },
+                10
+              ]
+            }
           }
         ]
       }
     }
   ],
   "types": [
+    {
+      "name": "CollateralEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collateralAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "StakingRound",
       "type": {
@@ -1019,12 +682,68 @@
             "type": "publicKey"
           },
           {
-            "name": "assetAddress",
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "lastUpdate",
+            "type": "u64"
+          },
+          {
+            "name": "confidence",
+            "type": "u32"
+          },
+          {
+            "name": "synthetic",
+            "type": {
+              "defined": "Synthetic"
+            }
+          },
+          {
+            "name": "collateral",
+            "type": {
+              "defined": "Collateral"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Collateral",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "isCollateral",
+            "type": "bool"
+          },
+          {
+            "name": "collateralAddress",
             "type": "publicKey"
           },
           {
-            "name": "price",
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "reserveBalance",
             "type": "u64"
+          },
+          {
+            "name": "collateralRatio",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Synthetic",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
           },
           {
             "name": "supply",
@@ -1035,20 +754,12 @@
             "type": "u8"
           },
           {
-            "name": "lastUpdate",
-            "type": "u64"
-          },
-          {
             "name": "maxSupply",
             "type": "u64"
           },
           {
             "name": "settlementSlot",
             "type": "u64"
-          },
-          {
-            "name": "confidence",
-            "type": "u32"
           }
         ]
       }
@@ -1160,8 +871,5 @@
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     }
-  ],
-  "metadata": {
-    "address": "EnJancvena5jhiYhKXmGyhe8ddveXn8Vxzhdie9Yu7N8"
-  }
+  ]
 }
