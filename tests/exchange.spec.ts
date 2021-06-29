@@ -186,6 +186,8 @@ describe('exchange', () => {
 
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
+      const assetListData = await exchange.getAssetsList(assetsList)
+      assert.ok(assetListData.assets[1].collateral.reserveBalance.eq(amount))
     })
     it('Deposit collateral next', async () => {
       const accountOwner = new Account()
@@ -198,6 +200,8 @@ describe('exchange', () => {
       const exchangeCollateralTokenAccountInfoBefore = await collateralToken.getAccountInfo(
         reserveAccount
       )
+      const assetListDataBefore = await exchange.getAssetsList(assetsList)
+
       const depositIx = await exchange.depositInstruction({
         amount,
         exchangeAccount,
@@ -231,6 +235,12 @@ describe('exchange', () => {
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
 
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
+      const assetListDataAfter = await exchange.getAssetsList(assetsList)
+      assert.ok(
+        assetListDataAfter.assets[1].collateral.reserveBalance
+          .sub(assetListDataBefore.assets[1].collateral.reserveBalance)
+          .eq(amount)
+      )
     })
     it('Deposit more than allowance', async () => {
       const accountOwner = new Account()

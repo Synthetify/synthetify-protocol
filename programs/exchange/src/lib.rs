@@ -94,7 +94,7 @@ pub mod exchange {
             msg!("Synthetify: DEPOSIT");
 
             let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-            let assets_list = &mut ctx.accounts.assets_list.load()?;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
             let slot = Clock::get()?.slot;
 
@@ -114,7 +114,7 @@ pub mod exchange {
 
             let asset = assets_list
                 .assets
-                .iter()
+                .iter_mut()
                 .find(|x| {
                     x.collateral.reserve_address.eq(ctx
                         .accounts
@@ -122,6 +122,16 @@ pub mod exchange {
                         .to_account_info()
                         .key)
                 })
+                .unwrap();
+
+            if !asset.collateral.is_collateral {
+                return Err(ErrorCode::NotCollateral.into());
+            }
+
+            asset.collateral.reserve_balance = asset
+                .collateral
+                .reserve_balance
+                .checked_add(amount)
                 .unwrap();
 
             let mut exchange_account_collateral =
@@ -1264,6 +1274,7 @@ pub struct Deposit<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     // owner can deposit to any exchange_account
     #[account(signer)]
@@ -1516,6 +1527,8 @@ pub enum ErrorCode {
     NoAssetFound,
     #[msg("Asset max_supply crossed")]
     MaxSupply,
+    #[msg("Asset is not collateral")]
+    NotCollateral,
 }
 
 // Access control modifiers.
