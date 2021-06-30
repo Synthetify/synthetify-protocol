@@ -204,15 +204,16 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawInstruction({ amount, exchangeAccount, owner, to }: WithdrawInstruction) {
+  public async withdrawInstruction({ amount, exchangeAccount, owner, to, reserveAccount }: WithdrawInstruction) {
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
+        assetsList: this.state.assetsList,
         exchangeAuthority: this.exchangeAuthority,
+        reserveAccount,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAccount: exchangeAccount,
         owner: owner,
-        assetsList: this.state.assetsList,
+        exchangeAccount: exchangeAccount,
         managerProgram: this.programId
       }
     }) as TransactionInstruction)
@@ -507,9 +508,10 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
-  public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
+  public async withdraw({ amount, exchangeAccount, owner, to, signers, reserveAccount }: Withdraw) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
+      reserveAccount,
       amount,
       exchangeAccount,
       owner,
@@ -759,6 +761,7 @@ export interface Burn {
   signers?: Array<Account>
 }
 export interface Withdraw {
+  reserveAccount: PublicKey
   exchangeAccount: PublicKey
   owner: PublicKey
   to: PublicKey
@@ -805,6 +808,7 @@ export interface WithdrawRewardsInstruction {
 }
 export interface WithdrawInstruction {
   exchangeAccount: PublicKey
+  reserveAccount: PublicKey
   owner: PublicKey
   to: PublicKey
   amount: BN

@@ -225,7 +225,7 @@ pub mod exchange {
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
-            let collateral_account = &ctx.accounts.collateral_account;
+            let collateral_account = &ctx.accounts.reserve_account;
             let assets_list = &ctx.accounts.assets_list.load_mut()?;
 
             // let assets = &assets_list.assets;
@@ -235,7 +235,7 @@ pub mod exchange {
                 .find(|x| {
                     x.collateral.reserve_address.eq(ctx
                         .accounts
-                        .to
+                        .reserve_account
                         .to_account_info()
                         .key)
                 }).unwrap();
@@ -1220,7 +1220,7 @@ pub struct Withdraw<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub collateral_account: CpiAccount<'info, TokenAccount>,
+    pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
@@ -1233,7 +1233,7 @@ pub struct Withdraw<'info> {
 impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Withdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: accounts.collateral_account.to_account_info(),
+            from: accounts.reserve_account.to_account_info(),
             to: accounts.to.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
