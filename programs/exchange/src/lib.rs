@@ -226,12 +226,12 @@ pub mod exchange {
             adjust_staking_account(exchange_account, &self.staking);
 
             let collateral_account = &ctx.accounts.reserve_account;
-            let assets_list = &ctx.accounts.assets_list.load_mut()?;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
             // let assets = &assets_list.assets;
             let asset = assets_list
                 .assets
-                .iter()
+                .iter_mut()
                 .find(|x| {
                     x.collateral.reserve_address.eq(ctx
                         .accounts
@@ -248,6 +248,9 @@ pub mod exchange {
                     x.collateral_address
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
+
+
+
 
                 // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
                 // let user_debt =
@@ -290,7 +293,13 @@ pub mod exchange {
 
 
             // Adjust entry amount
-            exchange_account_collateral.amount.checked_sub(amount).unwrap();
+            // exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
+            // exchange_account_collateral.amount = 0;
+            asset.collateral.reserve_balance = asset
+                .collateral
+                .reserve_balance
+                .checked_sub(amount)
+                .unwrap();
 
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];

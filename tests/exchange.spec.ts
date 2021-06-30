@@ -446,19 +446,16 @@ describe('exchange', () => {
         exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
       )
 
-      //
-      // const exchangeStateAfter = await exchange.getState()
+      const exchangeStateAfter = await exchange.getState()
+      
+      // Updating amount in assetList
+      const assetListDataAfter = await exchange.getAssetsList(assetsList)
 
-      // const assetListDataAfter = await exchange.getAssetsList(assetsList)
-      // console.log(assetListDataAfter.assets[1].collateral, assetListDataBefore.assets[1].collateral,
-      //   assetListDataAfter.assets[1].collateral.reserveBalance,
-      //   assetListDataBefore.assets[1].collateral.reserveBalance
-      // )
-      // assert.ok(
-      //   assetListDataAfter.assets[1].collateral.reserveBalance
-      //     .add(assetListDataBefore.assets[1].collateral.reserveBalance)
-      //     .eq(withdrawAmount)
-      // )
+      assert.ok(
+        assetListDataBefore.assets[1].collateral.reserveBalance
+          .sub(assetListDataAfter.assets[1].collateral.reserveBalance)
+          .eq(withdrawAmount)
+      )
 
       // assert.ok(
       //   exchangeStateAfter.collateralShares.eq(
