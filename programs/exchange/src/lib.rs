@@ -225,6 +225,13 @@ pub mod exchange {
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &self.staking);
 
+            let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+            let tx_signer = ctx.accounts.owner.key;
+            // Signer need to be owner of source account
+            if !tx_signer.eq(&user_collateral_account.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
+
             let collateral_account = &ctx.accounts.reserve_account;
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
@@ -1233,7 +1240,7 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
-    pub to: CpiAccount<'info, TokenAccount>,
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -1245,7 +1252,7 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
     fn from(accounts: &Withdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: accounts.reserve_account.to_account_info(),
-            to: accounts.to.to_account_info(),
+            to: accounts.user_collateral_account.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.to_account_info();

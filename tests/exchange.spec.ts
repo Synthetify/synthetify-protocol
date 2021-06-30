@@ -423,7 +423,7 @@ describe('exchange', () => {
         amount: withdrawAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
-        to: userCollateralTokenAccount,
+        userCollateralAccount: userCollateralTokenAccount,
         signers: [accountOwner]
       })
       // amount_to_shares amount * all_shares  / full_amount ;
