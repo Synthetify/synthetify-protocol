@@ -205,11 +205,11 @@ export interface IAccountWithCollateral {
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
-  collateralAccount: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
   usdToken: Token
   amount: BN
+  reserveAddress: PublicKey
 }
 export const createAccountWithCollateral = async ({
   exchange,
@@ -255,10 +255,10 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   exchange,
   collateralTokenMintAuthority,
   collateralToken,
-  collateralAccount,
   exchangeAuthority,
   amount,
-  usdToken
+  usdToken,
+  reserveAddress
 }: IAccountWithCollateralandMint) => {
   const {
     accountOwner,
@@ -266,7 +266,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     userCollateralTokenAccount
   } = await createAccountWithCollateral({
     amount,
-    collateralAccount,
+    reserveAddress,
     collateralToken,
     collateralTokenMintAuthority,
     exchange,

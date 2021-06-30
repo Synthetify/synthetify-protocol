@@ -12,8 +12,9 @@ pub mod exchange {
     use pyth::pc::Price;
 
     use crate::math::{
-        calculate_debt, calculate_max_debt_in_usd, calculate_new_shares_by_rounding_up,
-        calculate_user_debt_in_usd, PRICE_OFFSET,
+        calculate_burned_shares, calculate_debt, calculate_max_burned_in_xusd,
+        calculate_max_debt_in_usd, calculate_new_shares_by_rounding_up, calculate_user_debt_in_usd,
+        PRICE_OFFSET,
     };
 
     use super::*;
@@ -384,126 +385,133 @@ pub mod exchange {
         //     token::mint_to(cpi_ctx_mint, amount_for)?;
         //     Ok(())
         // }
-        // #[access_control(halted(&self)
-        // version(&self,&ctx.accounts.exchange_account)
-        // assets_list(&self,&ctx.accounts.assets_list)
-        // usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
-        // pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
-        //     msg!("Synthetify: BURN");
-        //     let slot = Clock::get()?.slot;
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        assets_list(&self,&ctx.accounts.assets_list)
+        usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+        pub fn burn(&mut self, ctx: Context<BurnToken>, amount: u64) -> Result<()> {
+            msg!("Synthetify: BURN");
+            let slot = Clock::get()?.slot;
 
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        //     let debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+            let debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
 
-        //     let assets = &mut assets_list.assets;
+            let assets = &mut assets_list.assets;
 
-        //     let tx_signer = ctx.accounts.owner.key;
-        //     let user_token_account_burn = &ctx.accounts.user_token_account_burn;
+            let tx_signer = ctx.accounts.owner.key;
+            let user_token_account_burn = &ctx.accounts.user_token_account_burn;
 
-        //     // Signer need to be owner of source account
-        //     if !tx_signer.eq(&user_token_account_burn.owner) {
-        //         return Err(ErrorCode::InvalidSigner.into());
-        //     }
-        //     // xUSD got static index 0
-        //     let burn_asset = &mut assets[0];
+            // Signer need to be owner of source account
+            if !tx_signer.eq(&user_token_account_burn.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
+            // xUSD got static index 0
+            let burn_asset = &mut assets[0];
 
-        //     let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
+            let user_debt = calculate_user_debt_in_usd(exchange_account, debt, self.debt_shares);
 
-        //     // Rounding down - debt is burned in favor of the system
-        //     let burned_shares = calculate_burned_shares(
-        //         &burn_asset,
-        //         user_debt,
-        //         exchange_account.debt_shares,
-        //         amount,
-        //     );
+            // Rounding down - debt is burned in favor of the system
+            let burned_shares = calculate_burned_shares(
+                &burn_asset,
+                user_debt,
+                exchange_account.debt_shares,
+                amount,
+            );
 
-        //     let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-        //     let signer = &[&seeds[..]];
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
 
-        //     // Check if user burned more than debt
-        //     if burned_shares >= exchange_account.debt_shares {
-        //         // Burn adjusted amount
-        //         let burned_amount = calculate_max_burned_in_token(&burn_asset, user_debt);
-        //         self.debt_shares = self
-        //             .debt_shares
-        //             .checked_sub(exchange_account.debt_shares)
-        //             .unwrap();
+            // Check if user burned more than debt
+            if burned_shares >= exchange_account.debt_shares {
+                // Burn adjusted amount
+                let burned_amount = calculate_max_burned_in_xusd(&burn_asset, user_debt);
+                self.debt_shares = self
+                    .debt_shares
+                    .checked_sub(exchange_account.debt_shares)
+                    .unwrap();
 
-        //         self.staking.next_round.all_points = self.debt_shares;
-        //         // Should be fine used checked math just in case
-        //         self.staking.current_round.all_points = self
-        //             .staking
-        //             .current_round
-        //             .all_points
-        //             .checked_sub(exchange_account.user_staking_data.current_round_points)
-        //             .unwrap();
+                self.staking.next_round.all_points = self.debt_shares;
+                // Should be fine used checked math just in case
+                self.staking.current_round.all_points = self
+                    .staking
+                    .current_round
+                    .all_points
+                    .checked_sub(exchange_account.user_staking_data.current_round_points)
+                    .unwrap();
 
-        //         exchange_account.debt_shares = 0;
-        //         // Change points for next staking round
-        //         exchange_account.user_staking_data.next_round_points = 0;
-        //         // Change points for current staking round
-        //         exchange_account.user_staking_data.current_round_points = 0;
+                exchange_account.debt_shares = 0;
+                // Change points for next staking round
+                exchange_account.user_staking_data.next_round_points = 0;
+                // Change points for current staking round
+                exchange_account.user_staking_data.current_round_points = 0;
 
-        //         // Change supply
-        //         set_asset_supply(
-        //             burn_asset,
-        //             burn_asset.supply.checked_sub(burned_amount).unwrap(),
-        //         )?;
-        //         // Burn token
-        //         // We do not use full allowance maybe its better to burn full allowance
-        //         // and mint matching amount
-        //         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        //         token::burn(cpi_ctx, burned_amount)?;
-        //         Ok(())
-        //     } else {
-        //         // Burn intended amount
-        //         exchange_account.debt_shares = exchange_account
-        //             .debt_shares
-        //             .checked_sub(burned_shares)
-        //             .unwrap();
-        //         self.debt_shares = self.debt_shares.checked_sub(burned_shares).unwrap();
-        //         self.staking.next_round.all_points = self.debt_shares;
+                // Change supply
+                set_asset_supply(
+                    burn_asset,
+                    burn_asset
+                        .synthetic
+                        .supply
+                        .checked_sub(burned_amount)
+                        .unwrap(),
+                )?;
+                // Burn token
+                // We do not use full allowance maybe its better to burn full allowance
+                // and mint matching amount
+                let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+                token::burn(cpi_ctx, burned_amount)?;
+                Ok(())
+            } else {
+                // Burn intended amount
+                exchange_account.debt_shares = exchange_account
+                    .debt_shares
+                    .checked_sub(burned_shares)
+                    .unwrap();
+                self.debt_shares = self.debt_shares.checked_sub(burned_shares).unwrap();
+                self.staking.next_round.all_points = self.debt_shares;
 
-        //         // Change points for next staking round
-        //         exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
-        //         // Change points for current staking round
-        //         if exchange_account.user_staking_data.current_round_points >= burned_shares {
-        //             exchange_account.user_staking_data.current_round_points = exchange_account
-        //                 .user_staking_data
-        //                 .current_round_points
-        //                 .checked_sub(burned_shares)
-        //                 .unwrap();
-        //             self.staking.current_round.all_points = self
-        //                 .staking
-        //                 .current_round
-        //                 .all_points
-        //                 .checked_sub(burned_shares)
-        //                 .unwrap();
-        //         } else {
-        //             self.staking.current_round.all_points = self
-        //                 .staking
-        //                 .current_round
-        //                 .all_points
-        //                 .checked_sub(exchange_account.user_staking_data.current_round_points)
-        //                 .unwrap();
-        //             exchange_account.user_staking_data.current_round_points = 0;
-        //         }
+                // Change points for next staking round
+                exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
+                // Change points for current staking round
+                if exchange_account.user_staking_data.current_round_points >= burned_shares {
+                    exchange_account.user_staking_data.current_round_points = exchange_account
+                        .user_staking_data
+                        .current_round_points
+                        .checked_sub(burned_shares)
+                        .unwrap();
+                    self.staking.current_round.all_points = self
+                        .staking
+                        .current_round
+                        .all_points
+                        .checked_sub(burned_shares)
+                        .unwrap();
+                } else {
+                    self.staking.current_round.all_points = self
+                        .staking
+                        .current_round
+                        .all_points
+                        .checked_sub(exchange_account.user_staking_data.current_round_points)
+                        .unwrap();
+                    exchange_account.user_staking_data.current_round_points = 0;
+                }
 
-        //         // Change supply
-        //         set_asset_supply(burn_asset, burn_asset.supply.checked_sub(amount).unwrap())?;
-        //         // Burn token
-        //         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        //         token::burn(cpi_ctx, amount)?;
-        //         Ok(())
-        //     }
-        // }
+                // Change supply
+                set_asset_supply(
+                    burn_asset,
+                    burn_asset.synthetic.supply.checked_sub(amount).unwrap(),
+                )?;
+                // Burn token
+                let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+                token::burn(cpi_ctx, amount)?;
+                Ok(())
+            }
+        }
 
         // #[access_control(halted(&self)
         // version(&self,&ctx.accounts.exchange_account)

@@ -308,6 +308,52 @@
         ]
       },
       {
+        "name": "burn",
+        "accounts": [
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "usdToken",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccountBurn",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -926,5 +972,8 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "7kPM5jYJZA3Q5GM2tY4As58pm8HBcYxdJAxsjpsEsdvn"
+  }
 }

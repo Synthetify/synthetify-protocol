@@ -284,27 +284,27 @@ pub fn amount_to_discount(amount: u64) -> u8 {
 //         return scaled_amount.try_into().unwrap();
 //     }
 // }
-// pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, amount: u64) -> u64 {
-//     if all_debt == 0 {
-//         return 0u64;
-//     }
+pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, amount: u64) -> u64 {
+    if all_debt == 0 {
+        return 0u64;
+    }
 
-//     let burn_amount_in_usd = (asset.price as u128)
-//         .checked_mul(amount as u128)
-//         .unwrap()
-//         .checked_div(
-//             10u128
-//                 .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
-//                 .unwrap(),
-//         )
-//         .unwrap();
-//     let burned_shares = burn_amount_in_usd
-//         .checked_mul(all_shares as u128)
-//         .unwrap()
-//         .checked_div(all_debt as u128)
-//         .unwrap();
-//     return burned_shares.try_into().unwrap();
-// }
+    let burn_amount_in_usd = (asset.price as u128)
+        .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(
+            10u128
+                .checked_pow((asset.synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
+        .unwrap();
+    let burned_shares = burn_amount_in_usd
+        .checked_mul(all_shares as u128)
+        .unwrap()
+        .checked_div(all_debt as u128)
+        .unwrap();
+    return burned_shares.try_into().unwrap();
+}
 // pub fn calculate_burned_shares_by_rounding_up(
 //     asset: &Asset,
 //     all_debt: u64,
@@ -331,31 +331,21 @@ pub fn amount_to_discount(amount: u64) -> u8 {
 
 //     return burned_shares.try_into().unwrap();
 // }
-// pub fn calculate_max_burned_in_token(asset: &Asset, user_debt: u64) -> u64 {
-//     let decimal_difference = asset.decimals as i32 - ACCURACY as i32;
-//     // rounding up to be sure that burned amount is not less than user debt
-//     if decimal_difference >= 0 {
-//         let burned_amount_token = div_up(
-//             (user_debt as u128)
-//                 .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
-//                 .unwrap()
-//                 .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-//                 .unwrap(),
-//             asset.price as u128,
-//         );
-//         return burned_amount_token.try_into().unwrap();
-//     } else {
-//         let burned_amount_token = div_up(
-//             (user_debt as u128)
-//                 .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-//                 .unwrap()
-//                 .checked_div(10u128.pow((-decimal_difference).try_into().unwrap()))
-//                 .unwrap(),
-//             asset.price as u128,
-//         );
-//         return burned_amount_token.try_into().unwrap();
-//     }
-// }
+
+// This should always retur user_debt if xusd === 1 USD
+// Should we remove this funtion ?
+pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
+    assert_eq!(asset.synthetic.decimals, 6);
+
+    // rounding up to be sure that burned amount is not less than user debt
+    let burned_amount_token = div_up(
+        (user_debt as u128)
+            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
+            .unwrap(),
+        asset.price as u128,
+    );
+    return burned_amount_token.try_into().unwrap();
+}
 pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
     let amount = (amount as u128)
         .checked_mul(10u128.pow(PRICE_OFFSET.into()))

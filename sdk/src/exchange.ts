@@ -282,7 +282,7 @@ export class Exchange {
     return await (this.program.state.instruction.burn(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
+        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,

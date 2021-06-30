@@ -1101,68 +1101,11 @@ describe('exchange', () => {
   })
   describe('#burn()', async () => {
     const debtBurnAccuracy = new BN(10)
-    let btcToken: Token
-    let ethToken: Token
-    before(async () => {
-      btcToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: exchangeAuthority,
-        decimals: 8
-      })
-      const btcFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 50000,
-        expo: -9
-      })
-      ethToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: exchangeAuthority,
-        decimals: 6
-      })
-      const ethFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 2000,
-        expo: -8
-      })
-      const newAssetLimit = new BN(10).pow(new BN(18))
-      await exchange.addNewAsset({
-        assetsAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        maxSupply: newAssetLimit,
-        tokenAddress: btcToken.publicKey,
-        tokenDecimals: 8,
-        tokenFeed: btcFeed
-      })
-      await exchange.addNewAsset({
-        assetsAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        maxSupply: newAssetLimit,
-        tokenAddress: ethToken.publicKey,
-        tokenDecimals: 6,
-        tokenFeed: ethFeed
-      })
-      // Just to add user
-      await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: new BN(10000000 * 1e6),
-        usdToken
-      })
-      const state = await exchange.getState()
-    })
+
     it('Burn all debt', async () => {
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithCollateral({
-        collateralAccount,
+      const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1204,7 +1147,7 @@ describe('exchange', () => {
     it('Burn more than debt - should return rest', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const temp = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1217,7 +1160,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        collateralAccount,
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1274,7 +1217,7 @@ describe('exchange', () => {
         userCollateralTokenAccount,
         usdMintAmount
       } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1299,93 +1242,93 @@ describe('exchange', () => {
         ERRORS.NO_SIGNERS
       )
     })
-    it('Burn wrong token', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        usdTokenAccount,
-        userCollateralTokenAccount,
-        usdMintAmount
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
-      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+    // it('Burn wrong token', async () => {
+    //   const collateralAmount = new BN(1000 * 1e6)
+    //   const {
+    //     accountOwner,
+    //     exchangeAccount,
+    //     usdTokenAccount,
+    //     userCollateralTokenAccount,
+    //     usdMintAmount
+    //   } = await createAccountWithCollateralAndMaxMintUsd({
+    //     reserveAddress: reserveAccount,
+    //     collateralToken,
+    //     exchangeAuthority,
+    //     exchange,
+    //     collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+    //     amount: collateralAmount,
+    //     usdToken
+    //   })
+    //   const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
-      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
-      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
-      const userBtcTokenAccount = await btcToken.getAccountInfo(btcTokenAccount)
-      assert.ok(userBtcTokenAccount.amount.eq(new BN(0)))
+    //   const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+    //   assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+    //   const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+    //   assert.ok(exchangeAccountBefore.debtShares.gt(new BN(0)))
+    //   const userBtcTokenAccount = await btcToken.getAccountInfo(btcTokenAccount)
+    //   assert.ok(userBtcTokenAccount.amount.eq(new BN(0)))
 
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
-      assert.ok(effectiveFee === 300) // discount 0%
-      const assetsListData = await exchange.getAssetsList(assetsList)
+    //   const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+    //   const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
+    //   assert.ok(effectiveFee === 300) // discount 0%
+    //   const assetsListData = await exchange.getAssetsList(assetsList)
 
-      await exchange.swap({
-        amount: usdMintAmount,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccountFor: btcTokenAccount,
-        userTokenAccountIn: usdTokenAccount,
-        tokenFor: btcToken.publicKey,
-        tokenIn: usdToken.publicKey,
-        signers: [accountOwner]
-      })
-      const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
-      const btcAmountOut = calculateAmountAfterFee(
-        assetsListData.assets[0],
-        btcAsset,
-        effectiveFee,
-        usdMintAmount
-      )
-      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
-      assert.ok(userBtcTokenAccountBefore.amount.eq(btcAmountOut))
+    //   await exchange.swap({
+    //     amount: usdMintAmount,
+    //     exchangeAccount,
+    //     owner: accountOwner.publicKey,
+    //     userTokenAccountFor: btcTokenAccount,
+    //     userTokenAccountIn: usdTokenAccount,
+    //     tokenFor: btcToken.publicKey,
+    //     tokenIn: usdToken.publicKey,
+    //     signers: [accountOwner]
+    //   })
+    //   const btcAsset = assetsListData.assets.find((a) => a.assetAddress.equals(btcToken.publicKey))
+    //   const btcAmountOut = calculateAmountAfterFee(
+    //     assetsListData.assets[0],
+    //     btcAsset,
+    //     effectiveFee,
+    //     usdMintAmount
+    //   )
+    //   const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+    //   assert.ok(userBtcTokenAccountBefore.amount.eq(btcAmountOut))
 
-      const burnIx = (await exchange.program.state.instruction.burn(btcAmountOut, {
-        accounts: {
-          exchangeAuthority: exchangeAuthority,
-          usdToken: btcToken.publicKey,
-          userTokenAccountBurn: btcTokenAccount,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          exchangeAccount: exchangeAccount,
-          owner: accountOwner.publicKey,
-          assetsList: exchange.state.assetsList
-        }
-      })) as TransactionInstruction
-      const updateIx = await exchange.updatePricesInstruction(exchange.state.assetsList)
+    //   const burnIx = (await exchange.program.state.instruction.burn(btcAmountOut, {
+    //     accounts: {
+    //       exchangeAuthority: exchangeAuthority,
+    //       usdToken: btcToken.publicKey,
+    //       userTokenAccountBurn: btcTokenAccount,
+    //       tokenProgram: TOKEN_PROGRAM_ID,
+    //       exchangeAccount: exchangeAccount,
+    //       owner: accountOwner.publicKey,
+    //       assetsList: exchange.state.assetsList
+    //     }
+    //   })) as TransactionInstruction
+    //   const updateIx = await exchange.updatePricesInstruction(exchange.state.assetsList)
 
-      const approveIx = Token.createApproveInstruction(
-        TOKEN_PROGRAM_ID,
-        btcTokenAccount,
-        exchange.exchangeAuthority,
-        accountOwner.publicKey,
-        [],
-        tou64(btcAmountOut)
-      )
-      const updateTx = new Transaction().add(updateIx)
-      const burnTx = new Transaction().add(approveIx).add(burnIx)
-      // @ts-expect-error
-      const txs = await exchange.processOperations([updateTx, burnTx])
-      txs[1].partialSign(accountOwner)
-      await connection.sendRawTransaction(txs[0].serialize(), {
-        skipPreflight: true
-      })
-      await sleep(600)
-      await assertThrowsAsync(
-        sendAndConfirmRawTransaction(connection, txs[1].serialize(), {
-          skipPreflight: true
-        })
-      )
-    })
+    //   const approveIx = Token.createApproveInstruction(
+    //     TOKEN_PROGRAM_ID,
+    //     btcTokenAccount,
+    //     exchange.exchangeAuthority,
+    //     accountOwner.publicKey,
+    //     [],
+    //     tou64(btcAmountOut)
+    //   )
+    //   const updateTx = new Transaction().add(updateIx)
+    //   const burnTx = new Transaction().add(approveIx).add(burnIx)
+    //   // @ts-expect-error
+    //   const txs = await exchange.processOperations([updateTx, burnTx])
+    //   txs[1].partialSign(accountOwner)
+    //   await connection.sendRawTransaction(txs[0].serialize(), {
+    //     skipPreflight: true
+    //   })
+    //   await sleep(600)
+    //   await assertThrowsAsync(
+    //     sendAndConfirmRawTransaction(connection, txs[1].serialize(), {
+    //       skipPreflight: true
+    //     })
+    //   )
+    // })
   })
   describe('System Halted', async () => {
     it('#deposit()', async () => {
