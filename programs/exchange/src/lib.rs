@@ -216,73 +216,88 @@ pub mod exchange {
         // version(&self,&ctx.accounts.exchange_account)
         // collateral_account(&self,&ctx.accounts.collateral_account)
         // assets_list(&self,&ctx.accounts.assets_list))]
-        // pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-        //     msg!("Synthetify: WITHDRAW");
+        pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+            msg!("Synthetify: WITHDRAW");
 
-        //     let slot = Clock::get()?.slot;
+            let slot = Clock::get()?.slot;
 
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     let collateral_account = &ctx.accounts.collateral_account;
-        //     let assets_list = &ctx.accounts.assets_list.load_mut()?;
-        //     let assets = &assets_list.assets;
+            let collateral_account = &ctx.accounts.collateral_account;
+            let assets_list = &ctx.accounts.assets_list.load_mut()?;
 
-        //     let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-        //     let user_debt =
-        //         calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            // let assets = &assets_list.assets;
+            let asset = assets_list
+                .assets
+                .iter()
+                .find(|x| {
+                    x.collateral.reserve_address.eq(ctx
+                        .accounts
+                        .to
+                        .to_account_info()
+                        .key)
+                }).unwrap();
 
-        //     // collateral_asset have static index
-        //     let collateral_asset = &assets[1];
+            let mut exchange_account_collateral =
+                exchange_account
+                .collaterals
+                .iter_mut()
+                .find(|x| {
+                    x.collateral_address
+                        .eq(&asset.collateral.collateral_address)
+                }).unwrap();
 
-        //     let collateral_amount = calculate_user_collateral_in_token(
-        //         exchange_account.collateral_shares,
-        //         self.collateral_shares,
-        //         collateral_account.amount,
-        //     );
-        //     let max_user_debt = calculate_max_user_debt_in_usd(
-        //         &collateral_asset,
-        //         self.collateralization_level,
-        //         collateral_amount,
-        //     );
-        //     let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-        //         max_user_debt,
-        //         user_debt,
-        //         self.collateralization_level,
-        //     );
-        //     let max_withdrawable =
-        //         calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+            // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            // let user_debt =
+            //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
 
-        //     if max_withdrawable < amount {
-        //         return Err(ErrorCode::WithdrawLimit.into());
-        //     }
+            // collateral_asset have static index
+            // let collateral_asset = &assets[1];
 
-        //     // Rounding up - collateral is withdrawn in favor of the system
-        //     let shares_to_burn = amount_to_shares_by_rounding_up(
-        //         self.collateral_shares,
-        //         collateral_account.amount,
-        //         amount,
-        //     );
+            let max_user_debt = calculate_max_user_debt_in_usd(
+                &asset,
+                self.collateralization_level,
+                exchange_account_collateral.amount,
+            );
+            let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
+                max_user_debt,
+                user_debt,
+                self.collateralization_level,
+            );
+            let max_withdrawable =
+                calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
 
-        //     // Adjust program and user debt_shares
-        //     self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
-        //     exchange_account.collateral_shares = exchange_account
-        //         .collateral_shares
-        //         .checked_sub(shares_to_burn)
-        //         .unwrap();
+            if max_withdrawable < amount {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
 
-        //     // Send withdrawn collateral to user
-        //     let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-        //     let signer = &[&seeds[..]];
-        //     let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        //     token::transfer(cpi_ctx, amount)?;
+            // Rounding up - collateral is withdrawn in favor of the system
+            // let shares_to_burn = amount_to_shares_by_rounding_up(
+            //     self.collateral_shares,
+            //     collateral_account.amount,
+            //     amount,
+            // );
 
-        //     Ok(())
-        // }
+            // Adjust program and user debt_shares
+            // self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
+            // exchange_account.collateral_shares = exchange_account
+            //     .collateral_shares
+            //     .checked_sub(shares_to_burn)
+            //     .unwrap();
+
+            // Send withdrawn collateral to user
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::transfer(cpi_ctx, amount)?;
+
+            Ok(())
+        }
         // #[access_control(halted(&self)
         // version(&self,&ctx.accounts.exchange_account)
         // collateral_account(&self,&ctx.accounts.collateral_account)
@@ -1207,7 +1222,7 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
-    pub to: AccountInfo<'info>,
+    pub to: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
