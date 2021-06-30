@@ -249,32 +249,30 @@ pub mod exchange {
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
 
-            // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-            // let user_debt =
-            //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+                // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+                // let user_debt =
+                //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+  
+                // collateral_asset have static index
+                // let collateral_asset = &assets[1];
+    
 
-            // collateral_asset have static index
-            // let collateral_asset = &assets[1];
+            // let max_user_debt = math::calculate_max_user_debt_in_usd(
+            //     &asset,
+            //     self.collateralization_level,
+            //     exchange_account_collateral.amount,
+            // );
+            // let max_withdraw_in_usd = math::calculate_max_withdraw_in_usd(
+            //     max_user_debt,
+            //     user_debt,
+            //     self.collateralization_level,
+            // );
+            // let max_withdrawable =
+            //     math::calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
-            /* TODO
-            let max_user_debt = calculate_max_user_debt_in_usd(
-                &asset,
-                self.collateralization_level,
-                exchange_account_collateral.amount,
-            );
-            let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-                max_user_debt,
-                user_debt,
-                self.collateralization_level,
-            );
-            let max_withdrawable =
-                calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
-            */
-
-            //if max_withdrawable < amount {
-            if exchange_account_collateral.amount < amount {
-                return Err(ErrorCode::WithdrawLimit.into());
-            }
+            // if max_withdrawable < amount {
+            //     return Err(ErrorCode::WithdrawLimit.into());
+            // }
 
             // Rounding up - collateral is withdrawn in favor of the system
             // let shares_to_burn = amount_to_shares_by_rounding_up(
@@ -289,6 +287,10 @@ pub mod exchange {
             //     .collateral_shares
             //     .checked_sub(shares_to_burn)
             //     .unwrap();
+
+
+            // Adjust entry amount
+            exchange_account_collateral.amount.checked_sub(amount).unwrap();
 
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
