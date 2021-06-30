@@ -19,7 +19,9 @@ export const tou64 = (amount) => {
   return new u64(amount.toString())
 }
 export const tokenToUsdValue = (amount: BN, asset: Asset) => {
-  return amount.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+  return amount
+    .mul(asset.price)
+    .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -27,7 +29,9 @@ export const sleep = async (ms: number) => {
 export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.assets.reduce((acc, asset) => {
     return acc.add(
-      asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+      asset.synthetic.supply
+        .mul(asset.price)
+        .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -193,10 +197,10 @@ export const newAccountWithLamports = async (connection, lamports = 1e10) => {
 export interface IAccountWithCollateral {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
-  collateralAccount: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
   amount: BN
+  reserveAddress: PublicKey
 }
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
@@ -211,7 +215,7 @@ export const createAccountWithCollateral = async ({
   exchange,
   collateralTokenMintAuthority,
   collateralToken,
-  collateralAccount,
+  reserveAddress,
   exchangeAuthority,
   amount
 }: IAccountWithCollateral) => {
@@ -228,7 +232,8 @@ export const createAccountWithCollateral = async ({
     amount: amount,
     exchangeAccount,
     userCollateralAccount: userCollateralTokenAccount,
-    owner: accountOwner.publicKey
+    owner: accountOwner.publicKey,
+    reserveAddress: reserveAddress
   })
   const approveIx = Token.createApproveInstruction(
     collateralToken.programId,

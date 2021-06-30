@@ -12,11 +12,8 @@ pub mod exchange {
     use pyth::pc::Price;
 
     use crate::math::{
-        amount_to_discount, amount_to_shares_by_rounding_down, amount_to_shares_by_rounding_up,
-        calculate_liquidation, calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_down, calculate_new_shares_by_rounding_up,
-        calculate_user_collateral_in_token, calculate_user_debt_in_usd, usd_to_token_amount,
-        PRICE_OFFSET,
+        calculate_debt, calculate_max_debt_in_usd, calculate_new_shares_by_rounding_up,
+        calculate_user_debt_in_usd, PRICE_OFFSET,
     };
 
     use super::*;
@@ -94,7 +91,7 @@ pub mod exchange {
             msg!("Synthetify: DEPOSIT");
 
             let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-            let assets_list = &mut ctx.accounts.assets_list.load()?;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
             let slot = Clock::get()?.slot;
 
@@ -114,7 +111,7 @@ pub mod exchange {
 
             let asset = assets_list
                 .assets
-                .iter()
+                .iter_mut()
                 .find(|x| {
                     x.collateral.reserve_address.eq(ctx
                         .accounts
@@ -122,6 +119,16 @@ pub mod exchange {
                         .to_account_info()
                         .key)
                 })
+                .unwrap();
+
+            if !asset.collateral.is_collateral {
+                return Err(ErrorCode::NotCollateral.into());
+            }
+
+            asset.collateral.reserve_balance = asset
+                .collateral
+                .reserve_balance
+                .checked_add(amount)
                 .unwrap();
 
             let mut exchange_account_collateral =
@@ -148,70 +155,60 @@ pub mod exchange {
             token::transfer(cpi_ctx, amount)?;
             Ok(())
         }
-        // #[access_control(halted(&self)
-        // version(&self,&ctx.accounts.exchange_account)
-        // usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
-        // collateral_account(&self,&ctx.accounts.collateral_account)
-        // assets_list(&self,&ctx.accounts.assets_list))]
-        // pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
-        //     msg!("Synthetify: MINT");
-        //     let slot = Clock::get()?.slot;
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
+        assets_list(&self,&ctx.accounts.assets_list))]
+        pub fn mint(&mut self, ctx: Context<Mint>, amount: u64) -> Result<()> {
+            msg!("Synthetify: MINT");
+            let slot = Clock::get()?.slot;
 
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     let collateral_account = &ctx.accounts.collateral_account;
-        //     let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        //     let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-        //     let assets = &mut assets_list.assets;
+            let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            let user_debt =
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
-        //     let user_debt =
-        //         calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-        //     // We can only mint xUSD
-        //     // Both xUSD and collateral token have static index in assets array
-        //     let mint_asset = &assets[0];
-        //     let collateral_asset = &assets[1];
-        //     let collateral_amount = calculate_user_collateral_in_token(
-        //         exchange_account.collateral_shares,
-        //         self.collateral_shares,
-        //         collateral_account.amount,
-        //     );
-        //     let max_user_debt = calculate_max_user_debt_in_usd(
-        //         &collateral_asset,
-        //         self.collateralization_level,
-        //         collateral_amount,
-        //     );
-        //     if max_user_debt < amount.checked_add(user_debt).unwrap() {
-        //         return Err(ErrorCode::MintLimit.into());
-        //     }
+            let assets = &mut assets_list.assets;
 
-        //     // Adjust program and user debt_shares
-        //     // Rounding up - debt is created in favor of the system
-        //     let new_shares =
-        //         calculate_new_shares_by_rounding_up(self.debt_shares, total_debt, amount);
-        //     self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
-        //     exchange_account.debt_shares = exchange_account
-        //         .debt_shares
-        //         .checked_add(new_shares)
-        //         .unwrap();
-        //     // Change points for next staking round
-        //     exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
-        //     self.staking.next_round.all_points = self.debt_shares;
+            // We can only mint xUSD
+            // Both xUSD and collateral token have static index in assets array
+            let mint_asset = &assets[0];
 
-        //     let new_supply = mint_asset.supply.checked_add(amount).unwrap();
-        //     set_asset_supply(&mut assets[0], new_supply)?;
-        //     let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-        //     let signer = &[&seeds[..]];
-        //     // Mint xUSD to user
-        //     let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        //     token::mint_to(mint_cpi_ctx, amount)?;
-        //     Ok(())
-        // }
+            if max_debt < amount.checked_add(user_debt).unwrap().into() {
+                return Err(ErrorCode::MintLimit.into());
+            }
+
+            // Adjust program and user debt_shares
+            // Rounding up - debt is created in favor of the system
+            let new_shares =
+                calculate_new_shares_by_rounding_up(self.debt_shares, total_debt, amount);
+            self.debt_shares = self.debt_shares.checked_add(new_shares).unwrap();
+            exchange_account.debt_shares = exchange_account
+                .debt_shares
+                .checked_add(new_shares)
+                .unwrap();
+            // Change points for next staking round
+            exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
+            self.staking.next_round.all_points = self.debt_shares;
+
+            let new_supply = mint_asset.synthetic.supply.checked_add(amount).unwrap();
+            set_asset_supply(&mut assets[0], new_supply)?;
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            // Mint xUSD to user
+            let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::mint_to(mint_cpi_ctx, amount)?;
+            Ok(())
+        }
         // #[access_control(halted(&self)
         // version(&self,&ctx.accounts.exchange_account)
         // collateral_account(&self,&ctx.accounts.collateral_account)
@@ -1072,6 +1069,7 @@ pub mod exchange {
                 collateral_ratio: 10,
                 collateral_address: collateral_token,
                 reserve_balance: 0,
+                decimals: 6,
                 reserve_address: *ctx.accounts.reserve_account.key,
             },
         };
@@ -1080,7 +1078,7 @@ pub mod exchange {
         assets_list.initialized = true;
         Ok(())
     }
-    pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> ProgramResult {
+    pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> Result<()> {
         msg!("SYNTHETIFY: SET ASSETS PRICES");
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         for oracle_account in ctx.remaining_accounts {
@@ -1118,7 +1116,6 @@ pub mod exchange {
                 None => return Err(ErrorCode::NoAssetFound.into()),
             }
         }
-
         Ok(())
     }
 }
@@ -1259,7 +1256,6 @@ pub struct Mint<'info> {
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    pub collateral_account: CpiAccount<'info, TokenAccount>,
 }
 impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
     fn from(accounts: &Mint<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
@@ -1282,6 +1278,7 @@ pub struct Deposit<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     // owner can deposit to any exchange_account
     #[account(signer)]
@@ -1479,6 +1476,7 @@ pub struct Collateral {
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
     pub reserve_balance: u64,       // 8
+    pub decimals: u8,               // 1
     pub collateral_ratio: u8,       // 1 in %
 }
 #[zero_copy]
@@ -1534,6 +1532,8 @@ pub enum ErrorCode {
     NoAssetFound,
     #[msg("Asset max_supply crossed")]
     MaxSupply,
+    #[msg("Asset is not collateral")]
+    NotCollateral,
 }
 
 // Access control modifiers.

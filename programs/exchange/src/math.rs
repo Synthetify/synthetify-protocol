@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{cell::RefMut, convert::TryInto};
 
 use crate::*;
 
@@ -6,27 +6,86 @@ use crate::*;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 
-// pub fn calculate_debt(assets_list: &AssetsList, slot: u64, max_delay: u32) -> Result<u64> {
-//     let mut debt = 0u128;
-//     let assets = assets_list.assets;
-//     let head = assets_list.head as usize;
-//     for asset in assets[..head].iter() {
-//         if asset.last_update < (slot - max_delay as u64) {
-//             return Err(ErrorCode::OutdatedOracle.into());
-//         }
+pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
+    let mut debt = 0u128;
+    let assets = &assets_list.assets;
+    let head = assets_list.head as usize;
+    for asset in assets[..head].iter() {
+        if asset.last_update < (slot - max_delay as u64) {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
 
-//         // rounding up to be sure that debt is not less than minted tokens
-//         debt += div_up(
-//             (asset.price as u128)
-//                 .checked_mul(asset.supply as u128)
-//                 .unwrap(),
-//             10u128
-//                 .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
-//                 .unwrap(),
-//         );
-//     }
-//     Ok(debt as u64)
-// }
+        // rounding up to be sure that debt is not less than minted tokens
+        debt += div_up(
+            (asset.price as u128)
+                .checked_mul(asset.synthetic.supply as u128)
+                .unwrap(),
+            10u128
+                .checked_pow((asset.synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        );
+    }
+    Ok(debt as u64)
+}
+pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
+    let mut max_debt = 0u128;
+    let head = account.head as usize;
+    for collateral_entry in account.collaterals[..head].iter() {
+        let asset = assets_list
+            .assets
+            .iter()
+            .find(|x| {
+                x.collateral
+                    .collateral_address
+                    .eq(&collateral_entry.collateral_address)
+            })
+            .unwrap();
+        // rounding up to be sure that debt is not less than minted tokens
+        max_debt += (asset.price as u128)
+            .checked_mul(collateral_entry.amount as u128)
+            .unwrap()
+            .checked_mul(asset.collateral.collateral_ratio.into())
+            .unwrap()
+            .checked_div(100)
+            .unwrap()
+            .checked_div(
+                10u128
+                    .checked_pow((asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
+                    .unwrap(),
+            )
+            .unwrap();
+    }
+    return max_debt;
+}
+pub fn calculate_collateral(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
+    let mut collateral = 0u128;
+    let assets = assets_list.assets;
+    let head = account.head as usize;
+    for collateral_entry in account.collaterals[..head].iter() {
+        let asset = assets_list
+            .assets
+            .iter()
+            .find(|x| {
+                x.collateral
+                    .reserve_address
+                    .eq(&collateral_entry.collateral_address)
+            })
+            .unwrap();
+        // rounding up to be sure that debt is not less than minted tokens
+        collateral += (asset.price as u128)
+            .checked_mul(collateral_entry.amount as u128)
+            .unwrap()
+            .checked_mul(asset.collateral.collateral_ratio.into())
+            .unwrap()
+            .checked_div(
+                10u128
+                    .checked_pow((asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
+                    .unwrap(),
+            )
+            .unwrap();
+    }
+    return collateral;
+}
 
 pub fn calculate_user_debt_in_usd(
     user_account: &ExchangeAccount,
