@@ -259,6 +259,7 @@ pub mod exchange {
             // collateral_asset have static index
             // let collateral_asset = &assets[1];
 
+            /* TODO
             let max_user_debt = calculate_max_user_debt_in_usd(
                 &asset,
                 self.collateralization_level,
@@ -271,8 +272,10 @@ pub mod exchange {
             );
             let max_withdrawable =
                 calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+            */
 
-            if max_withdrawable < amount {
+            //if max_withdrawable < amount {
+            if exchange_account_collateral.amount < amount {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
 
