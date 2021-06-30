@@ -299,7 +299,7 @@ describe('manager', () => {
       // Check not changed price
       assert.ok(collateralAsset.price.eq(ZERO_U64))
     })
-    it('Should change prices', async () => {
+    it.only('Should change prices', async () => {
       const assetListBefore = await exchange.getAssetsList(assetsList)
       await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 

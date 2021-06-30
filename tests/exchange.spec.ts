@@ -139,7 +139,7 @@ describe('exchange', () => {
     assert.ok(userExchangeAccount.version === 0)
     assert.ok(userExchangeAccount.collaterals.length === 0)
   })
-  describe.only('#deposit()', async () => {
+  describe('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -277,12 +277,8 @@ describe('exchange', () => {
   describe('#mint()', async () => {
     it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithCollateral({
-        collateralAccount,
+      const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -309,7 +305,7 @@ describe('exchange', () => {
 
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListAfter.assets[0].supply.eq(usdMintAmount))
+      assert.ok(assetsListAfter.assets[0].synthetic.supply.eq(usdMintAmount))
 
       // Increase user xusd balance
       const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
@@ -322,7 +318,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        collateralAccount,
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -357,7 +353,9 @@ describe('exchange', () => {
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListAfter.assets[0].supply.eq(assetsListBefore.assets[0].supply.add(usdMintAmount))
+        assetsListAfter.assets[0].synthetic.supply.eq(
+          assetsListBefore.assets[0].synthetic.supply.add(usdMintAmount)
+        )
       )
 
       // Increase user xusd balance
@@ -366,12 +364,8 @@ describe('exchange', () => {
     })
     it('Mint over limit', async () => {
       const collateralAmount = new BN(100 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithCollateral({
-        collateralAccount,
+      const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
         collateralToken,
         exchangeAuthority,
         exchange,

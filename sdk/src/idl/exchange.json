@@ -240,7 +240,7 @@
           },
           {
             "name": "assetsList",
-            "isMut": false,
+            "isMut": true,
             "isSigner": false
           },
           {
@@ -252,6 +252,52 @@
             "name": "exchangeAuthority",
             "isMut": false,
             "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "mint",
+        "accounts": [
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "usdToken",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "to",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
           }
         ],
         "args": [
@@ -730,6 +776,10 @@
             "type": "u64"
           },
           {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
             "name": "collateralRatio",
             "type": "u8"
           }
@@ -870,6 +920,11 @@
       "code": 320,
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
+    },
+    {
+      "code": 321,
+      "name": "NotCollateral",
+      "msg": "Asset is not collateral"
     }
   ]
 }
