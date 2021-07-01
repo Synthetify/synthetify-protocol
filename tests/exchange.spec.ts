@@ -530,33 +530,34 @@ describe('exchange', () => {
       )
       assert.ok(exchangeAccountAfter.collaterals[0].amount.eq(new BN(0)))
     })
-  //   it('withdraw over limit', async () => {
-  //     const collateralAmount = new BN(100 * 1e6)
-  //     const {
-  //       accountOwner,
-  //       exchangeAccount,
-  //       userCollateralTokenAccount
-  //     } = await createAccountWithCollateral({
-  //       collateralAccount,
-  //       collateralToken,
-  //       exchangeAuthority,
-  //       exchange,
-  //       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-  //       amount: collateralAmount
-  //     })
+    it('withdraw over limit', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
 
-  //     const withdrawAmount = collateralAmount.add(new BN(1000000))
-  //     await assertThrowsAsync(
-  //       exchange.withdraw({
-  //         amount: withdrawAmount,
-  //         exchangeAccount,
-  //         owner: accountOwner.publicKey,
-  //         to: userCollateralTokenAccount,
-  //         signers: [accountOwner]
-  //       }),
-  //       ERRORS_EXCHANGE.WITHDRAW_LIMIT
-  //     )
-  //   })
+      const withdrawAmount = collateralAmount.add(new BN(1000000))
+      await assertThrowsAsync(
+        exchange.withdraw({
+          reserveAccount,
+          amount: withdrawAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userCollateralAccount: userCollateralTokenAccount,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.WITHDRAW_LIMIT
+      )
+    })
   //   it('withdraw with debt', async () => {
   //     const collateralAmount = new BN(100 * 1e6)
   //     const {

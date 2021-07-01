@@ -245,12 +245,7 @@ pub mod exchange {
                         .key)
                 }).unwrap();
 
-            // Update reserve balance in AssetList
-            asset.collateral.reserve_balance = asset
-                .collateral
-                .reserve_balance
-                .checked_sub(amount)
-                .unwrap();
+
 
 
             // Update on exchange account
@@ -263,8 +258,22 @@ pub mod exchange {
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
 
+
+            // Check if not overdrafted
+            if amount > exchange_account_collateral.amount {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
+
+            // Update balance on exchange account
             exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
 
+            // Update reserve balance in AssetList
+            asset.collateral.reserve_balance = asset
+            .collateral
+            .reserve_balance
+            .checked_sub(amount)
+            .unwrap();
+        
 
 
             // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
@@ -288,9 +297,8 @@ pub mod exchange {
             // let max_withdrawable =
             //     math::calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
-            // if max_withdrawable < amount {
-            //     return Err(ErrorCode::WithdrawLimit.into());
-            // }
+//            if max_withdrawable < amount {
+
 
             // Rounding up - collateral is withdrawn in favor of the system
             // let shares_to_burn = amount_to_shares_by_rounding_up(
