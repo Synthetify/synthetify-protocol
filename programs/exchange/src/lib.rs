@@ -237,28 +237,29 @@ pub mod exchange {
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
-            let asset = assets_list
+            let user_debt =
+            calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+        
+            let asset = match assets_list
                 .assets
                 .iter_mut()
                 .find(|x| {
-                    x.collateral.reserve_address.eq(ctx
-                        .accounts
-                        .reserve_account
-                        .to_account_info()
-                        .key)
-                }).unwrap();
+                    x.synthetic.asset_address.eq(&user_collateral_account.mint)
+                }) {
+                    Some(v) => v,
+                    None => return Err(ErrorCode::NoAssetFound.into()),
+                };
 
-            let user_debt =
-                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-            
+                
+          
             let mut exchange_account_collateral =
-            exchange_account
-            .collaterals
-            .iter_mut()
-            .find(|x| {
-                x.collateral_address
-                .eq(&asset.collateral.collateral_address)
-            }).unwrap();
+                exchange_account
+                .collaterals
+                .iter_mut()
+                .find(|x| {
+                    x.collateral_address
+                    .eq(&asset.collateral.collateral_address)
+                }).unwrap();
         
             // Check if not overdrafing
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
