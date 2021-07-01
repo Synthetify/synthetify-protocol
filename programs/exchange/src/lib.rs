@@ -12,7 +12,7 @@ pub mod exchange {
     use pyth::pc::Price;
 
     use crate::math::{
-        calculate_debt, calculate_max_debt_in_usd, calculate_max_user_debt_in_usd, calculate_max_withdrawable, 
+        calculate_debt, calculate_max_debt_in_usd, calculate_max_withdrawable, 
         calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up, amount_to_discount,
         calculate_burned_shares, calculate_max_burned_in_xusd, calculate_swap_out_amount, calculate_user_debt_in_usd, 
         PRICE_OFFSET,
@@ -236,37 +236,33 @@ pub mod exchange {
             // Calculate debt
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
             let asset = assets_list
-            .assets
-            .iter_mut()
-            .find(|x| {
-                x.collateral.reserve_address.eq(ctx
-                    .accounts
-                    .reserve_account
-                    .to_account_info()
-                    .key)
-            }).unwrap();
+                .assets
+                .iter_mut()
+                .find(|x| {
+                    x.collateral.reserve_address.eq(ctx
+                        .accounts
+                        .reserve_account
+                        .to_account_info()
+                        .key)
+                }).unwrap();
 
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
             
             let mut exchange_account_collateral =
-                exchange_account
-                .collaterals
-                .iter_mut()
-                .find(|x| {
-                    x.collateral_address
-                        .eq(&asset.collateral.collateral_address)
-                }).unwrap();
-            let max_user_debt = calculate_max_user_debt_in_usd(
-                &asset,
-                self.collateralization_level,
-                exchange_account_collateral.amount,
-            );
-            
+            exchange_account
+            .collaterals
+            .iter_mut()
+            .find(|x| {
+                x.collateral_address
+                .eq(&asset.collateral.collateral_address)
+            }).unwrap();
+        
             // Check if not overdrafing
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-                max_user_debt,
+                max_debt as u64,
                 user_debt,
                 self.collateralization_level,
             );

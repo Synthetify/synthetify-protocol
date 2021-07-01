@@ -118,28 +118,29 @@ pub fn calculate_user_debt_in_usd(
 //     return mint_amount_in_usd as u64;
 // }
 
-pub fn calculate_max_user_debt_in_usd(
-    collateral_asset: &Asset,
-    collateralization_level: u32,
-    collateral_amount: u64,
-) -> u64 {
-    let user_max_debt = (collateral_asset.price as u128)
-        .checked_mul(collateral_amount as u128)
-        .unwrap()
-        .checked_div(
-            10u128
-                .checked_pow((collateral_asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        )
-        .unwrap();
-    return (user_max_debt
-        .checked_mul(100)
-        .unwrap()
-        .checked_div(collateralization_level as u128)
-        .unwrap())
-    .try_into()
-    .unwrap();
-}
+// Replaced by calculate_max_debt_in_usd()
+// pub fn calculate_max_user_debt_in_usd(
+//     collateral_asset: &Asset,
+//     collateralization_level: u32,
+//     collateral_amount: u64,
+// ) -> u64 {
+//     let user_max_debt = (collateral_asset.price as u128)
+//         .checked_mul(collateral_amount as u128)
+//         .unwrap()
+//         .checked_div(
+//             10u128
+//                 .checked_pow((collateral_asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
+//                 .unwrap(),
+//         )
+//         .unwrap();
+//     return (user_max_debt
+//         .checked_mul(100)
+//         .unwrap()
+//         .checked_div(collateralization_level as u128)
+//         .unwrap())
+//     .try_into()
+//     .unwrap();
+// }
 pub fn calculate_new_shares_by_rounding_down(
     all_shares: u64,
     full_amount: u64,
