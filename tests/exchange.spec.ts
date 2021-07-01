@@ -463,13 +463,19 @@ describe('exchange', () => {
       //   )
       // )
 
-      // const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-
       // assert.ok(
-      //   exchangeAccountAfter.collateralShares.eq(
-      //     exchangeAccountBefore.collateralShares.sub(burned_shares)
+      //   exchangeStateAfter.collaterals claa.eq(
+      //     exchangeStateBefore.collateralShares.sub(burned_shares)
       //   )
       // )
+
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+
+      assert.ok(
+        exchangeAccountAfter.collaterals[0].amount.eq(
+          exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
+        )
+      )
     })
   //   it('withdraw fully', async () => {
   //     const collateralAmount = new BN(100 * 1e6)

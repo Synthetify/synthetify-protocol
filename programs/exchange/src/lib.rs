@@ -232,10 +232,8 @@ pub mod exchange {
                 return Err(ErrorCode::InvalidSigner.into());
             }
 
-            let collateral_account = &ctx.accounts.reserve_account;
+            // Select withdrawed asset
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-
-            // let assets = &assets_list.assets;
             let asset = assets_list
                 .assets
                 .iter_mut()
@@ -247,6 +245,15 @@ pub mod exchange {
                         .key)
                 }).unwrap();
 
+            // Update reserve balance in AssetList
+            asset.collateral.reserve_balance = asset
+                .collateral
+                .reserve_balance
+                .checked_sub(amount)
+                .unwrap();
+
+
+            // Update on exchange account
             let mut exchange_account_collateral =
                 exchange_account
                 .collaterals
@@ -256,15 +263,16 @@ pub mod exchange {
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
 
+            exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
 
 
 
-                // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-                // let user_debt =
-                //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-  
-                // collateral_asset have static index
-                // let collateral_asset = &assets[1];
+            // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            // let user_debt =
+            //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+
+            // collateral_asset have static index
+            // let collateral_asset = &assets[1];
     
 
             // let max_user_debt = math::calculate_max_user_debt_in_usd(
@@ -302,11 +310,7 @@ pub mod exchange {
             // Adjust entry amount
             // exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
             // exchange_account_collateral.amount = 0;
-            asset.collateral.reserve_balance = asset
-                .collateral
-                .reserve_balance
-                .checked_sub(amount)
-                .unwrap();
+
 
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
