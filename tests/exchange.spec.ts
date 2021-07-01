@@ -1350,7 +1350,7 @@ describe('exchange', () => {
     //   )
     // })
   })
-  describe('System Halted', async () => {
+  describe.only('System Halted', async () => {
     it('#deposit()', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -1362,6 +1362,7 @@ describe('exchange', () => {
         amount,
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
+        reserveAddress: reserveAccount,
         owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
