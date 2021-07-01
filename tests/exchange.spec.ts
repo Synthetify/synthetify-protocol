@@ -558,43 +558,44 @@ describe('exchange', () => {
         ERRORS_EXCHANGE.WITHDRAW_LIMIT
       )
     })
-  //   it('withdraw with debt', async () => {
-  //     const collateralAmount = new BN(100 * 1e6)
-  //     const {
-  //       accountOwner,
-  //       exchangeAccount,
-  //       userCollateralTokenAccount
-  //     } = await createAccountWithCollateral({
-  //       collateralAccount,
-  //       collateralToken,
-  //       exchangeAuthority,
-  //       exchange,
-  //       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-  //       amount: collateralAmount
-  //     })
+    it('withdraw with debt', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
 
-  //     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-  //     const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
-  //       userCollateralTokenAccount
-  //     )
-  //     assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
-  //     // We can mint max 20 * 1e6
-  //     const usdMintAmount = new BN(10 * 1e6)
-  //     await exchange.mint({
-  //       amount: usdMintAmount,
-  //       exchangeAccount,
-  //       owner: accountOwner.publicKey,
-  //       to: usdTokenAccount,
-  //       signers: [accountOwner]
-  //     })
-  //     const withdrawAmount = new BN(50 * 1e6)
-  //     await exchange.withdraw({
-  //       amount: withdrawAmount,
-  //       exchangeAccount,
-  //       owner: accountOwner.publicKey,
-  //       to: userCollateralTokenAccount,
-  //       signers: [accountOwner]
-  //     })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      // We can mint max 20 * 1e6
+      const usdMintAmount = new BN(10 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+      const withdrawAmount = new BN(50 * 1e6)
+      // await exchange.withdraw({
+      //   reserveAccount,
+      //   amount: withdrawAmount,
+      //   exchangeAccount,
+      //   owner: accountOwner.publicKey,
+      //   userCollateralAccount: userCollateralTokenAccount,
+      //   signers: [accountOwner]
+      // })
   //     const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
   //       userCollateralTokenAccount
   //     )
@@ -610,7 +611,7 @@ describe('exchange', () => {
   //       }),
   //       ERRORS_EXCHANGE.WITHDRAW_LIMIT
   //     )
-  //   })
+    })
   })
   describe('#swap()', async () => {
     let btcToken: Token
