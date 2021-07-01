@@ -96,6 +96,19 @@ pub fn set_asset_supply(asset: &mut Asset, new_supply: u64) -> ProgramResult {
     asset.synthetic.supply = new_supply;
     Ok(())
 }
+pub fn get_user_sny_collateral_balance(
+    exchange_account: &ExchangeAccount,
+    sny_asset: &Asset,
+) -> u64 {
+    let entry = exchange_account.collaterals.iter().find(|x| {
+        x.collateral_address
+            .eq(&sny_asset.collateral.collateral_address)
+    });
+    match entry {
+        Some(x) => return x.amount,
+        None => return 0,
+    }
+}
 
 #[cfg(test)]
 mod tests {

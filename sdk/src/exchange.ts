@@ -118,26 +118,20 @@ export class Exchange {
     account.collaterals = account.collaterals.slice(0, account.head)
     return account
   }
-  // public async getUserCollateralBalance(exchangeAccount: PublicKey) {
-  //   const userAccount = (await this.program.account.exchangeAccount.fetch(
-  //     exchangeAccount
-  //   )) as ExchangeAccount
-  //   if (userAccount.collateralShares.eq(new BN(0))) {
-  //     return new BN(0)
-  //   }
-  //   const state = await this.getState()
-  //   const collateralToken = new Token(
-  //     this.connection,
-  //     this.assetsList.assets[1].collateral.collateralAddress,
-  //     TOKEN_PROGRAM_ID,
-  //     new Account()
-  //   )
-  //   // const exchangeCollateralInfo = await collateralToken.getAccountInfo(state.collateralAccount)
-  //   // return userAccount.collateralShares
-  //   //   .mul(new BN(exchangeCollateralInfo.amount.toString()))
-  //   //   .div(state.collateralShares)
-  //   return new BN(0)
-  // }
+  public async getUserCollateralBalance(exchangeAccount: PublicKey) {
+    const userAccount = (await this.program.account.exchangeAccount.fetch(
+      exchangeAccount
+    )) as ExchangeAccount
+    const snyAsset = this.assetsList.assets[1]
+    const collateralEntry = userAccount.collaterals.find((entry) =>
+      entry.collateralAddress.equals(snyAsset.collateral.collateralAddress)
+    )
+    if (collateralEntry) {
+      return collateralEntry.amount
+    } else {
+      return new BN(0)
+    }
+  }
   // public async getUserDebtBalance(exchangeAccount: PublicKey) {
   //   const userAccount = (await this.program.account.exchangeAccount.fetch(
   //     exchangeAccount
@@ -231,14 +225,15 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+
   public async swapInstruction({
     amount,
-    exchangeAccount,
     owner,
     tokenFor,
     tokenIn,
     userTokenAccountFor,
-    userTokenAccountIn
+    userTokenAccountIn,
+    exchangeAccount
   }: SwapInstruction) {
     return await (this.program.state.instruction.swap(amount, {
       accounts: {
@@ -283,7 +278,7 @@ export class Exchange {
     return await (this.program.state.instruction.burn(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
+        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
@@ -440,13 +435,13 @@ export class Exchange {
   }
   public async swap({
     amount,
-    exchangeAccount,
     owner,
     tokenFor,
     tokenIn,
     userTokenAccountFor,
     userTokenAccountIn,
-    signers
+    signers,
+    exchangeAccount
   }: Swap) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const swapIx = await this.swapInstruction({

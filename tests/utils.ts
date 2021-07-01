@@ -57,7 +57,7 @@ export const calculateAmountAfterFee = (
   amount: BN
 ) => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  const decimal_change = 10 ** (assetFor.decimals - assetIn.decimals)
+  const decimal_change = 10 ** (assetFor.synthetic.decimals - assetIn.synthetic.decimals)
   if (decimal_change < 1) {
     return amountOutBeforeFee
       .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
@@ -205,11 +205,11 @@ export interface IAccountWithCollateral {
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
-  collateralAccount: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
   usdToken: Token
   amount: BN
+  reserveAddress: PublicKey
 }
 export const createAccountWithCollateral = async ({
   exchange,
@@ -255,10 +255,10 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   exchange,
   collateralTokenMintAuthority,
   collateralToken,
-  collateralAccount,
   exchangeAuthority,
   amount,
-  usdToken
+  usdToken,
+  reserveAddress
 }: IAccountWithCollateralandMint) => {
   const {
     accountOwner,
@@ -266,7 +266,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     userCollateralTokenAccount
   } = await createAccountWithCollateral({
     amount,
-    collateralAccount,
+    reserveAddress,
     collateralToken,
     collateralTokenMintAuthority,
     exchange,
