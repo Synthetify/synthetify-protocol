@@ -993,6 +993,46 @@ pub mod exchange {
             }
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
+        pub fn set_is_collateral(
+            &mut self,
+            ctx: Context<SetIsCollateral>,
+            asset_address: Pubkey,
+            reserve_address: Pubkey,
+            reserve_balance: u64,
+            decimals: u8,
+            collateral_ratio
+        ) -> Result<()> {
+            let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+            let asset = assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.synthetic.asset_address == asset_address);
+
+            match asset {
+                Some(asset) => {
+                    asset.collateral.is_collateral = true;
+                    asset.collateral.collateral_address = asset_address;
+                    asset.collateral.reserve_address = reserve_address;
+                    asset.collateral.reserve_address = reserve_address;
+
+
+                },
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            }
+            Ok(())
+            /*
+            pub struct Collateral {
+                pub is_collateral: bool,        // 1
+                pub collateral_address: Pubkey, // 32
+                pub reserve_address: Pubkey,    // 32
+                pub reserve_balance: u64,       // 8
+                pub decimals: u8,               // 1
+                pub collateral_ratio: u8,       // 1 in %
+            } */
+        }
+
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
@@ -1159,6 +1199,13 @@ pub struct SetPriceFeed<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub price_feed: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetIsCollateral<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct New<'info> {
