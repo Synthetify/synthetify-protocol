@@ -458,68 +458,78 @@ describe('exchange', () => {
         )
       )
     })
-  //   it('withdraw fully', async () => {
-  //     const collateralAmount = new BN(100 * 1e6)
-  //     const {
-  //       accountOwner,
-  //       exchangeAccount,
-  //       userCollateralTokenAccount
-  //     } = await createAccountWithCollateral({
-  //       collateralAccount,
-  //       collateralToken,
-  //       exchangeAuthority,
-  //       exchange,
-  //       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-  //       amount: collateralAmount
-  //     })
+    it('withdraw fully', async () => {
+      const collateralAmount = new BN(100 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithCollateral({
+        reserveAddress: reserveAccount,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
 
-  //     const exchangeStateBefore = await exchange.getState()
+      // Get data before
+      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
 
-  //     const exchangeCollateralBalanceBefore = (
-  //       await collateralToken.getAccountInfo(collateralAccount)
-  //     ).amount
+      const exchangeCollateralBalanceBefore = (
+        await collateralToken.getAccountInfo(reserveAccount)
+      ).amount
 
-  //     const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
-  //       userCollateralTokenAccount
-  //     )
-  //     assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
-  //     const withdrawAmount = collateralAmount
-  //     await exchange.withdraw({
-  //       amount: withdrawAmount,
-  //       exchangeAccount,
-  //       owner: accountOwner.publicKey,
-  //       to: userCollateralTokenAccount,
-  //       signers: [accountOwner]
-  //     })
-  //     // amount_to_shares amount * all_shares  / full_amount ;
-  //     const burned_shares = withdrawAmount
-  //       .mul(exchangeStateBefore.collateralShares)
-  //       .div(exchangeCollateralBalanceBefore)
+      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      const assetListDataBefore = await exchange.getAssetsList(assetsList)
 
-  //     const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
-  //       userCollateralTokenAccount
-  //     )
-  //     assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
 
-  //     const exchangeCollateralBalanceAfter = (
-  //       await collateralToken.getAccountInfo(collateralAccount)
-  //     ).amount
+      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+      const withdrawAmount = collateralAmount
 
-  //     assert.ok(
-  //       exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
-  //     )
+      await exchange.withdraw({
+        reserveAccount,
+        amount: withdrawAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userCollateralAccount: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
 
-  //     const exchangeStateAfter = await exchange.getState()
+      // Adding tokens to account on token
+      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
 
-  //     assert.ok(
-  //       exchangeStateAfter.collateralShares.eq(
-  //         exchangeStateBefore.collateralShares.sub(burned_shares)
-  //       )
-  //     )
+      // Removing tokens from reserves
+      const exchangeCollateralBalanceAfter = (
+        await collateralToken.getAccountInfo(reserveAccount)
+      ).amount
+      assert.ok(
+        exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
+      )
 
-  //     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-  //     assert.ok(exchangeAccountAfter.collateralShares.eq(new BN(0)))
-  //   })
+      // Updating amount in assetList
+      const assetListDataAfter = await exchange.getAssetsList(assetsList)
+      assert.ok(
+        assetListDataBefore.assets[1].collateral.reserveBalance
+          .sub(assetListDataAfter.assets[1].collateral.reserveBalance)
+          .eq(withdrawAmount)
+      )
+
+      // Updating exchange account check
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(
+        exchangeAccountAfter.collaterals[0].amount.eq(
+          exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
+        )
+      )
+      assert.ok(exchangeAccountAfter.collaterals[0].amount.eq(new BN(0)))
+    })
   //   it('withdraw over limit', async () => {
   //     const collateralAmount = new BN(100 * 1e6)
   //     const {
