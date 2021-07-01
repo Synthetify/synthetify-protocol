@@ -210,10 +210,9 @@ pub mod exchange {
             token::mint_to(mint_cpi_ctx, amount)?;
             Ok(())
         }
-        // #[access_control(halted(&self)
-        // version(&self,&ctx.accounts.exchange_account)
-        // collateral_account(&self,&ctx.accounts.collateral_account)
-        // assets_list(&self,&ctx.accounts.assets_list))]
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
         pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
             msg!("Synthetify: WITHDRAW");
 
