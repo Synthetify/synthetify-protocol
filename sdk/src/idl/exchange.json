@@ -308,6 +308,62 @@
         ]
       },
       {
+        "name": "swap",
+        "accounts": [
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenIn",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenFor",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccountIn",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccountFor",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
         "name": "burn",
         "accounts": [
           {
@@ -974,6 +1030,6 @@
     }
   ],
   "metadata": {
-    "address": "7kPM5jYJZA3Q5GM2tY4As58pm8HBcYxdJAxsjpsEsdvn"
+    "address": "3bxtWhNADLNGncVxKubSU7Mipm1RaX2EBH9x3Jbe3BEM"
   }
 }

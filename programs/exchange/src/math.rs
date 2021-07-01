@@ -252,38 +252,39 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return discount as u8;
     }
 }
-// pub fn calculate_swap_out_amount(
-//     asset_in: &Asset,
-//     asset_for: &Asset,
-//     amount: u64,
-//     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-// ) -> u64 {
-//     let amount_before_fee = (asset_in.price as u128)
-//         .checked_mul(amount as u128)
-//         .unwrap()
-//         .checked_div(asset_for.price as u128)
-//         .unwrap();
-//     let amount = amount_before_fee
-//         .checked_sub(
-//             amount_before_fee
-//                 .checked_mul(fee as u128)
-//                 .unwrap()
-//                 .checked_div(100000)
-//                 .unwrap(),
-//         )
-//         .unwrap();
-//     // If assets have different decimals we need to scale them.
-//     let decimal_difference = asset_for.decimals as i32 - asset_in.decimals as i32;
-//     if decimal_difference < 0 {
-//         let decimal_change = 10u128.pow((-decimal_difference) as u32);
-//         let scaled_amount = amount.checked_div(decimal_change).unwrap();
-//         return scaled_amount.try_into().unwrap();
-//     } else {
-//         let decimal_change = 10u128.pow(decimal_difference as u32);
-//         let scaled_amount = amount.checked_mul(decimal_change).unwrap();
-//         return scaled_amount.try_into().unwrap();
-//     }
-// }
+pub fn calculate_swap_out_amount(
+    asset_in: &Asset,
+    asset_for: &Asset,
+    amount: u64,
+    fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
+) -> u64 {
+    let amount_before_fee = (asset_in.price as u128)
+        .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(asset_for.price as u128)
+        .unwrap();
+    let amount = amount_before_fee
+        .checked_sub(
+            amount_before_fee
+                .checked_mul(fee as u128)
+                .unwrap()
+                .checked_div(100000)
+                .unwrap(),
+        )
+        .unwrap();
+    // If assets have different decimals we need to scale them.
+    let decimal_difference =
+        asset_for.synthetic.decimals as i32 - asset_in.synthetic.decimals as i32;
+    if decimal_difference < 0 {
+        let decimal_change = 10u128.pow((-decimal_difference) as u32);
+        let scaled_amount = amount.checked_div(decimal_change).unwrap();
+        return scaled_amount.try_into().unwrap();
+    } else {
+        let decimal_change = 10u128.pow(decimal_difference as u32);
+        let scaled_amount = amount.checked_mul(decimal_change).unwrap();
+        return scaled_amount.try_into().unwrap();
+    }
+}
 pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, amount: u64) -> u64 {
     if all_debt == 0 {
         return 0u64;
