@@ -12,7 +12,8 @@ pub mod exchange {
     use pyth::pc::Price;
 
     use crate::math::{
-        calculate_debt, calculate_max_debt_in_usd, calculate_new_shares_by_rounding_up,
+        calculate_debt, calculate_max_debt_in_usd, calculate_max_user_debt_in_usd, calculate_max_withdrawable, 
+        calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
         calculate_user_debt_in_usd, PRICE_OFFSET,
     };
 
@@ -131,7 +132,7 @@ pub mod exchange {
                 .checked_add(amount)
                 .unwrap();
 
-            let mut exchange_account_collateral =
+            let exchange_account_collateral =
                 exchange_account.collaterals.iter_mut().find(|x| {
                     x.collateral_address
                         .eq(&asset.collateral.collateral_address)
@@ -257,20 +258,20 @@ pub mod exchange {
                     x.collateral_address
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
-            let max_user_debt = math::calculate_max_user_debt_in_usd(
+            let max_user_debt = calculate_max_user_debt_in_usd(
                 &asset,
                 self.collateralization_level,
                 exchange_account_collateral.amount,
             );
             
-            // Check if not overdrafted
-            let max_withdraw_in_usd = math::calculate_max_withdraw_in_usd(
+            // Check if not overdrafing
+            let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
                 max_user_debt,
                 user_debt,
                 self.collateralization_level,
             );
             let max_withdrawable =
-                math::calculate_max_withdrawable(asset, max_withdraw_in_usd);
+                calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
             if amount > max_withdrawable {
                 return Err(ErrorCode::WithdrawLimit.into());

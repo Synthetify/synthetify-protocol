@@ -404,7 +404,7 @@ describe('exchange', () => {
         amount: collateralAmount
       })
 
-      // Get data before
+      // Get data before withdraw
       const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
 
       const exchangeCollateralBalanceBefore = (
@@ -434,7 +434,7 @@ describe('exchange', () => {
       )
       assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
 
-      // Removing tokens from reserves
+      // Removing tokens from reserves check
       const exchangeCollateralBalanceAfter = (
         await collateralToken.getAccountInfo(reserveAccount)
       ).amount
@@ -442,7 +442,7 @@ describe('exchange', () => {
         exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
       )
 
-      // Updating amount in assetList
+      // Updating amount in assetList check
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
         assetListDataBefore.assets[1].collateral.reserveBalance
@@ -486,10 +486,10 @@ describe('exchange', () => {
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
       const assetListDataBefore = await exchange.getAssetsList(assetsList)
 
-
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
       const withdrawAmount = collateralAmount
 
+      // Withdraw
       await exchange.withdraw({
         reserveAccount,
         amount: withdrawAmount,
@@ -545,6 +545,7 @@ describe('exchange', () => {
         amount: collateralAmount
       })
 
+      // Withdraw over limit
       const withdrawAmount = collateralAmount.add(new BN(1000000))
       await assertThrowsAsync(
         exchange.withdraw({
@@ -578,6 +579,7 @@ describe('exchange', () => {
         userCollateralTokenAccount
       )
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+
       // We can mint max 20 * 1e6
       const usdMintAmount = new BN(10 * 1e6)
       await exchange.mint({
@@ -587,6 +589,8 @@ describe('exchange', () => {
         to: usdTokenAccount,
         signers: [accountOwner]
       })
+
+      // Withdraw
       const withdrawAmount = new BN(50 * 1e6)
       await exchange.withdraw({
         reserveAccount,
@@ -600,6 +604,7 @@ describe('exchange', () => {
         userCollateralTokenAccount
       )
       assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+     
       // We cant withdraw anymore
       await assertThrowsAsync(
         exchange.withdraw({
