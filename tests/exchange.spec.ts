@@ -588,29 +588,30 @@ describe('exchange', () => {
         signers: [accountOwner]
       })
       const withdrawAmount = new BN(50 * 1e6)
-      // await exchange.withdraw({
-      //   reserveAccount,
-      //   amount: withdrawAmount,
-      //   exchangeAccount,
-      //   owner: accountOwner.publicKey,
-      //   userCollateralAccount: userCollateralTokenAccount,
-      //   signers: [accountOwner]
-      // })
-  //     const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
-  //       userCollateralTokenAccount
-  //     )
-  //     assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
-  //     // We cant withdraw anymore
-  //     await assertThrowsAsync(
-  //       exchange.withdraw({
-  //         amount: new BN(1),
-  //         exchangeAccount,
-  //         owner: accountOwner.publicKey,
-  //         to: userCollateralTokenAccount,
-  //         signers: [accountOwner]
-  //       }),
-  //       ERRORS_EXCHANGE.WITHDRAW_LIMIT
-  //     )
+      await exchange.withdraw({
+        reserveAccount,
+        amount: withdrawAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userCollateralAccount: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
+      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+        userCollateralTokenAccount
+      )
+      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+      // We cant withdraw anymore
+      await assertThrowsAsync(
+        exchange.withdraw({
+          reserveAccount,
+          amount: withdrawAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userCollateralAccount: userCollateralTokenAccount,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.WITHDRAW_LIMIT
+      )
     })
   })
   describe('#swap()', async () => {

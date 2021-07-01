@@ -221,34 +221,34 @@ pub mod exchange {
             // Adjust staking round
             adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             // adjust current staking points for exchange account
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
             adjust_staking_account(exchange_account, &self.staking);
 
+            // Check signer
             let user_collateral_account = &mut ctx.accounts.user_collateral_account;
             let tx_signer = ctx.accounts.owner.key;
-            // Signer need to be owner of source account
             if !tx_signer.eq(&user_collateral_account.owner) {
                 return Err(ErrorCode::InvalidSigner.into());
             }
 
-            // Select withdrawed asset
+            // Calculate debt
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+            let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let asset = assets_list
-                .assets
-                .iter_mut()
-                .find(|x| {
-                    x.collateral.reserve_address.eq(ctx
-                        .accounts
-                        .reserve_account
-                        .to_account_info()
-                        .key)
-                }).unwrap();
+            .assets
+            .iter_mut()
+            .find(|x| {
+                x.collateral.reserve_address.eq(ctx
+                    .accounts
+                    .reserve_account
+                    .to_account_info()
+                    .key)
+            }).unwrap();
 
-
-
-
-            // Update on exchange account
+            let user_debt =
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            
             let mut exchange_account_collateral =
                 exchange_account
                 .collaterals
@@ -257,10 +257,22 @@ pub mod exchange {
                     x.collateral_address
                         .eq(&asset.collateral.collateral_address)
                 }).unwrap();
-
-
+            let max_user_debt = math::calculate_max_user_debt_in_usd(
+                &asset,
+                self.collateralization_level,
+                exchange_account_collateral.amount,
+            );
+            
             // Check if not overdrafted
-            if amount > exchange_account_collateral.amount {
+            let max_withdraw_in_usd = math::calculate_max_withdraw_in_usd(
+                max_user_debt,
+                user_debt,
+                self.collateralization_level,
+            );
+            let max_withdrawable =
+                math::calculate_max_withdrawable(asset, max_withdraw_in_usd);
+
+            if amount > max_withdrawable {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
 
@@ -273,52 +285,6 @@ pub mod exchange {
             .reserve_balance
             .checked_sub(amount)
             .unwrap();
-        
-
-
-            // let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-            // let user_debt =
-            //     calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-
-            // collateral_asset have static index
-            // let collateral_asset = &assets[1];
-    
-
-            // let max_user_debt = math::calculate_max_user_debt_in_usd(
-            //     &asset,
-            //     self.collateralization_level,
-            //     exchange_account_collateral.amount,
-            // );
-            // let max_withdraw_in_usd = math::calculate_max_withdraw_in_usd(
-            //     max_user_debt,
-            //     user_debt,
-            //     self.collateralization_level,
-            // );
-            // let max_withdrawable =
-            //     math::calculate_max_withdrawable(asset, max_withdraw_in_usd);
-
-//            if max_withdrawable < amount {
-
-
-            // Rounding up - collateral is withdrawn in favor of the system
-            // let shares_to_burn = amount_to_shares_by_rounding_up(
-            //     self.collateral_shares,
-            //     collateral_account.amount,
-            //     amount,
-            // );
-
-            // Adjust program and user debt_shares
-            // self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
-            // exchange_account.collateral_shares = exchange_account
-            //     .collateral_shares
-            //     .checked_sub(shares_to_burn)
-            //     .unwrap();
-
-
-            // Adjust entry amount
-            // exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
-            // exchange_account_collateral.amount = 0;
-
 
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
