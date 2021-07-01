@@ -404,7 +404,7 @@ describe('exchange', () => {
         amount: collateralAmount
       })
 
-      const exchangeStateBefore = await exchange.getState()
+      // Get data before
       const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
 
       const exchangeCollateralBalanceBefore = (
@@ -418,6 +418,7 @@ describe('exchange', () => {
       const withdrawAmount = new BN(20 * 1e6)
       const assetListDataBefore = await exchange.getAssetsList(assetsList)
       
+      // Withdraw
       await exchange.withdraw({
         reserveAccount,
         amount: withdrawAmount,
@@ -426,17 +427,12 @@ describe('exchange', () => {
         userCollateralAccount: userCollateralTokenAccount,
         signers: [accountOwner]
       })
-      // amount_to_shares amount * all_shares  / full_amount ;
-      // const burned_shares = withdrawAmount
-      //   .mul(exchangeStateBefore.collateralShares)
-      //   .div(exchangeCollateralBalanceBefore)
 
+      // Adding tokens to account on token
       const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
         userCollateralTokenAccount
       )
-      // Adding tokens to account on token
       assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
-
 
       // Removing tokens from reserves
       const exchangeCollateralBalanceAfter = (
@@ -446,31 +442,16 @@ describe('exchange', () => {
         exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
       )
 
-      const exchangeStateAfter = await exchange.getState()
-      
       // Updating amount in assetList
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
-
       assert.ok(
         assetListDataBefore.assets[1].collateral.reserveBalance
           .sub(assetListDataAfter.assets[1].collateral.reserveBalance)
           .eq(withdrawAmount)
       )
 
-      // assert.ok(
-      //   exchangeStateAfter.collateralShares.eq(
-      //     exchangeStateBefore.collateralShares.sub(burned_shares)
-      //   )
-      // )
-
-      // assert.ok(
-      //   exchangeStateAfter.collaterals claa.eq(
-      //     exchangeStateBefore.collateralShares.sub(burned_shares)
-      //   )
-      // )
-
+      // Updating exchange account check
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-
       assert.ok(
         exchangeAccountAfter.collaterals[0].amount.eq(
           exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
