@@ -390,7 +390,7 @@ describe('exchange', () => {
       )
     })
   })
-  describe.only('#withdraw()', async () => {
+  describe('#withdraw()', async () => {
     let healthFactor: BN
     before(async () => {
       healthFactor = new BN((await exchange.getState()).healthFactor)
@@ -462,7 +462,7 @@ describe('exchange', () => {
         )
       )
     })
-    it.only('withdraw fully', async () => {
+    it('withdraw fully', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,
@@ -582,8 +582,8 @@ describe('exchange', () => {
       )
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
 
-      // We can mint max 20 * 1e6
-      const usdMintAmount = new BN(10 * 1e6)
+      // We can mint max 20 * 1e6 * healthFactor
+      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
