@@ -12,9 +12,9 @@ pub mod exchange {
     use pyth::pc::Price;
 
     use crate::math::{
-        calculate_debt, calculate_max_debt_in_usd, calculate_max_withdrawable, 
-        calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up, amount_to_discount,
-        calculate_burned_shares, calculate_max_burned_in_xusd, calculate_swap_out_amount, calculate_user_debt_in_usd, 
+        amount_to_discount, calculate_burned_shares, calculate_debt, calculate_max_burned_in_xusd,
+        calculate_max_debt_in_usd, calculate_max_withdraw_in_usd, calculate_max_withdrawable,
+        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_user_debt_in_usd,
         PRICE_OFFSET,
     };
 
@@ -133,11 +133,10 @@ pub mod exchange {
                 .checked_add(amount)
                 .unwrap();
 
-            let exchange_account_collateral =
-                exchange_account.collaterals.iter_mut().find(|x| {
-                    x.collateral_address
-                        .eq(&asset.collateral.collateral_address)
-                });
+            let exchange_account_collateral = exchange_account.collaterals.iter_mut().find(|x| {
+                x.collateral_address
+                    .eq(&asset.collateral.collateral_address)
+            });
 
             match exchange_account_collateral {
                 Some(entry) => entry.amount = entry.amount.checked_add(amount).unwrap(),
@@ -238,24 +237,21 @@ pub mod exchange {
             let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
             let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
             let user_debt =
-            calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
-        
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+
             let asset = match assets_list
                 .assets
                 .iter_mut()
-                .find(|x| {
-                    x.synthetic.asset_address.eq(&user_collateral_account.mint)
-                }) {
-                    Some(v) => v,
-                    None => return Err(ErrorCode::NoAssetFound.into()),
-                };
-          
-            let mut exchange_account_collateral = match exchange_account
-                .collaterals
-                .iter_mut()
-                .find(|x| {
+                .find(|x| x.synthetic.asset_address.eq(&user_collateral_account.mint))
+            {
+                Some(v) => v,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            };
+
+            let mut exchange_account_collateral =
+                match exchange_account.collaterals.iter_mut().find(|x| {
                     x.collateral_address
-                    .eq(&asset.collateral.collateral_address)
+                        .eq(&asset.collateral.collateral_address)
                 }) {
                     Some(v) => v,
                     None => return Err(ErrorCode::NoAssetFound.into()),
@@ -267,15 +263,17 @@ pub mod exchange {
                 user_debt,
                 asset.collateral.collateral_ratio,
             );
-            let max_withdrawable =
-                calculate_max_withdrawable(asset, max_withdraw_in_usd);
+            let max_withdrawable = calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
             if amount > max_withdrawable {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
 
             // Update balance on exchange account
-            exchange_account_collateral.amount = exchange_account_collateral.amount.checked_sub(amount).unwrap();
+            exchange_account_collateral.amount = exchange_account_collateral
+                .amount
+                .checked_sub(amount)
+                .unwrap();
 
             // Update reserve balance in AssetList
             asset.collateral.reserve_balance = asset
