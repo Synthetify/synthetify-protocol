@@ -369,6 +369,13 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setHealthFactorInstruction(percentage: BN) {
+    return await (this.program.state.instruction.setHealthFactor(percentage, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   public async setStakingAmountPerRound(amount: BN) {
     return await (this.program.state.instruction.setStakingAmountPerRound(amount, {
       accounts: {
@@ -828,6 +835,7 @@ export interface ExchangeState {
   assetsList: PublicKey
   liquidationAccount: PublicKey
   collateralizationLevel: number
+  healthFactor: number
   maxDelay: number
   fee: number
   liquidationPenalty: number

@@ -34,6 +34,7 @@ describe('staking', () => {
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
+  let reserveAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
   const stakingRoundLength = 10
@@ -61,6 +62,7 @@ describe('staking', () => {
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
+    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
 
     // @ts-expect-error
     exchange = new Exchange(
@@ -72,6 +74,7 @@ describe('staking', () => {
     )
 
     const data = await createAssetsList({
+      reserveAccount,
       exchangeAuthority,
       collateralToken,
       collateralTokenFeed,
@@ -85,9 +88,7 @@ describe('staking', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
       liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -252,6 +253,25 @@ describe('staking', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === halted)
+    })
+  })
+  describe('#setHealthFactor()', async () => {
+    it('Fail without admin signature', async () => {
+      const healthFactor = 70
+      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.healthFactor !== healthFactor)
+    })
+    it('change value', async () => {
+      const healthFactor = 70
+      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.healthFactor === healthFactor)
     })
   })
   describe('#setStakingAmountPerRound()', async () => {

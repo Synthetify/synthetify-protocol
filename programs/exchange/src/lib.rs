@@ -906,6 +906,13 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(admin(&self, &ctx.accounts.admin))]
+        pub fn set_health_factor(&mut self, ctx: Context<AdminAction>, factor: u8) -> Result<()> {
+            msg!("Synthetify:Admin: SET HEALTH FACTOR");
+
+            self.health_factor = factor;
+            Ok(())
+        }
+        #[access_control(admin(&self, &ctx.accounts.admin))]
         pub fn set_staking_amount_per_round(
             &mut self,
             ctx: Context<AdminAction>,
