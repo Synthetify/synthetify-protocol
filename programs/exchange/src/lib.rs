@@ -249,23 +249,23 @@ pub mod exchange {
                     Some(v) => v,
                     None => return Err(ErrorCode::NoAssetFound.into()),
                 };
-
-                
           
-            let mut exchange_account_collateral =
-                exchange_account
+            let mut exchange_account_collateral = match exchange_account
                 .collaterals
                 .iter_mut()
                 .find(|x| {
                     x.collateral_address
                     .eq(&asset.collateral.collateral_address)
-                }).unwrap();
-        
+                }) {
+                    Some(v) => v,
+                    None => return Err(ErrorCode::NoAssetFound.into()),
+                };
+
             // Check if not overdrafing
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
                 max_debt as u64,
                 user_debt,
-                self.collateralization_level,
+                asset.collateral.collateral_ratio,
             );
             let max_withdrawable =
                 calculate_max_withdrawable(asset, max_withdraw_in_usd);
@@ -279,10 +279,10 @@ pub mod exchange {
 
             // Update reserve balance in AssetList
             asset.collateral.reserve_balance = asset
-            .collateral
-            .reserve_balance
-            .checked_sub(amount)
-            .unwrap();
+                .collateral
+                .reserve_balance
+                .checked_sub(amount)
+                .unwrap(); // should never fail
 
             // Send withdrawn collateral to user
             let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
