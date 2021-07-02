@@ -30,6 +30,7 @@ pub mod exchange {
         pub collateral_account: Pubkey,   //32
         pub assets_list: Pubkey,          //32
         pub collateralization_level: u32, //4   In % should range from 300%-1000%
+        pub health_factor: u8,            //1   In % 1-100% modifier for debt
         pub max_delay: u32,               //4   Delay bettwen last oracle update 100 blocks ~ 1 min
         pub fee: u32,                     //4   Default fee per swap 300 => 0.3%
         pub liquidation_account: Pubkey,  //32
@@ -55,6 +56,7 @@ pub mod exchange {
             self.assets_list = *ctx.accounts.assets_list.key;
             self.liquidation_account = *ctx.accounts.liquidation_account.key;
             self.collateralization_level = 1000;
+            self.health_factor = 50;
             // once we will not be able to fit all data into one transaction we will
             // use max_delay to allow split updating oracles and exchange operation
             self.max_delay = 0;
@@ -177,6 +179,11 @@ pub mod exchange {
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
             let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
+            let max_borrow = max_debt
+                .checked_mul(self.health_factor.into())
+                .unwrap()
+                .checked_div(100)
+                .unwrap();
 
             let assets = &mut assets_list.assets;
 
@@ -184,7 +191,7 @@ pub mod exchange {
             // Both xUSD and collateral token have static index in assets array
             let mint_asset = &assets[0];
 
-            if max_debt < amount.checked_add(user_debt).unwrap().into() {
+            if max_borrow < amount.checked_add(user_debt).unwrap().into() {
                 return Err(ErrorCode::MintLimit.into());
             }
 

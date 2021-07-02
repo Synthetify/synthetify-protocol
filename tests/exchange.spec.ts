@@ -287,7 +287,7 @@ describe('exchange', () => {
       })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
-      const usdMintAmount = new BN(20 * 1e6)
+      const usdMintAmount = new BN(10 * 1e6)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
