@@ -68,7 +68,12 @@
           "isSigner": false
         },
         {
-          "name": "reserveAccount",
+          "name": "snyReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "snyLiquidationFund",
           "isMut": false,
           "isSigner": false
         }
@@ -137,6 +142,10 @@
           {
             "name": "collateralizationLevel",
             "type": "u32"
+          },
+          {
+            "name": "healthFactor",
+            "type": "u8"
           },
           {
             "name": "maxDelay",
@@ -568,6 +577,22 @@
         ]
       },
       {
+        "name": "setHealthFactor",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "factor",
+            "type": "u8"
+          }
+        ]
+      },
+      {
         "name": "setStakingAmountPerRound",
         "accounts": [
           {
@@ -920,6 +945,10 @@
             "type": "publicKey"
           },
           {
+            "name": "liquidationFund",
+            "type": "publicKey"
+          },
+          {
             "name": "reserveBalance",
             "type": "u64"
           },
@@ -1074,8 +1103,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "DRTkMbmtorgjCe6J3A8aa4v4zQnWZS8PTmLZ6jVN62i7"
-  }
+  ]
 }

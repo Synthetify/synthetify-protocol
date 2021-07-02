@@ -242,9 +242,14 @@ pub mod exchange {
             // Calculate debt
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-            let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
+            let max_borrow = max_debt
+                .checked_mul(self.health_factor.into())
+                .unwrap()
+                .checked_div(100)
+                .unwrap();
 
             let asset = match assets_list
                 .assets
@@ -266,7 +271,7 @@ pub mod exchange {
 
             // Check if not overdrafing
             let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-                max_debt as u64,
+                max_borrow as u64,
                 user_debt,
                 asset.collateral.collateral_ratio,
             );
