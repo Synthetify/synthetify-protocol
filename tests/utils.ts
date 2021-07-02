@@ -333,3 +333,7 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
     await sleep(400)
   }
 }
+
+export const mulByPercentage = (a: BN, percentage: BN) => {
+  return a.mul(percentage).div(new BN(100))
+}
