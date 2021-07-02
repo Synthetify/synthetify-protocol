@@ -1059,7 +1059,8 @@ pub mod exchange {
                 collateral_address: collateral_token,
                 reserve_balance: 0,
                 decimals: 6,
-                reserve_address: *ctx.accounts.reserve_account.key,
+                reserve_address: *ctx.accounts.sny_reserve.key,
+                liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
             },
         };
         assets_list.append(usd_asset);
@@ -1131,7 +1132,8 @@ pub struct CreateAssetsList<'info> {
 pub struct InitializeAssetsList<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    pub reserve_account: AccountInfo<'info>,
+    pub sny_reserve: AccountInfo<'info>,
+    pub sny_liquidation_fund: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
@@ -1463,6 +1465,7 @@ pub struct Collateral {
     pub is_collateral: bool,        // 1
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
+    pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: u64,       // 8
     pub decimals: u8,               // 1
     pub collateral_ratio: u8,       // 1 in %

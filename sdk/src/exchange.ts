@@ -585,12 +585,14 @@ export class Exchange {
     collateralToken,
     collateralTokenFeed,
     usdToken,
-    reserveAccount
+    snyLiquidationFund,
+    snyReserve
   }: InitializeAssetList) {
     return await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
         assetsList: assetsList,
-        reserveAccount: reserveAccount
+        snyReserve: snyReserve,
+        snyLiquidationFund: snyLiquidationFund
       }
     })
   }
@@ -665,7 +667,8 @@ export interface InitializeAssetList {
   collateralTokenFeed: PublicKey
   usdToken: PublicKey
   assetsList: PublicKey
-  reserveAccount: PublicKey
+  snyReserve: PublicKey
+  snyLiquidationFund: PublicKey
 }
 export interface Asset {
   feedAddress: PublicKey

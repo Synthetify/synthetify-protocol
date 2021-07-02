@@ -94,7 +94,8 @@ export interface ICreateAssetsList {
   exchange: Exchange
   collateralTokenFeed: PublicKey
   exchangeAuthority: PublicKey
-  reserveAccount: PublicKey
+  snyReserve: PublicKey
+  snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
   wallet: Account
@@ -121,7 +122,8 @@ export const createAssetsList = async ({
   connection,
   wallet,
   exchangeAuthority,
-  reserveAccount
+  snyLiquidationFund,
+  snyReserve
 }: ICreateAssetsList) => {
   const usdToken = await createToken({
     connection,
@@ -134,7 +136,8 @@ export const createAssetsList = async ({
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,
-    reserveAccount
+    snyReserve,
+    snyLiquidationFund
   })
   return { assetsList, usdToken }
 }
