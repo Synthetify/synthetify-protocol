@@ -34,6 +34,7 @@ describe('staking', () => {
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
+  let reserveAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
   const stakingRoundLength = 10
@@ -61,6 +62,7 @@ describe('staking', () => {
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
+    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
 
     // @ts-expect-error
     exchange = new Exchange(
@@ -72,6 +74,8 @@ describe('staking', () => {
     )
 
     const data = await createAssetsList({
+      snyLiquidationFund: liquidationAccount,
+      snyReserve: reserveAccount,
       exchangeAuthority,
       collateralToken,
       collateralTokenFeed,
@@ -85,9 +89,7 @@ describe('staking', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
       liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -106,9 +108,9 @@ describe('staking', () => {
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    assert.ok(state.collateralToken.equals(collateralToken.publicKey))
+    // assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.liquidationAccount.equals(liquidationAccount))
-    assert.ok(state.collateralAccount.equals(collateralAccount))
+    // assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
@@ -117,9 +119,10 @@ describe('staking', () => {
     assert.ok(state.liquidationPenalty === 15)
     assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
+    assert.ok(state.healthFactor === 50)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.collateralShares.eq(new BN(0)))
+    // assert.ok(state.collateralShares.eq(new BN(0)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
@@ -252,6 +255,25 @@ describe('staking', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === halted)
+    })
+  })
+  describe('#setHealthFactor()', async () => {
+    it('Fail without admin signature', async () => {
+      const healthFactor = 70
+      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.healthFactor !== healthFactor)
+    })
+    it('change value', async () => {
+      const healthFactor = 70
+      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.healthFactor === healthFactor)
     })
   })
   describe('#setStakingAmountPerRound()', async () => {

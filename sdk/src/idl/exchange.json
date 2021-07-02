@@ -144,6 +144,10 @@
             "type": "u32"
           },
           {
+            "name": "healthFactor",
+            "type": "u8"
+          },
+          {
             "name": "maxDelay",
             "type": "u32"
           },
@@ -523,6 +527,22 @@
           {
             "name": "halted",
             "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "setHealthFactor",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "factor",
+            "type": "u8"
           }
         ]
       },
@@ -1037,5 +1057,8 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "9RCmz9WDoveX6eRfExe855LAB3ot4xyFcWnMPpm4zxnA"
+  }
 }

@@ -279,7 +279,9 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
   // Price of token is 2$ and collateral ratio 1000%
-  const usdMintAmount = amount.div(new BN(5))
+  const healthFactor = new BN((await exchange.getState()).healthFactor)
+  const usdMintAmount = amount.div(new BN(5)).mul(healthFactor).div(new BN(100))
+
   await exchange.mint({
     amount: usdMintAmount,
     exchangeAccount,
@@ -330,4 +332,8 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 
     await sleep(400)
   }
+}
+
+export const mulByPercentage = (a: BN, percentage: BN) => {
+  return a.mul(percentage).div(new BN(100))
 }
