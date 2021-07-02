@@ -180,6 +180,7 @@ pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
     user_debt_in_usd: u64,
     collateral_ratio: u8,
+    health_factor: u8,
 ) -> u64 {
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
@@ -187,7 +188,9 @@ pub fn calculate_max_withdraw_in_usd(
     return (max_user_debt_in_usd - user_debt_in_usd)
         .checked_div(collateral_ratio as u64)
         .unwrap()
-        .checked_mul(100)
+        .checked_div(health_factor.into())
+        .unwrap()
+        .checked_mul(10000)
         .unwrap();
 }
 pub fn calculate_user_collateral_in_token(

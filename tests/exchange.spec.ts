@@ -391,6 +391,10 @@ describe('exchange', () => {
     })
   })
   describe.only('#withdraw()', async () => {
+    let healthFactor: BN
+    before(async () => {
+      healthFactor = new BN((await exchange.getState()).healthFactor)
+    })
     it('withdraw with no debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
@@ -458,7 +462,7 @@ describe('exchange', () => {
         )
       )
     })
-    it('withdraw fully', async () => {
+    it.only('withdraw fully', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const {
         accountOwner,

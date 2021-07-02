@@ -274,6 +274,7 @@ pub mod exchange {
                 max_borrow as u64,
                 user_debt,
                 asset.collateral.collateral_ratio,
+                self.health_factor,
             );
             let max_withdrawable = calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
