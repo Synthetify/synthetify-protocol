@@ -600,7 +600,7 @@ describe('exchange', () => {
       )
     })
   })
-  describe.only('#swap()', async () => {
+  describe('#swap()', async () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
@@ -1136,8 +1136,9 @@ describe('exchange', () => {
       // create usd account
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
-      // We can mint max 200 * 1e6
-      const usdMintAmount = new BN(200 * 1e6)
+      // We can mint max 200 * 1e6 * healthFactor
+      const healthFactor = new BN((await exchange.getState()).healthFactor)
+      const usdMintAmount = new BN(200 * 1e6).mul(healthFactor).div(new BN(100))
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1189,8 +1190,9 @@ describe('exchange', () => {
         amount: collateralAmount
       })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-      // We can mint max 200 * 1e6
-      const usdMintAmount = new BN(200 * 1e6)
+      // We can mint max 200 * 1e6 * healthFactor
+      const healthFactor = new BN((await exchange.getState()).healthFactor)
+      const usdMintAmount = new BN(200 * 1e6).mul(healthFactor).div(new BN(100))
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
