@@ -68,7 +68,12 @@
           "isSigner": false
         },
         {
-          "name": "reserveAccount",
+          "name": "snyReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "snyLiquidationFund",
           "isMut": false,
           "isSigner": false
         }
@@ -894,6 +899,10 @@
             "type": "publicKey"
           },
           {
+            "name": "liquidationFund",
+            "type": "publicKey"
+          },
+          {
             "name": "reserveBalance",
             "type": "u64"
           },
@@ -1048,8 +1057,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "2PP7N4ayHa9MyvxMM3hPLTSQ1UWm132sMWP2PeVBpkjs"
-  }
+  ]
 }
