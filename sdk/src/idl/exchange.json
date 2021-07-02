@@ -965,114 +965,117 @@
   ],
   "errors": [
     {
-      "code": 100,
+      "code": 300,
       "name": "Unauthorized",
       "msg": "You are not admin"
     },
     {
-      "code": 101,
+      "code": 301,
       "name": "NotSyntheticUsd",
       "msg": "Not synthetic USD asset"
     },
     {
-      "code": 102,
+      "code": 302,
       "name": "OutdatedOracle",
       "msg": "Oracle price is outdated"
     },
     {
-      "code": 103,
+      "code": 303,
       "name": "MintLimit",
       "msg": "Mint limit"
     },
     {
-      "code": 104,
+      "code": 304,
       "name": "WithdrawLimit",
       "msg": "Withdraw limit"
     },
     {
-      "code": 105,
+      "code": 305,
       "name": "CollateralAccountError",
       "msg": "Invalid collateral_account"
     },
     {
-      "code": 106,
+      "code": 306,
       "name": "SyntheticCollateral",
       "msg": "Synthetic collateral is not supported"
     },
     {
-      "code": 107,
+      "code": 307,
       "name": "InvalidAssetsList",
       "msg": "Invalid Assets List"
     },
     {
-      "code": 108,
+      "code": 308,
       "name": "InvalidLiquidation",
       "msg": "Invalid Liquidation"
     },
     {
-      "code": 109,
+      "code": 309,
       "name": "InvalidSigner",
       "msg": "Invalid signer"
     },
     {
-      "code": 110,
+      "code": 310,
       "name": "WashTrade",
       "msg": "Wash trade"
     },
     {
-      "code": 111,
+      "code": 311,
       "name": "ExchangeLiquidationAccount",
       "msg": "Invalid exchange liquidation account"
     },
     {
-      "code": 112,
+      "code": 312,
       "name": "LiquidationDeadline",
       "msg": "Liquidation deadline not passed"
     },
     {
-      "code": 113,
+      "code": 313,
       "name": "Halted",
       "msg": "Program is currently Halted"
     },
     {
-      "code": 114,
+      "code": 314,
       "name": "NoRewards",
       "msg": "No rewards to claim"
     },
     {
-      "code": 115,
+      "code": 315,
       "name": "FundAccountError",
       "msg": "Invalid fund_account"
     },
     {
-      "code": 116,
+      "code": 316,
       "name": "AccountVersion",
       "msg": "Invalid version of user account"
     },
     {
-      "code": 117,
+      "code": 317,
       "name": "Initialized",
       "msg": "Assets list already initialized"
     },
     {
-      "code": 118,
+      "code": 318,
       "name": "Uninitialized",
       "msg": "Assets list is not initialized"
     },
     {
-      "code": 119,
+      "code": 319,
       "name": "NoAssetFound",
       "msg": "No asset with such address was found"
     },
     {
-      "code": 120,
+      "code": 320,
       "name": "MaxSupply",
       "msg": "Asset max_supply crossed"
     },
     {
-      "code": 121,
+      "code": 321,
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "DRTkMbmtorgjCe6J3A8aa4v4zQnWZS8PTmLZ6jVN62i7"
+  }
 }
