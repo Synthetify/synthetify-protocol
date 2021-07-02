@@ -1376,7 +1376,7 @@ describe('exchange', () => {
     //   )
     // })
   })
-  describe.only('System Halted', async () => {
+  describe('System Halted', async () => {
     it('#deposit()', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -1388,7 +1388,7 @@ describe('exchange', () => {
         amount,
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
-        reserveAddress: reserveAccount,
+        reserveAddress: snyReserve,
         owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
@@ -1434,7 +1434,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        reserveAddress: reserveAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1483,7 +1483,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        reserveAddress: reserveAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1497,31 +1497,35 @@ describe('exchange', () => {
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
-      // // should fail
-      // await assertThrowsAsync(
-      //   exchange.withdraw({
-      //     amount: withdrawAmount,
-      //     exchangeAccount,
-      //     owner: accountOwner.publicKey,
-      //     to: userCollateralTokenAccount,
-      //     signers: [accountOwner]
-      //   }),
-      //   ERRORS_EXCHANGE.HALTED
-      // )
-      // // unlock
+      // should fail
+      await assertThrowsAsync(
+        exchange.withdraw({
+          reserveAccount: snyReserve,
+          userCollateralAccount: userCollateralTokenAccount,
+          amount: withdrawAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          to: userCollateralTokenAccount,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.HALTED
+      )
+      // unlock
       const ix = await exchange.setHaltedInstruction(false)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
-      // // should pass
-      // await exchange.withdraw({
-      //   amount: withdrawAmount,
-      //   exchangeAccount,
-      //   owner: accountOwner.publicKey,
-      //   to: userCollateralTokenAccount,
-      //   signers: [accountOwner]
-      // })
+      // should pass
+      await exchange.withdraw({
+        reserveAccount: snyReserve,
+        userCollateralAccount: userCollateralTokenAccount,
+        amount: withdrawAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
     })
     it('#burn()', async () => {
       const healthFactor = new BN((await exchange.getState()).healthFactor)
@@ -1533,11 +1537,7 @@ describe('exchange', () => {
         usdMintAmount,
         usdTokenAccount
       } = await createAccountWithCollateralAndMaxMintUsd({
-<<<<<<< HEAD
-        reserveAddress: reserveAccount,
-=======
         reserveAddress: snyReserve,
->>>>>>> 412096ab2da0c308489e9c809db1b35a49b31c12
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1608,11 +1608,7 @@ describe('exchange', () => {
         usdMintAmount,
         usdTokenAccount
       } = await createAccountWithCollateralAndMaxMintUsd({
-<<<<<<< HEAD
-        reserveAddress: reserveAccount,
-=======
         reserveAddress: snyReserve,
->>>>>>> 412096ab2da0c308489e9c809db1b35a49b31c12
         collateralToken,
         exchangeAuthority,
         exchange,
