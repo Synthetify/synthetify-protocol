@@ -74,7 +74,8 @@ describe('staking', () => {
     )
 
     const data = await createAssetsList({
-      reserveAccount,
+      snyLiquidationFund: liquidationAccount,
+      snyReserve: reserveAccount,
       exchangeAuthority,
       collateralToken,
       collateralTokenFeed,
@@ -107,9 +108,9 @@ describe('staking', () => {
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    assert.ok(state.collateralToken.equals(collateralToken.publicKey))
+    // assert.ok(state.collateralToken.equals(collateralToken.publicKey))
     assert.ok(state.liquidationAccount.equals(liquidationAccount))
-    assert.ok(state.collateralAccount.equals(collateralAccount))
+    // assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
@@ -118,9 +119,10 @@ describe('staking', () => {
     assert.ok(state.liquidationPenalty === 15)
     assert.ok(state.liquidationThreshold === 200)
     assert.ok(state.collateralizationLevel === 1000)
+    assert.ok(state.healthFactor === 50)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.collateralShares.eq(new BN(0)))
+    // assert.ok(state.collateralShares.eq(new BN(0)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
