@@ -465,6 +465,17 @@
         ]
       },
       {
+        "name": "claimRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -1105,6 +1116,6 @@
     }
   ],
   "metadata": {
-    "address": "812qNHkUGBqi28yEXoSAxriJSGepFfud63mnE7sifGte"
+    "address": "3vgFTVVtwbshFy4w75dJy9wXrE1QiUNvvbVdSppCUkNL"
   }
 }

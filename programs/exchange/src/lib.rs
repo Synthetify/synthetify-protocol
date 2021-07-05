@@ -754,39 +754,39 @@ pub mod exchange {
         //     Ok(())
         // }
 
-        // #[access_control(halted(&self) version(&self,&ctx.accounts.exchange_account))]
-        // pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
-        //     msg!("Synthetify: CLAIM REWARDS");
+        #[access_control(halted(&self) version(&self,&ctx.accounts.exchange_account))]
+        pub fn claim_rewards(&mut self, ctx: Context<ClaimRewards>) -> Result<()> {
+            msg!("Synthetify: CLAIM REWARDS");
 
-        //     let slot = Clock::get()?.slot;
+            let slot = Clock::get()?.slot;
 
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
 
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     if self.staking.finished_round.amount > 0 {
-        //         let reward_amount = self
-        //             .staking
-        //             .finished_round
-        //             .amount
-        //             .checked_mul(exchange_account.user_staking_data.finished_round_points)
-        //             .unwrap()
-        //             .checked_div(self.staking.finished_round.all_points)
-        //             .unwrap();
+            if self.staking.finished_round.amount > 0 {
+                let reward_amount = self
+                    .staking
+                    .finished_round
+                    .amount
+                    .checked_mul(exchange_account.user_staking_data.finished_round_points)
+                    .unwrap()
+                    .checked_div(self.staking.finished_round.all_points)
+                    .unwrap();
 
-        //         exchange_account.user_staking_data.amount_to_claim = exchange_account
-        //             .user_staking_data
-        //             .amount_to_claim
-        //             .checked_add(reward_amount)
-        //             .unwrap();
-        //         exchange_account.user_staking_data.finished_round_points = 0;
-        //     }
+                exchange_account.user_staking_data.amount_to_claim = exchange_account
+                    .user_staking_data
+                    .amount_to_claim
+                    .checked_add(reward_amount)
+                    .unwrap();
+                exchange_account.user_staking_data.finished_round_points = 0;
+            }
 
-        //     Ok(())
-        // }
+            Ok(())
+        }
         // #[access_control(halted(&self)
         // version(&self,&ctx.accounts.exchange_account)
         // fund_account(&self,&ctx.accounts.staking_fund_account))]

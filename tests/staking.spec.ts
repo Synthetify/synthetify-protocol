@@ -177,35 +177,33 @@ describe('liquidation', () => {
       })
       assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
       const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
-      console.log(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints)
+
+      const amountScaledByHealth = mulByPercentage(new BN(100 * 1e6), healthFactor)
+
       assert.ok(
-        exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(
-          mulByPercentage(new BN(100 * 1e6), healthFactor)
-        )
+        exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(amountScaledByHealth)
       )
       assert.ok(
-        exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(
-          mulByPercentage(new BN(100 * 1e6), healthFactor)
-        )
+        exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(amountScaledByHealth)
       )
       // Wait for round to end
       const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
       await skipToSlot(secondRound, connection)
 
-      //   // Claim rewards
-      //   await exchange.claimRewards(exchangeAccount)
-      //   const state = await exchange.getState()
-      //   assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6)))
-      //   assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6)))
-      //   assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6)))
+      // Claim rewards
+      await exchange.claimRewards(exchangeAccount)
+      const state = await exchange.getState()
+      assert.ok(state.staking.finishedRound.allPoints.eq(amountScaledByHealth))
+      assert.ok(state.staking.currentRound.allPoints.eq(amountScaledByHealth))
+      assert.ok(state.staking.nextRound.allPoints.eq(amountScaledByHealth))
 
-      //   assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
-      //   const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
-      //   assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
+      assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
-      //   assert.ok(
-      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
-      //   )
+      assert.ok(
+        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
+      )
       //   // Mint reward
       //   await collateralToken.mintTo(
       //     stakingFundAccount,
