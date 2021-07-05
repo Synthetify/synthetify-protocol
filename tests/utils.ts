@@ -254,6 +254,28 @@ export const createAccountWithCollateral = async ({
 
   return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
 }
+export const createAccountWithMultipleCollaterals = async ({
+  exchange,
+  collateralTokenMintAuthority,
+  collateralToken,
+  reserveAddress,
+  exchangeAuthority,
+  amount
+}: IAccountWithCollateral) => {
+  const {
+    accountOwner,
+    exchangeAccount,
+    userCollateralTokenAccount
+  } = await createAccountWithCollateral({
+    amount,
+    reserveAddress,
+    collateralToken,
+    collateralTokenMintAuthority,
+    exchange,
+    exchangeAuthority
+  })
+  return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
+}
 export const createAccountWithCollateralAndMaxMintUsd = async ({
   exchange,
   collateralTokenMintAuthority,

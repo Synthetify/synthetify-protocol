@@ -12,6 +12,7 @@ import {
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
+  createAccountWithMultipleCollaterals,
   skipToSlot,
   mulByPercentage
 } from './utils'
@@ -267,6 +268,137 @@ describe('liquidation', () => {
       )
       assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
+    })
+    it.only('with multiple collaterals', async () => {
+      const slot = await connection.getSlot()
+      assert.ok(nextRoundStart.gtn(slot))
+      const collateralAmount = new BN(1000 * 1e6)
+      const {
+        accountOwner,
+        exchangeAccount,
+        // usdTokenAccount,
+        userCollateralTokenAccount
+      } = await createAccountWithMultipleCollaterals({
+        reserveAddress: reserveAddress,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+        // usdToken
+      })
+
+      const healthFactor = new BN((await exchange.getState()).healthFactor)
+
+      //   assert.ok(
+      //     (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
+      //       mulByPercentage(new BN(200 * 1e6), healthFactor)
+      //     )
+      //   )
+      //   assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      //   // Wait for start of new round
+      //   await skipToSlot(nextRoundStart.toNumber(), connection)
+      //   // Burn should reduce next round stake
+      //   const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      //   await exchange.burn({
+      //     amount: amountBurn,
+      //     exchangeAccount,
+      //     owner: accountOwner.publicKey,
+      //     userTokenAccountBurn: usdTokenAccount,
+      //     signers: [accountOwner]
+      //   })
+      //   assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
+      //   const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
+
+      //   const amountScaledByHealth = mulByPercentage(new BN(100 * 1e6), healthFactor)
+
+      //   assert.ok(
+      //     exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(amountScaledByHealth)
+      //   )
+      //   assert.ok(
+      //     exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(amountScaledByHealth)
+      //   )
+      //   // Wait for round to end
+      //   const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
+      //   await skipToSlot(secondRound, connection)
+
+      //   // Claim rewards
+      //   await exchange.claimRewards(exchangeAccount)
+      //   const state = await exchange.getState()
+      //   assert.ok(state.staking.finishedRound.allPoints.eq(amountScaledByHealth))
+      //   assert.ok(state.staking.currentRound.allPoints.eq(amountScaledByHealth))
+      //   assert.ok(state.staking.nextRound.allPoints.eq(amountScaledByHealth))
+
+      //   assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      //   const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
+      //   assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
+
+      //   assert.ok(
+      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
+      //   )
+      //   // Mint reward
+      //   await collateralToken.mintTo(
+      //     stakingFundAccount,
+      //     CollateralTokenMinter,
+      //     [],
+      //     tou64(amountPerRound)
+      //   )
+      //   await exchange.withdrawRewards({
+      //     exchangeAccount,
+      //     owner: accountOwner.publicKey,
+      //     userTokenAccount: userCollateralTokenAccount,
+      //     signers: [accountOwner]
+      //   })
+      //   assert.ok(
+      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
+      //       exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+      //     )
+      //   )
+
+      //   const {
+      //     exchangeAccount: exchangeAccount2nd
+      //   } = await createAccountWithCollateralAndMaxMintUsd({
+      //     reserveAddress,
+      //     collateralToken,
+      //     exchangeAuthority,
+      //     exchange,
+      //     collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+      //     amount: collateralAmount,
+      //     usdToken
+      //   })
+      //   const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
+      //   assert.ok(
+      //     exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(
+      //       mulByPercentage(new BN(200 * 1e6), healthFactor)
+      //     )
+      //   )
+
+      //   // Wait for nextRound to end
+      //   await skipToSlot(secondRound + stakingRoundLength, connection)
+
+      //   await exchange.claimRewards(exchangeAccount)
+      //   await exchange.claimRewards(exchangeAccount2nd)
+      //   assert.ok(
+      //     (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
+      //       new BN(100)
+      //     )
+      //   )
+      //   assert.ok(
+      //     (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
+      //       new BN(0)
+      //     )
+      //   )
+      //   // Wait for nextRound to end
+      //   await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
+      //   await exchange.claimRewards(exchangeAccount)
+      //   await exchange.claimRewards(exchangeAccount2nd)
+
+      //   const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
+      //   const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
+      //     exchangeAccount2nd
+      //   )
+      //   assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
+      //   assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
   })
 })
