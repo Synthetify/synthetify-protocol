@@ -1103,5 +1103,8 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "812qNHkUGBqi28yEXoSAxriJSGepFfud63mnE7sifGte"
+  }
 }
