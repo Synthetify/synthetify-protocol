@@ -270,6 +270,18 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
     it.only('with multiple collaterals', async () => {
+      const otherToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: CollateralTokenMinter.publicKey
+      })
+      const otherTokenFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: initialCollateralPrice,
+        expo: -6
+      })
+      const otherReserveAddress = await otherToken.createAccount(exchangeAuthority)
+
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
       const collateralAmount = new BN(1000 * 1e6)
@@ -280,10 +292,12 @@ describe('liquidation', () => {
         userCollateralTokenAccount
       } = await createAccountWithMultipleCollaterals({
         reserveAddress: reserveAddress,
+        otherReserveAddress,
         collateralToken,
+        otherToken: otherToken,
         exchangeAuthority,
         exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        mintAuthority: CollateralTokenMinter.publicKey,
         amount: collateralAmount
         // usdToken
       })

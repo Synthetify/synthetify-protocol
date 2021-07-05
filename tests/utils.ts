@@ -205,6 +205,16 @@ export interface IAccountWithCollateral {
   amount: BN
   reserveAddress: PublicKey
 }
+export interface IAccountWithMultipleCollaterals {
+  exchange: Exchange
+  exchangeAuthority: PublicKey
+  mintAuthority: PublicKey
+  collateralToken: Token
+  otherToken: Token
+  amount: BN
+  reserveAddress: PublicKey
+  otherReserveAddress: PublicKey
+}
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
@@ -256,12 +266,14 @@ export const createAccountWithCollateral = async ({
 }
 export const createAccountWithMultipleCollaterals = async ({
   exchange,
-  collateralTokenMintAuthority,
+  mintAuthority,
   collateralToken,
+  otherToken,
   reserveAddress,
+  otherReserveAddress,
   exchangeAuthority,
   amount
-}: IAccountWithCollateral) => {
+}: IAccountWithMultipleCollaterals) => {
   const {
     accountOwner,
     exchangeAccount,
@@ -270,11 +282,42 @@ export const createAccountWithMultipleCollaterals = async ({
     amount,
     reserveAddress,
     collateralToken,
-    collateralTokenMintAuthority,
+    collateralTokenMintAuthority: mintAuthority,
     exchange,
     exchangeAuthority
   })
-  return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
+
+  const userOtherTokenAccount = await otherToken.createAccount(accountOwner.publicKey)
+  // Assumes the same authority for both tokens
+  await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amount))
+
+  // const depositIx = await exchange.depositInstruction({
+  //   amount: amount,
+  //   exchangeAccount,
+  //   userCollateralAccount: userOtherTokenAccount,
+  //   owner: accountOwner.publicKey,
+  //   reserveAddress: otherReserveAddress
+  // })
+  // const approveIx = Token.createApproveInstruction(
+  //   otherToken.programId,
+  //   userOtherTokenAccount,
+  //   exchangeAuthority,
+  //   accountOwner.publicKey,
+  //   [],
+  //   tou64(amount)
+  // )
+  // await signAndSend(
+  //   new Transaction().add(approveIx).add(depositIx),
+  //   [accountOwner],
+  //   exchange.connection
+  // )
+
+  return {
+    accountOwner,
+    exchangeAccount: exchangeAccount,
+    userCollateralTokenAccount,
+    userOtherTokenAccount
+  }
 }
 export const createAccountWithCollateralAndMaxMintUsd = async ({
   exchange,
