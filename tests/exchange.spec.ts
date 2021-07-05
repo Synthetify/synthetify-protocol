@@ -1388,6 +1388,7 @@ describe('exchange', () => {
         amount,
         exchangeAccount,
         userCollateralAccount: userCollateralTokenAccount,
+        reserveAddress: snyReserve,
         owner: accountOwner.publicKey
       })
       const approveIx = Token.createApproveInstruction(
@@ -1433,7 +1434,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1482,7 +1483,7 @@ describe('exchange', () => {
         exchangeAccount,
         userCollateralTokenAccount
       } = await createAccountWithCollateral({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -1499,6 +1500,8 @@ describe('exchange', () => {
       // should fail
       await assertThrowsAsync(
         exchange.withdraw({
+          reserveAccount: snyReserve,
+          userCollateralAccount: userCollateralTokenAccount,
           amount: withdrawAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
@@ -1515,6 +1518,8 @@ describe('exchange', () => {
 
       // should pass
       await exchange.withdraw({
+        reserveAccount: snyReserve,
+        userCollateralAccount: userCollateralTokenAccount,
         amount: withdrawAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
