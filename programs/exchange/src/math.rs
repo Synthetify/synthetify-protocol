@@ -1,4 +1,5 @@
 use std::{cell::RefMut, convert::TryInto};
+use std::num::
 
 use crate::*;
 
@@ -186,11 +187,11 @@ pub fn calculate_max_withdraw_in_usd(
         return 0;
     }
     return (max_user_debt_in_usd - user_debt_in_usd)
+        .checked_mul(10000)
+        .unwrap()
         .checked_div(collateral_ratio as u64)
         .unwrap()
         .checked_div(health_factor.into())
-        .unwrap()
-        .checked_mul(10000)
         .unwrap();
 }
 pub fn calculate_user_collateral_in_token(
