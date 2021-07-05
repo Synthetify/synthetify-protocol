@@ -787,39 +787,39 @@ pub mod exchange {
 
             Ok(())
         }
-        // #[access_control(halted(&self)
-        // version(&self,&ctx.accounts.exchange_account)
-        // fund_account(&self,&ctx.accounts.staking_fund_account))]
-        // pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
-        //     msg!("Synthetify: WITHDRAW REWARDS");
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        fund_account(&self,&ctx.accounts.staking_fund_account))]
+        pub fn withdraw_rewards(&mut self, ctx: Context<WithdrawRewards>) -> Result<()> {
+            msg!("Synthetify: WITHDRAW REWARDS");
 
-        //     let slot = Clock::get()?.slot;
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            let slot = Clock::get()?.slot;
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     if exchange_account.user_staking_data.amount_to_claim == 0u64 {
-        //         return Err(ErrorCode::NoRewards.into());
-        //     }
-        //     let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-        //     let signer_seeds = &[&seeds[..]];
+            if exchange_account.user_staking_data.amount_to_claim == 0u64 {
+                return Err(ErrorCode::NoRewards.into());
+            }
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer_seeds = &[&seeds[..]];
 
-        //     // Transfer rewards
-        //     let cpi_accounts = Transfer {
-        //         from: ctx.accounts.staking_fund_account.to_account_info(),
-        //         to: ctx.accounts.user_token_account.to_account_info(),
-        //         authority: ctx.accounts.exchange_authority.to_account_info(),
-        //     };
-        //     let cpi_program = ctx.accounts.token_program.to_account_info();
-        //     let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        //     token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim)?;
-        //     // Reset rewards amount
-        //     exchange_account.user_staking_data.amount_to_claim = 0u64;
-        //     Ok(())
-        // }
+            // Transfer rewards
+            let cpi_accounts = Transfer {
+                from: ctx.accounts.staking_fund_account.to_account_info(),
+                to: ctx.accounts.user_token_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let cpi_program = ctx.accounts.token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
+            token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim)?;
+            // Reset rewards amount
+            exchange_account.user_staking_data.amount_to_claim = 0u64;
+            Ok(())
+        }
         // #[access_control(halted(&self))]
         // pub fn withdraw_liquidation_penalty(
         //     &mut self,

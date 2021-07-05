@@ -476,6 +476,42 @@
         "args": []
       },
       {
+        "name": "withdrawRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -1114,8 +1150,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "3vgFTVVtwbshFy4w75dJy9wXrE1QiUNvvbVdSppCUkNL"
-  }
+  ]
 }

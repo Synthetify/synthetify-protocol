@@ -204,24 +204,24 @@ describe('liquidation', () => {
       assert.ok(
         (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
       )
-      //   // Mint reward
-      //   await collateralToken.mintTo(
-      //     stakingFundAccount,
-      //     CollateralTokenMinter,
-      //     [],
-      //     tou64(amountPerRound)
-      //   )
-      //   await exchange.withdrawRewards({
-      //     exchangeAccount,
-      //     owner: accountOwner.publicKey,
-      //     userTokenAccount: userCollateralTokenAccount,
-      //     signers: [accountOwner]
-      //   })
-      //   assert.ok(
-      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-      //       exchangeAccountDataRewardClaim.userStakingData.amountToClaim
-      //     )
-      //   )
+      // Mint reward
+      await collateralToken.mintTo(
+        stakingFundAccount,
+        CollateralTokenMinter,
+        [],
+        tou64(amountPerRound)
+      )
+      await exchange.withdrawRewards({
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccount: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
+      assert.ok(
+        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
+          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+        )
+      )
 
       //   const {
       //     exchangeAccount: exchangeAccount2nd
