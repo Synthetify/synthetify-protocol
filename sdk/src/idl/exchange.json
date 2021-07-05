@@ -317,6 +317,52 @@
         ]
       },
       {
+        "name": "withdraw",
+        "accounts": [
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "reserveAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userCollateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
         "name": "swap",
         "accounts": [
           {
@@ -1059,6 +1105,6 @@
     }
   ],
   "metadata": {
-    "address": "9RCmz9WDoveX6eRfExe855LAB3ot4xyFcWnMPpm4zxnA"
+    "address": "78txVVimd3KzNkskNio7QvJnxwWFTGDiFXuRDi7m13u8"
   }
 }

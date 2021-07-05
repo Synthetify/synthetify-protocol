@@ -198,15 +198,16 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawInstruction({ amount, exchangeAccount, owner, to }: WithdrawInstruction) {
+  public async withdrawInstruction({ amount, exchangeAccount, owner, userCollateralAccount, reserveAccount }: WithdrawInstruction) {
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
-        exchangeAuthority: this.exchangeAuthority,
-        to: to,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAccount: exchangeAccount,
-        owner: owner,
         assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        reserveAccount,
+        userCollateralAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        owner: owner,
+        exchangeAccount: exchangeAccount,
         managerProgram: this.programId
       }
     }) as TransactionInstruction)
@@ -509,13 +510,14 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
-  public async withdraw({ amount, exchangeAccount, owner, to, signers }: Withdraw) {
+  public async withdraw({ amount, exchangeAccount, owner, userCollateralAccount, signers, reserveAccount }: Withdraw) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
+      reserveAccount,
       amount,
       exchangeAccount,
       owner,
-      to
+      userCollateralAccount
     })
     const withdrawTx = new Transaction().add(updateIx).add(withdrawIx)
     const txs = await this.processOperations([withdrawTx])
@@ -764,9 +766,10 @@ export interface Burn {
   signers?: Array<Account>
 }
 export interface Withdraw {
+  reserveAccount: PublicKey
   exchangeAccount: PublicKey
   owner: PublicKey
-  to: PublicKey
+  userCollateralAccount: PublicKey
   amount: BN
   signers?: Array<Account>
 }
@@ -810,8 +813,9 @@ export interface WithdrawRewardsInstruction {
 }
 export interface WithdrawInstruction {
   exchangeAccount: PublicKey
+  reserveAccount: PublicKey
   owner: PublicKey
-  to: PublicKey
+  userCollateralAccount: PublicKey
   amount: BN
 }
 export interface DepositInstruction {

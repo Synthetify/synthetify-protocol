@@ -1,4 +1,5 @@
 use std::{cell::RefMut, convert::TryInto};
+use std::num::
 
 use crate::*;
 
@@ -118,6 +119,7 @@ pub fn calculate_user_debt_in_usd(
 //     return mint_amount_in_usd as u64;
 // }
 
+// Replaced by calculate_max_debt_in_usd()
 // pub fn calculate_max_user_debt_in_usd(
 //     collateral_asset: &Asset,
 //     collateralization_level: u32,
@@ -128,7 +130,7 @@ pub fn calculate_user_debt_in_usd(
 //         .unwrap()
 //         .checked_div(
 //             10u128
-//                 .checked_pow((collateral_asset.decimals + PRICE_OFFSET - ACCURACY).into())
+//                 .checked_pow((collateral_asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
 //                 .unwrap(),
 //         )
 //         .unwrap();
@@ -178,15 +180,18 @@ pub fn calculate_new_shares_by_rounding_up(
 pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
     user_debt_in_usd: u64,
-    collateralization_level: u32,
+    collateral_ratio: u8,
+    health_factor: u8,
 ) -> u64 {
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
     }
     return (max_user_debt_in_usd - user_debt_in_usd)
-        .checked_mul(collateralization_level as u64)
+        .checked_mul(10000)
         .unwrap()
-        .checked_div(100)
+        .checked_div(collateral_ratio as u64)
+        .unwrap()
+        .checked_div(health_factor.into())
         .unwrap();
 }
 pub fn calculate_user_collateral_in_token(
