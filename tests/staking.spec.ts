@@ -12,7 +12,8 @@ import {
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  skipToSlot
+  skipToSlot,
+  mulByPercentage
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -155,32 +156,41 @@ describe('liquidation', () => {
         usdToken
       })
 
+      const healthFactor = new BN((await exchange.getState()).healthFactor)
+
       assert.ok(
         (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
-          new BN(100 * 1e6)
+          mulByPercentage(new BN(200 * 1e6), healthFactor)
         )
       )
-      //   assert.ok(nextRoundStart.gtn(await connection.getSlot()))
-      //   // Wait for start of new round
-      //   await skipToSlot(nextRoundStart.toNumber(), connection)
-      //   // Burn should reduce next round stake
-      //   const amountBurn = new BN(100 * 1e6)
-      //   await exchange.burn({
-      //     amount: amountBurn,
-      //     exchangeAccount,
-      //     owner: accountOwner.publicKey,
-      //     userTokenAccountBurn: usdTokenAccount,
-      //     signers: [accountOwner]
-      //   })
-      //   assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
-      //   const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
-      //   assert.ok(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(new BN(100 * 1e6)))
-      //   assert.ok(
-      //     exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
-      //   )
-      //   // Wait for round to end
-      //   const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
-      //   await skipToSlot(secondRound, connection)
+      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      // Wait for start of new round
+      await skipToSlot(nextRoundStart.toNumber(), connection)
+      // Burn should reduce next round stake
+      const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      await exchange.burn({
+        amount: amountBurn,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountBurn: usdTokenAccount,
+        signers: [accountOwner]
+      })
+      assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
+      const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
+      console.log(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints)
+      assert.ok(
+        exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(
+          mulByPercentage(new BN(100 * 1e6), healthFactor)
+        )
+      )
+      assert.ok(
+        exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(
+          mulByPercentage(new BN(100 * 1e6), healthFactor)
+        )
+      )
+      // Wait for round to end
+      const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
+      await skipToSlot(secondRound, connection)
 
       //   // Claim rewards
       //   await exchange.claimRewards(exchangeAccount)
