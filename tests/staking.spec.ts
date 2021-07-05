@@ -248,7 +248,7 @@ describe('liquidation', () => {
       await exchange.claimRewards(exchangeAccount2nd)
       assert.ok(
         (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
-          mulByPercentage(new BN(100), healthFactor)
+          new BN(100)
         )
       )
       assert.ok(
@@ -256,17 +256,17 @@ describe('liquidation', () => {
           new BN(0)
         )
       )
-      //   // Wait for nextRound to end
-      //   await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
-      //   await exchange.claimRewards(exchangeAccount)
-      //   await exchange.claimRewards(exchangeAccount2nd)
+      // Wait for nextRound to end
+      await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
+      await exchange.claimRewards(exchangeAccount)
+      await exchange.claimRewards(exchangeAccount2nd)
 
-      //   const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
-      //   const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
-      //     exchangeAccount2nd
-      //   )
-      //   assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
-      //   assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
+      const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
+      const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
+        exchangeAccount2nd
+      )
+      assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
+      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
   })
 })
