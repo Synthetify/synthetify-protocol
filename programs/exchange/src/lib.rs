@@ -1030,7 +1030,7 @@ pub mod exchange {
             reserve_address: Pubkey,
             reserve_balance: u64,
             decimals: u8,
-            collateral_ratio
+            collateral_ratio: u8,
         ) -> Result<()> {
             let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
@@ -1044,24 +1044,14 @@ pub mod exchange {
                     asset.collateral.is_collateral = true;
                     asset.collateral.collateral_address = asset_address;
                     asset.collateral.reserve_address = reserve_address;
-                    asset.collateral.reserve_address = reserve_address;
-
-
-                },
+                    asset.collateral.reserve_balance = reserve_balance;
+                    asset.collateral.decimals = decimals;
+                    asset.collateral.collateral_ratio = collateral_ratio;
+                }
                 None => return Err(ErrorCode::NoAssetFound.into()),
             }
             Ok(())
-            /*
-            pub struct Collateral {
-                pub is_collateral: bool,        // 1
-                pub collateral_address: Pubkey, // 32
-                pub reserve_address: Pubkey,    // 32
-                pub reserve_balance: u64,       // 8
-                pub decimals: u8,               // 1
-                pub collateral_ratio: u8,       // 1 in %
-            } */
         }
-
     }
     pub fn create_exchange_account(
         ctx: Context<CreateExchangeAccount>,
