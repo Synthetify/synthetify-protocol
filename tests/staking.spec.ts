@@ -223,35 +223,39 @@ describe('liquidation', () => {
         )
       )
 
-      //   const {
-      //     exchangeAccount: exchangeAccount2nd
-      //   } = await createAccountWithCollateralAndMaxMintUsd({
-      //     collateralAccount,
-      //     collateralToken,
-      //     exchangeAuthority,
-      //     exchange,
-      //     collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      //     amount: collateralAmount,
-      //     usdToken
-      //   })
-      //   const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
-      //   assert.ok(exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(new BN(200000000)))
+      const {
+        exchangeAccount: exchangeAccount2nd
+      } = await createAccountWithCollateralAndMaxMintUsd({
+        reserveAddress,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount,
+        usdToken
+      })
+      const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
+      assert.ok(
+        exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(
+          mulByPercentage(new BN(200 * 1e6), healthFactor)
+        )
+      )
 
-      //   // Wait for nextRound to end
-      //   await skipToSlot(secondRound + stakingRoundLength, connection)
+      // Wait for nextRound to end
+      await skipToSlot(secondRound + stakingRoundLength, connection)
 
-      //   await exchange.claimRewards(exchangeAccount)
-      //   await exchange.claimRewards(exchangeAccount2nd)
-      //   assert.ok(
-      //     (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
-      //       new BN(100)
-      //     )
-      //   )
-      //   assert.ok(
-      //     (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
-      //       new BN(0)
-      //     )
-      //   )
+      await exchange.claimRewards(exchangeAccount)
+      await exchange.claimRewards(exchangeAccount2nd)
+      assert.ok(
+        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
+          mulByPercentage(new BN(100), healthFactor)
+        )
+      )
+      assert.ok(
+        (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
+          new BN(0)
+        )
+      )
       //   // Wait for nextRound to end
       //   await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
       //   await exchange.claimRewards(exchangeAccount)
