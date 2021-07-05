@@ -68,7 +68,12 @@
           "isSigner": false
         },
         {
-          "name": "reserveAccount",
+          "name": "snyReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "snyLiquidationFund",
           "isMut": false,
           "isSigner": false
         }
@@ -137,6 +142,10 @@
           {
             "name": "collateralizationLevel",
             "type": "u32"
+          },
+          {
+            "name": "healthFactor",
+            "type": "u8"
           },
           {
             "name": "maxDelay",
@@ -281,6 +290,52 @@
           },
           {
             "name": "to",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "withdraw",
+        "accounts": [
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "reserveAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "userCollateralAccount",
             "isMut": true,
             "isSigner": false
           },
@@ -518,6 +573,22 @@
           {
             "name": "halted",
             "type": "bool"
+          }
+        ]
+      },
+      {
+        "name": "setHealthFactor",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "factor",
+            "type": "u8"
           }
         ]
       },
@@ -874,6 +945,10 @@
             "type": "publicKey"
           },
           {
+            "name": "liquidationFund",
+            "type": "publicKey"
+          },
+          {
             "name": "reserveBalance",
             "type": "u64"
           },
@@ -1028,8 +1103,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "3bxtWhNADLNGncVxKubSU7Mipm1RaX2EBH9x3Jbe3BEM"
-  }
+  ]
 }

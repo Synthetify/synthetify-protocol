@@ -13,8 +13,9 @@ pub mod exchange {
 
     use crate::math::{
         amount_to_discount, calculate_burned_shares, calculate_debt, calculate_max_burned_in_xusd,
-        calculate_max_debt_in_usd, calculate_new_shares_by_rounding_up, calculate_swap_out_amount,
-        calculate_user_debt_in_usd, PRICE_OFFSET,
+        calculate_max_debt_in_usd, calculate_max_withdraw_in_usd, calculate_max_withdrawable,
+        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_user_debt_in_usd,
+        PRICE_OFFSET,
     };
 
     use super::*;
@@ -30,6 +31,7 @@ pub mod exchange {
         pub collateral_account: Pubkey,   //32
         pub assets_list: Pubkey,          //32
         pub collateralization_level: u32, //4   In % should range from 300%-1000%
+        pub health_factor: u8,            //1   In % 1-100% modifier for debt
         pub max_delay: u32,               //4   Delay bettwen last oracle update 100 blocks ~ 1 min
         pub fee: u32,                     //4   Default fee per swap 300 => 0.3%
         pub liquidation_account: Pubkey,  //32
@@ -55,6 +57,7 @@ pub mod exchange {
             self.assets_list = *ctx.accounts.assets_list.key;
             self.liquidation_account = *ctx.accounts.liquidation_account.key;
             self.collateralization_level = 1000;
+            self.health_factor = 50;
             // once we will not be able to fit all data into one transaction we will
             // use max_delay to allow split updating oracles and exchange operation
             self.max_delay = 0;
@@ -132,11 +135,10 @@ pub mod exchange {
                 .checked_add(amount)
                 .unwrap();
 
-            let mut exchange_account_collateral =
-                exchange_account.collaterals.iter_mut().find(|x| {
-                    x.collateral_address
-                        .eq(&asset.collateral.collateral_address)
-                });
+            let exchange_account_collateral = exchange_account.collaterals.iter_mut().find(|x| {
+                x.collateral_address
+                    .eq(&asset.collateral.collateral_address)
+            });
 
             match exchange_account_collateral {
                 Some(entry) => entry.amount = entry.amount.checked_add(amount).unwrap(),
@@ -177,6 +179,11 @@ pub mod exchange {
             let user_debt =
                 calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
             let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
+            let max_borrow = max_debt
+                .checked_mul(self.health_factor.into())
+                .unwrap()
+                .checked_div(100)
+                .unwrap();
 
             let assets = &mut assets_list.assets;
 
@@ -184,7 +191,7 @@ pub mod exchange {
             // Both xUSD and collateral token have static index in assets array
             let mint_asset = &assets[0];
 
-            if max_debt < amount.checked_add(user_debt).unwrap().into() {
+            if max_borrow < amount.checked_add(user_debt).unwrap().into() {
                 return Err(ErrorCode::MintLimit.into());
             }
 
@@ -210,77 +217,92 @@ pub mod exchange {
             token::mint_to(mint_cpi_ctx, amount)?;
             Ok(())
         }
-        // #[access_control(halted(&self)
-        // version(&self,&ctx.accounts.exchange_account)
-        // collateral_account(&self,&ctx.accounts.collateral_account)
-        // assets_list(&self,&ctx.accounts.assets_list))]
-        // pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-        //     msg!("Synthetify: WITHDRAW");
+        #[access_control(halted(&self)
+        version(&self,&ctx.accounts.exchange_account)
+        assets_list(&self,&ctx.accounts.assets_list))]
+        pub fn withdraw(&mut self, ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+            msg!("Synthetify: WITHDRAW");
 
-        //     let slot = Clock::get()?.slot;
+            let slot = Clock::get()?.slot;
 
-        //     // Adjust staking round
-        //     adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
+            // Adjust staking round
+            adjust_staking_rounds(&mut self.staking, slot, self.debt_shares);
 
-        //     let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        //     // adjust current staking points for exchange account
-        //     adjust_staking_account(exchange_account, &self.staking);
+            // adjust current staking points for exchange account
+            let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
+            adjust_staking_account(exchange_account, &self.staking);
 
-        //     let collateral_account = &ctx.accounts.collateral_account;
-        //     let assets_list = &ctx.accounts.assets_list.load_mut()?;
-        //     let assets = &assets_list.assets;
+            // Check signer
+            let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+            let tx_signer = ctx.accounts.owner.key;
+            if !tx_signer.eq(&user_collateral_account.owner) {
+                return Err(ErrorCode::InvalidSigner.into());
+            }
 
-        //     let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
-        //     let user_debt =
-        //         calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            // Calculate debt
+            let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+            let total_debt = calculate_debt(assets_list, slot, self.max_delay).unwrap();
+            let user_debt =
+                calculate_user_debt_in_usd(exchange_account, total_debt, self.debt_shares);
+            let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
+            let max_borrow = max_debt
+                .checked_mul(self.health_factor.into())
+                .unwrap()
+                .checked_div(100)
+                .unwrap();
 
-        //     // collateral_asset have static index
-        //     let collateral_asset = &assets[1];
+            let asset = match assets_list
+                .assets
+                .iter_mut()
+                .find(|x| x.synthetic.asset_address.eq(&user_collateral_account.mint))
+            {
+                Some(v) => v,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            };
 
-        //     let collateral_amount = calculate_user_collateral_in_token(
-        //         exchange_account.collateral_shares,
-        //         self.collateral_shares,
-        //         collateral_account.amount,
-        //     );
-        //     let max_user_debt = calculate_max_user_debt_in_usd(
-        //         &collateral_asset,
-        //         self.collateralization_level,
-        //         collateral_amount,
-        //     );
-        //     let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
-        //         max_user_debt,
-        //         user_debt,
-        //         self.collateralization_level,
-        //     );
-        //     let max_withdrawable =
-        //         calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+            let mut exchange_account_collateral =
+                match exchange_account.collaterals.iter_mut().find(|x| {
+                    x.collateral_address
+                        .eq(&asset.collateral.collateral_address)
+                }) {
+                    Some(v) => v,
+                    None => return Err(ErrorCode::NoAssetFound.into()),
+                };
 
-        //     if max_withdrawable < amount {
-        //         return Err(ErrorCode::WithdrawLimit.into());
-        //     }
+            // Check if not overdrafing
+            let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
+                max_borrow as u64,
+                user_debt,
+                asset.collateral.collateral_ratio,
+                self.health_factor,
+            );
+            let max_withdrawable = calculate_max_withdrawable(asset, max_withdraw_in_usd);
 
-        //     // Rounding up - collateral is withdrawn in favor of the system
-        //     let shares_to_burn = amount_to_shares_by_rounding_up(
-        //         self.collateral_shares,
-        //         collateral_account.amount,
-        //         amount,
-        //     );
+            if amount > max_withdrawable {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
 
-        //     // Adjust program and user debt_shares
-        //     self.collateral_shares = self.collateral_shares.checked_sub(shares_to_burn).unwrap();
-        //     exchange_account.collateral_shares = exchange_account
-        //         .collateral_shares
-        //         .checked_sub(shares_to_burn)
-        //         .unwrap();
+            // Update balance on exchange account
+            exchange_account_collateral.amount = exchange_account_collateral
+                .amount
+                .checked_sub(amount)
+                .unwrap();
 
-        //     // Send withdrawn collateral to user
-        //     let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
-        //     let signer = &[&seeds[..]];
-        //     let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        //     token::transfer(cpi_ctx, amount)?;
+            // Update reserve balance in AssetList
+            asset.collateral.reserve_balance = asset
+                .collateral
+                .reserve_balance
+                .checked_sub(amount)
+                .unwrap(); // should never fail
 
-        //     Ok(())
-        // }
+            // Send withdrawn collateral to user
+            let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[self.nonce]];
+            let signer = &[&seeds[..]];
+            let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+            token::transfer(cpi_ctx, amount)?;
+            Ok(())
+        }
+
         #[access_control(halted(&self)
         version(&self,&ctx.accounts.exchange_account)
         assets_list(&self,&ctx.accounts.assets_list))]
@@ -899,6 +921,13 @@ pub mod exchange {
             Ok(())
         }
         #[access_control(admin(&self, &ctx.accounts.admin))]
+        pub fn set_health_factor(&mut self, ctx: Context<AdminAction>, factor: u8) -> Result<()> {
+            msg!("Synthetify:Admin: SET HEALTH FACTOR");
+
+            self.health_factor = factor;
+            Ok(())
+        }
+        #[access_control(admin(&self, &ctx.accounts.admin))]
         pub fn set_staking_amount_per_round(
             &mut self,
             ctx: Context<AdminAction>,
@@ -1099,7 +1128,8 @@ pub mod exchange {
                 collateral_address: collateral_token,
                 reserve_balance: 0,
                 decimals: 6,
-                reserve_address: *ctx.accounts.reserve_account.key,
+                reserve_address: *ctx.accounts.sny_reserve.key,
+                liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
             },
         };
         assets_list.append(usd_asset);
@@ -1171,7 +1201,8 @@ pub struct CreateAssetsList<'info> {
 pub struct InitializeAssetsList<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    pub reserve_account: AccountInfo<'info>,
+    pub sny_reserve: AccountInfo<'info>,
+    pub sny_liquidation_fund: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
@@ -1256,9 +1287,9 @@ pub struct Withdraw<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
-    pub collateral_account: CpiAccount<'info, TokenAccount>,
+    pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
-    pub to: AccountInfo<'info>,
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -1269,8 +1300,8 @@ pub struct Withdraw<'info> {
 impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &Withdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: accounts.collateral_account.to_account_info(),
-            to: accounts.to.to_account_info(),
+            from: accounts.reserve_account.to_account_info(),
+            to: accounts.user_collateral_account.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.to_account_info();
@@ -1510,6 +1541,7 @@ pub struct Collateral {
     pub is_collateral: bool,        // 1
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
+    pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: u64,       // 8
     pub decimals: u8,               // 1
     pub collateral_ratio: u8,       // 1 in %
