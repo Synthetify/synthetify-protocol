@@ -293,7 +293,6 @@ describe('liquidation', () => {
         tokenFeed: someFeed
       })
 
-      // Collateral structure
       const someCollateral: Collateral = {
         isCollateral: true,
         collateralAddress: someToken.publicKey,
@@ -303,7 +302,6 @@ describe('liquidation', () => {
         decimals: 8
       }
 
-      // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         collateral: someCollateral,
         signer: EXCHANGE_ADMIN.publicKey,
@@ -314,7 +312,7 @@ describe('liquidation', () => {
 
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(20 * 1e8)
       const {
         accountOwner,
         exchangeAccount,
@@ -332,116 +330,75 @@ describe('liquidation', () => {
       })
 
       const healthFactor = new BN((await exchange.getState()).healthFactor)
+      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
-      //   assert.ok(
-      //     (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
-      //       mulByPercentage(new BN(200 * 1e6), healthFactor)
-      //     )
-      //   )
-      //   assert.ok(nextRoundStart.gtn(await connection.getSlot()))
-      //   // Wait for start of new round
-      //   await skipToSlot(nextRoundStart.toNumber(), connection)
-      //   // Burn should reduce next round stake
-      //   const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
-      //   await exchange.burn({
-      //     amount: amountBurn,
-      //     exchangeAccount,
-      //     owner: accountOwner.publicKey,
-      //     userTokenAccountBurn: usdTokenAccount,
-      //     signers: [accountOwner]
-      //   })
-      //   assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
-      //   const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
 
-      //   const amountScaledByHealth = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      assert.ok(
+        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
+          mulByPercentage(new BN(200 * 1e6), healthFactor)
+        )
+      )
+      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+      // Wait for start of new round
+      await skipToSlot(nextRoundStart.toNumber(), connection)
+      // Burn should reduce next round stake
+      const remainingAmount = usdMintAmount.div(new BN(2))
+      await exchange.burn({
+        amount: remainingAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountBurn: usdTokenAccount,
+        signers: [accountOwner]
+      })
+      assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
+      const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
 
-      //   assert.ok(
-      //     exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(amountScaledByHealth)
-      //   )
-      //   assert.ok(
-      //     exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(amountScaledByHealth)
-      //   )
-      //   // Wait for round to end
-      //   const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
-      //   await skipToSlot(secondRound, connection)
+      assert.ok(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(remainingAmount))
+      assert.ok(exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(remainingAmount))
+      // Wait for round to end
+      const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
+      await skipToSlot(secondRound, connection)
 
-      //   // Claim rewards
-      //   await exchange.claimRewards(exchangeAccount)
-      //   const state = await exchange.getState()
-      //   assert.ok(state.staking.finishedRound.allPoints.eq(amountScaledByHealth))
-      //   assert.ok(state.staking.currentRound.allPoints.eq(amountScaledByHealth))
-      //   assert.ok(state.staking.nextRound.allPoints.eq(amountScaledByHealth))
+      // Claim rewards
+      await exchange.claimRewards(exchangeAccount)
+      const state = await exchange.getState()
+      assert.ok(state.staking.finishedRound.allPoints.eq(remainingAmount))
+      assert.ok(state.staking.currentRound.allPoints.eq(remainingAmount))
+      assert.ok(state.staking.nextRound.allPoints.eq(remainingAmount))
 
-      //   assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
-      //   const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
-      //   assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
+      assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
-      //   assert.ok(
-      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
-      //   )
-      //   // Mint reward
-      //   await collateralToken.mintTo(
-      //     stakingFundAccount,
-      //     CollateralTokenMinter,
-      //     [],
-      //     tou64(amountPerRound)
-      //   )
-      //   await exchange.withdrawRewards({
-      //     exchangeAccount,
-      //     owner: accountOwner.publicKey,
-      //     userTokenAccount: userCollateralTokenAccount,
-      //     signers: [accountOwner]
-      //   })
-      //   assert.ok(
-      //     (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-      //       exchangeAccountDataRewardClaim.userStakingData.amountToClaim
-      //     )
-      //   )
-
-      //   const {
-      //     exchangeAccount: exchangeAccount2nd
-      //   } = await createAccountWithCollateralAndMaxMintUsd({
-      //     reserveAddress,
-      //     collateralToken,
-      //     exchangeAuthority,
-      //     exchange,
-      //     collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      //     amount: collateralAmount,
-      //     usdToken
-      //   })
-      //   const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
-      //   assert.ok(
-      //     exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(
-      //       mulByPercentage(new BN(200 * 1e6), healthFactor)
-      //     )
-      //   )
-
-      //   // Wait for nextRound to end
-      //   await skipToSlot(secondRound + stakingRoundLength, connection)
-
-      //   await exchange.claimRewards(exchangeAccount)
-      //   await exchange.claimRewards(exchangeAccount2nd)
-      //   assert.ok(
-      //     (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
-      //       new BN(100)
-      //     )
-      //   )
-      //   assert.ok(
-      //     (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
-      //       new BN(0)
-      //     )
-      //   )
-      //   // Wait for nextRound to end
-      //   await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
-      //   await exchange.claimRewards(exchangeAccount)
-      //   await exchange.claimRewards(exchangeAccount2nd)
-
-      //   const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
-      //   const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
-      //     exchangeAccount2nd
-      //   )
-      //   assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
-      //   assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
+      assert.ok(
+        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(new BN(0))
+      )
+      // Mint reward
+      await collateralToken.mintTo(
+        stakingFundAccount,
+        CollateralTokenMinter,
+        [],
+        tou64(amountPerRound)
+      )
+      await exchange.withdrawRewards({
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccount: userCollateralTokenAccount,
+        signers: [accountOwner]
+      })
+      assert.ok(
+        (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
+          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+        )
+      )
     })
   })
 })
