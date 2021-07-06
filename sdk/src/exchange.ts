@@ -617,7 +617,7 @@ export class Exchange {
           admin: signer,
           assetsList,
           assetAddress: collateral.collateralAddress,
-          reserveAddress: collateral.reserveAddress,
+          reserveAccount: collateral.reserveAddress,
           feedAddress: collateralFeed
         }
       }
