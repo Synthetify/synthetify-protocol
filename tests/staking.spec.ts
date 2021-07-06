@@ -1,9 +1,9 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey } from '@solana/web3.js'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Network } from '@synthetify/sdk'
+import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
@@ -17,6 +17,7 @@ import {
   mulByPercentage
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { Collateral } from '../sdk/lib/exchange'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
@@ -270,17 +271,46 @@ describe('liquidation', () => {
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
     it.only('with multiple collaterals', async () => {
-      const otherToken = await createToken({
+      const someToken = await createToken({
         connection,
         payer: wallet,
-        mintAuthority: CollateralTokenMinter.publicKey
+        mintAuthority: CollateralTokenMinter.publicKey,
+        decimals: 8
       })
-      const otherTokenFeed = await createPriceFeed({
+
+      const someFeed = await createPriceFeed({
         oracleProgram,
-        initPrice: initialCollateralPrice,
-        expo: -6
+        initPrice: 4,
+        expo: -8
       })
-      const otherReserveAddress = await otherToken.createAccount(exchangeAuthority)
+
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        maxSupply: new BN(10).pow(new BN(18)),
+        tokenAddress: someToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: someFeed
+      })
+
+      // Collateral structure
+      const someCollateral: Collateral = {
+        isCollateral: true,
+        collateralAddress: someToken.publicKey,
+        reserveAddress: await someToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      // Setting collateral
+      const ix = await exchange.setAsCollateralInstruction({
+        collateral: someCollateral,
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateralFeed: someFeed
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
@@ -288,18 +318,17 @@ describe('liquidation', () => {
       const {
         accountOwner,
         exchangeAccount,
-        // usdTokenAccount,
+        userOtherTokenAccount,
         userCollateralTokenAccount
       } = await createAccountWithMultipleCollaterals({
         reserveAddress: reserveAddress,
-        otherReserveAddress,
+        otherReserveAddress: someCollateral.reserveAddress,
         collateralToken,
-        otherToken: otherToken,
+        otherToken: someToken,
         exchangeAuthority,
         exchange,
         mintAuthority: CollateralTokenMinter.publicKey,
         amount: collateralAmount
-        // usdToken
       })
 
       const healthFactor = new BN((await exchange.getState()).healthFactor)
