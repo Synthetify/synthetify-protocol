@@ -527,7 +527,7 @@ describe('liquidation', () => {
         ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
     })
-    it.only('fail wrong asset list', async () => {
+    it('fail wrong asset list', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
