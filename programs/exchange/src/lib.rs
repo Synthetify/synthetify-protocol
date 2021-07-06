@@ -1022,10 +1022,10 @@ pub mod exchange {
             }
             Ok(())
         }
-        #[access_control(admin(&self, &ctx.accounts.signer))]
-        pub fn set_is_collateral(
+        #[access_control(admin(&self, &ctx.accounts.admin))]
+        pub fn set_as_collateral(
             &mut self,
-            ctx: Context<SetIsCollateral>,
+            ctx: Context<SetAsCollateral>,
             asset_address: Pubkey,
             reserve_address: Pubkey,
             reserve_balance: u64,
@@ -1222,9 +1222,9 @@ pub struct SetPriceFeed<'info> {
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
-pub struct SetIsCollateral<'info> {
+pub struct SetAsCollateral<'info> {
     #[account(signer)]
-    pub signer: AccountInfo<'info>,
+    pub admin: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
 }

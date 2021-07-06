@@ -707,6 +707,43 @@
             "type": "publicKey"
           }
         ]
+      },
+      {
+        "name": "setAsCollateral",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "assetAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "reserveBalance",
+            "type": "u64"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "collateralRatio",
+            "type": "u8"
+          }
+        ]
       }
     ]
   },
@@ -1103,8 +1140,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "CAuPuVwF4UpdzebJ1DtHgcDFDYu7UyZANnb8tDRyLRxu"
-  }
+  ]
 }

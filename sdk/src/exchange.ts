@@ -198,7 +198,13 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawInstruction({ amount, exchangeAccount, owner, userCollateralAccount, reserveAccount }: WithdrawInstruction) {
+  public async withdrawInstruction({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    reserveAccount
+  }: WithdrawInstruction) {
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
         assetsList: this.state.assetsList,
@@ -510,7 +516,14 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
-  public async withdraw({ amount, exchangeAccount, owner, userCollateralAccount, signers, reserveAccount }: Withdraw) {
+  public async withdraw({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    signers,
+    reserveAccount
+  }: Withdraw) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       reserveAccount,
@@ -587,6 +600,26 @@ export class Exchange {
         priceFeed: priceFeed
       }
     })) as TransactionInstruction
+  }
+
+  public async setAsCollateralInstruction({
+    signer,
+    assetsList,
+    collateral
+  }: SetAsCollateralInstruction) {
+    return (await this.program.state.instruction.setAsCollateral(
+      collateral.collateralAddress,
+      collateral.reserveAddress,
+      collateral.reserveBalance,
+      collateral.decimals,
+      collateral.collateralRatio,
+      {
+        accounts: {
+          admin: signer,
+          assetsList
+        }
+      }
+    )) as TransactionInstruction
   }
 
   public async initializeAssetsList({
@@ -698,6 +731,7 @@ export interface Collateral {
   reserveAddress: PublicKey
   reserveBalance: BN
   collateralRatio: number
+  decimals: number
 }
 export interface Synthetic {
   assetAddress: PublicKey
@@ -731,6 +765,12 @@ export interface SetPriceFeedInstruction {
   priceFeed: PublicKey
   tokenAddress: PublicKey
   signer: PublicKey
+}
+
+export interface SetAsCollateralInstruction {
+  signer: PublicKey
+  assetsList: PublicKey
+  collateral: Collateral
 }
 
 export interface Mint {
