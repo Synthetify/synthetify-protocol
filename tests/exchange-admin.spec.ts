@@ -14,6 +14,8 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
+import { Collateral } from '../sdk/lib/exchange'
+import { Signer } from 'node:crypto'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -312,6 +314,43 @@ describe('staking', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.staking.roundLength === length)
+    })
+  })
+  describe.only('#setAsCollateral()', async () => {
+    it('Fail without admin signature', async () => {
+      const SNY: Collateral = {
+        isCollateral: true,
+        collateralAddress: await collateralToken.createAccount(exchangeAuthority),
+        reserveAddress: await collateralToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 6
+      }
+      const ix = await exchange.setAsCollateralInstruction({
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateral: SNY
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('change value', async () => {
+      const SNY: Collateral = {
+        isCollateral: true,
+        collateralAddress: await collateralToken.createAccount(exchangeAuthority),
+        reserveAddress: await collateralToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 6
+      }
+      const ix = await exchange.setAsCollateralInstruction({
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateral: SNY
+      })
+      signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
   })
 })
