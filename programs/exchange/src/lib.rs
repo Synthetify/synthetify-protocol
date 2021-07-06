@@ -1031,23 +1031,25 @@ pub mod exchange {
             collateral_ratio: u8,
         ) -> Result<()> {
             let mut assets_list = ctx.accounts.assets_list.load_mut()?;
-
-            let asset = assets_list
+            let asset = match assets_list
                 .assets
                 .iter_mut()
-                .find(|x| x.feed_address == *ctx.accounts.feed_address.key);
-
-            match asset {
-                Some(asset) => {
-                    asset.collateral.is_collateral = true;
-                    asset.collateral.collateral_address = *ctx.accounts.asset_address.key;
-                    asset.collateral.reserve_address = *ctx.accounts.reserve_address.key;
-                    asset.collateral.reserve_balance = reserve_balance;
-                    asset.collateral.decimals = decimals;
-                    asset.collateral.collateral_ratio = collateral_ratio;
-                }
+                .find(|x| x.feed_address == *ctx.accounts.feed_address.key)
+            {
+                Some(asset) => asset,
                 None => return Err(ErrorCode::NoAssetFound.into()),
+            };
+
+            if asset.collateral.is_collateral == true {
+                return Err(ErrorCode::AlreadyACollateral.into());
             }
+
+            asset.collateral.is_collateral = true;
+            asset.collateral.collateral_address = *ctx.accounts.asset_address.key;
+            asset.collateral.reserve_address = *ctx.accounts.reserve_account.to_account_info().key;
+            asset.collateral.reserve_balance = reserve_balance;
+            asset.collateral.decimals = decimals;
+            asset.collateral.collateral_ratio = collateral_ratio;
             Ok(())
         }
     }
@@ -1226,7 +1228,7 @@ pub struct SetAsCollateral<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub reserve_address: AccountInfo<'info>,
+    pub reserve_account: CpiAccount<'info, TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -1592,6 +1594,8 @@ pub enum ErrorCode {
     MaxSupply,
     #[msg("Asset is not collateral")]
     NotCollateral,
+    #[msg("Asset is already a collateral")]
+    AlreadyACollateral,
 }
 
 // Access control modifiers.
