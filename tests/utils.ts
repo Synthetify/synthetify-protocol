@@ -291,26 +291,26 @@ export const createAccountWithMultipleCollaterals = async ({
   // Assumes the same authority for both tokens
   await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amount))
 
-  // const depositIx = await exchange.depositInstruction({
-  //   amount: amount,
-  //   exchangeAccount,
-  //   userCollateralAccount: userOtherTokenAccount,
-  //   owner: accountOwner.publicKey,
-  //   reserveAddress: otherReserveAddress
-  // })
-  // const approveIx = Token.createApproveInstruction(
-  //   otherToken.programId,
-  //   userOtherTokenAccount,
-  //   exchangeAuthority,
-  //   accountOwner.publicKey,
-  //   [],
-  //   tou64(amount)
-  // )
-  // await signAndSend(
-  //   new Transaction().add(approveIx).add(depositIx),
-  //   [accountOwner],
-  //   exchange.connection
-  // )
+  const depositIx = await exchange.depositInstruction({
+    amount: amount,
+    exchangeAccount,
+    userCollateralAccount: userOtherTokenAccount,
+    owner: accountOwner.publicKey,
+    reserveAddress: otherReserveAddress
+  })
+  const approveIx = Token.createApproveInstruction(
+    otherToken.programId,
+    userOtherTokenAccount,
+    exchangeAuthority,
+    accountOwner.publicKey,
+    [],
+    tou64(amount)
+  )
+  await signAndSend(
+    new Transaction().add(approveIx).add(depositIx),
+    [accountOwner],
+    exchange.connection
+  )
 
   return {
     accountOwner,
