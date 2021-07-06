@@ -611,19 +611,11 @@ pub mod exchange {
             .checked_add(amount.into())
             .unwrap();
 
-            msg!("seized_collateral_in_usd {:?}", seized_collateral_in_usd);
             // Rounding down - debt is burned in favor of the system
-            msg!("self.debt_shares {:?}", self.debt_shares);
-            msg!("debt {:?}", debt);
 
             let burned_debt_shares =
                 amount_to_shares_by_rounding_down(self.debt_shares, debt, amount);
             self.debt_shares = self.debt_shares.checked_sub(burned_debt_shares).unwrap();
-            msg!("burned_debt_shares {:?}", burned_debt_shares);
-            msg!(
-                "exchange_account.debt_shares {:?}",
-                exchange_account.debt_shares
-            );
 
             exchange_account.debt_shares = exchange_account
                 .debt_shares
@@ -632,10 +624,6 @@ pub mod exchange {
 
             let seized_collateral_in_token =
                 usd_to_token_amount(asset, seized_collateral_in_usd.try_into().unwrap());
-            msg!(
-                "seized_collateral_in_token {:?}",
-                seized_collateral_in_token
-            );
 
             let mut exchange_account_collateral =
                 match exchange_account.collaterals.iter_mut().find(|x| {
@@ -645,22 +633,10 @@ pub mod exchange {
                     Some(v) => v,
                     None => return Err(ErrorCode::NoAssetFound.into()),
                 };
-            msg!(
-                "exchange_account_collateral {:?}",
-                exchange_account_collateral
-            );
             exchange_account_collateral.amount = exchange_account_collateral
                 .amount
                 .checked_sub(seized_collateral_in_token)
                 .unwrap();
-            msg!(
-                "asset.collateral.reserve_balance {:?}",
-                asset.collateral.reserve_balance
-            );
-            msg!(
-                "seized_collateral_in_token {:?}",
-                seized_collateral_in_token
-            );
             asset.collateral.reserve_balance = asset
                 .collateral
                 .reserve_balance
@@ -874,21 +850,11 @@ pub mod exchange {
             }
             let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
             let liquidation_fund = ctx.accounts.liquidation_fund.to_account_info().key;
-            msg!(
-                "assets_list
-                .assets {:?}",
-                assets_list.assets[1]
-            );
             let asset = assets_list
                 .assets
                 .iter_mut()
                 .find(|x| x.collateral.liquidation_fund.eq(liquidation_fund))
                 .unwrap();
-            msg!(
-                "asset.collateral.reserve_balance {:?}",
-                asset.collateral.reserve_balance
-            );
-            msg!("amount {:?}", amount);
             asset.collateral.reserve_balance = asset
                 .collateral
                 .reserve_balance

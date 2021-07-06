@@ -157,7 +157,7 @@ describe('liquidation', () => {
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
-    it.only('should liquidate', async () => {
+    it('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
@@ -199,10 +199,6 @@ describe('liquidation', () => {
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
       const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListDataUpdated)
-
-      console.log(userDebtBalance.toString())
-      console.log('#################')
-      console.log(userMaxDebt.toString())
 
       assert.ok(userDebtBalance.eq(usdMintAmount))
       const collateralAsset = assetsListDataUpdated.assets[1]
@@ -351,7 +347,7 @@ describe('liquidation', () => {
     it('check halted', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -369,17 +365,18 @@ describe('liquidation', () => {
 
       const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
 
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      const collateralUsdValue = tokenToUsdValue(
-        userCollateralBalance,
-        assetsListDataUpdated.assets[1]
-      )
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      const { maxBurnUsd } = calculateLiquidation(
-        collateralUsdValue,
+      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
+      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListDataUpdated)
+      const collateralAsset = assetsListDataUpdated.assets[1]
+
+      const { maxAmount } = calculateLiquidation(
+        userMaxDebt,
         userDebtBalance,
-        state.collateralizationLevel,
-        state.liquidationPenalty
+        state.penaltyToLiquidator,
+        state.penaltyToExchange,
+        state.liquidationRate,
+        collateralAsset
       )
       // change liquidation buffor for sake of test
       const newLiquidationBuffer = 10
@@ -392,10 +389,12 @@ describe('liquidation', () => {
       await assertThrowsAsync(
         exchange.liquidate({
           exchangeAccount,
-          allowanceAmount: maxBurnUsd,
           signer: liquidator.publicKey,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
+          liquidationFund: collateralAsset.collateral.liquidationFund,
+          amount: maxAmount,
+          liquidatorCollateralAccount,
+          liquidatorUsdAccount,
+          reserveAccount: collateralAsset.collateral.reserveAddress,
           signers: [liquidator]
         }),
         ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
@@ -412,10 +411,12 @@ describe('liquidation', () => {
       await assertThrowsAsync(
         exchange.liquidate({
           exchangeAccount,
-          allowanceAmount: maxBurnUsd,
           signer: liquidator.publicKey,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
+          liquidationFund: collateralAsset.collateral.liquidationFund,
+          amount: maxAmount,
+          liquidatorCollateralAccount,
+          liquidatorUsdAccount,
+          reserveAccount: collateralAsset.collateral.reserveAddress,
           signers: [liquidator]
         }),
         ERRORS_EXCHANGE.HALTED
@@ -429,17 +430,19 @@ describe('liquidation', () => {
       // trigger liquidation
       await exchange.liquidate({
         exchangeAccount,
-        allowanceAmount: maxBurnUsd,
         signer: liquidator.publicKey,
-        userCollateralAccount: liquidatorCollateralAccount,
-        userUsdAccount: liquidatorUsdAccount,
+        liquidationFund: collateralAsset.collateral.liquidationFund,
+        amount: maxAmount,
+        liquidatorCollateralAccount,
+        liquidatorUsdAccount,
+        reserveAccount: collateralAsset.collateral.reserveAddress,
         signers: [liquidator]
       })
     })
     it('fail without signer', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -458,27 +461,30 @@ describe('liquidation', () => {
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
-      const collateralUsdValue = tokenToUsdValue(
-        userCollateralBalance,
-        assetsListDataUpdated.assets[1]
-      )
 
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd } = calculateLiquidation(
-        collateralUsdValue,
+      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
+      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListDataUpdated)
+      const collateralAsset = assetsListDataUpdated.assets[1]
+
+      const { maxAmount } = calculateLiquidation(
+        userMaxDebt,
         userDebtBalance,
-        state.collateralizationLevel,
-        state.liquidationPenalty
+        state.penaltyToLiquidator,
+        state.penaltyToExchange,
+        state.liquidationRate,
+        collateralAsset
       )
       // trigger liquidation
       await assertThrowsAsync(
         exchange.liquidate({
           exchangeAccount,
-          allowanceAmount: maxBurnUsd,
           signer: liquidator.publicKey,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
+          liquidationFund: collateralAsset.collateral.liquidationFund,
+          amount: maxAmount,
+          liquidatorCollateralAccount,
+          liquidatorUsdAccount,
+          reserveAccount: collateralAsset.collateral.reserveAddress,
           signers: []
         }),
         ERRORS.NO_SIGNERS
@@ -487,7 +493,7 @@ describe('liquidation', () => {
     it('fail liquidate safe user', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -502,34 +508,29 @@ describe('liquidation', () => {
       await exchange.updatePrices(assetsList)
       const state = await exchange.getState()
 
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      assert.ok(userCollateralBalance.eq(collateralAmount))
-      const collateralUsdValue = tokenToUsdValue(userCollateralBalance, assetsListData.assets[1])
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd } = calculateLiquidation(
-        collateralUsdValue,
-        userDebtBalance,
-        state.collateralizationLevel,
-        state.liquidationPenalty
-      )
-      // trigger liquidation
+      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
+      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListData)
+      const collateralAsset = assetsListData.assets[1]
+
       await assertThrowsAsync(
         exchange.liquidate({
           exchangeAccount,
-          allowanceAmount: maxBurnUsd,
           signer: liquidator.publicKey,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
+          liquidationFund: collateralAsset.collateral.liquidationFund,
+          amount: new BN(100),
+          liquidatorCollateralAccount,
+          liquidatorUsdAccount,
+          reserveAccount: collateralAsset.collateral.reserveAddress,
           signers: [liquidator]
         }),
         ERRORS_EXCHANGE.LIQUIDATION_DEADLINE
       )
     })
-    it('fail too low allowance', async () => {
+    it.only('fail wrong asset list', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
+        reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
         exchange,
@@ -538,87 +539,27 @@ describe('liquidation', () => {
         amount: collateralAmount
       })
 
+      const newCollateralPrice = initialCollateralPrice / 5
+      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
+      // update prices
+      await exchange.updatePrices(assetsList)
+      const state = await exchange.getState()
       const assetsListData = await exchange.getAssetsList(assetsList)
 
-      const newCollateralPrice = initialCollateralPrice / 5
-      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
-      // update prices
-      await exchange.updatePrices(assetsList)
-      const state = await exchange.getState()
-
-      const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
-
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      assert.ok(userCollateralBalance.eq(collateralAmount))
-      const collateralUsdValue = tokenToUsdValue(
-        userCollateralBalance,
-        assetsListDataUpdated.assets[1]
-      )
-
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd } = calculateLiquidation(
-        collateralUsdValue,
+      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
+      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListData)
+      const collateralAsset = assetsListData.assets[1]
+
+      const { maxAmount } = calculateLiquidation(
+        userMaxDebt,
         userDebtBalance,
-        state.collateralizationLevel,
-        state.liquidationPenalty
+        state.penaltyToLiquidator,
+        state.penaltyToExchange,
+        state.liquidationRate,
+        collateralAsset
       )
-      // change liquidation buffor for sake of test
-      const newLiquidationBuffer = 10
-      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
-      // set account liquidation deadline
-      await exchange.checkAccount(exchangeAccount)
-      // wait for liquidation deadline
-      await sleep(9000)
-      // trigger liquidation
-      await assertThrowsAsync(
-        exchange.liquidate({
-          exchangeAccount,
-          allowanceAmount: maxBurnUsd.subn(1), // burnAmount -1
-          signer: liquidator.publicKey,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
-          signers: [liquidator]
-        }),
-        ERRORS.ALLOWANCE
-      )
-    })
-    it('fail wrong asset list', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
-      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
-        collateralAccount,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        usdToken,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount
-      })
-
-      const newCollateralPrice = initialCollateralPrice / 5
-      await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
-      // update prices
-      await exchange.updatePrices(assetsList)
-      const state = await exchange.getState()
-
-      const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
-
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      assert.ok(userCollateralBalance.eq(collateralAmount))
-      const collateralUsdValue = tokenToUsdValue(
-        userCollateralBalance,
-        assetsListDataUpdated.assets[1]
-      )
-      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      assert.ok(userDebtBalance.eq(usdMintAmount))
-      const { maxBurnUsd } = calculateLiquidation(
-        collateralUsdValue,
-        userDebtBalance,
-        state.collateralizationLevel,
-        state.liquidationPenalty
-      )
       const updateIx = await exchange.updatePricesInstruction(exchange.state.assetsList)
 
       const fakeAssetList = await createAssetsList({
@@ -626,21 +567,23 @@ describe('liquidation', () => {
         collateralToken,
         collateralTokenFeed,
         connection,
+        wallet,
         exchange,
-        wallet
+        snyReserve,
+        snyLiquidationFund
       })
-      const liquidateIx = (await exchange.program.state.instruction.liquidate({
+      const liquidateIx = (await exchange.program.state.instruction.liquidate(maxAmount, {
         accounts: {
           exchangeAuthority: exchange.exchangeAuthority,
+          assetsList: fakeAssetList.assetsList,
           tokenProgram: TOKEN_PROGRAM_ID,
           exchangeAccount: exchangeAccount,
           signer: liquidator.publicKey,
-          usdToken: usdToken.publicKey,
-          assetsList: fakeAssetList.assetsList,
-          userCollateralAccount: liquidatorCollateralAccount,
-          userUsdAccount: liquidatorUsdAccount,
-          collateralAccount: exchange.state.collateralAccount,
-          liquidationAccount: exchange.state.liquidationAccount
+          usdToken: assetsListData.assets[0].synthetic.assetAddress,
+          liquidatorUsdAccount: liquidatorUsdAccount,
+          liquidatorCollateralAccount: liquidatorCollateralAccount,
+          liquidationFund: collateralAsset.collateral.liquidationFund,
+          reserveAccount: collateralAsset.collateral.reserveAddress
         }
       })) as TransactionInstruction
       const approveIx = Token.createApproveInstruction(
@@ -649,7 +592,7 @@ describe('liquidation', () => {
         exchange.exchangeAuthority,
         liquidator.publicKey,
         [],
-        tou64(maxBurnUsd)
+        tou64(maxAmount)
       )
       const liquidateTx = new Transaction().add(updateIx).add(approveIx).add(liquidateIx)
       const blockhash = await connection.getRecentBlockhash(Provider.defaultOptions().commitment)
