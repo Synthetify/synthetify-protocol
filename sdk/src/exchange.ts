@@ -198,7 +198,13 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawInstruction({ amount, exchangeAccount, owner, userCollateralAccount, reserveAccount }: WithdrawInstruction) {
+  public async withdrawInstruction({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    reserveAccount
+  }: WithdrawInstruction) {
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
         assetsList: this.state.assetsList,
@@ -510,7 +516,14 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
-  public async withdraw({ amount, exchangeAccount, owner, userCollateralAccount, signers, reserveAccount }: Withdraw) {
+  public async withdraw({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    signers,
+    reserveAccount
+  }: Withdraw) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       reserveAccount,
@@ -587,6 +600,28 @@ export class Exchange {
         priceFeed: priceFeed
       }
     })) as TransactionInstruction
+  }
+
+  public async setAsCollateralInstruction({
+    signer,
+    assetsList,
+    collateral,
+    collateralFeed
+  }: SetAsCollateralInstruction) {
+    return (await this.program.state.instruction.setAsCollateral(
+      collateral.reserveBalance,
+      collateral.decimals,
+      collateral.collateralRatio,
+      {
+        accounts: {
+          admin: signer,
+          assetsList,
+          assetAddress: collateral.collateralAddress,
+          reserveAccount: collateral.reserveAddress,
+          feedAddress: collateralFeed
+        }
+      }
+    )) as TransactionInstruction
   }
 
   public async initializeAssetsList({
@@ -698,6 +733,7 @@ export interface Collateral {
   reserveAddress: PublicKey
   reserveBalance: BN
   collateralRatio: number
+  decimals: number
 }
 export interface Synthetic {
   assetAddress: PublicKey
@@ -731,6 +767,13 @@ export interface SetPriceFeedInstruction {
   priceFeed: PublicKey
   tokenAddress: PublicKey
   signer: PublicKey
+}
+
+export interface SetAsCollateralInstruction {
+  collateral: Collateral
+  signer: PublicKey
+  assetsList: PublicKey
+  collateralFeed: PublicKey
 }
 
 export interface Mint {

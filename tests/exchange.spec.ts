@@ -1505,7 +1505,6 @@ describe('exchange', () => {
           amount: withdrawAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
-          to: userCollateralTokenAccount,
           signers: [accountOwner]
         }),
         ERRORS_EXCHANGE.HALTED
@@ -1523,7 +1522,6 @@ describe('exchange', () => {
         amount: withdrawAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
-        to: userCollateralTokenAccount,
         signers: [accountOwner]
       })
     })
