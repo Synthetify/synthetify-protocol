@@ -260,17 +260,26 @@ describe('liquidation', () => {
       )
       // Wait for nextRound to end
       await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
-      await exchange.claimRewards(exchangeAccount)
-      await exchange.claimRewards(exchangeAccount2nd)
-
-      const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
-      const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
-        exchangeAccount2nd
-      )
+      await Promise.all([
+        exchange.claimRewards(exchangeAccount),
+        exchange.claimRewards(exchangeAccount2nd)
+      ])
+      const [
+        exchangeAccountDataAfterRewards,
+        exchangeAccount2ndDataAfterRewards
+      ] = await Promise.all([
+        exchange.getExchangeAccount(exchangeAccount),
+        exchange.getExchangeAccount(exchangeAccount2nd)
+      ])
       assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
-    it.only('with multiple collaterals', async () => {
+    it('with multiple collaterals', async () => {
+      const firstRoundStart = nextRoundStart.addn(3 * stakingRoundLength + 10)
+      // assert.ok(firstRoundStart.gtn(await connection.getSlot()))
+      // Wait for start of new round
+      await skipToSlot(firstRoundStart.toNumber(), connection)
+
       const someToken = await createToken({
         connection,
         payer: wallet,
@@ -311,7 +320,6 @@ describe('liquidation', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       const slot = await connection.getSlot()
-      assert.ok(nextRoundStart.gtn(slot))
       const collateralAmount = new BN(20 * 1e8)
       const {
         accountOwner,
@@ -346,9 +354,11 @@ describe('liquidation', () => {
           mulByPercentage(new BN(200 * 1e6), healthFactor)
         )
       )
-      assert.ok(nextRoundStart.gtn(await connection.getSlot()))
+
+      const secondRoundStart = firstRoundStart.addn(stakingRoundLength)
+      assert.ok(secondRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
-      await skipToSlot(nextRoundStart.toNumber(), connection)
+      await skipToSlot(secondRoundStart.toNumber(), connection)
       // Burn should reduce next round stake
       const remainingAmount = usdMintAmount.div(new BN(2))
       await exchange.burn({
@@ -364,8 +374,8 @@ describe('liquidation', () => {
       assert.ok(exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(remainingAmount))
       assert.ok(exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(remainingAmount))
       // Wait for round to end
-      const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
-      await skipToSlot(secondRound, connection)
+      const thirdRoundStart = firstRoundStart.addn(stakingRoundLength * 2)
+      await skipToSlot(thirdRoundStart.toNumber(), connection)
 
       // Claim rewards
       await exchange.claimRewards(exchangeAccount)

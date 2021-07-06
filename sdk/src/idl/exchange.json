@@ -533,6 +533,53 @@
         "args": []
       },
       {
+        "name": "claimRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "withdrawRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "withdrawLiquidationPenalty",
         "accounts": [
           {
@@ -1213,8 +1260,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "5QHRS84ZwWHpZNGiPStrQYeqyhtkofeX7GwBqmKexQbW"
-  }
+  ]
 }
