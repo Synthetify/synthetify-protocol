@@ -337,25 +337,18 @@ describe('staking', () => {
       )
     })
     it.only('change value', async () => {
+      // Creating needed accounts
       const snyToken = await createToken({
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
-      const sny: Collateral = {
-        isCollateral: true,
-        collateralAddress: snyToken.publicKey,
-        reserveAddress: await snyToken.createAccount(exchangeAuthority),
-        reserveBalance: new BN(0),
-        collateralRatio: 50,
-        decimals: 8
-      }
       const newAssetLimit = new BN(10).pow(new BN(18))
 
       const snyFeed = await createPriceFeed({
         oracleProgram,
-        initPrice: 5000000,
+        initPrice: 4,
         expo: -8
       })
 
@@ -367,12 +360,36 @@ describe('staking', () => {
         tokenDecimals: 8,
         tokenFeed: snyFeed
       })
+
+      // Collateral structure
+      const sny: Collateral = {
+        isCollateral: true,
+        collateralAddress: snyToken.publicKey,
+        reserveAddress: await snyToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateral: sny
       })
-      signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      // Getting data After
+      const assetData = await exchange.getAssetsList(assetsList)
+      const lastAsset = assetData.assets[assetData.head - 1].collateral
+
+      // Check collateral feed
+      assert.ok(lastAsset.isCollateral == sny.isCollateral)
+      assert.ok(lastAsset.collateralAddress.equals(sny.collateralAddress))
+      assert.ok(lastAsset.reserveAddress.equals(sny.reserveAddress))
+      assert.ok(lastAsset.reserveBalance.eq(sny.reserveBalance))
+      assert.ok(lastAsset.collateralRatio == sny.collateralRatio)
+      assert.ok(lastAsset.decimals == sny.decimals)
     })
   })
 })
