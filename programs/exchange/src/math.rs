@@ -352,12 +352,26 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     return burned_amount_token.try_into().unwrap();
 }
 pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
-    let amount = (amount as u128)
-        .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-        .unwrap()
-        .checked_div(asset.price as u128)
-        .unwrap();
-    return amount.try_into().unwrap();
+    let decimal_difference = asset.collateral.decimals as i32 - ACCURACY as i32;
+    if decimal_difference < 0 {
+        let amount = (amount as u128)
+            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
+            .unwrap()
+            .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
+            .unwrap()
+            .checked_div(asset.price as u128)
+            .unwrap();
+        return amount.try_into().unwrap();
+    } else {
+        let amount = (amount as u128)
+            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
+            .unwrap()
+            .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
+            .unwrap()
+            .checked_div(asset.price as u128)
+            .unwrap();
+        return amount.try_into().unwrap();
+    }
 }
 pub fn calculate_liquidation(
     collateral_value: u64,
