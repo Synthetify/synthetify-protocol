@@ -14,6 +14,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
+import { Collateral } from '../sdk/lib/exchange'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -312,6 +313,114 @@ describe('staking', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.staking.roundLength === length)
+    })
+  })
+  describe('#setAsCollateral()', async () => {
+    it('Fail without admin signature', async () => {
+      // Creating needed accounts
+      const someToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+
+      const someFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 4,
+        expo: -8
+      })
+
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        maxSupply: new BN(10).pow(new BN(18)),
+        tokenAddress: someToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: someFeed
+      })
+
+      // Collateral structure
+      const someCollateral: Collateral = {
+        isCollateral: true,
+        collateralAddress: someToken.publicKey,
+        reserveAddress: await someToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      // Setting collateral
+      const ix = await exchange.setAsCollateralInstruction({
+        collateral: someCollateral,
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateralFeed: someFeed
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('change value', async () => {
+      // Creating needed accounts
+      const someToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+
+      const someFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 4,
+        expo: -8
+      })
+
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        maxSupply: new BN(10).pow(new BN(18)),
+        tokenAddress: someToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: someFeed
+      })
+
+      // Collateral structure
+      const someCollateral: Collateral = {
+        isCollateral: true,
+        collateralAddress: someToken.publicKey,
+        reserveAddress: await someToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      // Setting collateral
+      const ix = await exchange.setAsCollateralInstruction({
+        collateral: someCollateral,
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateralFeed: someFeed
+      })
+
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      // Getting data After
+      const assetData = await exchange.getAssetsList(assetsList)
+      const lastAsset = assetData.assets[assetData.head - 1].collateral
+
+      // Check if collateral is set on the right asset
+      assert.ok(assetData.assets[assetData.head - 1].feedAddress.equals(someFeed))
+
+      // Check collateral feed
+      assert.ok(lastAsset.isCollateral == someCollateral.isCollateral)
+      assert.ok(lastAsset.collateralAddress.equals(someCollateral.collateralAddress))
+      assert.ok(lastAsset.reserveAddress.equals(someCollateral.reserveAddress))
+      assert.ok(lastAsset.reserveBalance.eq(someCollateral.reserveBalance))
+      assert.ok(lastAsset.collateralRatio == someCollateral.collateralRatio)
+      assert.ok(lastAsset.decimals == someCollateral.decimals)
     })
   })
 })
