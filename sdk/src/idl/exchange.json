@@ -140,10 +140,6 @@
             "type": "publicKey"
           },
           {
-            "name": "collateralizationLevel",
-            "type": "u32"
-          },
-          {
             "name": "healthFactor",
             "type": "u8"
           },
@@ -156,15 +152,15 @@
             "type": "u32"
           },
           {
-            "name": "liquidationAccount",
-            "type": "publicKey"
-          },
-          {
-            "name": "liquidationPenalty",
+            "name": "liquidationRate",
             "type": "u8"
           },
           {
-            "name": "liquidationThreshold",
+            "name": "penaltyToLiquidator",
+            "type": "u8"
+          },
+          {
+            "name": "penaltyToExchange",
             "type": "u8"
           },
           {
@@ -195,11 +191,6 @@
           },
           {
             "name": "assetsList",
-            "isMut": false,
-            "isSigner": false
-          },
-          {
-            "name": "liquidationAccount",
             "isMut": false,
             "isSigner": false
           },
@@ -465,6 +456,124 @@
         ]
       },
       {
+        "name": "liquidate",
+        "accounts": [
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "usdToken",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "liquidatorUsdAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "liquidatorCollateralAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "liquidationFund",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "reserveAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
+        "name": "checkAccountCollateralization",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "withdrawLiquidationPenalty",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "to",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "liquidationFund",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "assetsList",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      },
+      {
         "name": "setLiquidationBuffer",
         "accounts": [
           {
@@ -476,54 +585,6 @@
         "args": [
           {
             "name": "liquidationBuffer",
-            "type": "u32"
-          }
-        ]
-      },
-      {
-        "name": "setLiquidationThreshold",
-        "accounts": [
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true
-          }
-        ],
-        "args": [
-          {
-            "name": "liquidationThreshold",
-            "type": "u8"
-          }
-        ]
-      },
-      {
-        "name": "setLiquidationPenalty",
-        "accounts": [
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true
-          }
-        ],
-        "args": [
-          {
-            "name": "liquidationPenalty",
-            "type": "u8"
-          }
-        ]
-      },
-      {
-        "name": "setCollateralizationLevel",
-        "accounts": [
-          {
-            "name": "admin",
-            "isMut": false,
-            "isSigner": true
-          }
-        ],
-        "args": [
-          {
-            "name": "collateralizationLevel",
             "type": "u32"
           }
         ]
