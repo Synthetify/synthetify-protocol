@@ -90,7 +90,6 @@ export class Exchange {
     admin,
     assetsList,
     nonce,
-    liquidationAccount,
     amountPerRound,
     stakingRoundLength,
     stakingFundAccount
@@ -99,7 +98,6 @@ export class Exchange {
       accounts: {
         admin: admin,
         assetsList: assetsList,
-        liquidationAccount: liquidationAccount,
         stakingFundAccount: stakingFundAccount
       }
     })
@@ -132,17 +130,18 @@ export class Exchange {
       return new BN(0)
     }
   }
-  // public async getUserDebtBalance(exchangeAccount: PublicKey) {
-  //   const userAccount = (await this.program.account.exchangeAccount.fetch(
-  //     exchangeAccount
-  //   )) as ExchangeAccount
-  //   if (userAccount.collateralShares.eq(new BN(0))) {
-  //     return new BN(0)
-  //   }
-  //   const state = await this.getState()
-  //   const debt = calculateDebt(this.assetsList)
-  //   return userAccount.debtShares.mul(debt).div(state.debtShares)
-  // }
+  public async getUserDebtBalance(exchangeAccount: PublicKey) {
+    const userAccount = (await this.program.account.exchangeAccount.fetch(
+      exchangeAccount
+    )) as ExchangeAccount
+    if (userAccount.debtShares.eq(new BN(0))) {
+      return new BN(0)
+    }
+    const state = await this.getState()
+    const debt = calculateDebt(this.assetsList)
+
+    return userAccount.debtShares.mul(debt).div(state.debtShares)
+  }
   public async createExchangeAccount(owner: PublicKey) {
     const state = await this.program.state.address()
     const account = await this.program.account.exchangeAccount.associatedAddress(owner, state)
@@ -198,7 +197,13 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawInstruction({ amount, exchangeAccount, owner, userCollateralAccount, reserveAccount }: WithdrawInstruction) {
+  public async withdrawInstruction({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    reserveAccount
+  }: WithdrawInstruction) {
     return await (this.program.state.instruction.withdraw(amount, {
       accounts: {
         assetsList: this.state.assetsList,
@@ -252,20 +257,24 @@ export class Exchange {
   public async liquidateInstruction({
     exchangeAccount,
     signer,
-    userCollateralAccount,
-    userUsdAccount
+    liquidationFund,
+    liquidatorCollateralAccount,
+    liquidatorUsdAccount,
+    reserveAccount,
+    amount
   }: LiquidateInstruction) {
-    return await (this.program.state.instruction.liquidate({
+    return await (this.program.state.instruction.liquidate(amount, {
       accounts: {
         exchangeAuthority: this.exchangeAuthority,
+        assetsList: this.state.assetsList,
         tokenProgram: TOKEN_PROGRAM_ID,
+        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
+        liquidatorUsdAccount: liquidatorUsdAccount,
+        liquidatorCollateralAccount: liquidatorCollateralAccount,
         exchangeAccount: exchangeAccount,
         signer: signer,
-        usdToken: this.assetsList.assets[0].collateral.collateralAddress,
-        assetsList: this.state.assetsList,
-        userCollateralAccount: userCollateralAccount,
-        userUsdAccount: userUsdAccount,
-        liquidationAccount: this.state.liquidationAccount
+        liquidationFund: liquidationFund,
+        reserveAccount: reserveAccount
       }
     }) as TransactionInstruction)
   }
@@ -414,25 +423,30 @@ export class Exchange {
   public async liquidate({
     exchangeAccount,
     signer,
-    userCollateralAccount,
-    userUsdAccount,
     signers,
-    allowanceAmount
+    liquidationFund,
+    liquidatorCollateralAccount,
+    liquidatorUsdAccount,
+    reserveAccount,
+    amount
   }: Liquidate) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const liquidateIx = await this.liquidateInstruction({
       exchangeAccount,
       signer,
-      userCollateralAccount,
-      userUsdAccount
+      liquidationFund,
+      liquidatorCollateralAccount,
+      liquidatorUsdAccount,
+      reserveAccount,
+      amount
     })
     const approveIx = await Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
-      userUsdAccount,
+      liquidatorUsdAccount,
       this.exchangeAuthority,
       signer,
       [],
-      tou64(allowanceAmount)
+      tou64(amount)
     )
     const liquidateTx = new Transaction().add(updateIx).add(approveIx).add(liquidateIx)
     const txs = await this.processOperations([liquidateTx])
@@ -510,7 +524,14 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
-  public async withdraw({ amount, exchangeAccount, owner, userCollateralAccount, signers, reserveAccount }: Withdraw) {
+  public async withdraw({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    signers,
+    reserveAccount
+  }: Withdraw) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       reserveAccount,
@@ -696,8 +717,10 @@ export interface Collateral {
   isCollateral: boolean
   collateralAddress: PublicKey
   reserveAddress: PublicKey
+  liquidationFund: PublicKey
   reserveBalance: BN
   collateralRatio: number
+  decimals: number
 }
 export interface Synthetic {
   assetAddress: PublicKey
@@ -742,10 +765,13 @@ export interface Mint {
 }
 export interface Liquidate {
   exchangeAccount: PublicKey
-  userUsdAccount: PublicKey
-  userCollateralAccount: PublicKey
   signer: PublicKey
-  allowanceAmount: BN
+  liquidatorCollateralAccount: PublicKey
+  liquidatorUsdAccount: PublicKey
+  liquidationFund: PublicKey
+  reserveAccount: PublicKey
+  amount: BN
+
   signers?: Array<Account>
 }
 export interface Swap {
@@ -796,10 +822,14 @@ export interface SwapInstruction {
 }
 export interface LiquidateInstruction {
   exchangeAccount: PublicKey
-  userUsdAccount: PublicKey
-  userCollateralAccount: PublicKey
+  liquidatorCollateralAccount: PublicKey
+  liquidatorUsdAccount: PublicKey
+  liquidationFund: PublicKey
+  reserveAccount: PublicKey
   signer: PublicKey
+  amount: BN
 }
+
 export interface BurnInstruction {
   exchangeAccount: PublicKey
   owner: PublicKey
@@ -832,7 +862,6 @@ export interface Init {
   stakingFundAccount: PublicKey
   amountPerRound: BN
   assetsList: PublicKey
-  liquidationAccount: PublicKey
 }
 export interface ExchangeState {
   admin: PublicKey
@@ -840,13 +869,12 @@ export interface ExchangeState {
   nonce: number
   debtShares: BN
   assetsList: PublicKey
-  liquidationAccount: PublicKey
-  collateralizationLevel: number
   healthFactor: number
   maxDelay: number
   fee: number
-  liquidationPenalty: number
-  liquidationThreshold: number
+  liquidationRate: number
+  penaltyToLiquidator: number
+  penaltyToExchange: number
   liquidationBuffer: number
   accountVersion: number
   staking: Staking

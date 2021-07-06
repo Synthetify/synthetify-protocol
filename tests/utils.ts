@@ -310,6 +310,7 @@ export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
     }
     if (word) {
       if (err.indexOf(word) === -1) {
+        console.log(err)
         throw new Error('Invalid Error message')
       }
     }

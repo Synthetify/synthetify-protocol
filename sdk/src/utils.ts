@@ -8,7 +8,7 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { AssetsList } from './exchange'
+import { Asset, AssetsList, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
@@ -64,30 +64,37 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
+export const divUp = (a: BN, b: BN) => {
+  return a.add(b.subn(1)).div(b)
+}
 export const calculateLiquidation = (
-  collateralValue: BN,
+  maxDebt: BN,
   debtValue: BN,
-  targetCollateralRatio: number,
-  liquidationPenalty: number
+  penaltyToLiquidator: number,
+  penaltyToExchange: number,
+  liquidationRate: number,
+  asset: Asset
 ) => {
-  const penalty = new BN(liquidationPenalty)
-  const ratio = new BN(targetCollateralRatio)
+  if (maxDebt.gt(debtValue)) {
+    throw new Error('Account is safe')
+  }
+  const maxAmount = debtValue.muln(liquidationRate).divn(100)
+  const seizedCollateralInUsd = divUp(
+    maxAmount.muln(penaltyToExchange + penaltyToLiquidator),
+    new BN(100)
+  ).add(maxAmount)
 
-  const maxBurnUsd = debtValue
-    .mul(ratio)
-    .sub(collateralValue.mul(new BN(100)))
-    .div(ratio.sub(new BN(100).add(penalty)))
+  const seizedInToken = seizedCollateralInUsd
+    .muln(10 ** ORACLE_OFFSET)
+    .muln(10 ** (asset.collateral.decimals - ACCURACY))
+    .div(asset.price)
 
-  const penaltyToSystem = penalty.div(new BN(5))
-  const penaltyToUser = penalty.sub(penaltyToSystem)
-
-  const userRewardUsd = maxBurnUsd.mul(new BN(100).add(penaltyToUser)).div(new BN(100))
-  const systemRewardUsd = maxBurnUsd
-    .mul(penaltyToSystem)
-    .addn(100 - 1) // round up
-    .div(new BN(100))
-
-  return { userRewardUsd, systemRewardUsd, maxBurnUsd }
+  const collateralToExchange = divUp(
+    seizedInToken.muln(penaltyToExchange),
+    new BN(100).addn(penaltyToExchange).addn(penaltyToLiquidator)
+  )
+  const collateralToLiquidator = seizedInToken.sub(collateralToExchange)
+  return { seizedInToken, maxAmount, collateralToExchange, collateralToLiquidator }
 }
 
 export const calculateDebt = (assetsList: AssetsList) => {
@@ -100,6 +107,37 @@ export const calculateDebt = (assetsList: AssetsList) => {
       ),
     new BN(0)
   )
+}
+export const calculateUserCollateral = (
+  exchangeAccount: ExchangeAccount,
+  assetsList: AssetsList
+) => {
+  return exchangeAccount.collaterals.reduce((acc, entry) => {
+    return acc.add(
+      entry.amount
+        .mul(assetsList.assets[entry.index].price)
+        .div(
+          new BN(
+            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
+          )
+        )
+    )
+  }, new BN(0))
+}
+export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsList: AssetsList) => {
+  return exchangeAccount.collaterals.reduce((acc, entry) => {
+    return acc.add(
+      entry.amount
+        .mul(assetsList.assets[entry.index].price)
+        .muln(assetsList.assets[entry.index].collateral.collateralRatio)
+        .divn(100)
+        .div(
+          new BN(
+            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
+          )
+        )
+    )
+  }, new BN(0))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))

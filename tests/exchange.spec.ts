@@ -47,7 +47,6 @@ describe('exchange', () => {
   let exchangeAuthority: PublicKey
   let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
-  let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
@@ -71,7 +70,6 @@ describe('exchange', () => {
     })
     snyReserve = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
-    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
     // @ts-expect-error
@@ -99,7 +97,6 @@ describe('exchange', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      liquidationAccount,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -119,15 +116,11 @@ describe('exchange', () => {
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    assert.ok(state.liquidationAccount.equals(liquidationAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.liquidationPenalty === 15)
-    assert.ok(state.liquidationThreshold === 200)
-    assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.accountVersion === 0)
   })
@@ -1505,7 +1498,6 @@ describe('exchange', () => {
           amount: withdrawAmount,
           exchangeAccount,
           owner: accountOwner.publicKey,
-          to: userCollateralTokenAccount,
           signers: [accountOwner]
         }),
         ERRORS_EXCHANGE.HALTED
@@ -1523,7 +1515,6 @@ describe('exchange', () => {
         amount: withdrawAmount,
         exchangeAccount,
         owner: accountOwner.publicKey,
-        to: userCollateralTokenAccount,
         signers: [accountOwner]
       })
     })
