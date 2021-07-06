@@ -336,19 +336,41 @@ describe('staking', () => {
         ERRORS.SIGNATURE
       )
     })
-    it('change value', async () => {
-      const SNY: Collateral = {
+    it.only('change value', async () => {
+      const snyToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const sny: Collateral = {
         isCollateral: true,
-        collateralAddress: await collateralToken.createAccount(exchangeAuthority),
-        reserveAddress: await collateralToken.createAccount(exchangeAuthority),
+        collateralAddress: snyToken.publicKey,
+        reserveAddress: await snyToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
-        decimals: 6
+        decimals: 8
       }
+      const newAssetLimit = new BN(10).pow(new BN(18))
+
+      const snyFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 5000000,
+        expo: -8
+      })
+
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: snyToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: snyFeed
+      })
       const ix = await exchange.setAsCollateralInstruction({
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
-        collateral: SNY
+        collateral: sny
       })
       signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
