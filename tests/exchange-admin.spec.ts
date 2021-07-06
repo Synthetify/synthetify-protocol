@@ -15,7 +15,6 @@ import {
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
-import { Signer } from 'node:crypto'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -316,7 +315,7 @@ describe('staking', () => {
       assert.ok(state.staking.roundLength === length)
     })
   })
-  describe.only('#setAsCollateral()', async () => {
+  describe('#setAsCollateral()', async () => {
     it('Fail without admin signature', async () => {
       // Creating needed accounts
       const someToken = await createToken({
