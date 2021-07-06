@@ -319,15 +319,14 @@ describe('staking', () => {
   describe.only('#setAsCollateral()', async () => {
     it('Fail without admin signature', async () => {
       // Creating needed accounts
-      const snyToken = await createToken({
+      const someToken = await createToken({
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
-      const newAssetLimit = new BN(10).pow(new BN(18))
 
-      const snyFeed = await createPriceFeed({
+      const someFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 4,
         expo: -8
@@ -336,17 +335,17 @@ describe('staking', () => {
       await exchange.addNewAsset({
         assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
-        maxSupply: newAssetLimit,
-        tokenAddress: snyToken.publicKey,
+        maxSupply: new BN(10).pow(new BN(18)),
+        tokenAddress: someToken.publicKey,
         tokenDecimals: 8,
-        tokenFeed: snyFeed
+        tokenFeed: someFeed
       })
 
       // Collateral structure
-      const sny: Collateral = {
+      const someCollateral: Collateral = {
         isCollateral: true,
-        collateralAddress: snyToken.publicKey,
-        reserveAddress: await snyToken.createAccount(exchangeAuthority),
+        collateralAddress: someToken.publicKey,
+        reserveAddress: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
@@ -354,10 +353,10 @@ describe('staking', () => {
 
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
-        collateral: sny,
+        collateral: someCollateral,
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
-        collateralFeed: snyFeed
+        collateralFeed: someFeed
       })
 
       await assertThrowsAsync(
@@ -367,15 +366,14 @@ describe('staking', () => {
     })
     it('change value', async () => {
       // Creating needed accounts
-      const snyToken = await createToken({
+      const someToken = await createToken({
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
-      const newAssetLimit = new BN(10).pow(new BN(18))
 
-      const snyFeed = await createPriceFeed({
+      const someFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 4,
         expo: -8
@@ -384,17 +382,17 @@ describe('staking', () => {
       await exchange.addNewAsset({
         assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
-        maxSupply: newAssetLimit,
-        tokenAddress: snyToken.publicKey,
+        maxSupply: new BN(10).pow(new BN(18)),
+        tokenAddress: someToken.publicKey,
         tokenDecimals: 8,
-        tokenFeed: snyFeed
+        tokenFeed: someFeed
       })
 
       // Collateral structure
-      const sny: Collateral = {
+      const someCollateral: Collateral = {
         isCollateral: true,
-        collateralAddress: snyToken.publicKey,
-        reserveAddress: await snyToken.createAccount(exchangeAuthority),
+        collateralAddress: someToken.publicKey,
+        reserveAddress: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
@@ -402,11 +400,12 @@ describe('staking', () => {
 
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
-        collateral: sny,
+        collateral: someCollateral,
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
-        collateralFeed: snyFeed
+        collateralFeed: someFeed
       })
+
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       // Getting data After
@@ -414,15 +413,15 @@ describe('staking', () => {
       const lastAsset = assetData.assets[assetData.head - 1].collateral
 
       // Check if collateral is set on the right asset
-      assert.ok(assetData.assets[assetData.head - 1].feedAddress.equals(snyFeed))
+      assert.ok(assetData.assets[assetData.head - 1].feedAddress.equals(someFeed))
 
       // Check collateral feed
-      assert.ok(lastAsset.isCollateral == sny.isCollateral)
-      assert.ok(lastAsset.collateralAddress.equals(sny.collateralAddress))
-      assert.ok(lastAsset.reserveAddress.equals(sny.reserveAddress))
-      assert.ok(lastAsset.reserveBalance.eq(sny.reserveBalance))
-      assert.ok(lastAsset.collateralRatio == sny.collateralRatio)
-      assert.ok(lastAsset.decimals == sny.decimals)
+      assert.ok(lastAsset.isCollateral == someCollateral.isCollateral)
+      assert.ok(lastAsset.collateralAddress.equals(someCollateral.collateralAddress))
+      assert.ok(lastAsset.reserveAddress.equals(someCollateral.reserveAddress))
+      assert.ok(lastAsset.reserveBalance.eq(someCollateral.reserveBalance))
+      assert.ok(lastAsset.collateralRatio == someCollateral.collateralRatio)
+      assert.ok(lastAsset.decimals == someCollateral.decimals)
     })
   })
 })
