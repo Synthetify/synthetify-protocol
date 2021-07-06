@@ -608,15 +608,15 @@ export class Exchange {
     collateral
   }: SetAsCollateralInstruction) {
     return (await this.program.state.instruction.setAsCollateral(
-      collateral.collateralAddress,
-      collateral.reserveAddress,
       collateral.reserveBalance,
       collateral.decimals,
       collateral.collateralRatio,
       {
         accounts: {
           admin: signer,
-          assetsList
+          assetsList,
+          assetAddress: collateral.collateralAddress,
+          reserveAddress: collateral.reserveAddress
         }
       }
     )) as TransactionInstruction

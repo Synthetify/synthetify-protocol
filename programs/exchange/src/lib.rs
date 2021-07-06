@@ -1026,8 +1026,6 @@ pub mod exchange {
         pub fn set_as_collateral(
             &mut self,
             ctx: Context<SetAsCollateral>,
-            asset_address: Pubkey,
-            reserve_address: Pubkey,
             reserve_balance: u64,
             decimals: u8,
             collateral_ratio: u8,
@@ -1037,13 +1035,13 @@ pub mod exchange {
             let asset = assets_list
                 .assets
                 .iter_mut()
-                .find(|x| x.synthetic.asset_address == asset_address);
+                .find(|x| x.synthetic.asset_address == *ctx.accounts.asset_address.key);
 
             match asset {
                 Some(asset) => {
                     asset.collateral.is_collateral = true;
-                    asset.collateral.collateral_address = asset_address;
-                    asset.collateral.reserve_address = reserve_address;
+                    asset.collateral.collateral_address = *ctx.accounts.asset_address.key;
+                    asset.collateral.reserve_address = *ctx.accounts.reserve_address.key;
                     asset.collateral.reserve_balance = reserve_balance;
                     asset.collateral.decimals = decimals;
                     asset.collateral.collateral_ratio = collateral_ratio;
@@ -1227,6 +1225,8 @@ pub struct SetAsCollateral<'info> {
     pub admin: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
+    pub asset_address: AccountInfo<'info>,
+    pub reserve_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct New<'info> {

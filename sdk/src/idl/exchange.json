@@ -720,17 +720,19 @@
             "name": "assetsList",
             "isMut": true,
             "isSigner": false
-          }
-        ],
-        "args": [
+          },
           {
             "name": "assetAddress",
-            "type": "publicKey"
+            "isMut": false,
+            "isSigner": false
           },
           {
             "name": "reserveAddress",
-            "type": "publicKey"
-          },
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
           {
             "name": "reserveBalance",
             "type": "u64"
@@ -1140,8 +1142,5 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ],
-  "metadata": {
-    "address": "Eq7zxR9ttczQKkacNJakYxRsP4Q2ufUoxN9dUrd9EA5T"
-  }
+  ]
 }
