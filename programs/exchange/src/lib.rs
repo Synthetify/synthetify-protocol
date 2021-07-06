@@ -1035,7 +1035,7 @@ pub mod exchange {
             let asset = assets_list
                 .assets
                 .iter_mut()
-                .find(|x| x.synthetic.asset_address == *ctx.accounts.asset_address.key);
+                .find(|x| x.feed_address == *ctx.accounts.feed_address.key);
 
             match asset {
                 Some(asset) => {
@@ -1227,6 +1227,7 @@ pub struct SetAsCollateral<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
     pub reserve_address: AccountInfo<'info>,
+    pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct New<'info> {

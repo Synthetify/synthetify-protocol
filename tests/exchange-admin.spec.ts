@@ -318,25 +318,6 @@ describe('staking', () => {
   })
   describe.only('#setAsCollateral()', async () => {
     it('Fail without admin signature', async () => {
-      const SNY: Collateral = {
-        isCollateral: true,
-        collateralAddress: await collateralToken.createAccount(exchangeAuthority),
-        reserveAddress: await collateralToken.createAccount(exchangeAuthority),
-        reserveBalance: new BN(0),
-        collateralRatio: 50,
-        decimals: 6
-      }
-      const ix = await exchange.setAsCollateralInstruction({
-        signer: EXCHANGE_ADMIN.publicKey,
-        assetsList,
-        collateral: SNY
-      })
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-    })
-    it.only('change value', async () => {
       // Creating needed accounts
       const snyToken = await createToken({
         connection,
@@ -373,15 +354,67 @@ describe('staking', () => {
 
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
+        collateral: sny,
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
-        collateral: sny
+        collateralFeed: snyFeed
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('change value', async () => {
+      // Creating needed accounts
+      const snyToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const newAssetLimit = new BN(10).pow(new BN(18))
+
+      const snyFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 4,
+        expo: -8
+      })
+
+      await exchange.addNewAsset({
+        assetsAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        maxSupply: newAssetLimit,
+        tokenAddress: snyToken.publicKey,
+        tokenDecimals: 8,
+        tokenFeed: snyFeed
+      })
+
+      // Collateral structure
+      const sny: Collateral = {
+        isCollateral: true,
+        collateralAddress: snyToken.publicKey,
+        reserveAddress: await snyToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      // Setting collateral
+      const ix = await exchange.setAsCollateralInstruction({
+        collateral: sny,
+        signer: EXCHANGE_ADMIN.publicKey,
+        assetsList,
+        collateralFeed: snyFeed
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       // Getting data After
       const assetData = await exchange.getAssetsList(assetsList)
       const lastAsset = assetData.assets[assetData.head - 1].collateral
+
+      // Check if collateral is set on the right asset
+      assert.ok(assetData.assets[assetData.head - 1].feedAddress.equals(snyFeed))
 
       // Check collateral feed
       assert.ok(lastAsset.isCollateral == sny.isCollateral)

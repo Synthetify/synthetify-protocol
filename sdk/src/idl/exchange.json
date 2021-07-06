@@ -730,6 +730,11 @@
             "name": "reserveAddress",
             "isMut": false,
             "isSigner": false
+          },
+          {
+            "name": "feedAddress",
+            "isMut": false,
+            "isSigner": false
           }
         ],
         "args": [
@@ -1142,5 +1147,8 @@
       "name": "NotCollateral",
       "msg": "Asset is not collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "4yQJiibrNFeVh1U2LpyT49d7FgfRBY9aB6m4Vd44tcUx"
+  }
 }

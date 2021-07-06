@@ -605,7 +605,8 @@ export class Exchange {
   public async setAsCollateralInstruction({
     signer,
     assetsList,
-    collateral
+    collateral,
+    collateralFeed
   }: SetAsCollateralInstruction) {
     return (await this.program.state.instruction.setAsCollateral(
       collateral.reserveBalance,
@@ -616,7 +617,8 @@ export class Exchange {
           admin: signer,
           assetsList,
           assetAddress: collateral.collateralAddress,
-          reserveAddress: collateral.reserveAddress
+          reserveAddress: collateral.reserveAddress,
+          feedAddress: collateralFeed
         }
       }
     )) as TransactionInstruction
@@ -768,9 +770,10 @@ export interface SetPriceFeedInstruction {
 }
 
 export interface SetAsCollateralInstruction {
+  collateral: Collateral
   signer: PublicKey
   assetsList: PublicKey
-  collateral: Collateral
+  collateralFeed: PublicKey
 }
 
 export interface Mint {
