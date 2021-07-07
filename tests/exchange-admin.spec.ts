@@ -378,7 +378,6 @@ describe('admin', () => {
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         collateral: someCollateral,
-        signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateralFeed: someFeed
       })
@@ -426,7 +425,6 @@ describe('admin', () => {
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         collateral: someCollateral,
-        signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateralFeed: someFeed
       })

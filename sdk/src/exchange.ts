@@ -608,7 +608,6 @@ export class Exchange {
   }
 
   public async setAsCollateralInstruction({
-    signer,
     assetsList,
     collateral,
     collateralFeed
@@ -619,7 +618,7 @@ export class Exchange {
       collateral.collateralRatio,
       {
         accounts: {
-          admin: signer,
+          admin: this.state.admin,
           assetsList,
           assetAddress: collateral.collateralAddress,
           reserveAccount: collateral.reserveAddress,
@@ -781,7 +780,6 @@ export interface SetLiquidationPenaltiesInstruction {
 
 export interface SetAsCollateralInstruction {
   collateral: Collateral
-  signer: PublicKey
   assetsList: PublicKey
   collateralFeed: PublicKey
 }
