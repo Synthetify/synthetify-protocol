@@ -334,30 +334,6 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  // public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
-  //   return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
-  //     accounts: {
-  //       admin: this.state.admin
-  //     }
-  //   }) as TransactionInstruction)
-  // }
-  // public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
-  //   return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
-  //     accounts: {
-  //       admin: this.state.admin
-  //     }
-  //   }) as TransactionInstruction)
-  // }
-  public async setCollateralizationLevelInstruction(newCollateralizationLevel: number) {
-    return await (this.program.state.instruction.setCollateralizationLevel(
-      newCollateralizationLevel,
-      {
-        accounts: {
-          admin: this.state.admin
-        }
-      }
-    ) as TransactionInstruction)
-  }
   public async setFeeInstruction(newFee: number) {
     return await (this.program.state.instruction.setFee(newFee, {
       accounts: {
