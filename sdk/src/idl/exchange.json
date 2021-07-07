@@ -128,14 +128,6 @@
             "type": "u64"
           },
           {
-            "name": "collateralToken",
-            "type": "publicKey"
-          },
-          {
-            "name": "collateralAccount",
-            "type": "publicKey"
-          },
-          {
             "name": "assetsList",
             "type": "publicKey"
           },
@@ -1282,6 +1274,6 @@
     }
   ],
   "metadata": {
-    "address": "Cm6ADFAQyveKmycv3heLRdbx4jZ53E8DxhitanPYSLnm"
+    "address": "7z5xmHS88epLwSFHa7zxSGEYQL5QmZRhE9XXvrv6qNLF"
   }
 }

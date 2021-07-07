@@ -24,22 +24,20 @@ pub mod exchange {
     pub struct InternalState {
         // size = 321
         //8 Account signature
-        pub admin: Pubkey,              //32
-        pub halted: bool,               //1
-        pub nonce: u8,                  //1
-        pub debt_shares: u64,           //8
-        pub collateral_token: Pubkey,   //32
-        pub collateral_account: Pubkey, //32
-        pub assets_list: Pubkey,        //32
-        pub health_factor: u8,          //1   In % 1-100% modifier for debt
-        pub max_delay: u32,             //4   Delay bettwen last oracle update 100 blocks ~ 1 min
-        pub fee: u32,                   //4   Default fee per swap 300 => 0.3%
-        pub liquidation_rate: u8,       //1   Size of debt repay in liquidation
-        pub penalty_to_liquidator: u8,  //1   In % range 0-25%
-        pub penalty_to_exchange: u8,    //1   In % range 0-25%
-        pub liquidation_buffer: u32,    //4   Time given user to fix collateralization ratio
-        pub account_version: u8,        //1 Version of account supported by program
-        pub staking: Staking,           //116
+        pub admin: Pubkey,             //32
+        pub halted: bool,              //1
+        pub nonce: u8,                 //1
+        pub debt_shares: u64,          //8
+        pub assets_list: Pubkey,       //32
+        pub health_factor: u8,         //1   In % 1-100% modifier for debt
+        pub max_delay: u32,            //4   Delay bettwen last oracle update 100 blocks ~ 1 min
+        pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
+        pub liquidation_rate: u8,      //1   Size of debt repay in liquidation
+        pub penalty_to_liquidator: u8, //1   In % range 0-25%
+        pub penalty_to_exchange: u8,   //1   In % range 0-25%
+        pub liquidation_buffer: u32,   //4   Time given user to fix collateralization ratio
+        pub account_version: u8,       //1 Version of account supported by program
+        pub staking: Staking,          //116
     }
     impl InternalState {
         pub fn new(
@@ -1630,19 +1628,19 @@ fn assets_list<'info>(
     Ok(())
 }
 // Assert right collateral_account
-fn collateral_account<'info>(
-    state: &InternalState,
-    collateral_account: &CpiAccount<'info, TokenAccount>,
-) -> Result<()> {
-    if !collateral_account
-        .to_account_info()
-        .key
-        .eq(&state.collateral_account)
-    {
-        return Err(ErrorCode::CollateralAccountError.into());
-    }
-    Ok(())
-}
+// fn collateral_account<'info>(
+//     state: &InternalState,
+//     collateral_account: &CpiAccount<'info, TokenAccount>,
+// ) -> Result<()> {
+//     if !collateral_account
+//         .to_account_info()
+//         .key
+//         .eq(&state.collateral_account)
+//     {
+//         return Err(ErrorCode::CollateralAccountError.into());
+//     }
+//     Ok(())
+// }
 // Assert right usd_token
 fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -> Result<()> {
     if !usd_token

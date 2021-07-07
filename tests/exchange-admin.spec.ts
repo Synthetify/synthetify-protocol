@@ -111,9 +111,12 @@ describe('staking', () => {
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
+    assert.ok(state.healthFactor === 50)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.healthFactor === 50)
+    assert.ok(state.liquidationRate === 20)
+    assert.ok(state.penaltyToLiquidator === 5)
+    assert.ok(state.penaltyToExchange === 5)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
   })
