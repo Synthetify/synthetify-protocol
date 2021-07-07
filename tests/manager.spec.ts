@@ -114,39 +114,39 @@ describe('manager', () => {
       exchangeProgram.programId
     )
   })
-  it('Initialize', async () => {
-    const initTokensDecimals = 6
-    const assetsListData = await exchange.getAssetsList(assetsList)
-    // Length should be 2
-    assert.ok(assetsListData.assets.length === 2)
-    // Authority of list
-    const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
+  // it('Initialize', async () => {
+  //   const initTokensDecimals = 6
+  //   const assetsListData = await exchange.getAssetsList(assetsList)
+  //   // Length should be 2
+  //   assert.ok(assetsListData.assets.length === 2)
+  //   // Authority of list
+  //   const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
 
-    // Check feed address
-    assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
+  //   // Check feed address
+  //   assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
 
-    // Check token address
-    assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
+  //   // Check token address
+  //   assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
 
-    // Check price
-    assert.ok(collateralAsset.price.eq(ZERO_U64))
+  //   // Check price
+  //   assert.ok(collateralAsset.price.eq(ZERO_U64))
 
-    const usdAsset = assetsListData.assets[0]
+  //   const usdAsset = assetsListData.assets[0]
 
-    // USD token checks
+  //   // USD token checks
 
-    // Check token address
-    assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
+  //   // Check token address
+  //   assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
 
-    // Check decimals
-    assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
+  //   // Check decimals
+  //   assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
 
-    // Check asset limit
-    assert.ok(usdAsset.synthetic.maxSupply.eq(MAX_U64))
+  //   // Check asset limit
+  //   assert.ok(usdAsset.synthetic.maxSupply.eq(MAX_U64))
 
-    // Check price
-    assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
-  })
+  //   // Check price
+  //   assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
+  // })
 
   // describe('#add_new_asset()', async () => {
   //   it('Should add new asset ', async () => {
@@ -270,51 +270,51 @@ describe('manager', () => {
   //     )
   //   })
   // })
-  describe('#set_assets_prices()', async () => {
-    const newPrice = 6
-    it('Should not change prices', async () => {
-      const assetListBefore = await exchange.getAssetsList(assetsList)
+  // describe('#set_assets_prices()', async () => {
+  //   const newPrice = 6
+  //   it('Should not change prices', async () => {
+  //     const assetListBefore = await exchange.getAssetsList(assetsList)
 
-      const feedAddresses = assetListBefore.assets
-        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-        .map((asset) => {
-          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-        })
+  //     const feedAddresses = assetListBefore.assets
+  //       .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+  //       .map((asset) => {
+  //         return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+  //       })
 
-      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
-      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+  //     feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+  //     await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-      await assertThrowsAsync(
-        exchangeProgram.rpc.setAssetsPrices({
-          remainingAccounts: feedAddresses,
-          accounts: {
-            assetsList: assetsList
-          }
-        }),
-        ERRORS.PANICKED
-      )
-      const assetList = await exchange.getAssetsList(assetsList)
-      const collateralAsset = assetList.assets[1]
+  //     await assertThrowsAsync(
+  //       exchangeProgram.rpc.setAssetsPrices({
+  //         remainingAccounts: feedAddresses,
+  //         accounts: {
+  //           assetsList: assetsList
+  //         }
+  //       }),
+  //       ERRORS.PANICKED
+  //     )
+  //     const assetList = await exchange.getAssetsList(assetsList)
+  //     const collateralAsset = assetList.assets[1]
 
-      // Check not changed price
-      assert.ok(collateralAsset.price.eq(ZERO_U64))
-    })
-    it.only('Should change prices', async () => {
-      const assetListBefore = await exchange.getAssetsList(assetsList)
-      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+  //     // Check not changed price
+  //     assert.ok(collateralAsset.price.eq(ZERO_U64))
+  //   })
+  //   it.only('Should change prices', async () => {
+  //     const assetListBefore = await exchange.getAssetsList(assetsList)
+  //     await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+  //     const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
-      await exchange.updatePrices(assetsList)
+  //     await exchange.updatePrices(assetsList)
 
-      const assetList = await exchange.getAssetsList(assetsList)
-      const collateralAsset = assetList.assets[1]
+  //     const assetList = await exchange.getAssetsList(assetsList)
+  //     const collateralAsset = assetList.assets[1]
 
-      // Check new price
-      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
+  //     // Check new price
+  //     assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
 
-      // Check last_update new value
-      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
-    })
-  })
+  //     // Check last_update new value
+  //     assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+  //   })
+  // })
 })

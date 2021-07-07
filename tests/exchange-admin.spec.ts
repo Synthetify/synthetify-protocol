@@ -107,7 +107,7 @@ describe('admin', () => {
       exchangeProgram.programId
     )
   })
-  it('Initialize', async () => {
+  it('Initialize state', async () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
@@ -123,6 +123,39 @@ describe('admin', () => {
     assert.ok(state.penaltyToExchange === 5)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
+  })
+  it('Initialize assets', async () => {
+    const initTokensDecimals = 6
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    // Length should be 2
+    assert.ok(assetsListData.assets.length === 2)
+    // Authority of list
+    const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
+
+    // Check feed address
+    assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
+
+    // Check token address
+    assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
+
+    // Check price
+    assert.ok(collateralAsset.price.eq(new BN(0)))
+
+    const usdAsset = assetsListData.assets[0]
+
+    // USD token checks
+
+    // Check token address
+    assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
+
+    // Check decimals
+    assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
+
+    // Check asset limit
+    assert.ok(usdAsset.synthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
+
+    // Check price
+    assert.ok(usdAsset.price.eq(new BN(1e6)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
