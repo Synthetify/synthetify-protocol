@@ -629,6 +629,22 @@
         ]
       },
       {
+        "name": "setLiquidationRate",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "liquidationRate",
+            "type": "u8"
+          }
+        ]
+      },
+      {
         "name": "setFee",
         "accounts": [
           {
@@ -1272,8 +1288,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "7z5xmHS88epLwSFHa7zxSGEYQL5QmZRhE9XXvrv6qNLF"
-  }
+  ]
 }

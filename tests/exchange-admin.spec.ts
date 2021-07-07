@@ -139,6 +139,25 @@ describe('staking', () => {
       assert.ok(state.liquidationBuffer === newLiquidationBuffer)
     })
   })
+  describe('#setLiquidationRate()', async () => {
+    it('Fail without admin signature', async () => {
+      const newLiquidationRate = 15
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.liquidationRate !== newLiquidationRate)
+    })
+    it('change value', async () => {
+      const newLiquidationRate = 15
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.liquidationRate === newLiquidationRate)
+    })
+  })
   describe('#setLiquidationPenalties()', async () => {
     it('Fail without admin signature', async () => {
       const penaltyToExchange = 10

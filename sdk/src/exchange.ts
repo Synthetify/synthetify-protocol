@@ -334,6 +334,13 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setLiquidationRateInstruction(newLiquidationRate: number) {
+    return await (this.program.state.instruction.setLiquidationRate(newLiquidationRate, {
+      accounts: {
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   public async setFeeInstruction(newFee: number) {
     return await (this.program.state.instruction.setFee(newFee, {
       accounts: {

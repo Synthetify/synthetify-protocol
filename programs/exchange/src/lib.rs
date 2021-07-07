@@ -884,6 +884,17 @@ pub mod exchange {
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.admin))]
+        pub fn set_liquidation_rate(
+            &mut self,
+            ctx: Context<AdminAction>,
+            liquidation_rate: u8,
+        ) -> Result<()> {
+            msg!("Synthetify:Admin: SET LIQUIDATION RATE");
+
+            self.liquidation_rate = liquidation_rate;
+            Ok(())
+        }
 
         #[access_control(admin(&self, &ctx.accounts.admin))]
         pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
@@ -1015,6 +1026,8 @@ pub mod exchange {
             penalty_to_exchange: u8,
             penalty_to_liquidator: u8,
         ) -> Result<()> {
+            msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
+
             self.penalty_to_exchange = penalty_to_exchange;
             self.penalty_to_liquidator = penalty_to_liquidator;
 
@@ -1627,20 +1640,6 @@ fn assets_list<'info>(
     }
     Ok(())
 }
-// Assert right collateral_account
-// fn collateral_account<'info>(
-//     state: &InternalState,
-//     collateral_account: &CpiAccount<'info, TokenAccount>,
-// ) -> Result<()> {
-//     if !collateral_account
-//         .to_account_info()
-//         .key
-//         .eq(&state.collateral_account)
-//     {
-//         return Err(ErrorCode::CollateralAccountError.into());
-//     }
-//     Ok(())
-// }
 // Assert right usd_token
 fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -> Result<()> {
     if !usd_token
