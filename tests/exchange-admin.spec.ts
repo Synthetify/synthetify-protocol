@@ -10,13 +10,15 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
-  assertThrowsAsync
+  assertThrowsAsync,
+  IAddNewAssets,
+  addNewAssets
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 
-describe('staking', () => {
+describe('admin', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -411,5 +413,63 @@ describe('staking', () => {
       assert.ok(lastAsset.collateralRatio == someCollateral.collateralRatio)
       assert.ok(lastAsset.decimals == someCollateral.decimals)
     })
+  })
+  describe('#addNewAsset()', async () => {
+    it('Should add new asset ', async () => {
+      const newAssetLimit = new BN(3 * 1e4)
+      const newAssetDecimals = 8
+      const addNewAssetParams: IAddNewAssets = {
+        connection,
+        wallet,
+        oracleProgram,
+        exchange,
+        assetsList,
+        newAssetDecimals,
+        newAssetLimit
+      }
+
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const [createdAsset] = await addNewAssets(addNewAssetParams)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
+
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+      // Isn't a collateral
+      assert.ok(newAsset.collateral.isCollateral == false)
+
+      // Check feed address
+      assert.ok(newAsset.feedAddress.equals(createdAsset.feedAddress))
+
+      // Check token address
+      assert.ok(newAsset.synthetic.assetAddress.equals(createdAsset.assetAddress))
+
+      // Check decimals
+      assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
+
+      // Check asset limit
+      assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
+
+      // Check price
+      assert.ok(newAsset.price.eq(new BN(0)))
+    })
+    // it('Should not add new asset ', async () => {
+    //   const newAssetDecimals = 8
+    //   const newAssetLimit = new BN(3 * 1e4)
+
+    //   const addNewAssetParams: IAddNewAssets = {
+    //     connection,
+    //     wallet,
+    //     oracleProgram,
+    //     exchange,
+    //     assetsList,
+    //     newAssetDecimals,
+    //     newAssetLimit
+    //   }
+    //   // we hit limit of account size and cannot add another asset
+    //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
+    // })
   })
 })
