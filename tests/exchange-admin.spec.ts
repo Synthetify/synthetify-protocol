@@ -90,7 +90,6 @@ describe('staking', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      liquidationAccount,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -110,16 +109,16 @@ describe('staking', () => {
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     // assert.ok(state.collateralToken.equals(collateralToken.publicKey))
-    assert.ok(state.liquidationAccount.equals(liquidationAccount))
+    // assert.ok(state.liquidationAccount.equals(liquidationAccount))
     // assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.liquidationPenalty === 15)
-    assert.ok(state.liquidationThreshold === 200)
-    assert.ok(state.collateralizationLevel === 1000)
+    // assert.ok(state.liquidationPenalty === 15)
+    // assert.ok(state.liquidationThreshold === 200)
+    // assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.healthFactor === 50)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
@@ -144,63 +143,63 @@ describe('staking', () => {
       assert.ok(state.liquidationBuffer === newLiquidationBuffer)
     })
   })
-  describe('#setLiquidationThreshold()', async () => {
-    it('Fail without admin signature', async () => {
-      const newLiquidationThreshold = 150
-      const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-      const state = await exchange.getState()
-      assert.ok(state.liquidationThreshold !== newLiquidationThreshold)
-    })
-    it('change value', async () => {
-      const newLiquidationThreshold = 150
-      const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-      const state = await exchange.getState()
-      assert.ok(state.liquidationThreshold === newLiquidationThreshold)
-    })
-  })
-  describe('#setLiquidationPenalty()', async () => {
-    it('Fail without admin signature', async () => {
-      const newLiquidationPenalty = 9
-      const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-      const state = await exchange.getState()
-      assert.ok(state.liquidationPenalty !== newLiquidationPenalty)
-    })
-    it('change value', async () => {
-      const newLiquidationPenalty = 9
-      const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-      const state = await exchange.getState()
-      assert.ok(state.liquidationPenalty === newLiquidationPenalty)
-    })
-  })
-  describe('#setCollateralizationLevel()', async () => {
-    it('Fail without admin signature', async () => {
-      const newCollateralizationLevel = 400
-      const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-      const state = await exchange.getState()
-      assert.ok(state.collateralizationLevel !== newCollateralizationLevel)
-    })
-    it('change value', async () => {
-      const newCollateralizationLevel = 9
-      const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-      const state = await exchange.getState()
-      assert.ok(state.collateralizationLevel === newCollateralizationLevel)
-    })
-  })
+  // describe('#setLiquidationThreshold()', async () => {
+  //   it('Fail without admin signature', async () => {
+  //     const newLiquidationThreshold = 150
+  //     const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
+  //     await assertThrowsAsync(
+  //       signAndSend(new Transaction().add(ix), [wallet], connection),
+  //       ERRORS.SIGNATURE
+  //     )
+  //     const state = await exchange.getState()
+  //     assert.ok(state.liquidationThreshold !== newLiquidationThreshold)
+  //   })
+  //   it('change value', async () => {
+  //     const newLiquidationThreshold = 150
+  //     const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
+  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+  //     const state = await exchange.getState()
+  //     assert.ok(state.liquidationThreshold === newLiquidationThreshold)
+  //   })
+  // })
+  // describe('#setLiquidationPenalty()', async () => {
+  //   it('Fail without admin signature', async () => {
+  //     const newLiquidationPenalty = 9
+  //     const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
+  //     await assertThrowsAsync(
+  //       signAndSend(new Transaction().add(ix), [wallet], connection),
+  //       ERRORS.SIGNATURE
+  //     )
+  //     const state = await exchange.getState()
+  //     assert.ok(state.liquidationPenalty !== newLiquidationPenalty)
+  //   })
+  //   it('change value', async () => {
+  //     const newLiquidationPenalty = 9
+  //     const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
+  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+  //     const state = await exchange.getState()
+  //     assert.ok(state.liquidationPenalty === newLiquidationPenalty)
+  //   })
+  // })
+  // describe('#setCollateralizationLevel()', async () => {
+  //   it('Fail without admin signature', async () => {
+  //     const newCollateralizationLevel = 400
+  //     const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
+  //     await assertThrowsAsync(
+  //       signAndSend(new Transaction().add(ix), [wallet], connection),
+  //       ERRORS.SIGNATURE
+  //     )
+  //     const state = await exchange.getState()
+  //     assert.ok(state.collateralizationLevel !== newCollateralizationLevel)
+  //   })
+  //   it('change value', async () => {
+  //     const newCollateralizationLevel = 9
+  //     const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
+  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+  //     const state = await exchange.getState()
+  //     assert.ok(state.collateralizationLevel === newCollateralizationLevel)
+  //   })
+  // })
   describe('#setFee()', async () => {
     it('Fail without admin signature', async () => {
       const newFee = 999
@@ -345,6 +344,7 @@ describe('staking', () => {
         isCollateral: true,
         collateralAddress: someToken.publicKey,
         reserveAddress: await someToken.createAccount(exchangeAuthority),
+        liquidationFund: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
@@ -392,6 +392,7 @@ describe('staking', () => {
         isCollateral: true,
         collateralAddress: someToken.publicKey,
         reserveAddress: await someToken.createAccount(exchangeAuthority),
+        liquidationFund: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
