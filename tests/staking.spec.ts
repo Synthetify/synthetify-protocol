@@ -262,43 +262,43 @@ describe('liquidation', () => {
     })
     it('with multiple collaterals', async () => {
       // Creating needed tokens and accounts
-      const someToken = await createToken({
+      const btcToken = await createToken({
         connection,
         payer: wallet,
         mintAuthority: CollateralTokenMinter.publicKey,
-        decimals: 8
+        decimals: 9
       })
 
-      const someFeed = await createPriceFeed({
+      const btcFeed = await createPriceFeed({
         oracleProgram,
-        initPrice: 4,
-        expo: -8
+        initPrice: 50000,
+        expo: -9
       })
 
       await exchange.addNewAsset({
         assetsAdmin: EXCHANGE_ADMIN,
         assetsList,
         maxSupply: new BN(10).pow(new BN(18)),
-        tokenAddress: someToken.publicKey,
-        tokenDecimals: 8,
-        tokenFeed: someFeed
+        tokenAddress: btcToken.publicKey,
+        tokenDecimals: 9,
+        tokenFeed: btcFeed
       })
 
-      const someCollateral: Collateral = {
+      const btcCollateral: Collateral = {
         isCollateral: true,
-        collateralAddress: someToken.publicKey,
-        reserveAddress: await someToken.createAccount(exchangeAuthority),
-        liquidationFund: await someToken.createAccount(exchangeAuthority),
+        collateralAddress: btcToken.publicKey,
+        reserveAddress: await btcToken.createAccount(exchangeAuthority),
+        liquidationFund: await btcToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
       }
 
       const ix = await exchange.setAsCollateralInstruction({
-        collateral: someCollateral,
+        collateral: btcCollateral,
         signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
-        collateralFeed: someFeed
+        collateralFeed: btcFeed
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
@@ -310,9 +310,9 @@ describe('liquidation', () => {
         userCollateralTokenAccount
       } = await createAccountWithMultipleCollaterals({
         reserveAddress: reserveAddress,
-        otherReserveAddress: someCollateral.reserveAddress,
+        otherReserveAddress: btcCollateral.reserveAddress,
         collateralToken,
-        otherToken: someToken,
+        otherToken: btcToken,
         exchangeAuthority,
         exchange,
         mintAuthority: CollateralTokenMinter.publicKey,
