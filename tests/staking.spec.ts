@@ -250,17 +250,13 @@ describe('liquidation', () => {
       )
       // Wait for nextRound to end
       await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
-      await Promise.all([
-        exchange.claimRewards(exchangeAccount),
-        exchange.claimRewards(exchangeAccount2nd)
-      ])
-      const [
-        exchangeAccountDataAfterRewards,
-        exchangeAccount2ndDataAfterRewards
-      ] = await Promise.all([
-        exchange.getExchangeAccount(exchangeAccount),
-        exchange.getExchangeAccount(exchangeAccount2nd)
-      ])
+      await exchange.claimRewards(exchangeAccount), await exchange.claimRewards(exchangeAccount2nd)
+
+      const exchangeAccountDataAfterRewards = await exchange.getExchangeAccount(exchangeAccount)
+      const exchangeAccount2ndDataAfterRewards = await exchange.getExchangeAccount(
+        exchangeAccount2nd
+      )
+
       assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })

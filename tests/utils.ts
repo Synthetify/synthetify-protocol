@@ -262,7 +262,7 @@ export const createAccountWithCollateral = async ({
     exchange.connection
   )
 
-  return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
+  return { accountOwner, exchangeAccount, userCollateralTokenAccount }
 }
 export const createAccountWithMultipleCollaterals = async ({
   exchange,
@@ -313,7 +313,7 @@ export const createAccountWithMultipleCollaterals = async ({
 
   return {
     accountOwner,
-    exchangeAccount: exchangeAccount,
+    exchangeAccount,
     userCollateralTokenAccount,
     userOtherTokenAccount
   }
