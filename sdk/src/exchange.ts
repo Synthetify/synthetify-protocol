@@ -334,20 +334,20 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
-    return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
-      accounts: {
-        admin: this.state.admin
-      }
-    }) as TransactionInstruction)
-  }
-  public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
-    return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
-      accounts: {
-        admin: this.state.admin
-      }
-    }) as TransactionInstruction)
-  }
+  // public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
+  //   return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
+  //     accounts: {
+  //       admin: this.state.admin
+  //     }
+  //   }) as TransactionInstruction)
+  // }
+  // public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
+  //   return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
+  //     accounts: {
+  //       admin: this.state.admin
+  //     }
+  //   }) as TransactionInstruction)
+  // }
   public async setCollateralizationLevelInstruction(newCollateralizationLevel: number) {
     return await (this.program.state.instruction.setCollateralizationLevel(
       newCollateralizationLevel,
@@ -610,6 +610,21 @@ export class Exchange {
     })) as TransactionInstruction
   }
 
+  public async setLiquidationPenaltiesInstruction({
+    penaltyToExchange,
+    penaltyToLiquidator
+  }: SetLiquidationPenaltiesInstruction) {
+    return (await this.program.state.instruction.setLiquidationPenalties(
+      penaltyToExchange,
+      penaltyToLiquidator,
+      {
+        accounts: {
+          signer: this.state.admin
+        }
+      }
+    )) as TransactionInstruction
+  }
+
   public async setAsCollateralInstruction({
     signer,
     assetsList,
@@ -776,6 +791,11 @@ export interface SetPriceFeedInstruction {
   priceFeed: PublicKey
   tokenAddress: PublicKey
   signer: PublicKey
+}
+
+export interface SetLiquidationPenaltiesInstruction {
+  penaltyToExchange: number
+  penaltyToLiquidator: number
 }
 
 export interface SetAsCollateralInstruction {

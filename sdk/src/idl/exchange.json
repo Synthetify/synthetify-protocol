@@ -817,6 +817,26 @@
         ]
       },
       {
+        "name": "setLiquidationPenalties",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "penaltyToExchange",
+            "type": "u8"
+          },
+          {
+            "name": "penaltyToLiquidator",
+            "type": "u8"
+          }
+        ]
+      },
+      {
         "name": "setAsCollateral",
         "accounts": [
           {
@@ -1260,8 +1280,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "B4egwS3o9zri97CGUczpKPMbzavDw37XTaqEwxiAj3KB"
-  }
+  ]
 }

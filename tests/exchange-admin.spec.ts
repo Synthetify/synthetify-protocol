@@ -143,6 +143,36 @@ describe('staking', () => {
       assert.ok(state.liquidationBuffer === newLiquidationBuffer)
     })
   })
+  describe.only('#setLiquidationPenalties()', async () => {
+    it('Fail without admin signature', async () => {
+      const penaltyToExchange = 10
+      const penaltyToLiquidator = 10
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.penaltyToExchange !== penaltyToExchange)
+      assert.ok(state.penaltyToLiquidator !== penaltyToLiquidator)
+    })
+    it('Change values', async () => {
+      const penaltyToExchange = 10
+      const penaltyToLiquidator = 10
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const state = await exchange.getState()
+      assert.ok(state.penaltyToExchange == penaltyToExchange)
+      assert.ok(state.penaltyToLiquidator == penaltyToLiquidator)
+    })
+  })
   // describe('#setLiquidationThreshold()', async () => {
   //   it('Fail without admin signature', async () => {
   //     const newLiquidationThreshold = 150

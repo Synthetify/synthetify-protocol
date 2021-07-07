@@ -1010,6 +1010,18 @@ pub mod exchange {
             }
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
+        pub fn set_liquidation_penalties(
+            &mut self,
+            ctx: Context<SetLiquidationPenalties>,
+            penalty_to_exchange: u8,
+            penalty_to_liquidator: u8,
+        ) -> Result<()> {
+            self.penalty_to_exchange = penalty_to_exchange;
+            self.penalty_to_liquidator = penalty_to_liquidator;
+
+            Ok(())
+        }
         #[access_control(admin(&self, &ctx.accounts.admin))]
         pub fn set_as_collateral(
             &mut self,
@@ -1208,6 +1220,11 @@ pub struct SetPriceFeed<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub price_feed: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetLiquidationPenalties<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetAsCollateral<'info> {
