@@ -581,12 +581,11 @@ export class Exchange {
   public async setPriceFeedInstruction({
     assetsList,
     priceFeed,
-    signer,
     tokenAddress
   }: SetPriceFeedInstruction) {
     return (await this.program.state.instruction.setPriceFeed(tokenAddress, {
       accounts: {
-        signer: signer,
+        signer: this.state.admin,
         assetsList: assetsList,
         priceFeed: priceFeed
       }
@@ -773,7 +772,6 @@ export interface SetPriceFeedInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
   tokenAddress: PublicKey
-  signer: PublicKey
 }
 
 export interface SetLiquidationPenaltiesInstruction {

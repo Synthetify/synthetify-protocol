@@ -515,4 +515,26 @@ describe('admin', () => {
       )
     })
   })
+  describe('#setPriceFeed()', async () => {
+    it('New price_feed should be set', async () => {
+      const newPriceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 2,
+        expo: -6
+      })
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const ix = await exchange.setPriceFeedInstruction({
+        assetsList,
+        priceFeed: newPriceFeed,
+        tokenAddress: beforeAsset.synthetic.assetAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+      )
+    })
+  })
 })

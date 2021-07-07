@@ -247,29 +247,29 @@ describe('manager', () => {
   //     )
   //   })
   // })
-  describe('#set_price_feed()', async () => {
-    it('New price_feed should be set', async () => {
-      const newPriceFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 2,
-        expo: -6
-      })
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-      const ix = await exchange.setPriceFeedInstruction({
-        assetsList,
-        priceFeed: newPriceFeed,
-        signer: EXCHANGE_ADMIN.publicKey,
-        tokenAddress: beforeAsset.synthetic.assetAddress
-      })
-      await signAndSend(new Transaction().add(ix), [PAYER_ACCOUNT, EXCHANGE_ADMIN], connection)
-      const afterAssetList = await exchange.getAssetsList(assetsList)
+  // describe('#set_price_feed()', async () => {
+  //   it('New price_feed should be set', async () => {
+  //     const newPriceFeed = await createPriceFeed({
+  //       oracleProgram,
+  //       initPrice: 2,
+  //       expo: -6
+  //     })
+  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
+  //     let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+  //     const ix = await exchange.setPriceFeedInstruction({
+  //       assetsList,
+  //       priceFeed: newPriceFeed,
+  //       signer: EXCHANGE_ADMIN.publicKey,
+  //       tokenAddress: beforeAsset.synthetic.assetAddress
+  //     })
+  //     await signAndSend(new Transaction().add(ix), [PAYER_ACCOUNT, EXCHANGE_ADMIN], connection)
+  //     const afterAssetList = await exchange.getAssetsList(assetsList)
 
-      assert.ok(
-        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
-      )
-    })
-  })
+  //     assert.ok(
+  //       afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+  //     )
+  //   })
+  // })
   describe('#set_assets_prices()', async () => {
     const newPrice = 6
     it('Should not change prices', async () => {
