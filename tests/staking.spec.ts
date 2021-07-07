@@ -316,7 +316,8 @@ describe('liquidation', () => {
         exchangeAuthority,
         exchange,
         mintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount
+        amountOfCollateralToken: collateralAmount,
+        amountOfOtherToken: collateralAmount
       })
 
       // Minting using both collaterals

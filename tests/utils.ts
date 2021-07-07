@@ -211,9 +211,10 @@ export interface IAccountWithMultipleCollaterals {
   mintAuthority: PublicKey
   collateralToken: Token
   otherToken: Token
-  amount: BN
   reserveAddress: PublicKey
   otherReserveAddress: PublicKey
+  amountOfCollateralToken: BN
+  amountOfOtherToken: BN
 }
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
@@ -272,14 +273,15 @@ export const createAccountWithMultipleCollaterals = async ({
   reserveAddress,
   otherReserveAddress,
   exchangeAuthority,
-  amount
+  amountOfCollateralToken,
+  amountOfOtherToken
 }: IAccountWithMultipleCollaterals) => {
   const {
     accountOwner,
     exchangeAccount,
     userCollateralTokenAccount
   } = await createAccountWithCollateral({
-    amount,
+    amount: amountOfCollateralToken,
     reserveAddress,
     collateralToken,
     collateralTokenMintAuthority: mintAuthority,
@@ -288,10 +290,10 @@ export const createAccountWithMultipleCollaterals = async ({
   })
 
   const userOtherTokenAccount = await otherToken.createAccount(accountOwner.publicKey)
-  await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amount))
+  await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amountOfOtherToken))
 
   const depositIx = await exchange.depositInstruction({
-    amount: amount,
+    amount: amountOfOtherToken,
     exchangeAccount,
     userCollateralAccount: userOtherTokenAccount,
     owner: accountOwner.publicKey,
@@ -303,7 +305,7 @@ export const createAccountWithMultipleCollaterals = async ({
     exchangeAuthority,
     accountOwner.publicKey,
     [],
-    tou64(amount)
+    tou64(amountOfOtherToken)
   )
   await signAndSend(
     new Transaction().add(approveIx).add(depositIx),
