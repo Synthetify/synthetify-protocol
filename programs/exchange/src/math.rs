@@ -833,53 +833,53 @@ mod tests {
         let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
         assert!(result.is_err());
     }
-    // #[test]
-    // fn test_calculate_user_debt() {
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 0,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 1_000_000;
+    #[test]
+    fn test_calculate_user_debt() {
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 0,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 1_000_000;
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 0);
-    //         assert_eq!(result, 0);
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 100,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 4400_162356;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 0);
+            assert_eq!(result, 0);
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 100,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 4400_162356;
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-    //         assert_eq!(result, 356_577177)
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 1525783,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
+            assert_eq!(result, 356_577177)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 1525783,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 932210931_726361;
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //         assert_eq!(result, 115211)
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 9234567898765432,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 526932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 115211)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 9234567898765432,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 526932210931_726361;
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //         assert_eq!(result, 394145294459_835461)
-    //     }
-    // }
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 394145294459_835461)
+        }
+    }
     // #[test]
     // fn test_calculate_amount_mint_in_usd() {
     //     {
