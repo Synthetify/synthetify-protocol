@@ -533,6 +533,53 @@
         "args": []
       },
       {
+        "name": "claimRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "withdrawRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "withdrawLiquidationPenalty",
         "accounts": [
           {
@@ -1215,6 +1262,6 @@
     }
   ],
   "metadata": {
-    "address": "26j7Uetip38zicwzy3trkg98V17sLhDrv4z7gKcADEDg"
+    "address": "B4egwS3o9zri97CGUczpKPMbzavDw37XTaqEwxiAj3KB"
   }
 }
