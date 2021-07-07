@@ -542,23 +542,30 @@ mod tests {
         {
             let debt = 999_999_999;
             let max_debt = 999_999_999;
-            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 100);
             assert_eq!(max_withdraw, 0);
         }
         // user_debt > max_user_debt
         {
             let debt = 1_000_000_000;
             let max_debt = 900_000_000;
-            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 1000);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 100);
             assert_eq!(max_withdraw, 0);
         }
         // user_debt < max_user_debt
         {
             let debt = 900_000_123;
             let max_debt = 1_000_000_000;
-            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 750);
-            // 749999077,5
-            assert_eq!(max_withdraw, 749999077);
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 80, 100);
+            // 124999846,25
+            assert_eq!(max_withdraw, 124999846);
+        }
+        // other health factor
+        {
+            let debt = 900_000_000;
+            let max_debt = 1_000_000_000;
+            let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 40);
+            assert_eq!(max_withdraw, 2_500_000_000);
         }
     }
     // #[test]
