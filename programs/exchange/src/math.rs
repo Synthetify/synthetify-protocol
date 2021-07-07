@@ -797,34 +797,42 @@ mod tests {
             }
         }
     }
-    // #[test]
-    // fn test_calculate_debt_error() {
-    //     let slot = 100;
-    //     let mut assets_list = AssetsList {
-    //         ..Default::default()
-    //     };
-    //     let asset_1 = Asset {
-    //         price: 10 * 10u64.pow(PRICE_OFFSET.into()),
-    //         supply: 100 * 10u64.pow(8),
-    //         last_update: slot - 10,
-    //         decimals: 8,
-    //         feed_address: Pubkey::new_unique(),
-    //         ..Default::default()
-    //     };
-    //     // debt 1000
-    //     let asset_2 = Asset {
-    //         price: 12 * 10u64.pow(PRICE_OFFSET.into()),
-    //         supply: 200 * 10u64.pow(8),
-    //         last_update: 100,
-    //         decimals: 8,
-    //         ..Default::default()
-    //     };
-    //     assets_list.append(asset_1);
-    //     assets_list.append(asset_2);
-    //     // debt 2400
-    //     let result = calculate_debt(&assets_list, slot, 0);
-    //     assert!(result.is_err());
-    // }
+    #[test]
+    fn test_calculate_debt_error() {
+        let slot = 100;
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        let asset_1 = Asset {
+            price: 10 * 10u64.pow(PRICE_OFFSET.into()),
+            last_update: slot - 10,
+            synthetic: Synthetic {
+                decimals: 8,
+                supply: 100 * 10u64.pow(8),
+                ..Default::default()
+            },
+            feed_address: Pubkey::new_unique(),
+            ..Default::default()
+        };
+        // debt 1000
+        let asset_2 = Asset {
+            price: 12 * 10u64.pow(PRICE_OFFSET.into()),
+            last_update: 100,
+            synthetic: Synthetic {
+                decimals: 8,
+                supply: 200 * 10u64.pow(8),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assets_list.append(asset_1);
+        assets_list.append(asset_2);
+        let assets_ref = RefCell::new(assets_list);
+
+        // debt 2400
+        let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
+        assert!(result.is_err());
+    }
     // #[test]
     // fn test_calculate_user_debt() {
     //     {
