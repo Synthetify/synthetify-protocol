@@ -19,7 +19,7 @@ import {
 import { createPriceFeed } from './oracleUtils'
 import { Collateral } from '../sdk/lib/exchange'
 
-describe('liquidation', () => {
+describe('staking', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program

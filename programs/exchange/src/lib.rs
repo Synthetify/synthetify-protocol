@@ -24,22 +24,20 @@ pub mod exchange {
     pub struct InternalState {
         // size = 321
         //8 Account signature
-        pub admin: Pubkey,              //32
-        pub halted: bool,               //1
-        pub nonce: u8,                  //1
-        pub debt_shares: u64,           //8
-        pub collateral_token: Pubkey,   //32
-        pub collateral_account: Pubkey, //32
-        pub assets_list: Pubkey,        //32
-        pub health_factor: u8,          //1   In % 1-100% modifier for debt
-        pub max_delay: u32,             //4   Delay bettwen last oracle update 100 blocks ~ 1 min
-        pub fee: u32,                   //4   Default fee per swap 300 => 0.3%
-        pub liquidation_rate: u8,       //1   Size of debt repay in liquidation
-        pub penalty_to_liquidator: u8,  //1   In % range 0-25%
-        pub penalty_to_exchange: u8,    //1   In % range 0-25%
-        pub liquidation_buffer: u32,    //4   Time given user to fix collateralization ratio
-        pub account_version: u8,        //1 Version of account supported by program
-        pub staking: Staking,           //116
+        pub admin: Pubkey,             //32
+        pub halted: bool,              //1
+        pub nonce: u8,                 //1
+        pub debt_shares: u64,          //8
+        pub assets_list: Pubkey,       //32
+        pub health_factor: u8,         //1   In % 1-100% modifier for debt
+        pub max_delay: u32,            //4   Delay bettwen last oracle update 100 blocks ~ 1 min
+        pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
+        pub liquidation_rate: u8,      //1   Size of debt repay in liquidation
+        pub penalty_to_liquidator: u8, //1   In % range 0-25%
+        pub penalty_to_exchange: u8,   //1   In % range 0-25%
+        pub liquidation_buffer: u32,   //4   Time given user to fix collateralization ratio
+        pub account_version: u8,       //1 Version of account supported by program
+        pub staking: Staking,          //116
     }
     impl InternalState {
         pub fn new(
@@ -886,6 +884,17 @@ pub mod exchange {
             self.liquidation_buffer = liquidation_buffer;
             Ok(())
         }
+        #[access_control(admin(&self, &ctx.accounts.admin))]
+        pub fn set_liquidation_rate(
+            &mut self,
+            ctx: Context<AdminAction>,
+            liquidation_rate: u8,
+        ) -> Result<()> {
+            msg!("Synthetify:Admin: SET LIQUIDATION RATE");
+
+            self.liquidation_rate = liquidation_rate;
+            Ok(())
+        }
 
         #[access_control(admin(&self, &ctx.accounts.admin))]
         pub fn set_fee(&mut self, ctx: Context<AdminAction>, fee: u32) -> Result<()> {
@@ -1008,6 +1017,20 @@ pub mod exchange {
                 Some(asset) => asset.feed_address = *ctx.accounts.price_feed.key,
                 None => return Err(ErrorCode::NoAssetFound.into()),
             }
+            Ok(())
+        }
+        #[access_control(admin(&self, &ctx.accounts.signer))]
+        pub fn set_liquidation_penalties(
+            &mut self,
+            ctx: Context<SetLiquidationPenalties>,
+            penalty_to_exchange: u8,
+            penalty_to_liquidator: u8,
+        ) -> Result<()> {
+            msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
+
+            self.penalty_to_exchange = penalty_to_exchange;
+            self.penalty_to_liquidator = penalty_to_liquidator;
+
             Ok(())
         }
         #[access_control(admin(&self, &ctx.accounts.admin))]
@@ -1208,6 +1231,11 @@ pub struct SetPriceFeed<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub price_feed: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetLiquidationPenalties<'info> {
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetAsCollateral<'info> {
@@ -1609,20 +1637,6 @@ fn assets_list<'info>(
 ) -> Result<()> {
     if !assets_list.to_account_info().key.eq(&state.assets_list) {
         return Err(ErrorCode::InvalidAssetsList.into());
-    }
-    Ok(())
-}
-// Assert right collateral_account
-fn collateral_account<'info>(
-    state: &InternalState,
-    collateral_account: &CpiAccount<'info, TokenAccount>,
-) -> Result<()> {
-    if !collateral_account
-        .to_account_info()
-        .key
-        .eq(&state.collateral_account)
-    {
-        return Err(ErrorCode::CollateralAccountError.into());
     }
     Ok(())
 }
