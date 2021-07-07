@@ -12,9 +12,10 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
   IAddNewAssets,
-  addNewAssets
+  addNewAssets,
+  DEFAULT_PUBLIC_KEY
 } from './utils'
-import { createPriceFeed } from './oracleUtils'
+import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
@@ -535,6 +536,53 @@ describe('admin', () => {
       assert.ok(
         afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
       )
+    })
+  })
+  describe('#setAssetsPrices()', async () => {
+    const newPrice = 6
+    it('Should not change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+
+      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+
+      await assertThrowsAsync(
+        exchangeProgram.rpc.setAssetsPrices({
+          remainingAccounts: feedAddresses,
+          accounts: {
+            assetsList: assetsList
+          }
+        }),
+        ERRORS.PANICKED
+      )
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check not changed price
+      assert.ok(collateralAsset.price.eq(new BN(0)))
+    })
+    it('Should change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+
+      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+
+      await exchange.updatePrices(assetsList)
+
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check new price
+      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
+
+      // Check last_update new value
+      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
   })
 })
