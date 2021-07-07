@@ -288,7 +288,6 @@ export const createAccountWithMultipleCollaterals = async ({
   })
 
   const userOtherTokenAccount = await otherToken.createAccount(accountOwner.publicKey)
-  // Assumes the same authority for both tokens
   await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amount))
 
   const depositIx = await exchange.depositInstruction({
