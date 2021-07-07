@@ -17,6 +17,7 @@ import {
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
+import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
 
 describe('admin', () => {
   const provider = anchor.Provider.local()
@@ -471,5 +472,47 @@ describe('admin', () => {
     //   // we hit limit of account size and cannot add another asset
     //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
     // })
+  })
+  describe('#setMaxSupply()', async () => {
+    const newAssetLimit = new BN(4 * 1e4)
+
+    it('Error should be throwed while setting new max supply', async () => {
+      await assertThrowsAsync(
+        exchange.setAssetMaxSupply({
+          assetAddress: new Account().publicKey,
+          exchangeAdmin: EXCHANGE_ADMIN,
+          assetsList,
+          newMaxSupply: newAssetLimit
+        }),
+        ERRORS_EXCHANGE.NO_ASSET_FOUND
+      )
+
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.notOk(
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
+      )
+    })
+    it('New max supply should be set', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+
+      await exchange.setAssetMaxSupply({
+        assetAddress: beforeAsset.synthetic.assetAddress,
+        exchangeAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        newMaxSupply: newAssetLimit
+      })
+
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
+      )
+    })
   })
 })

@@ -148,105 +148,105 @@ describe('manager', () => {
     assert.ok(usdAsset.price.eq(USDT_VALUE_U64))
   })
 
-  describe('#add_new_asset()', async () => {
-    it('Should add new asset ', async () => {
-      const newAssetLimit = new BN(3 * 1e4)
-      const newAssetDecimals = 8
-      const addNewAssetParams: IAddNewAssets = {
-        connection,
-        wallet,
-        oracleProgram,
-        exchange,
-        assetsList,
-        newAssetDecimals,
-        newAssetLimit
-      }
+  // describe('#add_new_asset()', async () => {
+  //   it('Should add new asset ', async () => {
+  //     const newAssetLimit = new BN(3 * 1e4)
+  //     const newAssetDecimals = 8
+  //     const addNewAssetParams: IAddNewAssets = {
+  //       connection,
+  //       wallet,
+  //       oracleProgram,
+  //       exchange,
+  //       assetsList,
+  //       newAssetDecimals,
+  //       newAssetLimit
+  //     }
 
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
+  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
 
-      const newAssets = await addNewAssets(addNewAssetParams)
+  //     const newAssets = await addNewAssets(addNewAssetParams)
 
-      const afterAssetList = await exchange.getAssetsList(assetsList)
+  //     const afterAssetList = await exchange.getAssetsList(assetsList)
 
-      const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
+  //     const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
 
-      // Length should be increased by 1
-      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+  //     // Length should be increased by 1
+  //     assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
 
-      // Check feed address
-      assert.ok(newAsset.feedAddress.equals(newAssets[0].feedAddress))
+  //     // Check feed address
+  //     assert.ok(newAsset.feedAddress.equals(newAssets[0].feedAddress))
 
-      // Check token address
-      assert.ok(newAsset.synthetic.assetAddress.equals(newAssets[0].assetAddress))
+  //     // Check token address
+  //     assert.ok(newAsset.synthetic.assetAddress.equals(newAssets[0].assetAddress))
 
-      // Check decimals
-      assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
+  //     // Check decimals
+  //     assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
 
-      // Check asset limit
-      assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
+  //     // Check asset limit
+  //     assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
 
-      // Check price
-      assert.ok(newAsset.price.eq(ZERO_U64))
-    })
-    // it('Should not add new asset ', async () => {
-    //   const newAssetDecimals = 8
-    //   const newAssetLimit = new BN(3 * 1e4)
+  //     // Check price
+  //     assert.ok(newAsset.price.eq(ZERO_U64))
+  //   })
+  //   // it('Should not add new asset ', async () => {
+  //   //   const newAssetDecimals = 8
+  //   //   const newAssetLimit = new BN(3 * 1e4)
 
-    //   const addNewAssetParams: IAddNewAssets = {
-    //     connection,
-    //     wallet,
-    //     oracleProgram,
-    //     exchange,
-    //     assetsList,
-    //     newAssetDecimals,
-    //     newAssetLimit
-    //   }
-    //   // we hit limit of account size and cannot add another asset
-    //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
-    // })
-  })
-  describe('#set_max_supply()', async () => {
-    const newAssetLimit = new BN(4 * 1e4)
+  //   //   const addNewAssetParams: IAddNewAssets = {
+  //   //     connection,
+  //   //     wallet,
+  //   //     oracleProgram,
+  //   //     exchange,
+  //   //     assetsList,
+  //   //     newAssetDecimals,
+  //   //     newAssetLimit
+  //   //   }
+  //   //   // we hit limit of account size and cannot add another asset
+  //   //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
+  //   // })
+  // })
+  // describe('#set_max_supply()', async () => {
+  //   const newAssetLimit = new BN(4 * 1e4)
 
-    it('Error should be throwed while setting new max supply', async () => {
-      await assertThrowsAsync(
-        exchange.setAssetMaxSupply({
-          assetAddress: new Account().publicKey,
-          exchangeAdmin: EXCHANGE_ADMIN,
-          assetsList,
-          newMaxSupply: newAssetLimit
-        }),
-        ERRORS_EXCHANGE.NO_ASSET_FOUND
-      )
+  //   it('Error should be throwed while setting new max supply', async () => {
+  //     await assertThrowsAsync(
+  //       exchange.setAssetMaxSupply({
+  //         assetAddress: new Account().publicKey,
+  //         exchangeAdmin: EXCHANGE_ADMIN,
+  //         assetsList,
+  //         newMaxSupply: newAssetLimit
+  //       }),
+  //       ERRORS_EXCHANGE.NO_ASSET_FOUND
+  //     )
 
-      const afterAssetList = await exchange.getAssetsList(assetsList)
+  //     const afterAssetList = await exchange.getAssetsList(assetsList)
 
-      assert.notOk(
-        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
-          newAssetLimit
-        )
-      )
-    })
-    it('New max supply should be set', async () => {
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+  //     assert.notOk(
+  //       afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+  //         newAssetLimit
+  //       )
+  //     )
+  //   })
+  //   it('New max supply should be set', async () => {
+  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
+  //     let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
 
-      await exchange.setAssetMaxSupply({
-        assetAddress: beforeAsset.synthetic.assetAddress,
-        exchangeAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        newMaxSupply: newAssetLimit
-      })
+  //     await exchange.setAssetMaxSupply({
+  //       assetAddress: beforeAsset.synthetic.assetAddress,
+  //       exchangeAdmin: EXCHANGE_ADMIN,
+  //       assetsList,
+  //       newMaxSupply: newAssetLimit
+  //     })
 
-      const afterAssetList = await exchange.getAssetsList(assetsList)
+  //     const afterAssetList = await exchange.getAssetsList(assetsList)
 
-      assert.ok(
-        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
-          newAssetLimit
-        )
-      )
-    })
-  })
+  //     assert.ok(
+  //       afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+  //         newAssetLimit
+  //       )
+  //     )
+  //   })
+  // })
   describe('#set_price_feed()', async () => {
     it('New price_feed should be set', async () => {
       const newPriceFeed = await createPriceFeed({
