@@ -59,7 +59,6 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
 }
 pub fn calculate_collateral(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
     let mut collateral = 0u128;
-    let assets = assets_list.assets;
     let head = account.head as usize;
     for collateral_entry in account.collaterals[..head].iter() {
         let asset = assets_list
@@ -86,7 +85,6 @@ pub fn calculate_collateral(account: &ExchangeAccount, assets_list: &AssetsList)
     }
     return collateral;
 }
-
 pub fn calculate_user_debt_in_usd(
     user_account: &ExchangeAccount,
     debt: u64,
@@ -104,43 +102,6 @@ pub fn calculate_user_debt_in_usd(
     );
     return user_debt as u64;
 }
-
-// pub fn calculate_amount_mint_in_usd(mint_asset: &Asset, amount: u64) -> u64 {
-//     let mint_amount_in_usd = (mint_asset.price as u128)
-//         .checked_mul(amount as u128)
-//         .unwrap()
-//         .checked_div(
-//             10u128
-//                 .checked_pow((mint_asset.decimals + PRICE_OFFSET - ACCURACY).into())
-//                 .unwrap(),
-//         )
-//         .unwrap();
-//     return mint_amount_in_usd as u64;
-// }
-
-// Replaced by calculate_max_debt_in_usd()
-// pub fn calculate_max_user_debt_in_usd(
-//     collateral_asset: &Asset,
-//     collateralization_level: u32,
-//     collateral_amount: u64,
-// ) -> u64 {
-//     let user_max_debt = (collateral_asset.price as u128)
-//         .checked_mul(collateral_amount as u128)
-//         .unwrap()
-//         .checked_div(
-//             10u128
-//                 .checked_pow((collateral_asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
-//                 .unwrap(),
-//         )
-//         .unwrap();
-//     return (user_max_debt
-//         .checked_mul(100)
-//         .unwrap()
-//         .checked_div(collateralization_level as u128)
-//         .unwrap())
-//     .try_into()
-//     .unwrap();
-// }
 pub fn calculate_new_shares_by_rounding_down(
     all_shares: u64,
     full_amount: u64,
@@ -193,22 +154,6 @@ pub fn calculate_max_withdraw_in_usd(
         .checked_div(health_factor.into())
         .unwrap();
 }
-// pub fn calculate_user_collateral_in_token(
-//     user_collateral_shares: u64,
-//     collateral_shares: u64,
-//     balance: u64,
-// ) -> u64 {
-//     // collateral_shares is always != 0 if user_collateral_shares > 0
-//     if user_collateral_shares == 0 {
-//         return 0;
-//     }
-//     let tokens = (user_collateral_shares as u128)
-//         .checked_mul(balance as u128)
-//         .unwrap()
-//         .checked_div(collateral_shares as u128)
-//         .unwrap();
-//     return tokens.try_into().unwrap();
-// }
 pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
     // collateral and usd have same number of decimals
     let tokens = (user_max_withdraw_in_usd as u128)
@@ -230,18 +175,6 @@ pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amou
         .unwrap();
     return shares.try_into().unwrap();
 }
-pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
-    // full_amount is always != 0 if all_shares > 0
-    if all_shares == 0 {
-        return 0;
-    }
-    let shares = div_up(
-        (amount as u128).checked_mul(all_shares as u128).unwrap(),
-        full_amount as u128,
-    );
-    return shares.try_into().unwrap();
-}
-
 pub fn amount_to_discount(amount: u64) -> u8 {
     // decimals of token = 6
     // we want discounts start from 2000 -> 4000 ...
@@ -310,32 +243,6 @@ pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, am
         .unwrap();
     return burned_shares.try_into().unwrap();
 }
-// pub fn calculate_burned_shares_by_rounding_up(
-//     asset: &Asset,
-//     all_debt: u64,
-//     all_shares: u64,
-//     amount: u64,
-// ) -> u64 {
-//     if all_debt == 0 {
-//         return 0u64;
-//     }
-//     let burn_amount_in_usd = (asset.price as u128)
-//         .checked_mul(amount as u128)
-//         .unwrap()
-//         .checked_div(
-//             10u128
-//                 .checked_pow((asset.decimals + PRICE_OFFSET - ACCURACY).into())
-//                 .unwrap(),
-//         )
-//         .unwrap();
-
-//     let burned_shares = div_up(
-//         burn_amount_in_usd.checked_mul(all_shares as u128).unwrap(),
-//         all_debt as u128,
-//     );
-
-//     return burned_shares.try_into().unwrap();
-// }
 
 // This should always retur user_debt if xusd === 1 USD
 // Should we remove this funtion ?
@@ -373,50 +280,6 @@ pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
         println!("{}", amount);
         return amount.try_into().unwrap();
     }
-}
-pub fn calculate_liquidation(
-    collateral_value: u64,
-    debt_value: u64,
-    collateral_ratio: u32,   // in %
-    liquidation_penalty: u8, // in %
-) -> (u64, u64, u64) {
-    let max_burned_amount = ((debt_value as u128)
-        .checked_mul(collateral_ratio as u128)
-        .unwrap()
-        .checked_sub(
-            collateral_value
-                .checked_mul(100)
-                .unwrap()
-                .try_into()
-                .unwrap(),
-        )
-        .unwrap())
-    .checked_div(
-        (collateral_ratio.checked_sub((100 + liquidation_penalty) as u32)).unwrap() as u128,
-    )
-    .unwrap();
-    // 20% of penalty is going system
-    let penalty_to_system = liquidation_penalty / 5;
-    let penalty_to_user = liquidation_penalty - penalty_to_system;
-
-    let user_reward_usd = (max_burned_amount
-        .checked_mul((100 + penalty_to_user).into())
-        .unwrap())
-    .checked_div(100)
-    .unwrap();
-    // rounding up - reward is calculated in favor of the system
-    let system_reward_usd = div_up(
-        max_burned_amount
-            .checked_mul((penalty_to_system).into())
-            .unwrap(),
-        100,
-    );
-
-    return (
-        max_burned_amount.try_into().unwrap(),
-        user_reward_usd.try_into().unwrap(),
-        system_reward_usd.try_into().unwrap(),
-    );
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
@@ -881,84 +744,6 @@ mod tests {
             assert_eq!(result, 394145294459_835461)
         }
     }
-    // #[test]
-    // fn test_calculate_amount_mint_in_usd() {
-    //     {
-    //         // 2_000_000
-    //         let asset = Asset {
-    //             price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let amount_mint = calculate_amount_mint_in_usd(&asset, 1_000_000);
-    //         assert_eq!(amount_mint, 2_000_000);
-    //     }
-    //     {
-    //         // 2697,551...
-    //         let asset = Asset {
-    //             price: 1_984_953,
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let amount_mint = calculate_amount_mint_in_usd(&asset, 1359);
-    //         assert_eq!(amount_mint, 2697);
-    //     }
-    //     {
-    //         // 13986,000014
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(3),
-    //             decimals: 9,
-    //             ..Default::default()
-    //         };
-    //         let amount_mint = calculate_amount_mint_in_usd(&asset, 999_000_001);
-    //         assert_eq!(amount_mint, 13986);
-    //     }
-    //     {
-    //         // 1_290_000_000
-    //         let asset = Asset {
-    //             price: 129 * 10u64.pow(5),
-    //             decimals: 7,
-    //             ..Default::default()
-    //         };
-    //         let amount_mint = calculate_amount_mint_in_usd(&asset, 1_000_000_000);
-    //         assert_eq!(amount_mint, 1_290_000_000);
-    //     }
-    // }
-    #[test]
-    // fn test_calculate_user_collateral_in_token() {
-    //     // zero user_shares
-    //     {
-    //         let user_collateral = calculate_user_collateral_in_token(0, 1000, 1000);
-    //         assert_eq!(user_collateral, 0)
-    //     }
-    //     // zero collateral_shares
-    //     {
-    //         let user_collateral = calculate_user_collateral_in_token(0, 0, 0);
-    //         assert_eq!(user_collateral, 0)
-    //     }
-    //     // basic
-    //     {
-    //         let user_collateral = calculate_user_collateral_in_token(10, 100, 100);
-    //         // user_collateral = 1/10 balnace
-    //         assert_eq!(user_collateral, 10)
-    //     }
-    //     // large numbers
-    //     {
-    //         let user_collateral = calculate_user_collateral_in_token(
-    //             1_000_000 * 10u64.pow(6),
-    //             100_000_000 * 10u64.pow(6),
-    //             100_000_000 * 10u64.pow(6),
-    //         );
-    //         // user_collateral = 1/100 balnace
-    //         assert_eq!(user_collateral, 1_000_000 * 10u64.pow(6))
-    //     }
-    //     // valid token rounding
-    //     {
-    //         let user_collateral = calculate_user_collateral_in_token(11, 9871, 1_987_786);
-    //         // 2215,139...
-    //         assert_eq!(user_collateral, 2215)
-    //     }
-    // }
     #[test]
     fn test_calculate_max_withdrawable() {
         {
@@ -1043,50 +828,6 @@ mod tests {
             assert_eq!(amount_by_rounding_up, 199);
         }
     }
-    // #[test]
-    // fn test_calculate_max_user_debt_in_usd() {
-    //     // no collateral no debt
-    //     {
-    //         let asset = Asset {
-    //             collateral: Collateral {
-    //                 decimals: 6,
-    //                 ..Default::default()
-    //             },
-    //             price: 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let max_user_debt = calculate_max_user_debt_in_usd(&asset, 1000, 0);
-    //         assert_eq!(max_user_debt, 0u64);
-    //     }
-    //     // large numbers
-    //     {
-    //         let asset = Asset {
-    //             collateral: Collateral {
-    //                 decimals: 6,
-    //                 ..Default::default()
-    //             },
-    //             price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         // debt = 1/10 collateral
-    //         let max_user_debt = calculate_max_user_debt_in_usd(&asset, 1000, 100 * 10u64.pow(6));
-    //         assert_eq!(max_user_debt, 20_000_000)
-    //     }
-    //     // valid debt rounding
-    //     {
-    //         let asset = Asset {
-    //             collateral: Collateral {
-    //                 decimals: 6,
-    //                 ..Default::default()
-    //             },
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         // 140660744,358...
-    //         let max_user_debt = calculate_max_user_debt_in_usd(&asset, 780, 78_368_129);
-    //         assert_eq!(max_user_debt, 140660744)
-    //     }
-    // }
     #[test]
     fn test_amount_to_discount() {
         {
@@ -1239,24 +980,24 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_calculate_liquidation() {
-    //     {
-    //         let collateral_value = 1000 * 10u64.pow(6);
-    //         let debt_value = 500 * 10u64.pow(6);
-    //         let collateral_ratio = 500u32;
-    //         let penalty = 15u8;
-    //         let (max_burned_amount, user_reward_usd, system_reward_usd) =
-    //             calculate_liquidation(collateral_value, debt_value, collateral_ratio, penalty);
-    //         assert_eq!(max_burned_amount, 389_610389);
-    //         assert_eq!(user_reward_usd, 436_363635);
-    //         assert_eq!(system_reward_usd, 116_88312);
-    //         assert_eq!(
-    //             max_burned_amount * (100 + penalty) as u64 / 100,
-    //             user_reward_usd + system_reward_usd
-    //         );
-    //     }
-    // }
+    #[test]
+    fn test_calculate_liquidation() {
+        {
+            let collateral_value = 1000 * 10u64.pow(6);
+            let debt_value = 500 * 10u64.pow(6);
+            let collateral_ratio = 500u32;
+            let penalty = 15u8;
+            let (max_burned_amount, user_reward_usd, system_reward_usd) =
+                calculate_liquidation(collateral_value, debt_value, collateral_ratio, penalty);
+            assert_eq!(max_burned_amount, 389_610389);
+            assert_eq!(user_reward_usd, 436_363635);
+            assert_eq!(system_reward_usd, 116_88312);
+            assert_eq!(
+                max_burned_amount * (100 + penalty) as u64 / 100,
+                user_reward_usd + system_reward_usd
+            );
+        }
+    }
     #[test]
     fn test_calculate_confidence() {
         let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
