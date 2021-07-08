@@ -57,34 +57,6 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
     }
     return max_debt;
 }
-pub fn calculate_collateral(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
-    let mut collateral = 0u128;
-    let head = account.head as usize;
-    for collateral_entry in account.collaterals[..head].iter() {
-        let asset = assets_list
-            .assets
-            .iter()
-            .find(|x| {
-                x.collateral
-                    .reserve_address
-                    .eq(&collateral_entry.collateral_address)
-            })
-            .unwrap();
-        // rounding up to be sure that debt is not less than minted tokens
-        collateral += (asset.price as u128)
-            .checked_mul(collateral_entry.amount as u128)
-            .unwrap()
-            .checked_mul(asset.collateral.collateral_ratio.into())
-            .unwrap()
-            .checked_div(
-                10u128
-                    .checked_pow((asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
-                    .unwrap(),
-            )
-            .unwrap();
-    }
-    return collateral;
-}
 pub fn calculate_user_debt_in_usd(
     user_account: &ExchangeAccount,
     debt: u64,
