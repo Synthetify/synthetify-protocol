@@ -370,6 +370,7 @@ pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
             .unwrap()
             .checked_div(asset.price as u128)
             .unwrap();
+        println!("{}", amount);
         return amount.try_into().unwrap();
     }
 }
@@ -1203,34 +1204,40 @@ mod tests {
             assert_eq!(burned_shares, 0);
         }
     }
-    // #[test]
-    // fn test_usd_to_token_amount() {
-    //     // round down
-    //     {
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let amount = 100;
-    //         let token_amount = usd_to_token_amount(&asset, amount);
-    //         // 7,142...
-    //         assert_eq!(token_amount, 7);
-    //     }
-    //     // large amount
-    //     {
-    //         let asset = Asset {
-    //             price: 91 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: 10,
-    //             ..Default::default()
-    //         };
+    #[test]
+    fn test_usd_to_token_amount() {
+        // round down
+        {
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                collateral: Collateral {
+                    decimals: 6,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let amount = 100;
+            let token_amount = usd_to_token_amount(&asset, amount);
+            // 7,142...
+            assert_eq!(token_amount, 7);
+        }
+        // large amount
+        {
+            let asset = Asset {
+                price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+                collateral: Collateral {
+                    decimals: 10,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
 
-    //         let amount = 1_003_900_802 * 10u64.pow(10);
-    //         let token_amount = usd_to_token_amount(&asset, amount);
-    //         // 110318769450549450
-    //         assert_eq!(token_amount, 110318769450549450)
-    //     }
-    // }
+            let amount = 1_003_900_802 * 10u64.pow(8);
+            let token_amount = usd_to_token_amount(&asset, amount);
+            // 11031876945054945054
+            assert_eq!(token_amount, 11031876945054945054)
+        }
+    }
 
     // #[test]
     // fn test_calculate_liquidation() {
@@ -1250,6 +1257,7 @@ mod tests {
     //         );
     //     }
     // }
+    #[test]
     fn test_calculate_confidence() {
         let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
         // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
