@@ -1,14 +1,18 @@
 module.exports = {
   docs: [
-    {
+    'introduction',
+    'whats-new',
+    'faq',
+       {
       type: 'category',
-      label: 'Synthetify docs',
-      items: ['introduction']
+      label: 'Protocol',
+      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens']
     },
     {
       type: 'category',
-      label: 'Protocol',
-      items: ['overview', 'synthetify-token', 'synthetic-tokens', 'exchange']
-    }
+      label: 'User Guide',
+      items: ['connect-to-wallet','faucet','staking', 'exchange']
+    },
+    'architecture-overview'
   ]
 }

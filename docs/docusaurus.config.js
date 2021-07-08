@@ -9,7 +9,7 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Synthetify',
   projectName: 'Synthetify docs',
-  themeConfig: {
+   themeConfig: {
     navbar: {
       title: 'Synthetify',
       logo: {
