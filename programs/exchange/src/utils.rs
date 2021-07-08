@@ -161,101 +161,116 @@ mod tests {
             ..Default::default()
         };
 
-        //     {
-        //         // Last update before finished round
-        //         let mut exchange_account = ExchangeAccount {
-        //             debt_shares: 10,
-        //             collateral_shares: 100,
-        //             user_staking_data: UserStaking {
-        //                 amount_to_claim: 0,
-        //                 finished_round_points: 2,
-        //                 current_round_points: 5,
-        //                 next_round_points: 10,
-        //                 last_update: slot - 1,
-        //             },
-        //             ..Default::default()
-        //         };
-        //         let exchange_account_copy = exchange_account.clone();
-        //         adjust_staking_account(&mut exchange_account, &staking);
-        //         assert_ne!(
-        //             exchange_account.user_staking_data,
-        //             exchange_account_copy.user_staking_data
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.finished_round_points,
-        //             exchange_account.debt_shares
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.current_round_points,
-        //             exchange_account.debt_shares
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.next_round_points,
-        //             exchange_account.debt_shares
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.last_update,
-        //             staking.current_round.start + 1
-        //         );
-        //     }
-        //     {
-        //         // Last update before current round but after finished round
-        //         let mut exchange_account = ExchangeAccount {
-        //             debt_shares: 10,
-        //             collateral_shares: 100,
-        //             user_staking_data: UserStaking {
-        //                 amount_to_claim: 0,
-        //                 finished_round_points: 2,
-        //                 current_round_points: 5,
-        //                 next_round_points: 10,
-        //                 last_update: slot + 1,
-        //             },
-        //             ..Default::default()
-        //         };
-        //         let exchange_account_copy = exchange_account.clone();
-        //         adjust_staking_account(&mut exchange_account, &staking);
-        //         assert_ne!(
-        //             exchange_account.user_staking_data,
-        //             exchange_account_copy.user_staking_data
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.finished_round_points,
-        //             exchange_account_copy.user_staking_data.current_round_points
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.current_round_points,
-        //             exchange_account_copy.user_staking_data.next_round_points
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.next_round_points,
-        //             exchange_account.debt_shares
-        //         );
-        //         assert_eq!(
-        //             exchange_account.user_staking_data.last_update,
-        //             staking.current_round.start + 1
-        //         );
-        //     }
-        //     {
-        //         // Last update in current round
-        //         let mut exchange_account = ExchangeAccount {
-        //             debt_shares: 10,
-        //             collateral_shares: 100,
-        //             user_staking_data: UserStaking {
-        //                 amount_to_claim: 0,
-        //                 finished_round_points: 2,
-        //                 current_round_points: 5,
-        //                 next_round_points: 10,
-        //                 last_update: slot + staking_round_length as u64 + 1,
-        //             },
-        //             ..Default::default()
-        //         };
-        //         let exchange_account_copy = exchange_account.clone();
-        //         adjust_staking_account(&mut exchange_account, &staking);
-        //         assert_eq!(
-        //             exchange_account.user_staking_data,
-        //             exchange_account_copy.user_staking_data
-        //         );
-        //     }
+        // unsafe because of packed field
+        unsafe {
+            // Last update before finished round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                // collateral_shares: 100,
+                head: 1,
+                collaterals: [CollateralEntry {
+                    amount: 100,
+                    collateral_address: Pubkey::new_unique(),
+                    index: 0,
+                }; 10],
+                user_staking_data: UserStaking {
+                    amount_to_claim: 0,
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot - 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_ne!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.finished_round_points,
+                exchange_account.debt_shares
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.current_round_points,
+                exchange_account.debt_shares
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.next_round_points,
+                exchange_account.debt_shares
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.last_update,
+                staking.current_round.start + 1
+            );
+        }
+        unsafe {
+            // Last update before current round but after finished round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                collaterals: [CollateralEntry {
+                    amount: 100,
+                    collateral_address: Pubkey::new_unique(),
+                    index: 0,
+                }; 10],
+                user_staking_data: UserStaking {
+                    amount_to_claim: 0,
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot + 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_ne!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.finished_round_points,
+                exchange_account_copy.user_staking_data.current_round_points
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.current_round_points,
+                exchange_account_copy.user_staking_data.next_round_points
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.next_round_points,
+                exchange_account.debt_shares
+            );
+            assert_eq!(
+                exchange_account.user_staking_data.last_update,
+                staking.current_round.start + 1
+            );
+        }
+        {
+            // Last update in current round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                collaterals: [CollateralEntry {
+                    amount: 100,
+                    collateral_address: Pubkey::new_unique(),
+                    index: 0,
+                }; 10],
+                user_staking_data: UserStaking {
+                    amount_to_claim: 0,
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot + staking_round_length as u64 + 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_eq!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+        }
     }
     #[test]
     fn adjust_staking_rounds_test() {
