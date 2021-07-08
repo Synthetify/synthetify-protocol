@@ -363,6 +363,60 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     usdMintAmount
   }
 }
+interface IAssetSpecificData {
+  price: number
+  decimals: number
+  limit: BN
+}
+
+interface IAddTokensFromData {
+  exchange: Exchange
+  oracleProgram: Program
+  connection: Connection
+  wallet: Account
+  exchangeAccount: Account
+  exchangeAuthority: PublicKey
+  data: IAssetSpecificData[]
+}
+
+export const addTokensFromData = async ({
+  connection,
+  wallet,
+  oracleProgram,
+  exchangeAuthority,
+  exchangeAccount,
+  exchange,
+
+  data
+}: IAddTokensFromData): Promise<Token[]> => {
+  let tokens: Token[] = []
+  for (const asset of data) {
+    const newToken = await createToken({
+      connection,
+      payer: wallet,
+      mintAuthority: wallet.publicKey,
+      decimals: asset.decimals
+    })
+    tokens.push(newToken)
+
+    const oracleAddress = await createPriceFeed({
+      oracleProgram,
+      initPrice: asset.price,
+      expo: -asset.decimals
+    })
+    const state = await exchange.getState()
+    await exchange.addNewAsset({
+      assetsAdmin: exchangeAccount,
+      assetsList: state.assetsList,
+      maxSupply: asset.limit,
+      tokenAddress: newToken.publicKey,
+      tokenDecimals: asset.decimals,
+      tokenFeed: oracleAddress
+    })
+  }
+
+  return tokens
+}
 
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   try {
