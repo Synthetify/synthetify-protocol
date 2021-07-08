@@ -10,13 +10,17 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
-  assertThrowsAsync
+  assertThrowsAsync,
+  IAddNewAssets,
+  addNewAssets,
+  DEFAULT_PUBLIC_KEY
 } from './utils'
-import { createPriceFeed } from './oracleUtils'
+import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
+import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
 
-describe('staking', () => {
+describe('admin', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -90,7 +94,6 @@ describe('staking', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      liquidationAccount,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -104,26 +107,55 @@ describe('staking', () => {
       exchangeProgram.programId
     )
   })
-  it('Initialize', async () => {
+  it('Initialize state', async () => {
     const state = await exchange.getState()
     // Check initialized addreses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    // assert.ok(state.collateralToken.equals(collateralToken.publicKey))
-    assert.ok(state.liquidationAccount.equals(liquidationAccount))
-    // assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
+    assert.ok(state.healthFactor === 50)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.liquidationPenalty === 15)
-    assert.ok(state.liquidationThreshold === 200)
-    assert.ok(state.collateralizationLevel === 1000)
-    assert.ok(state.healthFactor === 50)
+    assert.ok(state.liquidationRate === 20)
+    assert.ok(state.penaltyToLiquidator === 5)
+    assert.ok(state.penaltyToExchange === 5)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
-    // assert.ok(state.collateralShares.eq(new BN(0)))
+  })
+  it('Initialize assets', async () => {
+    const initTokensDecimals = 6
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    // Length should be 2
+    assert.ok(assetsListData.assets.length === 2)
+    // Authority of list
+    const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
+
+    // Check feed address
+    assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
+
+    // Check token address
+    assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
+
+    // Check price
+    assert.ok(collateralAsset.price.eq(new BN(0)))
+
+    const usdAsset = assetsListData.assets[0]
+
+    // USD token checks
+
+    // Check token address
+    assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
+
+    // Check decimals
+    assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
+
+    // Check asset limit
+    assert.ok(usdAsset.synthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
+
+    // Check price
+    assert.ok(usdAsset.price.eq(new BN(1e6)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
@@ -144,61 +176,53 @@ describe('staking', () => {
       assert.ok(state.liquidationBuffer === newLiquidationBuffer)
     })
   })
-  describe('#setLiquidationThreshold()', async () => {
+  describe('#setLiquidationRate()', async () => {
     it('Fail without admin signature', async () => {
-      const newLiquidationThreshold = 150
-      const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
+      const newLiquidationRate = 15
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationThreshold !== newLiquidationThreshold)
+      assert.ok(state.liquidationRate !== newLiquidationRate)
     })
     it('change value', async () => {
-      const newLiquidationThreshold = 150
-      const ix = await exchange.setLiquidationThresholdInstruction(newLiquidationThreshold)
+      const newLiquidationRate = 15
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.liquidationThreshold === newLiquidationThreshold)
+      assert.ok(state.liquidationRate === newLiquidationRate)
     })
   })
-  describe('#setLiquidationPenalty()', async () => {
+  describe('#setLiquidationPenalties()', async () => {
     it('Fail without admin signature', async () => {
-      const newLiquidationPenalty = 9
-      const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
+      const penaltyToExchange = 10
+      const penaltyToLiquidator = 10
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationPenalty !== newLiquidationPenalty)
+      assert.ok(state.penaltyToExchange !== penaltyToExchange)
+      assert.ok(state.penaltyToLiquidator !== penaltyToLiquidator)
     })
-    it('change value', async () => {
-      const newLiquidationPenalty = 9
-      const ix = await exchange.setLiquidationPenaltyInstruction(newLiquidationPenalty)
+    it('Change values', async () => {
+      const penaltyToExchange = 10
+      const penaltyToLiquidator = 10
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
       const state = await exchange.getState()
-      assert.ok(state.liquidationPenalty === newLiquidationPenalty)
-    })
-  })
-  describe('#setCollateralizationLevel()', async () => {
-    it('Fail without admin signature', async () => {
-      const newCollateralizationLevel = 400
-      const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-      const state = await exchange.getState()
-      assert.ok(state.collateralizationLevel !== newCollateralizationLevel)
-    })
-    it('change value', async () => {
-      const newCollateralizationLevel = 9
-      const ix = await exchange.setCollateralizationLevelInstruction(newCollateralizationLevel)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-      const state = await exchange.getState()
-      assert.ok(state.collateralizationLevel === newCollateralizationLevel)
+      assert.ok(state.penaltyToExchange == penaltyToExchange)
+      assert.ok(state.penaltyToLiquidator == penaltyToLiquidator)
     })
   })
   describe('#setFee()', async () => {
@@ -345,6 +369,7 @@ describe('staking', () => {
         isCollateral: true,
         collateralAddress: someToken.publicKey,
         reserveAddress: await someToken.createAccount(exchangeAuthority),
+        liquidationFund: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
@@ -353,7 +378,6 @@ describe('staking', () => {
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         collateral: someCollateral,
-        signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateralFeed: someFeed
       })
@@ -392,6 +416,7 @@ describe('staking', () => {
         isCollateral: true,
         collateralAddress: someToken.publicKey,
         reserveAddress: await someToken.createAccount(exchangeAuthority),
+        liquidationFund: await someToken.createAccount(exchangeAuthority),
         reserveBalance: new BN(0),
         collateralRatio: 50,
         decimals: 8
@@ -400,7 +425,6 @@ describe('staking', () => {
       // Setting collateral
       const ix = await exchange.setAsCollateralInstruction({
         collateral: someCollateral,
-        signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateralFeed: someFeed
       })
@@ -421,6 +445,175 @@ describe('staking', () => {
       assert.ok(lastAsset.reserveBalance.eq(someCollateral.reserveBalance))
       assert.ok(lastAsset.collateralRatio == someCollateral.collateralRatio)
       assert.ok(lastAsset.decimals == someCollateral.decimals)
+    })
+  })
+  describe('#addNewAsset()', async () => {
+    it('Should add new asset ', async () => {
+      const newAssetLimit = new BN(3 * 1e4)
+      const newAssetDecimals = 8
+      const addNewAssetParams: IAddNewAssets = {
+        connection,
+        wallet,
+        oracleProgram,
+        exchange,
+        assetsList,
+        newAssetDecimals,
+        newAssetLimit
+      }
+
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const [createdAsset] = await addNewAssets(addNewAssetParams)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
+
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+      // Isn't a collateral
+      assert.ok(newAsset.collateral.isCollateral == false)
+
+      // Check feed address
+      assert.ok(newAsset.feedAddress.equals(createdAsset.feedAddress))
+
+      // Check token address
+      assert.ok(newAsset.synthetic.assetAddress.equals(createdAsset.assetAddress))
+
+      // Check decimals
+      assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
+
+      // Check asset limit
+      assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
+
+      // Check price
+      assert.ok(newAsset.price.eq(new BN(0)))
+    })
+    // it('Should not add new asset ', async () => {
+    //   const newAssetDecimals = 8
+    //   const newAssetLimit = new BN(3 * 1e4)
+
+    //   const addNewAssetParams: IAddNewAssets = {
+    //     connection,
+    //     wallet,
+    //     oracleProgram,
+    //     exchange,
+    //     assetsList,
+    //     newAssetDecimals,
+    //     newAssetLimit
+    //   }
+    //   // we hit limit of account size and cannot add another asset
+    //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
+    // })
+  })
+  describe('#setMaxSupply()', async () => {
+    const newAssetLimit = new BN(4 * 1e4)
+
+    it('Error should be throwed while setting new max supply', async () => {
+      await assertThrowsAsync(
+        exchange.setAssetMaxSupply({
+          assetAddress: new Account().publicKey,
+          exchangeAdmin: EXCHANGE_ADMIN,
+          assetsList,
+          newMaxSupply: newAssetLimit
+        }),
+        ERRORS_EXCHANGE.NO_ASSET_FOUND
+      )
+
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.notOk(
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
+      )
+    })
+    it('New max supply should be set', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+
+      await exchange.setAssetMaxSupply({
+        assetAddress: beforeAsset.synthetic.assetAddress,
+        exchangeAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        newMaxSupply: newAssetLimit
+      })
+
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
+          newAssetLimit
+        )
+      )
+    })
+  })
+  describe('#setPriceFeed()', async () => {
+    it('New price_feed should be set', async () => {
+      const newPriceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 2,
+        expo: -6
+      })
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const ix = await exchange.setPriceFeedInstruction({
+        assetsList,
+        priceFeed: newPriceFeed,
+        tokenAddress: beforeAsset.synthetic.assetAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+      )
+    })
+  })
+  describe('#setAssetsPrices()', async () => {
+    const newPrice = 6
+    it('Should not change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
+
+      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+
+      await assertThrowsAsync(
+        exchangeProgram.rpc.setAssetsPrices({
+          remainingAccounts: feedAddresses,
+          accounts: {
+            assetsList: assetsList
+          }
+        }),
+        ERRORS.PANICKED
+      )
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check not changed price
+      assert.ok(collateralAsset.price.eq(new BN(0)))
+    })
+    it('Should change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+
+      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+
+      await exchange.updatePrices(assetsList)
+
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
+
+      // Check new price
+      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
+
+      // Check last_update new value
+      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
   })
 })

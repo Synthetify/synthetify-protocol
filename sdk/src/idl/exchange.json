@@ -128,14 +128,6 @@
             "type": "u64"
           },
           {
-            "name": "collateralToken",
-            "type": "publicKey"
-          },
-          {
-            "name": "collateralAccount",
-            "type": "publicKey"
-          },
-          {
             "name": "assetsList",
             "type": "publicKey"
           },
@@ -533,6 +525,53 @@
         "args": []
       },
       {
+        "name": "claimRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
+        "name": "withdrawRewards",
+        "accounts": [
+          {
+            "name": "exchangeAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "owner",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "exchangeAuthority",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "tokenProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "userTokenAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "stakingFundAccount",
+            "isMut": true,
+            "isSigner": false
+          }
+        ],
+        "args": []
+      },
+      {
         "name": "withdrawLiquidationPenalty",
         "accounts": [
           {
@@ -586,6 +625,22 @@
           {
             "name": "liquidationBuffer",
             "type": "u32"
+          }
+        ]
+      },
+      {
+        "name": "setLiquidationRate",
+        "accounts": [
+          {
+            "name": "admin",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "liquidationRate",
+            "type": "u8"
           }
         ]
       },
@@ -766,6 +821,26 @@
           {
             "name": "assetAddress",
             "type": "publicKey"
+          }
+        ]
+      },
+      {
+        "name": "setLiquidationPenalties",
+        "accounts": [
+          {
+            "name": "signer",
+            "isMut": false,
+            "isSigner": true
+          }
+        ],
+        "args": [
+          {
+            "name": "penaltyToExchange",
+            "type": "u8"
+          },
+          {
+            "name": "penaltyToLiquidator",
+            "type": "u8"
           }
         ]
       },
@@ -1213,8 +1288,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "26j7Uetip38zicwzy3trkg98V17sLhDrv4z7gKcADEDg"
-  }
+  ]
 }
