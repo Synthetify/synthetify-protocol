@@ -160,9 +160,7 @@ mod tests {
             },
             ..Default::default()
         };
-
-        // unsafe because of packed field
-        unsafe {
+        {
             // Last update before finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
@@ -205,7 +203,7 @@ mod tests {
                 staking.current_round.start + 1
             );
         }
-        unsafe {
+        {
             // Last update before current round but after finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,

@@ -415,7 +415,7 @@ mod tests {
         }
     }
     #[test]
-    fn test_calculate_debt_success() {
+    fn test_calculate_debt() {
         {
             let slot = 100;
             // debt 0 - no assets
