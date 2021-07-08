@@ -147,6 +147,17 @@ pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amou
         .unwrap();
     return shares.try_into().unwrap();
 }
+pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
+    // full_amount is always != 0 if all_shares > 0
+    if all_shares == 0 {
+        return 0;
+    }
+    let shares = div_up(
+        (amount as u128).checked_mul(all_shares as u128).unwrap(),
+        full_amount as u128,
+    );
+    return shares.try_into().unwrap();
+}
 pub fn amount_to_discount(amount: u64) -> u8 {
     // decimals of token = 6
     // we want discounts start from 2000 -> 4000 ...
@@ -249,7 +260,6 @@ pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
             .unwrap()
             .checked_div(asset.price as u128)
             .unwrap();
-        println!("{}", amount);
         return amount.try_into().unwrap();
     }
 }
@@ -949,25 +959,6 @@ mod tests {
             let token_amount = usd_to_token_amount(&asset, amount);
             // 11031876945054945054
             assert_eq!(token_amount, 11031876945054945054)
-        }
-    }
-
-    #[test]
-    fn test_calculate_liquidation() {
-        {
-            let collateral_value = 1000 * 10u64.pow(6);
-            let debt_value = 500 * 10u64.pow(6);
-            let collateral_ratio = 500u32;
-            let penalty = 15u8;
-            let (max_burned_amount, user_reward_usd, system_reward_usd) =
-                calculate_liquidation(collateral_value, debt_value, collateral_ratio, penalty);
-            assert_eq!(max_burned_amount, 389_610389);
-            assert_eq!(user_reward_usd, 436_363635);
-            assert_eq!(system_reward_usd, 116_88312);
-            assert_eq!(
-                max_burned_amount * (100 + penalty) as u64 / 100,
-                user_reward_usd + system_reward_usd
-            );
         }
     }
     #[test]
