@@ -334,29 +334,12 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setLiquidationThresholdInstruction(newLiquidationThreshold: number) {
-    return await (this.program.state.instruction.setLiquidationThreshold(newLiquidationThreshold, {
+  public async setLiquidationRateInstruction(newLiquidationRate: number) {
+    return await (this.program.state.instruction.setLiquidationRate(newLiquidationRate, {
       accounts: {
         admin: this.state.admin
       }
     }) as TransactionInstruction)
-  }
-  public async setLiquidationPenaltyInstruction(newLiquidationPenalty: number) {
-    return await (this.program.state.instruction.setLiquidationPenalty(newLiquidationPenalty, {
-      accounts: {
-        admin: this.state.admin
-      }
-    }) as TransactionInstruction)
-  }
-  public async setCollateralizationLevelInstruction(newCollateralizationLevel: number) {
-    return await (this.program.state.instruction.setCollateralizationLevel(
-      newCollateralizationLevel,
-      {
-        accounts: {
-          admin: this.state.admin
-        }
-      }
-    ) as TransactionInstruction)
   }
   public async setFeeInstruction(newFee: number) {
     return await (this.program.state.instruction.setFee(newFee, {
@@ -598,20 +581,33 @@ export class Exchange {
   public async setPriceFeedInstruction({
     assetsList,
     priceFeed,
-    signer,
     tokenAddress
   }: SetPriceFeedInstruction) {
     return (await this.program.state.instruction.setPriceFeed(tokenAddress, {
       accounts: {
-        signer: signer,
+        signer: this.state.admin,
         assetsList: assetsList,
         priceFeed: priceFeed
       }
     })) as TransactionInstruction
   }
 
+  public async setLiquidationPenaltiesInstruction({
+    penaltyToExchange,
+    penaltyToLiquidator
+  }: SetLiquidationPenaltiesInstruction) {
+    return (await this.program.state.instruction.setLiquidationPenalties(
+      penaltyToExchange,
+      penaltyToLiquidator,
+      {
+        accounts: {
+          signer: this.state.admin
+        }
+      }
+    )) as TransactionInstruction
+  }
+
   public async setAsCollateralInstruction({
-    signer,
     assetsList,
     collateral,
     collateralFeed
@@ -622,7 +618,7 @@ export class Exchange {
       collateral.collateralRatio,
       {
         accounts: {
-          admin: signer,
+          admin: this.state.admin,
           assetsList,
           assetAddress: collateral.collateralAddress,
           reserveAccount: collateral.reserveAddress,
@@ -775,12 +771,15 @@ export interface SetPriceFeedInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
   tokenAddress: PublicKey
-  signer: PublicKey
+}
+
+export interface SetLiquidationPenaltiesInstruction {
+  penaltyToExchange: number
+  penaltyToLiquidator: number
 }
 
 export interface SetAsCollateralInstruction {
   collateral: Collateral
-  signer: PublicKey
   assetsList: PublicKey
   collateralFeed: PublicKey
 }

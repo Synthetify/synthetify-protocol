@@ -17,7 +17,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
-describe('liquidation', () => {
+describe('staking with multiple users', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
