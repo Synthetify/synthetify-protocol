@@ -1166,76 +1166,43 @@ mod tests {
             assert_eq!(result, 24_850_2250);
         }
     }
-    // #[test]
-    // fn test_calculate_burned_shares() {
-    //     // all_debt
-    //     {
-    //         // 7772,102...
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let all_debt = 1598;
-    //         let all_shares = 90;
-    //         let amount = 9857;
-    //         let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
-    //         assert_eq!(burned_shares, 7772);
-    //     }
-    //     // user_debt
-    //     {
-    //         // user_debt = 0
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 0;
-    //         let user_shares = 0;
-    //         let amount = 0;
-    //         let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
-    //         assert_eq!(burned_shares, 0);
-    //     }
-    // }
-    // #[test]
-    // fn test_calculate_max_burned_in_token() {
-    //     // asset.decimals > ACCURACY
-    //     {
-    //         let asset = Asset {
-    //             price: 14,
-    //             decimals: ACCURACY + 2,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 1_000;
-    //         let max_burned = calculate_max_burned_in_token(&asset, user_debt);
-    //         // 7142857142,85...
-    //         assert_eq!(max_burned, 7142857143);
-    //     }
-    //     // asset.decimals == ACCURACY
-    //     {
-    //         let asset = Asset {
-    //             price: 17 * 10u64.pow(PRICE_OFFSET.into()),
-    //             decimals: ACCURACY,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 10_000;
-    //         let max_burned = calculate_max_burned_in_token(&asset, user_debt);
-    //         // 588,235...
-    //         assert_eq!(max_burned, 589);
-    //     }
-    //     // asset.decimals < ACCURACY
-    //     {
-    //         let asset = Asset {
-    //             price: 78,
-    //             decimals: 2,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 10_000;
-    //         let max_burned = calculate_max_burned_in_token(&asset, user_debt);
-    //         // 12820,512...
-    //         assert_eq!(max_burned, 12821);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_burned_shares() {
+        // all_debt
+        {
+            // 7772,102...
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                synthetic: Synthetic {
+                    decimals: 6,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let all_debt = 1598;
+            let all_shares = 90;
+            let amount = 9857;
+            let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
+            assert_eq!(burned_shares, 7772);
+        }
+        // user_debt
+        {
+            // user_debt = 0
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                synthetic: Synthetic {
+                    decimals: 6,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let user_debt = 0;
+            let user_shares = 0;
+            let amount = 0;
+            let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
+            assert_eq!(burned_shares, 0);
+        }
+    }
     // #[test]
     // fn test_usd_to_token_amount() {
     //     // round down
