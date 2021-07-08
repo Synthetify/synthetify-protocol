@@ -160,12 +160,12 @@ mod tests {
             },
             ..Default::default()
         };
-
         {
             // Last update before finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
+                // collateral_shares: 100,
+                head: 1,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -202,7 +202,6 @@ mod tests {
             // Last update before current round but after finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -239,7 +238,6 @@ mod tests {
             // Last update in current round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
