@@ -166,11 +166,6 @@ mod tests {
                 debt_shares: 10,
                 // collateral_shares: 100,
                 head: 1,
-                collaterals: [CollateralEntry {
-                    amount: 100,
-                    collateral_address: Pubkey::new_unique(),
-                    index: 0,
-                }; 10],
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -207,11 +202,6 @@ mod tests {
             // Last update before current round but after finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collaterals: [CollateralEntry {
-                    amount: 100,
-                    collateral_address: Pubkey::new_unique(),
-                    index: 0,
-                }; 10],
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -248,11 +238,6 @@ mod tests {
             // Last update in current round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collaterals: [CollateralEntry {
-                    amount: 100,
-                    collateral_address: Pubkey::new_unique(),
-                    index: 0,
-                }; 10],
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
