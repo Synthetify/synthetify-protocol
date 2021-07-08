@@ -193,22 +193,22 @@ pub fn calculate_max_withdraw_in_usd(
         .checked_div(health_factor.into())
         .unwrap();
 }
-pub fn calculate_user_collateral_in_token(
-    user_collateral_shares: u64,
-    collateral_shares: u64,
-    balance: u64,
-) -> u64 {
-    // collateral_shares is always != 0 if user_collateral_shares > 0
-    if user_collateral_shares == 0 {
-        return 0;
-    }
-    let tokens = (user_collateral_shares as u128)
-        .checked_mul(balance as u128)
-        .unwrap()
-        .checked_div(collateral_shares as u128)
-        .unwrap();
-    return tokens.try_into().unwrap();
-}
+// pub fn calculate_user_collateral_in_token(
+//     user_collateral_shares: u64,
+//     collateral_shares: u64,
+//     balance: u64,
+// ) -> u64 {
+//     // collateral_shares is always != 0 if user_collateral_shares > 0
+//     if user_collateral_shares == 0 {
+//         return 0;
+//     }
+//     let tokens = (user_collateral_shares as u128)
+//         .checked_mul(balance as u128)
+//         .unwrap()
+//         .checked_div(collateral_shares as u128)
+//         .unwrap();
+//     return tokens.try_into().unwrap();
+// }
 pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
     // collateral and usd have same number of decimals
     let tokens = (user_max_withdraw_in_usd as u128)
@@ -435,7 +435,7 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
 }
 #[cfg(test)]
 mod tests {
-    use std::{borrow::BorrowMut, cell::RefCell, ops::Div};
+    use std::{cell::RefCell, ops::Div};
 
     use super::*;
     #[test]
@@ -923,7 +923,7 @@ mod tests {
     //         assert_eq!(amount_mint, 1_290_000_000);
     //     }
     // }
-    // #[test]
+    #[test]
     // fn test_calculate_user_collateral_in_token() {
     //     // zero user_shares
     //     {
@@ -958,27 +958,33 @@ mod tests {
     //         assert_eq!(user_collateral, 2215)
     //     }
     // }
-    // #[test]
-    // fn test_calculate_max_withdrawable() {
-    //     {
-    //         let asset = Asset {
-    //             decimals: 6,
-    //             price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
-    //         assert_eq!(max_withdrawable, 0u64);
-    //     }
-    //     {
-    //         let asset = Asset {
-    //             decimals: 6,
-    //             price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
-    //         assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
-    //     }
-    // }
+    #[test]
+    fn test_calculate_max_withdrawable() {
+        {
+            let asset = Asset {
+                collateral: Collateral {
+                    decimals: 6,
+                    ..Default::default()
+                },
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
+            assert_eq!(max_withdrawable, 0u64);
+        }
+        {
+            let asset = Asset {
+                collateral: Collateral {
+                    decimals: 6,
+                    ..Default::default()
+                },
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
+            assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
+        }
+    }
     // #[test]
     // fn test_amount_to_shares() {
     //     // not initialized shares
