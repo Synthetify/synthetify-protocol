@@ -372,7 +372,7 @@ interface ICreateCollaterToken {
   wallet: Account
   price: number
   decimals: number
-  limit: BN
+  limit?: BN
 }
 export const createCollateralToken = async ({
   exchange,
@@ -406,7 +406,7 @@ export const createCollateralToken = async ({
   await exchange.addNewAsset({
     assetsAdmin: EXCHANGE_ADMIN,
     assetsList: state.assetsList,
-    maxSupply: limit,
+    maxSupply: limit ?? new BN(1e12),
     tokenAddress: newToken.publicKey,
     tokenDecimals: decimals,
     tokenFeed: oracleAddress
