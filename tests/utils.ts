@@ -3,7 +3,7 @@ import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
-import { Asset, AssetsList } from '@synthetify/sdk/lib/exchange'
+import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
@@ -363,60 +363,10 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     usdMintAmount
   }
 }
-interface IAssetSpecificData {
-  price: number
-  decimals: number
-  limit: BN
-}
-
-interface IAddTokensFromData {
-  exchange: Exchange
-  oracleProgram: Program
-  connection: Connection
-  wallet: Account
-  data: IAssetSpecificData[]
-}
-
-export const addTokensFromData = async ({
-  connection,
-  wallet,
-  oracleProgram,
-  exchange,
-
-  data
-}: IAddTokensFromData): Promise<Token[]> => {
-  const state = await exchange.getState()
-  let tokens: Token[] = []
-
-  for (const asset of data) {
-    const newToken = await createToken({
-      connection,
-      payer: wallet,
-      mintAuthority: wallet.publicKey,
-      decimals: asset.decimals
-    })
-    tokens.push(newToken)
-
-    const oracleAddress = await createPriceFeed({
-      oracleProgram,
-      initPrice: asset.price,
-      expo: -asset.decimals
-    })
-    await exchange.addNewAsset({
-      assetsAdmin: EXCHANGE_ADMIN,
-      assetsList: state.assetsList,
-      maxSupply: asset.limit,
-      tokenAddress: newToken.publicKey,
-      tokenDecimals: asset.decimals,
-      tokenFeed: oracleAddress
-    })
-  }
-
-  return tokens
-}
 
 interface ICreateCollaterToken {
   exchange: Exchange
+  exchangeAuthority: PublicKey
   oracleProgram: Program
   connection: Connection
   wallet: Account
@@ -424,16 +374,21 @@ interface ICreateCollaterToken {
   decimals: number
   limit: BN
 }
-
 export const createCollaterToken = async ({
   exchange,
+  exchangeAuthority,
   oracleProgram,
   connection,
   wallet,
   price,
   decimals,
   limit
-}: ICreateCollaterToken): Promise<{ token: Token; feed: PublicKey }> => {
+}: ICreateCollaterToken): Promise<{
+  token: Token
+  feed: PublicKey
+  reserve: PublicKey
+  liquidationFund: PublicKey
+}> => {
   const state = await exchange.getState()
 
   const newToken = await createToken({
@@ -457,7 +412,27 @@ export const createCollaterToken = async ({
     tokenFeed: oracleAddress
   })
 
-  return { token: newToken, feed: oracleAddress }
+  const reserveAddress = await newToken.createAccount(exchangeAuthority)
+  const liquidationFund = await newToken.createAccount(exchangeAuthority)
+
+  const collateralStruct: Collateral = {
+    isCollateral: true,
+    collateralAddress: newToken.publicKey,
+    reserveAddress,
+    liquidationFund,
+    reserveBalance: new BN(0),
+    collateralRatio: 50,
+    decimals: 8
+  }
+
+  const ix = await exchange.setAsCollateralInstruction({
+    collateral: collateralStruct,
+    assetsList: state.assetsList,
+    collateralFeed: oracleAddress
+  })
+  await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+  return { token: newToken, feed: oracleAddress, reserve: reserveAddress, liquidationFund }
 }
 
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
