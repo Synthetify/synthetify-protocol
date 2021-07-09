@@ -44,12 +44,12 @@ describe('max collaterals', () => {
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
-  let collateralToken: Token
+  // let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  let snyReserve: PublicKey
+  // let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
   let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
@@ -70,12 +70,12 @@ describe('max collaterals', () => {
       // expo: -6
     })
 
-    collateralToken = await createToken({
+    const collateralToken = await createToken({
       connection,
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    snyReserve = await collateralToken.createAccount(exchangeAuthority)
+    const snyReserve = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
@@ -191,49 +191,61 @@ describe('max collaterals', () => {
       })
     )
   })
-  it('deposit', async () => {
+  it.only('deposit', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
-    const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
-    const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
-    await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
-    const userCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
-      userCollateralTokenAccount
-    )
-    // Minted amount
-    assert.ok(userCollateralTokenAccountInfo.amount.eq(amount))
-    const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(snyReserve)
-    // No previous deposits
-    assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
-    const depositIx = await exchange.depositInstruction({
-      amount,
-      exchangeAccount,
-      userCollateralAccount: userCollateralTokenAccount,
-      owner: accountOwner.publicKey,
-      reserveAddress: snyReserve
-    })
-    const approveIx = Token.createApproveInstruction(
-      collateralToken.programId,
-      userCollateralTokenAccount,
-      exchangeAuthority,
-      accountOwner.publicKey,
-      [],
-      tou64(amount)
-    )
-    await signAndSend(
-      new Transaction().add(approveIx).add(depositIx),
-      [wallet, accountOwner],
-      connection
-    )
-    const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(snyReserve)
+    await Promise.all(
+      tokens.slice(2, 5).map(async (collateralToken, index) => {
+        const reserveAccount = reserves[index + 2]
 
-    // Increase by deposited amount
-    assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
+        const userCollateralTokenAccount = await collateralToken.createAccount(
+          accountOwner.publicKey
+        )
+        const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
+        await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+        const userCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
+          userCollateralTokenAccount
+        )
+        // Minted amount
+        assert.ok(userCollateralTokenAccountInfo.amount.eq(amount))
+        const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
+          reserveAccount
+        )
+        // No previous deposits
+        assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
+        const depositIx = await exchange.depositInstruction({
+          amount,
+          exchangeAccount,
+          userCollateralAccount: userCollateralTokenAccount,
+          owner: accountOwner.publicKey,
+          reserveAddress: reserveAccount
+        })
+        const approveIx = Token.createApproveInstruction(
+          collateralToken.programId,
+          userCollateralTokenAccount,
+          exchangeAuthority,
+          accountOwner.publicKey,
+          [],
+          tou64(amount)
+        )
+        await signAndSend(
+          new Transaction().add(approveIx).add(depositIx),
+          [wallet, accountOwner],
+          connection
+        )
+        const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
+          reserveAccount
+        )
 
-    const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-    assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
-    const assetListData = await exchange.getAssetsList(assetsList)
-    assert.ok(assetListData.assets[1].collateral.reserveBalance.eq(amount))
+        // Increase by deposited amount
+        assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
+
+        const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+        assert.ok(userExchangeAccountAfter.collaterals[index].amount.eq(amount))
+        const assetListData = await exchange.getAssetsList(assetsList)
+        assert.ok(assetListData.assets[index + 2].collateral.reserveBalance.eq(amount))
+      })
+    )
   })
 })
