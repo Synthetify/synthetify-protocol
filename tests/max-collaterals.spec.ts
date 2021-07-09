@@ -122,40 +122,45 @@ describe('max collaterals', () => {
     )
     const state = await exchange.getState()
 
-    // Filling with tokens
-    const tokenSpecificData = [
-      { decimals: 8, price: 50000, limit: new BN(1e12) } // BTC
-    ]
-    for (let i = tokenSpecificData.length; i < ASSET_LIMIT - 2; i++) {
-      tokenSpecificData.push({ decimals: 6, price: 2, limit: new BN(1e12) })
+    const createCollateralProps = {
+      exchange,
+      exchangeAuthority,
+      oracleProgram,
+      connection,
+      wallet
     }
 
+    // creating BTC
+    const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
+      decimals: 8,
+      price: 50000,
+      limit: new BN(1e12),
+      ...createCollateralProps
+    })
+    tokens.push(btcToken)
+    reserves.push(btcReserve)
+
     const assetsListBefore = await exchange.getAssetsList(assetsList)
-    assert.ok(tokenSpecificData.length == ASSET_LIMIT - 2)
     assert.ok((await assetsListBefore).assets.length)
 
     // creating tokens asynchronously so it doesn't take 2 minutes (downside is random order)
     const createdTokens = await Promise.all(
-      tokenSpecificData.map((tokenData) =>
+      [...Array(ASSET_LIMIT - 3).keys()].map(() =>
         createCollateralToken({
-          exchange,
-          exchangeAuthority,
-          oracleProgram,
-          connection,
-          wallet,
-          ...tokenData
+          decimals: 6,
+          price: 2,
+          limit: new BN(1e12),
+          ...createCollateralProps
         })
       )
     )
 
     const assetsListAfter = await exchange.getAssetsList(assetsList)
-
-    assert.ok(createdTokens.length == tokenSpecificData.length)
     assert.ok(assetsListAfter.head == ASSET_LIMIT)
 
     // sorting to match order
     const sortedTokens = assetsListAfter.assets
-      .slice(2)
+      .slice(3)
       .map(({ feedAddress }) => createdTokens.find((i) => i.feed.equals(feedAddress)))
 
     assert.ok(sortedTokens.every((token) => token != undefined))
@@ -195,14 +200,15 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
+    // Deposited collateral should be 0,1 * 50000 + 10 * 2 * 2 = 5040
     await Promise.all(
-      tokens.slice(2, 5).map(async (collateralToken, index) => {
+      tokens.slice(2, 4).map(async (collateralToken, index) => {
         const reserveAccount = reserves[index + 2]
 
         const userCollateralTokenAccount = await collateralToken.createAccount(
           accountOwner.publicKey
         )
-        const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
+        const amount = new anchor.BN(10 * 1e6)
         await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
         const userCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
           userCollateralTokenAccount
