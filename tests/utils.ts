@@ -374,7 +374,7 @@ interface ICreateCollaterToken {
   decimals: number
   limit: BN
 }
-export const createCollaterToken = async ({
+export const createCollateralToken = async ({
   exchange,
   exchangeAuthority,
   oracleProgram,
