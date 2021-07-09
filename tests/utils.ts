@@ -374,8 +374,6 @@ interface IAddTokensFromData {
   oracleProgram: Program
   connection: Connection
   wallet: Account
-  exchangeAccount: Account
-  exchangeAuthority: PublicKey
   data: IAssetSpecificData[]
 }
 
@@ -383,13 +381,13 @@ export const addTokensFromData = async ({
   connection,
   wallet,
   oracleProgram,
-  exchangeAuthority,
-  exchangeAccount,
   exchange,
 
   data
 }: IAddTokensFromData): Promise<Token[]> => {
+  const state = await exchange.getState()
   let tokens: Token[] = []
+
   for (const asset of data) {
     const newToken = await createToken({
       connection,
@@ -404,9 +402,8 @@ export const addTokensFromData = async ({
       initPrice: asset.price,
       expo: -asset.decimals
     })
-    const state = await exchange.getState()
     await exchange.addNewAsset({
-      assetsAdmin: exchangeAccount,
+      assetsAdmin: EXCHANGE_ADMIN,
       assetsList: state.assetsList,
       maxSupply: asset.limit,
       tokenAddress: newToken.publicKey,
@@ -416,6 +413,51 @@ export const addTokensFromData = async ({
   }
 
   return tokens
+}
+
+interface ICreateCollaterToken {
+  exchange: Exchange
+  oracleProgram: Program
+  connection: Connection
+  wallet: Account
+  price: number
+  decimals: number
+  limit: BN
+}
+
+export const createCollaterToken = async ({
+  exchange,
+  oracleProgram,
+  connection,
+  wallet,
+  price,
+  decimals,
+  limit
+}: ICreateCollaterToken): Promise<{ token: Token; feed: PublicKey }> => {
+  const state = await exchange.getState()
+
+  const newToken = await createToken({
+    connection,
+    payer: wallet,
+    mintAuthority: wallet.publicKey,
+    decimals: decimals
+  })
+
+  const oracleAddress = await createPriceFeed({
+    oracleProgram,
+    initPrice: price,
+    expo: -decimals
+  })
+  await exchange.addNewAsset({
+    assetsAdmin: EXCHANGE_ADMIN,
+    assetsList: state.assetsList,
+    maxSupply: limit,
+    tokenAddress: newToken.publicKey,
+    tokenDecimals: decimals,
+    tokenFeed: oracleAddress
+  })
+
+  return { token: newToken, feed: oracleAddress }
 }
 
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {

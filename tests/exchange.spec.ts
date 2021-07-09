@@ -24,11 +24,14 @@ import {
   toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
-  mulByPercentage
+  mulByPercentage,
+  addTokensFromData,
+  createCollaterToken
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { Collateral } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -267,6 +270,126 @@ describe('exchange', () => {
         ),
         ERRORS.ALLOWANCE
       )
+    })
+    it.only('Deposit multiple', async () => {
+      const accountOwner = new Account()
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+
+      // const newAssets = [{ price: 50000, decimals: 8, limit: new BN(1e12) }]
+      // const [btcToken] = await addTokensFromData({
+      //   connection,
+      //   wallet,
+      //   oracleProgram,
+      //   exchange,
+      //   data: newAssets
+      // })
+
+      const token = await createCollaterToken({
+        connection,
+        wallet,
+        oracleProgram,
+        exchange,
+        price: 50000,
+        decimals: 8,
+        limit: new BN(1e12)
+      })
+
+      const btcToken = token.token
+      const btcFeed = token.feed
+
+      // const userCollateralTokenAccount = await someToken.createAccount(accountOwner.publicKey)
+      // const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
+      // await someToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+
+      // const btcToken = await createToken({
+      //   connection,
+      //   payer: wallet,
+      //   mintAuthority: wallet.publicKey,
+      //   decimals: 8
+      // })
+      // const btcFeed = await createPriceFeed({
+      //   oracleProgram,
+      //   initPrice: 50000,
+      //   expo: -9
+      // })
+      // await exchange.addNewAsset({
+      //   assetsAdmin: EXCHANGE_ADMIN,
+      //   assetsList,
+      //   maxSupply: new BN(1e10),
+      //   tokenAddress: btcToken.publicKey,
+      //   tokenDecimals: 8,
+      //   tokenFeed: btcFeed
+      // })
+
+      const btcCollateral: Collateral = {
+        isCollateral: true,
+        collateralAddress: btcToken.publicKey,
+        reserveAddress: await btcToken.createAccount(exchangeAuthority),
+        liquidationFund: await btcToken.createAccount(exchangeAuthority),
+        reserveBalance: new BN(0),
+        collateralRatio: 50,
+        decimals: 8
+      }
+
+      const ix = await exchange.setAsCollateralInstruction({
+        collateral: btcCollateral,
+        assetsList,
+        collateralFeed: btcFeed
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      // btcToken.createAccount(accountOwner.publicKey)
+      const amount = new anchor.BN(100 * 1e6)
+      // const userCollateralTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // const exchangeCollateralTokenAccountInfoBefore = await collateralToken.getAccountInfo(
+      //   snyReserve
+      // )
+      // const assetListDataBefore = await exchange.getAssetsList(assetsList)
+
+      const userCollateralTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+      await btcToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+
+      const depositIx = await exchange.depositInstruction({
+        amount,
+        exchangeAccount,
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey,
+        reserveAddress: btcCollateral.reserveAddress
+      })
+      const approveIx = Token.createApproveInstruction(
+        btcToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await signAndSend(
+        new Transaction().add(approveIx).add(depositIx),
+        [wallet, accountOwner],
+        connection
+      )
+
+      // const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
+      //   snyReserve
+      // )
+      // // Increase by deposited amount
+      // assert.ok(
+      //   exchangeCollateralTokenAccountInfoAfter.amount.eq(
+      //     exchangeCollateralTokenAccountInfoBefore.amount.add(amount)
+      //   )
+      // )
+
+      // const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+
+      // assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
+      // const assetListDataAfter = await exchange.getAssetsList(assetsList)
+      // assert.ok(
+      //   assetListDataAfter.assets[1].collateral.reserveBalance
+      //     .sub(assetListDataBefore.assets[1].collateral.reserveBalance)
+      //     .eq(amount)
+      // )
     })
   })
   describe('#mint()', async () => {
