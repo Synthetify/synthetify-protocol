@@ -55,6 +55,7 @@ describe('max collaterals', () => {
   let CollateralTokenMinter: Account = wallet
   let nonce: number
   let tokens: Token[] = []
+  let reserves: PublicKey[] = []
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -74,11 +75,12 @@ describe('max collaterals', () => {
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    tokens.push(collateralToken)
     snyReserve = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
+    tokens.push(collateralToken)
+    reserves.push(snyReserve)
     // @ts-expect-error
     exchange = new Exchange(
       connection,
@@ -101,6 +103,7 @@ describe('max collaterals', () => {
     assetsList = data.assetsList
     usdToken = data.usdToken
     tokens.push(usdToken)
+    reserves.push(await usdToken.createAccount(exchangeAuthority))
 
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
@@ -118,6 +121,49 @@ describe('max collaterals', () => {
       exchangeProgram.programId
     )
     const state = await exchange.getState()
+
+    // Filling with tokens
+    const tokenSpecificData = [
+      { decimals: 8, price: 50000, limit: new BN(1e12) } // BTC
+    ]
+    for (let i = tokenSpecificData.length; i < ASSET_LIMIT - 2; i++) {
+      tokenSpecificData.push({ decimals: 6, price: 2, limit: new BN(1e12) })
+    }
+
+    const assetsListBefore = await exchange.getAssetsList(assetsList)
+    assert.ok(tokenSpecificData.length == ASSET_LIMIT - 2)
+    assert.ok((await assetsListBefore).assets.length)
+
+    // creating tokens asynchronously so it doesn't take 2 minutes (downside is random order)
+    const createdTokens = await Promise.all(
+      tokenSpecificData.map((tokenData) =>
+        createCollateralToken({
+          exchange,
+          exchangeAuthority,
+          oracleProgram,
+          connection,
+          wallet,
+          ...tokenData
+        })
+      )
+    )
+
+    const assetsListAfter = await exchange.getAssetsList(assetsList)
+
+    assert.ok(createdTokens.length == tokenSpecificData.length)
+    assert.ok(assetsListAfter.head == ASSET_LIMIT)
+
+    // sorting to match order
+    const sortedTokens = assetsListAfter.assets
+      .slice(2)
+      .map(({ feedAddress }) => createdTokens.find((i) => i.feed.equals(feedAddress)))
+
+    assert.ok(sortedTokens.every((token) => token != undefined))
+
+    tokens = tokens.concat(sortedTokens.map((i) => i.token))
+    reserves = reserves.concat(sortedTokens.map((i) => i.reserve))
+    assert.ok(tokens.length == ASSET_LIMIT)
+    assert.ok(reserves.length == ASSET_LIMIT)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -132,38 +178,62 @@ describe('max collaterals', () => {
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.accountVersion === 0)
   })
-  it('fill assests', async () => {
-    const tokenSpecificData = [
-      { decimals: 8, price: 50000, limit: new BN(1e12) } // BTC
-    ]
-    for (let i = tokenSpecificData.length; i < ASSET_LIMIT - 2; i++) {
-      tokenSpecificData.push({ decimals: 6, price: 2, limit: new BN(1e12) })
-    }
+  it('creating assets over limit', async () => {
+    await assertThrowsAsync(
+      createCollateralToken({
+        exchange,
+        exchangeAuthority,
+        oracleProgram,
+        connection,
+        wallet,
+        price: 1,
+        decimals: 6
+      })
+    )
+  })
+  it('deposit', async () => {
+    const accountOwner = new Account()
+    const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
-    const assetsListBefore = await exchange.getAssetsList(assetsList)
-    assert.ok(tokenSpecificData.length == ASSET_LIMIT - 2)
-    assert.ok((await assetsListBefore).assets.length)
+    const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+    const amount = new anchor.BN(10 * 1e6) // Mint 10 SNY
+    await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+    const userCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
+      userCollateralTokenAccount
+    )
+    // Minted amount
+    assert.ok(userCollateralTokenAccountInfo.amount.eq(amount))
+    const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(snyReserve)
+    // No previous deposits
+    assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
+    const depositIx = await exchange.depositInstruction({
+      amount,
+      exchangeAccount,
+      userCollateralAccount: userCollateralTokenAccount,
+      owner: accountOwner.publicKey,
+      reserveAddress: snyReserve
+    })
+    const approveIx = Token.createApproveInstruction(
+      collateralToken.programId,
+      userCollateralTokenAccount,
+      exchangeAuthority,
+      accountOwner.publicKey,
+      [],
+      tou64(amount)
+    )
+    await signAndSend(
+      new Transaction().add(approveIx).add(depositIx),
+      [wallet, accountOwner],
+      connection
+    )
+    const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(snyReserve)
 
-    let createdTokens = []
+    // Increase by deposited amount
+    assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
 
-    // must be synchronous to ensure same order
-    for (let tokenData of tokenSpecificData)
-      createdTokens.push(
-        await createCollateralToken({
-          exchange,
-          exchangeAuthority,
-          oracleProgram,
-          connection,
-          wallet,
-          ...tokenData
-        })
-      )
-    tokens = tokens.concat(createdTokens)
-
-    const assetsListAfter = await exchange.getAssetsList(assetsList)
-
-    assert.ok(createdTokens.length == tokenSpecificData.length)
-    assert.ok(assetsListAfter.head == ASSET_LIMIT)
-    console.log(assetsListAfter)
+    const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+    assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
+    const assetListData = await exchange.getAssetsList(assetsList)
+    assert.ok(assetListData.assets[1].collateral.reserveBalance.eq(amount))
   })
 })
