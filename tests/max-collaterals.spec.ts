@@ -32,7 +32,7 @@ import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 
-const ASSET_LIMIT = 30
+const ASSET_LIMIT = 20
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()
@@ -135,6 +135,7 @@ describe('max collaterals', () => {
       decimals: 8,
       price: 50000,
       limit: new BN(1e12),
+      collateralRatio: 10,
       ...createCollateralProps
     })
     tokens.push(btcToken)
@@ -200,9 +201,11 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
-    // Deposited collateral should be 0,1 * 50000 + 10 * 2 * 2 = 5040
+    // btc collateral: 50000 * 0,1 * 0,1 = 500
+    // other collateral 2 * 2 * 10 * 0,5 = 20
+
     await Promise.all(
-      tokens.slice(2, 4).map(async (collateralToken, index) => {
+      tokens.slice(2, 5).map(async (collateralToken, index) => {
         const reserveAccount = reserves[index + 2]
 
         const userCollateralTokenAccount = await collateralToken.createAccount(
@@ -253,5 +256,14 @@ describe('max collaterals', () => {
         assert.ok(assetListData.assets[index + 2].collateral.reserveBalance.eq(amount))
       })
     )
+
+    const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+    await exchange.mint({
+      amount: new BN(260 * 1e6),
+      exchangeAccount,
+      owner: accountOwner.publicKey,
+      to: usdTokenAccount,
+      signers: [accountOwner]
+    })
   })
 })

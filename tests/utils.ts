@@ -373,6 +373,7 @@ interface ICreateCollaterToken {
   price: number
   decimals: number
   limit?: BN
+  collateralRatio?: number
 }
 export const createCollateralToken = async ({
   exchange,
@@ -382,7 +383,8 @@ export const createCollateralToken = async ({
   wallet,
   price,
   decimals,
-  limit
+  limit,
+  collateralRatio
 }: ICreateCollaterToken): Promise<{
   token: Token
   feed: PublicKey
@@ -421,7 +423,7 @@ export const createCollateralToken = async ({
     reserveAddress,
     liquidationFund,
     reserveBalance: new BN(0),
-    collateralRatio: 50,
+    collateralRatio: collateralRatio ?? 50,
     decimals: decimals
   }
 
