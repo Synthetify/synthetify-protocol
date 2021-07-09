@@ -422,7 +422,7 @@ export const createCollaterToken = async ({
     liquidationFund,
     reserveBalance: new BN(0),
     collateralRatio: 50,
-    decimals: 8
+    decimals: decimals
   }
 
   const ix = await exchange.setAsCollateralInstruction({

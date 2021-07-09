@@ -274,30 +274,20 @@ describe('exchange', () => {
     it.only('Deposit multiple', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
-
-      // const newAssets = [{ price: 50000, decimals: 8, limit: new BN(1e12) }]
-      // const [btcToken] = await addTokensFromData({
-      //   connection,
-      //   wallet,
-      //   oracleProgram,
-      //   exchange,
-      //   data: newAssets
-      // })
-
-      const token = await createCollaterToken({
+      const createCollateralProps = {
         exchange,
         exchangeAuthority,
         oracleProgram,
         connection,
-        wallet,
-        price: 50000,
-        decimals: 8,
-        limit: new BN(1e12)
-      })
+        wallet
+      }
 
-      const btcToken = token.token
-      const btcFeed = token.feed
-      const btcReserve = token.reserve
+      const { token: btcToken, reserve: btcReserve } = await createCollaterToken({
+        decimals: 8,
+        price: 50000,
+        limit: new BN(1e12),
+        ...createCollateralProps
+      })
 
       const amount = new anchor.BN(100 * 1e6)
 
