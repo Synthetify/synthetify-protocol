@@ -56,6 +56,7 @@ describe('max collaterals', () => {
   let nonce: number
   let tokens: Token[] = []
   let reserves: PublicKey[] = []
+  let healthFactor: BN
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -130,6 +131,8 @@ describe('max collaterals', () => {
       wallet
     }
 
+    healthFactor = new BN((await exchange.getState()).healthFactor)
+
     // creating BTC
     const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
       decimals: 8,
@@ -197,13 +200,12 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('deposit and mint', async () => {
+  it('deposit and mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     // btc collateral: 50000 * 0,1 * 0,1 = 500
     // other collateral 2 * 2 * 10 * 0,5 = 20
-
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const reserveAccount = reserves[index + 2]
@@ -260,8 +262,9 @@ describe('max collaterals', () => {
     assert.ok(await (await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
     await exchange.mint({
-      amount: new BN(260 * 1e6),
+      amount: mulByPercentage(new BN(260 * 1e6), healthFactor),
       exchangeAccount,
       owner: accountOwner.publicKey,
       to: usdTokenAccount,
@@ -271,5 +274,28 @@ describe('max collaterals', () => {
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
   })
-  it('mint', async () => {})
+  it('withdraw', async () => {
+    const {
+      exchangeAccount,
+      accountOwner,
+      userCollateralTokenAccount
+    } = await createAccountWithCollateralAndMaxMintUsd({
+      reserveAddress: reserves[5],
+      collateralToken: tokens[5],
+      exchangeAuthority,
+      exchange,
+      usdToken,
+      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+      amount: new BN(1000)
+    })
+
+    exchange.withdraw({
+      amount: new BN(100),
+      reserveAccount: reserves[5],
+      exchangeAccount,
+      owner: accountOwner.publicKey,
+      userCollateralAccount: userCollateralTokenAccount,
+      signers: [accountOwner]
+    })
+  })
 })
