@@ -394,6 +394,30 @@ export class Exchange {
     await this.wallet.signAllTransactions(txs)
     return txs
   }
+  private async updatePricesAndSend(ix: TransactionInstruction, signers, split?: boolean) {
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
+
+    if (!split) {
+      const tx = new Transaction().add(updateIx).add(ix)
+      const txs = await this.processOperations([tx])
+      if (signers) txs[0].partialSign(...signers)
+      return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    } else {
+      const txs = await this.processOperations([
+        new Transaction().add(updateIx),
+        new Transaction().add(ix)
+      ])
+      if (signers) txs[1].partialSign(...signers)
+      sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
+        skipPreflight: true
+      })
+      await sleep(50)
+      return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+        skipPreflight: true
+      })
+    }
+  }
+
   public async checkAccount(exchangeAccount: PublicKey) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const checkIx = await this.checkAccountInstruction(exchangeAccount)
@@ -494,35 +518,14 @@ export class Exchange {
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const mintIx = await this.mintInstruction({
       amount,
       exchangeAccount,
       owner,
       to
     })
-
     await this.getState()
-    let mintTx
-
-    if (this.assetsList.head <= 20) {
-      const bothTx = new Transaction().add(updateIx).add(mintIx)
-      const txs = await this.processOperations([bothTx])
-      signers ? txs[0].partialSign(...signers) : null
-      return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
-    } else {
-      const txs = await this.processOperations([
-        new Transaction().add(updateIx),
-        new Transaction().add(mintIx)
-      ])
-      signers ? txs[1].partialSign(...signers) : null
-      sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
-        skipPreflight: true
-      })
-      return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
-        skipPreflight: true
-      })
-    }
+    await this.updatePricesAndSend(mintIx, signers, this.assetsList.head > 20)
   }
   public async deposit({
     amount,
@@ -573,6 +576,7 @@ export class Exchange {
 
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
+
   public async withdrawRewards({
     exchangeAccount,
     owner,

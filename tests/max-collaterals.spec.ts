@@ -204,15 +204,15 @@ describe('max collaterals', () => {
           owner: accountOwner.publicKey,
           userCollateralAccount: userCollateralTokenAccount,
           reserveAccount: reserves[tokenIndeks],
-          collateralToken: tokens[tokenIndeks],
+          collateralToken,
           exchangeAuthority,
           signers: [wallet, accountOwner]
         })
+
+        // Check saldos
         const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
           reserveAccount
         )
-
-        // Increase by deposited amount
         assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
 
         const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
@@ -222,14 +222,16 @@ describe('max collaterals', () => {
       })
     )
   })
-  it('mint', async () => {
+  it.only('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
+    // Deposit collaterals
+    // btc collateral: 50000 * 0,1 * 0,1 = 500
+    // other collateral 2 * 2 * 10 * 0,5 = 20
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
-        const reserveAccount = reserves[index + 2]
 
         const userCollateralTokenAccount = await collateralToken.createAccount(
           accountOwner.publicKey
@@ -255,6 +257,7 @@ describe('max collaterals', () => {
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
     const mintAmount = mulByPercentage(new BN(520 * 1e6), healthFactor)
 
+    // Mint xUSD
     await exchange.mint({
       amount: mintAmount,
       exchangeAccount,
@@ -263,11 +266,12 @@ describe('max collaterals', () => {
       signers: [accountOwner]
     })
 
+    // Check saldo and debt shares
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
     assert.ok(await (await usdToken.getAccountInfo(usdTokenAccount)).amount.eq(mintAmount))
   })
-  it.only('withdraw', async () => {
+  it('withdraw', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
     const amount = new anchor.BN(10 * 1e6)
@@ -276,6 +280,7 @@ describe('max collaterals', () => {
       tokens.map(async (collateralToken) => collateralToken.createAccount(accountOwner.publicKey))
     )
 
+    // Deposit tokens
     await Promise.all(
       tokens.slice(2, 10).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -296,6 +301,7 @@ describe('max collaterals', () => {
       })
     )
 
+    // Withdraw tokens
     await Promise.all(
       tokens.slice(2, 10).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -312,10 +318,10 @@ describe('max collaterals', () => {
       })
     )
 
+    // Check saldos
     const tokenAccountsDataAfter = await Promise.all(
       tokenAccounts.slice(2, 10).map((account, index) => tokens[index + 2].getAccountInfo(account))
     )
-    console.log(tokenAccountsDataAfter)
     assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
   })
 })
