@@ -383,7 +383,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async processOperations(txs: Transaction[]) {
+  private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
     )
@@ -501,11 +501,26 @@ export class Exchange {
       owner,
       to
     })
-    const mintTx = new Transaction().add(updateIx).add(mintIx)
-    const txs = await this.processOperations([mintTx])
-    signers ? txs[0].partialSign(...signers) : null
 
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    await this.getState()
+    let txs = []
+    if (this.assetsList.head <= 20) {
+      const mintTx = new Transaction().add(updateIx).add(mintIx)
+      txs.push(await this.processOperations([mintTx]))
+      signers ? txs[0].partialSign(...signers) : null
+    } else {
+      txs = await this.processOperations([
+        new Transaction().add(updateIx),
+        new Transaction().add(mintIx)
+      ])
+      signers ? txs[1].partialSign(...signers) : null
+    }
+
+    return Promise.all(
+      txs.map((tx) =>
+        sendAndConfirmRawTransaction(this.connection, tx.serialize(), { skipPreflight: true })
+      )
+    )
   }
   public async withdraw({
     amount,
