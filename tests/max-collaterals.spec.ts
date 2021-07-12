@@ -222,7 +222,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('mint', async () => {
+  it('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -267,28 +267,55 @@ describe('max collaterals', () => {
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
     assert.ok(await (await usdToken.getAccountInfo(usdTokenAccount)).amount.eq(mintAmount))
   })
-  it('withdraw', async () => {
-    const {
-      exchangeAccount,
-      accountOwner,
-      userCollateralTokenAccount
-    } = await createAccountWithCollateralAndMaxMintUsd({
-      reserveAddress: reserves[5],
-      collateralToken: tokens[5],
-      exchangeAuthority,
-      exchange,
-      usdToken,
-      collateralTokenMintAuthority: wallet.publicKey,
-      amount: new BN(1000)
-    })
+  it.only('withdraw', async () => {
+    const accountOwner = new Account()
+    const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+    const amount = new anchor.BN(10 * 1e6)
 
-    exchange.withdraw({
-      amount: new BN(100),
-      reserveAccount: reserves[5],
-      exchangeAccount,
-      owner: accountOwner.publicKey,
-      userCollateralAccount: userCollateralTokenAccount,
-      signers: [accountOwner]
-    })
+    const tokenAccounts = await Promise.all(
+      tokens.map(async (collateralToken) => collateralToken.createAccount(accountOwner.publicKey))
+    )
+
+    await Promise.all(
+      tokens.slice(2, 10).map(async (collateralToken, index) => {
+        const tokenIndeks = index + 2
+        const userCollateralTokenAccount = tokenAccounts[tokenIndeks]
+
+        await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+
+        await exchange.deposit({
+          amount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userCollateralAccount: userCollateralTokenAccount,
+          reserveAccount: reserves[tokenIndeks],
+          collateralToken: tokens[tokenIndeks],
+          exchangeAuthority,
+          signers: [wallet, accountOwner]
+        })
+      })
+    )
+
+    await Promise.all(
+      tokens.slice(2, 10).map(async (collateralToken, index) => {
+        const tokenIndeks = index + 2
+        const userCollateralAccount = tokenAccounts[tokenIndeks]
+
+        await exchange.withdraw({
+          amount,
+          reserveAccount: reserves[tokenIndeks],
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userCollateralAccount,
+          signers: [accountOwner]
+        })
+      })
+    )
+
+    const tokenAccountsDataAfter = await Promise.all(
+      tokenAccounts.slice(2, 10).map((account, index) => tokens[index + 2].getAccountInfo(account))
+    )
+    console.log(tokenAccountsDataAfter)
+    assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
   })
 })
