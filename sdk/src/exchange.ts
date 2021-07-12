@@ -506,7 +506,7 @@ export class Exchange {
     let txs = []
     if (this.assetsList.head <= 20) {
       const mintTx = new Transaction().add(updateIx).add(mintIx)
-      txs.push(await this.processOperations([mintTx]))
+      txs = await this.processOperations([mintTx])
       signers ? txs[0].partialSign(...signers) : null
     } else {
       txs = await this.processOperations([
