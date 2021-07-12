@@ -257,6 +257,8 @@ describe('max collaterals', () => {
       })
     )
 
+    assert.ok(await (await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
+
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
     // await exchange.mint({
     //   amount: new BN(260 * 1e6),
@@ -269,7 +271,6 @@ describe('max collaterals', () => {
     const blockhash = await connection.getRecentBlockhash(
       anchor.Provider.defaultOptions().commitment
     )
-    console.log(blockhash)
 
     const updateIx = await exchange.updatePricesInstruction(assetsList)
     const mintIx = await exchange.mintInstruction({
@@ -286,7 +287,13 @@ describe('max collaterals', () => {
 
     const txs = await exchange.processOperations([updateTx, mintTx])
     txs[1].partialSign(accountOwner)
-    sendAndConfirmRawTransaction(connection, txs[0].serialize(), { skipPreflight: true })
-    sendAndConfirmRawTransaction(connection, txs[1].serialize(), { skipPreflight: true })
+    await Promise.all(
+      txs.map((tx) =>
+        sendAndConfirmRawTransaction(connection, tx.serialize(), { skipPreflight: true })
+      )
+    )
+
+    const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+    assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
   })
 })
