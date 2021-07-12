@@ -197,7 +197,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('deposit', async () => {
+  it.only('deposit and mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -271,4 +271,5 @@ describe('max collaterals', () => {
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
   })
+  it('mint', async () => {})
 })

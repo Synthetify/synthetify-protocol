@@ -503,25 +503,26 @@ export class Exchange {
     })
 
     await this.getState()
-    let txs = []
+    let mintTx
+
     if (this.assetsList.head <= 20) {
-      const mintTx = new Transaction().add(updateIx).add(mintIx)
-      txs = await this.processOperations([mintTx])
+      const bothTx = new Transaction().add(updateIx).add(mintIx)
+      const txs = await this.processOperations([bothTx])
       signers ? txs[0].partialSign(...signers) : null
+      return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
     } else {
-      txs = await this.processOperations([
+      const txs = await this.processOperations([
         new Transaction().add(updateIx),
         new Transaction().add(mintIx)
       ])
       signers ? txs[1].partialSign(...signers) : null
+      sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
+        skipPreflight: true
+      })
+      return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+        skipPreflight: true
+      })
     }
-
-    const results = await Promise.all(
-      txs.map((tx) =>
-        sendAndConfirmRawTransaction(this.connection, tx.serialize(), { skipPreflight: true })
-      )
-    )
-    return results.pop()
   }
   public async withdraw({
     amount,
