@@ -524,6 +524,33 @@ export class Exchange {
       })
     }
   }
+  public async deposit({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    reserveAccount,
+    collateralToken,
+    exchangeAuthority,
+    signers
+  }: Deposit) {
+    const depositIx = await this.depositInstruction({
+      amount,
+      exchangeAccount,
+      userCollateralAccount,
+      owner,
+      reserveAddress: reserveAccount
+    })
+    const approveIx = Token.createApproveInstruction(
+      collateralToken.programId,
+      userCollateralAccount,
+      exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    await signAndSend(new Transaction().add(approveIx).add(depositIx), signers, this.connection)
+  }
   public async withdraw({
     amount,
     exchangeAccount,
@@ -835,6 +862,16 @@ export interface Burn {
   userTokenAccountBurn: PublicKey
   amount: BN
   signers?: Array<Account>
+}
+interface Deposit {
+  amount: BN
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  userCollateralAccount: PublicKey
+  reserveAccount: PublicKey
+  collateralToken: Token
+  exchangeAuthority: PublicKey
+  signers: Array<Account>
 }
 export interface Withdraw {
   reserveAccount: PublicKey

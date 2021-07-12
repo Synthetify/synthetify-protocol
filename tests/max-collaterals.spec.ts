@@ -200,7 +200,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it('deposit and mint', async () => {
+  it.only('deposit and mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -208,6 +208,7 @@ describe('max collaterals', () => {
     // other collateral 2 * 2 * 10 * 0,5 = 20
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
+        const tokenIndeks = index + 2
         const reserveAccount = reserves[index + 2]
 
         const userCollateralTokenAccount = await collateralToken.createAccount(
@@ -225,26 +226,17 @@ describe('max collaterals', () => {
         )
         // No previous deposits
         assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
-        const depositIx = await exchange.depositInstruction({
+
+        await exchange.deposit({
           amount,
           exchangeAccount,
-          userCollateralAccount: userCollateralTokenAccount,
           owner: accountOwner.publicKey,
-          reserveAddress: reserveAccount
-        })
-        const approveIx = Token.createApproveInstruction(
-          collateralToken.programId,
-          userCollateralTokenAccount,
+          userCollateralAccount: userCollateralTokenAccount,
+          reserveAccount: reserves[tokenIndeks],
+          collateralToken: tokens[tokenIndeks],
           exchangeAuthority,
-          accountOwner.publicKey,
-          [],
-          tou64(amount)
-        )
-        await signAndSend(
-          new Transaction().add(approveIx).add(depositIx),
-          [wallet, accountOwner],
-          connection
-        )
+          signers: [wallet, accountOwner]
+        })
         const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
           reserveAccount
         )
@@ -255,7 +247,7 @@ describe('max collaterals', () => {
         const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
         assert.ok(userExchangeAccountAfter.collaterals[index].amount.eq(amount))
         const assetListData = await exchange.getAssetsList(assetsList)
-        assert.ok(assetListData.assets[index + 2].collateral.reserveBalance.eq(amount))
+        assert.ok(assetListData.assets[tokenIndeks].collateral.reserveBalance.eq(amount))
       })
     )
 
