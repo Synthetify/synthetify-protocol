@@ -1,36 +1,22 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import {
-  Account,
-  PublicKey,
-  sendAndConfirmRawTransaction,
-  Transaction,
-  TransactionInstruction
-} from '@solana/web3.js'
+import { Account, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
+import { BN, Exchange, Network } from '@synthetify/sdk'
 
 import {
   createAssetsList,
-  createToken,
-  sleep,
   EXCHANGE_ADMIN,
   tou64,
-  createAccountWithCollateral,
-  calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
-  calculateAmountAfterFee,
-  toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
-  createCollateralToken
+  createCollateralToken,
+  createToken
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/lib/utils'
-import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
 
 const ASSET_LIMIT = 30
 
@@ -52,7 +38,6 @@ describe('max collaterals', () => {
   // let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
   let stakingFundAccount: PublicKey
-  let CollateralTokenMinter: Account = wallet
   let nonce: number
   let tokens: Token[] = []
   let reserves: PublicKey[] = []
@@ -74,7 +59,7 @@ describe('max collaterals', () => {
     const collateralToken = await createToken({
       connection,
       payer: wallet,
-      mintAuthority: CollateralTokenMinter.publicKey
+      mintAuthority: wallet.publicKey
     })
     const snyReserve = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
@@ -121,8 +106,8 @@ describe('max collaterals', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    const state = await exchange.getState()
 
+    healthFactor = new BN((await exchange.getState()).healthFactor)
     const createCollateralProps = {
       exchange,
       exchangeAuthority,
@@ -130,8 +115,6 @@ describe('max collaterals', () => {
       connection,
       wallet
     }
-
-    healthFactor = new BN((await exchange.getState()).healthFactor)
 
     // creating BTC
     const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
