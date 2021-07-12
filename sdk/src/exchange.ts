@@ -516,11 +516,12 @@ export class Exchange {
       signers ? txs[1].partialSign(...signers) : null
     }
 
-    return Promise.all(
+    const results = await Promise.all(
       txs.map((tx) =>
         sendAndConfirmRawTransaction(this.connection, tx.serialize(), { skipPreflight: true })
       )
     )
+    return results.pop()
   }
   public async withdraw({
     amount,
