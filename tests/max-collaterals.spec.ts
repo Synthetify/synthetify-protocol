@@ -32,7 +32,7 @@ import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 
-const ASSET_LIMIT = 20
+const ASSET_LIMIT = 30
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()
@@ -258,12 +258,35 @@ describe('max collaterals', () => {
     )
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-    await exchange.mint({
+    // await exchange.mint({
+    //   amount: new BN(260 * 1e6),
+    //   exchangeAccount,
+    //   owner: accountOwner.publicKey,
+    //   to: usdTokenAccount,
+    //   signers: [accountOwner]
+    // })
+
+    const blockhash = await connection.getRecentBlockhash(
+      anchor.Provider.defaultOptions().commitment
+    )
+    console.log(blockhash)
+
+    const updateIx = await exchange.updatePricesInstruction(assetsList)
+    const mintIx = await exchange.mintInstruction({
       amount: new BN(260 * 1e6),
       exchangeAccount,
       owner: accountOwner.publicKey,
-      to: usdTokenAccount,
-      signers: [accountOwner]
+      to: usdTokenAccount
     })
+
+    const updateTx = new Transaction().add(updateIx)
+    const mintTx = new Transaction().add(mintIx)
+
+    exchange.processOperations([updateTx, mintTx])
+
+    const txs = await exchange.processOperations([updateTx, mintTx])
+    txs[1].partialSign(accountOwner)
+    sendAndConfirmRawTransaction(connection, txs[0].serialize(), { skipPreflight: true })
+    sendAndConfirmRawTransaction(connection, txs[1].serialize(), { skipPreflight: true })
   })
 })

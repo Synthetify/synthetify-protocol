@@ -383,7 +383,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  private async processOperations(txs: Transaction[]) {
+  public async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
     )
