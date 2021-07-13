@@ -411,7 +411,7 @@ export class Exchange {
       sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
         skipPreflight: true
       })
-      await sleep(50)
+      await sleep(100)
       return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
         skipPreflight: true
       })
@@ -562,7 +562,6 @@ export class Exchange {
     signers,
     reserveAccount
   }: Withdraw) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       reserveAccount,
       amount,
@@ -570,11 +569,8 @@ export class Exchange {
       owner,
       userCollateralAccount
     })
-    const withdrawTx = new Transaction().add(updateIx).add(withdrawIx)
-    const txs = await this.processOperations([withdrawTx])
-    signers ? txs[0].partialSign(...signers) : null
-
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    await this.getState()
+    return this.updatePricesAndSend(withdrawIx, signers, this.assetsList.head > 20)
   }
 
   public async withdrawRewards({

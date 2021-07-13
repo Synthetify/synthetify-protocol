@@ -14,7 +14,8 @@ import {
   assertThrowsAsync,
   mulByPercentage,
   createCollateralToken,
-  createToken
+  createToken,
+  waitForBeggingOfASlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -118,7 +119,7 @@ describe('max collaterals', () => {
 
     // creating BTC
     const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
-      decimals: 8,
+      decimals: 10,
       price: 50000,
       limit: new BN(1e12),
       collateralRatio: 10,
@@ -154,6 +155,7 @@ describe('max collaterals', () => {
 
     tokens = tokens.concat(sortedTokens.map((i) => i.token))
     reserves = reserves.concat(sortedTokens.map((i) => i.reserve))
+    assert.ok(sortedTokens.length == ASSET_LIMIT - 3)
     assert.ok(tokens.length == ASSET_LIMIT)
     assert.ok(reserves.length == ASSET_LIMIT)
   })
@@ -187,6 +189,7 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
+    await waitForBeggingOfASlot(connection)
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -222,13 +225,14 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('mint', async () => {
+  it('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     // Deposit collaterals
     // btc collateral: 50000 * 0,1 * 0,1 = 500
     // other collateral 2 * 2 * 10 * 0,5 = 20
+    await waitForBeggingOfASlot(connection)
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -274,16 +278,18 @@ describe('max collaterals', () => {
   it('withdraw', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
-    const amount = new anchor.BN(10 * 1e6)
+    const amount = new BN(10 * 1e6)
+    const listOffset = 2
 
     const tokenAccounts = await Promise.all(
       tokens.map(async (collateralToken) => collateralToken.createAccount(accountOwner.publicKey))
     )
 
+    await waitForBeggingOfASlot(connection)
     // Deposit tokens
     await Promise.all(
-      tokens.slice(2, 10).map(async (collateralToken, index) => {
-        const tokenIndeks = index + 2
+      tokens.slice(listOffset, 10).map(async (collateralToken, index) => {
+        const tokenIndeks = index + listOffset
         const userCollateralTokenAccount = tokenAccounts[tokenIndeks]
 
         await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
@@ -301,10 +307,11 @@ describe('max collaterals', () => {
       })
     )
 
+    await waitForBeggingOfASlot(connection)
     // Withdraw tokens
     await Promise.all(
-      tokens.slice(2, 10).map(async (collateralToken, index) => {
-        const tokenIndeks = index + 2
+      tokens.slice(listOffset, 10).map(async (collateralToken, index) => {
+        const tokenIndeks = index + listOffset
         const userCollateralAccount = tokenAccounts[tokenIndeks]
 
         await exchange.withdraw({
@@ -320,8 +327,13 @@ describe('max collaterals', () => {
 
     // Check saldos
     const tokenAccountsDataAfter = await Promise.all(
-      tokenAccounts.slice(2, 10).map((account, index) => tokens[index + 2].getAccountInfo(account))
+      tokenAccounts
+        .slice(listOffset, 10)
+        .map((account, index) => tokens[index + listOffset].getAccountInfo(account))
     )
+    const exchangeAccountDataAfter = await exchange.getExchangeAccount(exchangeAccount)
+
     assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
+    assert.ok(exchangeAccountDataAfter.collaterals.every((i) => i.amount.eq(new BN(0))))
   })
 })
