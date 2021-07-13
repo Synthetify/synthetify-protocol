@@ -1,3 +1,5 @@
+use std::cell::RefMut;
+
 use crate::*;
 
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
@@ -49,20 +51,21 @@ pub fn check_liquidation(
     }
 }
 
-pub fn adjust_staking_rounds(staking: &mut Staking, slot: u64, debt_shares: u64) {
-    if slot <= staking.next_round.start {
+pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
+    if slot <= state.staking.next_round.start {
         return;
     } else {
-        staking.finished_round = staking.current_round.clone();
-        staking.current_round = staking.next_round.clone();
-        staking.next_round = StakingRound {
-            start: staking
+        state.staking.finished_round = state.staking.current_round.clone();
+        state.staking.current_round = state.staking.next_round.clone();
+        state.staking.next_round = StakingRound {
+            start: state
+                .staking
                 .next_round
                 .start
-                .checked_add(staking.round_length.into())
+                .checked_add(state.staking.round_length.into())
                 .unwrap(),
-            all_points: debt_shares,
-            amount: staking.amount_per_round,
+            all_points: state.debt_shares,
+            amount: state.staking.amount_per_round,
         }
     }
 
