@@ -128,7 +128,7 @@ describe('staking', () => {
     assert.ok(state.staking.amountPerRound.eq(amountPerRound))
     assert.ok(state.staking.roundLength === stakingRoundLength)
   })
-  describe.only('Staking', async () => {
+  describe('Staking', async () => {
     it('test flow', async () => {
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
