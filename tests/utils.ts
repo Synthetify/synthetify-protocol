@@ -477,3 +477,8 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 export const mulByPercentage = (a: BN, percentage: BN) => {
   return a.mul(percentage).div(new BN(100))
 }
+
+export const waitForBeggingOfASlot = async (connection: Connection) => {
+  const startSlot = await connection.getSlot()
+  while (startSlot == (await connection.getSlot())) {}
+}
