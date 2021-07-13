@@ -1,5 +1,6 @@
+use std::cell::RefMut;
+
 use crate::*;
-use manager::Asset;
 
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
 pub const fn log2(n: u64) -> u64 {
@@ -7,7 +8,7 @@ pub const fn log2(n: u64) -> u64 {
 }
 
 pub fn check_feed_update(
-    assets: &Vec<Asset>,
+    assets: &[Asset],
     index_a: usize,
     index_b: usize,
     max_delay: u32,
@@ -50,20 +51,21 @@ pub fn check_liquidation(
     }
 }
 
-pub fn adjust_staking_rounds(staking: &mut Staking, slot: u64, debt_shares: u64) {
-    if slot <= staking.next_round.start {
+pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
+    if slot <= state.staking.next_round.start {
         return;
     } else {
-        staking.finished_round = staking.current_round.clone();
-        staking.current_round = staking.next_round.clone();
-        staking.next_round = StakingRound {
-            start: staking
+        state.staking.finished_round = state.staking.current_round.clone();
+        state.staking.current_round = state.staking.next_round.clone();
+        state.staking.next_round = StakingRound {
+            start: state
+                .staking
                 .next_round
                 .start
-                .checked_add(staking.round_length.into())
+                .checked_add(state.staking.round_length.into())
                 .unwrap(),
-            all_points: debt_shares,
-            amount: staking.amount_per_round,
+            all_points: state.debt_shares,
+            amount: state.staking.amount_per_round,
         }
     }
 
@@ -88,6 +90,27 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 
     exchange_account.user_staking_data.last_update = staking.current_round.start + 1;
     return;
+}
+
+pub fn set_asset_supply(asset: &mut Asset, new_supply: u64) -> ProgramResult {
+    if new_supply.gt(&asset.synthetic.max_supply) {
+        return Err(ErrorCode::MaxSupply.into());
+    }
+    asset.synthetic.supply = new_supply;
+    Ok(())
+}
+pub fn get_user_sny_collateral_balance(
+    exchange_account: &ExchangeAccount,
+    sny_asset: &Asset,
+) -> u64 {
+    let entry = exchange_account.collaterals.iter().find(|x| {
+        x.collateral_address
+            .eq(&sny_asset.collateral.collateral_address)
+    });
+    match entry {
+        Some(x) => return x.amount,
+        None => return 0,
+    }
 }
 
 #[cfg(test)]
@@ -140,12 +163,12 @@ mod tests {
             },
             ..Default::default()
         };
-
         {
             // Last update before finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
+                // collateral_shares: 100,
+                head: 1,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -182,7 +205,6 @@ mod tests {
             // Last update before current round but after finished round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,
@@ -219,7 +241,6 @@ mod tests {
             // Last update in current round
             let mut exchange_account = ExchangeAccount {
                 debt_shares: 10,
-                collateral_shares: 100,
                 user_staking_data: UserStaking {
                     amount_to_claim: 0,
                     finished_round_points: 2,

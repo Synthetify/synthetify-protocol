@@ -3,26 +3,25 @@ import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
 import { Account, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Manager, Network } from '@synthetify/sdk'
+import { BN, Exchange, Network } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
-  ASSETS_MANAGER_ADMIN,
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  skipToSlot
+  skipToSlot,
+  mulByPercentage
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
-describe('liquidation', () => {
+describe('staking with multiple users', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
   const managerProgram = anchor.workspace.Manager as Program
-  const manager = new Manager(connection, Network.LOCAL, provider.wallet, managerProgram.programId)
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -37,6 +36,7 @@ describe('liquidation', () => {
   let collateralAccount: PublicKey
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
+  let reserveAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
 
@@ -68,28 +68,29 @@ describe('liquidation', () => {
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
     liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
-
-    const data = await createAssetsList({
-      exchangeAuthority,
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      manager,
-      wallet
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
+    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
     // @ts-expect-error
     exchange = new Exchange(
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      snyReserve: reserveAccount,
+      snyLiquidationFund: liquidationAccount,
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchange
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
@@ -105,7 +106,6 @@ describe('liquidation', () => {
       connection,
       Network.LOCAL,
       provider.wallet,
-      manager,
       exchangeAuthority,
       exchangeProgram.programId
     )
@@ -149,7 +149,7 @@ describe('liquidation', () => {
         usersAccountsPromises.push(
           (async () =>
             await createAccountWithCollateralAndMaxMintUsd({
-              collateralAccount,
+              reserveAddress: reserveAccount,
               collateralToken,
               exchangeAuthority,
               exchange,
@@ -161,13 +161,14 @@ describe('liquidation', () => {
 
       //Resolving promises
       const usersAccounts = await Promise.all(usersAccountsPromises)
+      const healthFactor = new BN((await exchange.getState()).healthFactor)
 
       // Checking points for each user after first round
       const nextRoundPointsCorrectness = await Promise.all(
         usersAccounts.map(async (user) =>
           (
             await exchange.getExchangeAccount(user.exchangeAccount)
-          ).userStakingData.nextRoundPoints.eq(new BN(200 * 1e6))
+          ).userStakingData.nextRoundPoints.eq(mulByPercentage(new BN(200 * 1e6), healthFactor))
         )
       )
 
@@ -177,7 +178,8 @@ describe('liquidation', () => {
       await skipToSlot(nextRoundStart.toNumber(), connection)
 
       // Burn should reduce next round stake
-      const amountBurn = new BN(100 * 1e6)
+      const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      const amountScaledByHealth = amountBurn // half of amount before burn
 
       for (let user of usersAccounts) {
         await exchange.burn({
@@ -191,10 +193,10 @@ describe('liquidation', () => {
         // Check if burn worked
         const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(user.exchangeAccount)
         assert.ok(
-          exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(new BN(100 * 1e6))
+          exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(amountScaledByHealth)
         )
         assert.ok(
-          exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(new BN(100 * 1e6))
+          exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(amountScaledByHealth)
         )
       }
 
@@ -205,9 +207,10 @@ describe('liquidation', () => {
       await Promise.all(usersAccounts.map((user) => exchange.claimRewards(user.exchangeAccount)))
 
       const state = await exchange.getState()
-      assert.ok(state.staking.finishedRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
-      assert.ok(state.staking.currentRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
-      assert.ok(state.staking.nextRound.allPoints.eq(new BN(100 * 1e6 * amountOfAccounts)))
+      const expectedAllPointAmount = amountScaledByHealth.muln(amountOfAccounts)
+      assert.ok(state.staking.finishedRound.allPoints.eq(expectedAllPointAmount))
+      assert.ok(state.staking.currentRound.allPoints.eq(expectedAllPointAmount))
+      assert.ok(state.staking.nextRound.allPoints.eq(expectedAllPointAmount))
 
       assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
 

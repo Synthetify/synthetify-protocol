@@ -2,14 +2,13 @@ import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
-import { Exchange, Manager, signAndSend } from '@synthetify/sdk'
-import { AssetsList, Asset } from '@synthetify/sdk/lib/manager'
+import { Exchange, signAndSend } from '@synthetify/sdk'
+import { Asset, AssetsList } from '@synthetify/sdk/lib/exchange'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
-export const ASSETS_MANAGER_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
 export const ACCURACY = 6
@@ -20,7 +19,9 @@ export const tou64 = (amount) => {
   return new u64(amount.toString())
 }
 export const tokenToUsdValue = (amount: BN, asset: Asset) => {
-  return amount.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+  return amount
+    .mul(asset.price)
+    .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -28,7 +29,9 @@ export const sleep = async (ms: number) => {
 export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.assets.reduce((acc, asset) => {
     return acc.add(
-      asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+      asset.synthetic.supply
+        .mul(asset.price)
+        .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -54,7 +57,7 @@ export const calculateAmountAfterFee = (
   amount: BN
 ) => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  const decimal_change = 10 ** (assetFor.decimals - assetIn.decimals)
+  const decimal_change = 10 ** (assetFor.synthetic.decimals - assetIn.synthetic.decimals)
   if (decimal_change < 1) {
     return amountOutBeforeFee
       .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
@@ -88,10 +91,11 @@ export const createToken = async ({
   return token
 }
 export interface ICreateAssetsList {
-  manager: Manager
-  assetsAdmin: Account
+  exchange: Exchange
   collateralTokenFeed: PublicKey
   exchangeAuthority: PublicKey
+  snyReserve: PublicKey
+  snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
   wallet: Account
@@ -102,7 +106,7 @@ export type AddNewAssetResult = {
   feedAddress: PublicKey
 }
 export interface IAddNewAssets {
-  manager: Manager
+  exchange: Exchange
   oracleProgram: Program
   connection: Connection
   wallet: Account
@@ -112,36 +116,28 @@ export interface IAddNewAssets {
   newAssetsNumber?: number
 }
 export const createAssetsList = async ({
-  manager,
-  assetsAdmin,
+  exchange,
   collateralToken,
   collateralTokenFeed,
   connection,
   wallet,
   exchangeAuthority,
-  assetsSize = 30
+  snyLiquidationFund,
+  snyReserve
 }: ICreateAssetsList) => {
-  try {
-    // IF we test without previous tests
-    await manager.init(assetsAdmin.publicKey)
-  } catch (error) {
-    console.log('Dont worry about above error! ')
-  }
-
   const usdToken = await createToken({
     connection,
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await manager.createAssetsList(assetsSize)
-
-  await manager.initializeAssetsList({
-    assetsAdmin,
+  const assetsList = await exchange.createAssetsList()
+  await exchange.initializeAssetsList({
     assetsList,
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
-    exchangeAuthority,
-    usdToken: usdToken.publicKey
+    usdToken: usdToken.publicKey,
+    snyReserve,
+    snyLiquidationFund
   })
   return { assetsList, usdToken }
 }
@@ -149,7 +145,7 @@ export const addNewAssets = async ({
   connection,
   wallet,
   oracleProgram,
-  manager,
+  exchange,
   assetsList,
   newAssetDecimals,
   newAssetLimit,
@@ -168,8 +164,8 @@ export const addNewAssets = async ({
       initPrice: 2
     })
 
-    await manager.addNewAsset({
-      assetsAdmin: ASSETS_MANAGER_ADMIN,
+    await exchange.addNewAsset({
+      assetsAdmin: EXCHANGE_ADMIN,
       assetsList,
       maxSupply: newAssetLimit,
       tokenAddress: newToken.publicKey,
@@ -204,25 +200,36 @@ export const newAccountWithLamports = async (connection, lamports = 1e10) => {
 export interface IAccountWithCollateral {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
-  collateralAccount: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
   amount: BN
+  reserveAddress: PublicKey
+}
+export interface IAccountWithMultipleCollaterals {
+  exchange: Exchange
+  exchangeAuthority: PublicKey
+  mintAuthority: PublicKey
+  collateralToken: Token
+  otherToken: Token
+  reserveAddress: PublicKey
+  otherReserveAddress: PublicKey
+  amountOfCollateralToken: BN
+  amountOfOtherToken: BN
 }
 export interface IAccountWithCollateralandMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
-  collateralAccount: PublicKey
   exchangeAuthority: PublicKey
   collateralToken: Token
   usdToken: Token
   amount: BN
+  reserveAddress: PublicKey
 }
 export const createAccountWithCollateral = async ({
   exchange,
   collateralTokenMintAuthority,
   collateralToken,
-  collateralAccount,
+  reserveAddress,
   exchangeAuthority,
   amount
 }: IAccountWithCollateral) => {
@@ -239,7 +246,8 @@ export const createAccountWithCollateral = async ({
     amount: amount,
     exchangeAccount,
     userCollateralAccount: userCollateralTokenAccount,
-    owner: accountOwner.publicKey
+    owner: accountOwner.publicKey,
+    reserveAddress: reserveAddress
   })
   const approveIx = Token.createApproveInstruction(
     collateralToken.programId,
@@ -255,16 +263,71 @@ export const createAccountWithCollateral = async ({
     exchange.connection
   )
 
-  return { accountOwner, exchangeAccount: exchangeAccount, userCollateralTokenAccount }
+  return { accountOwner, exchangeAccount, userCollateralTokenAccount }
+}
+export const createAccountWithMultipleCollaterals = async ({
+  exchange,
+  mintAuthority,
+  collateralToken,
+  otherToken,
+  reserveAddress,
+  otherReserveAddress,
+  exchangeAuthority,
+  amountOfCollateralToken,
+  amountOfOtherToken
+}: IAccountWithMultipleCollaterals) => {
+  const {
+    accountOwner,
+    exchangeAccount,
+    userCollateralTokenAccount
+  } = await createAccountWithCollateral({
+    amount: amountOfCollateralToken,
+    reserveAddress,
+    collateralToken,
+    collateralTokenMintAuthority: mintAuthority,
+    exchange,
+    exchangeAuthority
+  })
+
+  const userOtherTokenAccount = await otherToken.createAccount(accountOwner.publicKey)
+  await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amountOfOtherToken))
+
+  const depositIx = await exchange.depositInstruction({
+    amount: amountOfOtherToken,
+    exchangeAccount,
+    userCollateralAccount: userOtherTokenAccount,
+    owner: accountOwner.publicKey,
+    reserveAddress: otherReserveAddress
+  })
+  const approveIx = Token.createApproveInstruction(
+    otherToken.programId,
+    userOtherTokenAccount,
+    exchangeAuthority,
+    accountOwner.publicKey,
+    [],
+    tou64(amountOfOtherToken)
+  )
+  await signAndSend(
+    new Transaction().add(approveIx).add(depositIx),
+    [accountOwner],
+    exchange.connection
+  )
+
+  return {
+    accountOwner,
+    exchangeAccount,
+    userCollateralTokenAccount,
+    userOtherTokenAccount
+  }
 }
 export const createAccountWithCollateralAndMaxMintUsd = async ({
   exchange,
   collateralTokenMintAuthority,
   collateralToken,
-  collateralAccount,
   exchangeAuthority,
   amount,
-  usdToken
+  usdToken,
+  reserveAddress
 }: IAccountWithCollateralandMint) => {
   const {
     accountOwner,
@@ -272,7 +335,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     userCollateralTokenAccount
   } = await createAccountWithCollateral({
     amount,
-    collateralAccount,
+    reserveAddress,
     collateralToken,
     collateralTokenMintAuthority,
     exchange,
@@ -282,7 +345,9 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
   // Price of token is 2$ and collateral ratio 1000%
-  const usdMintAmount = amount.div(new BN(5))
+  const healthFactor = new BN((await exchange.getState()).healthFactor)
+  const usdMintAmount = amount.div(new BN(5)).mul(healthFactor).div(new BN(100))
+
   await exchange.mint({
     amount: usdMintAmount,
     exchangeAccount,
@@ -311,6 +376,7 @@ export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
     }
     if (word) {
       if (err.indexOf(word) === -1) {
+        console.log(err)
         throw new Error('Invalid Error message')
       }
     }
@@ -333,4 +399,8 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 
     await sleep(400)
   }
+}
+
+export const mulByPercentage = (a: BN, percentage: BN) => {
+  return a.mul(percentage).div(new BN(100))
 }

@@ -8,7 +8,7 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { AssetsList } from './manager'
+import { Asset, AssetsList, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
@@ -38,14 +38,11 @@ export enum ERRORS_EXCHANGE {
   HALTED = '0x139',
   NO_REWARDS = '0x13a',
   FUND_ACCOUNT_ERROR = '0x13b',
-  ACCOUNT_VERSION = '0x13c'
-}
-export enum ERRORS_MANAGER {
-  UNAUTHORIZED = '0x12c',
-  INITIALIZED = '0x12d',
-  UNINITIALIZED = '0x12e',
-  NO_ASSET_FOUND = '0x12f',
-  MAX_SUPPLY = '0x130'
+  ACCOUNT_VERSION = '0x13c',
+  INITIALIZED = '0x13d',
+  UNINITIALIZED = '0x13e',
+  NO_ASSET_FOUND = '0x13f',
+  MAX_SUPPLY = '0x140'
 }
 export const signAndSend = async (
   tx: Transaction,
@@ -67,40 +64,80 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
+export const divUp = (a: BN, b: BN) => {
+  return a.add(b.subn(1)).div(b)
+}
 export const calculateLiquidation = (
-  collateralValue: BN,
+  maxDebt: BN,
   debtValue: BN,
-  targetCollateralRatio: number,
-  liquidationPenalty: number
+  penaltyToLiquidator: number,
+  penaltyToExchange: number,
+  liquidationRate: number,
+  asset: Asset
 ) => {
-  const penalty = new BN(liquidationPenalty)
-  const ratio = new BN(targetCollateralRatio)
+  if (maxDebt.gt(debtValue)) {
+    throw new Error('Account is safe')
+  }
+  const maxAmount = debtValue.muln(liquidationRate).divn(100)
+  const seizedCollateralInUsd = divUp(
+    maxAmount.muln(penaltyToExchange + penaltyToLiquidator),
+    new BN(100)
+  ).add(maxAmount)
 
-  const maxBurnUsd = debtValue
-    .mul(ratio)
-    .sub(collateralValue.mul(new BN(100)))
-    .div(ratio.sub(new BN(100).add(penalty)))
+  const seizedInToken = seizedCollateralInUsd
+    .muln(10 ** ORACLE_OFFSET)
+    .muln(10 ** (asset.collateral.decimals - ACCURACY))
+    .div(asset.price)
 
-  const penaltyToSystem = penalty.div(new BN(5))
-  const penaltyToUser = penalty.sub(penaltyToSystem)
-
-  const userRewardUsd = maxBurnUsd.mul(new BN(100).add(penaltyToUser)).div(new BN(100))
-  const systemRewardUsd = maxBurnUsd
-    .mul(penaltyToSystem)
-    .addn(100 - 1) // round up
-    .div(new BN(100))
-
-  return { userRewardUsd, systemRewardUsd, maxBurnUsd }
+  const collateralToExchange = divUp(
+    seizedInToken.muln(penaltyToExchange),
+    new BN(100).addn(penaltyToExchange).addn(penaltyToLiquidator)
+  )
+  const collateralToLiquidator = seizedInToken.sub(collateralToExchange)
+  return { seizedInToken, maxAmount, collateralToExchange, collateralToLiquidator }
 }
 
 export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.assets.reduce(
     (acc, asset) =>
       acc.add(
-        asset.supply.mul(asset.price).div(new BN(10 ** (asset.decimals + ORACLE_OFFSET - ACCURACY)))
+        asset.synthetic.supply
+          .mul(asset.price)
+          .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
       ),
     new BN(0)
   )
+}
+export const calculateUserCollateral = (
+  exchangeAccount: ExchangeAccount,
+  assetsList: AssetsList
+) => {
+  return exchangeAccount.collaterals.reduce((acc, entry) => {
+    return acc.add(
+      entry.amount
+        .mul(assetsList.assets[entry.index].price)
+        .div(
+          new BN(
+            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
+          )
+        )
+    )
+  }, new BN(0))
+}
+export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsList: AssetsList) => {
+  return exchangeAccount.collaterals.reduce((acc, entry) => {
+    return acc.add(
+      entry.amount
+        .mul(assetsList.assets[entry.index].price)
+        .muln(assetsList.assets[entry.index].collateral.collateralRatio)
+        .divn(100)
+        .div(
+          new BN(
+            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
+          )
+        )
+    )
+  }, new BN(0))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -113,9 +150,9 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  DxhLVejvWF8uCLcgPsKfayt2mmgHnytgc2pVumFFeuej: 'xUSD',
-  xgwaHfCWHauuPhpsGeehq8bnTDwFbZXK69QwXPuUjne: 'SNY',
-  E1yHuofUuZyXx1P8nDLY1VcVy5H6iv616kKWhDUhwNjh: 'xBTC',
-  '3BP9o1GWyhpvJGUbNiY6kJGLMi1t7ACtBBLaqJHVFyGo': 'xSOL',
-  '2rUKfgRuMKUEpnKdAH1Kwktq8kBDFm93MXhKccyvCxG3': 'xSRM'
+  '2jGL8abhSy9DNH4nV4FdEYt9gDaaeas9vBkns2XuRR4G': 'xUSD',
+  '5t389pri6gNFREqzFwXc2iTYQ3q6XhMKqer3kKHsJy8v': 'SNY',
+  C9K3txVDuiYVJAbSmvzTxujgCi2D3xXPhDvcSiyuTBTK: 'xBTC',
+  APpGJ2fKmqW3ormrUCifbDronjrBsZ4N1uS2xxCBzYuj: 'xSOL',
+  CvVw8scGXiEkLuZ2q7VNXCD5mDr9KVjWircMQy9d9Fi1: 'xSRM'
 }

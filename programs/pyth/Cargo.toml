@@ -16,6 +16,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.9.0"
+anchor-lang = "0.11.1"
 arrayref = "0.3.6"
-bytemuck = { version="1.4.0" }
+bytemuck = { version = "1.4.0" }

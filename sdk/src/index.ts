@@ -1,5 +1,4 @@
 import { BN } from '@project-serum/anchor'
-import { Manager, Asset } from './manager'
 import { Exchange } from './exchange'
 import { Network, DEV_NET, TEST_NET } from './network'
 import { signAndSend, calculateLiquidation, addressToAssetSymbol } from './utils'
@@ -11,11 +10,9 @@ export interface IWallet {
 }
 export {
   BN,
-  Manager,
   Network,
   Exchange,
   signAndSend,
-  Asset,
   calculateLiquidation,
   addressToAssetSymbol,
   DEV_NET,
