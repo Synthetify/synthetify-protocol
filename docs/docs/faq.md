@@ -39,7 +39,7 @@ Synthetify allows user to trade synthetic assets. SNY usage incorporates additio
 
 **10. What does it mean to mint a the SNY?**
 
-Minting is the process of creation the synthetic asset. For more information, please see [here](/docs/staking#mint).
+Minting is the process of creation the synthetic asset. For more information, please see [here](/docs/platform#mint).
 
 **11. What are the costs of using Synthetify?**
 
