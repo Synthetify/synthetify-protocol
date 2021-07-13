@@ -7,6 +7,7 @@ slug: /overview
 ### Participants
 
 Users of Synthetify protocol could be divided into three roles:
+
 - Staker
 - Traders
 - Liquidator
@@ -17,8 +18,7 @@ A Staker is responsible for initial creation of debt and synthetic assets. Stake
 
 ### Trader
 
-A Trader performs exchanges of assets using Synthetify exchange. To engage in trading activity a trader needs firstly to buy synthetic assets from other markets like centralized exchanges or mint it himself by acting as a Staker. Traders do not need SNY tokens to
-perform trades.
+A Trader performs exchanges of assets using Synthetify exchange. To engage in trading activity a trader needs firstly to buy synthetic assets from other markets like centralized exchanges or mint it himself by acting as a Staker. Traders do not need SNY tokens to perform trades.
 
 ### Liquidator
 

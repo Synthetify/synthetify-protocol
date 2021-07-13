@@ -24,6 +24,22 @@ module.exports = {
           position: 'left'
         },
         {
+          to: '/user-guide/',
+          activeBasePath: 'user-guide',
+          label: 'User Guide',
+          position: 'left'
+        },
+        {
+          href: 'https://twitter.com/synthetify?lang=en',
+          label: 'Twitter',
+          position: 'right'
+        },
+        {
+          href: 'https://discord.gg/Z9v9ez8u',
+          label: 'Discord',
+          position: 'right'
+        },
+        {
           href: 'https://github.com/Synthetify',
           label: 'GitHub',
           position: 'right'

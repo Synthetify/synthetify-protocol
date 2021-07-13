@@ -6,13 +6,13 @@ module.exports = {
        {
       type: 'category',
       label: 'Protocol',
-      collapsed: false,
-      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens']
+      collapsed: true,
+      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens', 'platform'] 
     },
     {
       type: 'category',
       label: 'User Guide',
-      collapsed: false,
+      collapsed: true,
       items: ['connect-to-wallet','faucet','staking', 'exchange']
     },
     'architecture-overview'
