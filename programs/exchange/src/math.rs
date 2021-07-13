@@ -132,6 +132,8 @@ pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in
         .checked_mul(10u128.pow(PRICE_OFFSET.into()))
         .unwrap()
         .checked_div(collateral_asset.price as u128)
+        .unwrap()
+        .checked_mul(10u128.pow((collateral_asset.collateral.decimals - PRICE_OFFSET).into()))
         .unwrap();
     return tokens.try_into().unwrap();
 }
@@ -751,6 +753,18 @@ mod tests {
             };
             let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
             assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
+        }
+        {
+            let asset = Asset {
+                collateral: Collateral {
+                    decimals: 8,
+                    ..Default::default()
+                },
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
+            assert_eq!(max_withdrawable, 50 * 10u64.pow(8))
         }
     }
     #[test]
