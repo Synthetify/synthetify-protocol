@@ -10,7 +10,6 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
-  createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
   createCollateralToken,
@@ -19,7 +18,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
-const ASSET_LIMIT = 30
+const ASSET_LIMIT = 30 // >=20 splits transaction
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()
@@ -31,17 +30,15 @@ describe('max collaterals', () => {
 
   // @ts-expect-error
   const wallet = provider.wallet.payer as Account
-  // let collateralToken: Token
   let usdToken: Token
-  let btcSynthetic: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  // let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
   let stakingFundAccount: PublicKey
   let nonce: number
   let tokens: Token[] = []
+  let syntheticTokens: Token[] = []
   let reserves: PublicKey[] = []
   let healthFactor: BN
 
@@ -55,7 +52,6 @@ describe('max collaterals', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: 2
-      // expo: -6
     })
 
     const collateralToken = await createToken({
@@ -68,6 +64,7 @@ describe('max collaterals', () => {
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
     tokens.push(collateralToken)
+    syntheticTokens.push(collateralToken)
     reserves.push(snyReserve)
     // @ts-expect-error
     exchange = new Exchange(
@@ -91,6 +88,7 @@ describe('max collaterals', () => {
     assetsList = data.assetsList
     usdToken = data.usdToken
     tokens.push(usdToken)
+    syntheticTokens.push(usdToken)
     reserves.push(await usdToken.createAccount(exchangeAuthority))
 
     await exchange.init({
@@ -119,16 +117,20 @@ describe('max collaterals', () => {
     }
 
     // creating BTC
-    const { token: btcToken, synthetic, reserve: btcReserve } = await createCollateralToken({
+    const {
+      token: btcToken,
+      synthetic: btcSynthetic,
+      reserve: btcReserve
+    } = await createCollateralToken({
       decimals: 10,
       price: 50000,
       limit: new BN(1e12),
       collateralRatio: 10,
       ...createCollateralProps
     })
-    btcSynthetic = synthetic
     tokens.push(btcToken)
     reserves.push(btcReserve)
+    syntheticTokens.push(btcSynthetic)
 
     const assetsListBefore = await exchange.getAssetsList(assetsList)
     assert.ok((await assetsListBefore).assets.length)
@@ -156,9 +158,11 @@ describe('max collaterals', () => {
     assert.ok(sortedTokens.every((token) => token != undefined))
 
     tokens = tokens.concat(sortedTokens.map((i) => i.token))
+    syntheticTokens = syntheticTokens.concat(sortedTokens.map((i) => i.synthetic))
     reserves = reserves.concat(sortedTokens.map((i) => i.reserve))
     assert.ok(sortedTokens.length == ASSET_LIMIT - 3)
     assert.ok(tokens.length == ASSET_LIMIT)
+    assert.ok(syntheticTokens.length == ASSET_LIMIT)
     assert.ok(reserves.length == ASSET_LIMIT)
   })
   it('Initialize', async () => {
@@ -192,7 +196,7 @@ describe('max collaterals', () => {
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     await Promise.all(
-      tokens.slice(2, 5).map(async (collateralToken, index) => {
+      tokens.slice(2, 12).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
         const reserveAccount = reserves[index + 2]
 
@@ -232,9 +236,9 @@ describe('max collaterals', () => {
 
     // Deposit collaterals
     // btc collateral: 50000 * 0,001 * 0,1 = 5
-    // other collaterals: 2 * 2 * 10 * 0,5 = 20
+    // other collaterals: 5 * 2 * 10 * 0,5 = 50
     await Promise.all(
-      tokens.slice(2, 5).map(async (collateralToken, index) => {
+      tokens.slice(2, 8).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
 
         const userCollateralTokenAccount = await collateralToken.createAccount(
@@ -259,7 +263,7 @@ describe('max collaterals', () => {
     assert.ok((await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-    const mintAmount = mulByPercentage(new BN(25 * 1e6), healthFactor)
+    const mintAmount = mulByPercentage(new BN(55 * 1e6), healthFactor)
 
     // Mint xUSD
     await exchange.mint({
@@ -279,7 +283,7 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
     const amount = new BN(10 * 1e6)
-    const listOffset = 2
+    const listOffset = 3
 
     const tokenAccounts = await Promise.all(
       tokens.map(async (collateralToken) => collateralToken.createAccount(accountOwner.publicKey))
@@ -336,10 +340,10 @@ describe('max collaterals', () => {
     assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
     assert.ok(exchangeAccountDataAfter.collaterals.every((i) => i.amount.eq(new BN(0))))
   })
-  it.only('swap', async () => {
+  it('swap', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
-    const collateralAmount = new BN(100)
+    const collateralAmount = new BN(1e13)
 
     const reserveAddress = reserves[2]
     const collateralToken = tokens[2]
@@ -359,8 +363,7 @@ describe('max collaterals', () => {
       signers: [wallet, accountOwner]
     })
 
-    const mintAmount = mulByPercentage(collateralAmount, healthFactor)
-    const btcTokenAccount = await btcSynthetic.createAccount(accountOwner.publicKey)
+    const mintAmount = mulByPercentage(new BN(1e12), healthFactor)
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
     await exchange.mint({
       amount: mintAmount,
@@ -370,15 +373,31 @@ describe('max collaterals', () => {
       signers: [accountOwner]
     })
 
-    await exchange.swap({
-      amount: new BN(1),
-      exchangeAccount,
-      owner: accountOwner.publicKey,
-      userTokenAccountFor: btcTokenAccount,
-      userTokenAccountIn: usdTokenAccount,
-      tokenFor: btcSynthetic.publicKey,
-      tokenIn: usdToken.publicKey,
-      signers: [accountOwner]
-    })
+    let currentTokenAccount = usdTokenAccount
+
+    for (let i = 2; i < 10; i++) {
+      const tokenFor = syntheticTokens[i]
+      const userTokenAccountFor = await tokenFor.createAccount(accountOwner.publicKey)
+      const tokenIn = syntheticTokens[i - 1]
+      const userTokenAccountIn = currentTokenAccount
+      const { amount } = await tokenIn.getAccountInfo(userTokenAccountIn)
+      assert.ok(!amount.eq(new BN(0)))
+
+      await exchange.swap({
+        amount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor,
+        userTokenAccountIn,
+        tokenFor: tokenFor.publicKey,
+        tokenIn: tokenIn.publicKey,
+        signers: [accountOwner]
+      })
+
+      assert.ok((await tokenIn.getAccountInfo(userTokenAccountIn)).amount.eq(new BN(0)))
+      currentTokenAccount = userTokenAccountFor
+      const { amount: amountFor } = await tokenFor.getAccountInfo(userTokenAccountFor)
+      assert.ok(!amountFor.eq(new BN(0)))
+    }
   })
 })
