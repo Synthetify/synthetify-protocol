@@ -1,4 +1,7 @@
-use std::cell::RefMut;
+use std::{
+    cell::RefMut,
+    ops::{Mul, Sub},
+};
 
 use crate::*;
 
@@ -54,21 +57,80 @@ pub fn check_liquidation(
 pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
     if slot <= state.staking.next_round.start {
         return;
-    } else {
-        state.staking.finished_round = state.staking.current_round.clone();
-        state.staking.current_round = state.staking.next_round.clone();
-        state.staking.next_round = StakingRound {
-            start: state
-                .staking
-                .next_round
-                .start
-                .checked_add(state.staking.round_length.into())
-                .unwrap(),
-            all_points: state.debt_shares,
-            amount: state.staking.amount_per_round,
+    }
+    let slot_diff = slot.checked_sub(state.staking.next_round.start).unwrap();
+    let round_diff = div_up(slot_diff as u128, state.staking.round_length.into()) as u32;
+    match round_diff {
+        1 => {
+            state.staking.finished_round = state.staking.current_round.clone();
+            state.staking.current_round = state.staking.next_round.clone();
+            state.staking.next_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(state.staking.round_length.into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            }
+        }
+        2 => {
+            state.staking.finished_round = state.staking.next_round.clone();
+            state.staking.current_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(state.staking.round_length.into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            };
+            state.staking.next_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add((state.staking.round_length.mul(2)).into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            }
+        }
+        _ => {
+            state.staking.finished_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(state.staking.round_length.mul(round_diff.sub(2)).into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            };
+            state.staking.current_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(state.staking.round_length.mul(round_diff.sub(1)).into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            };
+            state.staking.next_round = StakingRound {
+                start: state
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(state.staking.round_length.mul(round_diff).into())
+                    .unwrap(),
+                all_points: state.debt_shares,
+                amount: state.staking.amount_per_round,
+            }
         }
     }
-
     return;
 }
 pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &Staking) {
