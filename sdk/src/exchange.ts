@@ -434,19 +434,21 @@ export class Exchange {
     await this.wallet.signAllTransactions(txs)
     return txs
   }
-  private async updatePricesAndSend(ix: TransactionInstruction, signers, split?: boolean) {
+  private async updatePricesAndSend(ixs: TransactionInstruction[], signers, split?: boolean) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
 
     if (!split) {
-      const tx = new Transaction().add(updateIx).add(ix)
+      let tx = new Transaction().add(updateIx)
+      ixs.forEach((ix) => tx.add(ix))
+
       const txs = await this.processOperations([tx])
       if (signers) txs[0].partialSign(...signers)
       return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
     } else {
-      const txs = await this.processOperations([
-        new Transaction().add(updateIx),
-        new Transaction().add(ix)
-      ])
+      let tx = new Transaction()
+      ixs.forEach((ix) => tx.add(ix))
+
+      const txs = await this.processOperations([new Transaction().add(updateIx), tx])
       if (signers) txs[1].partialSign(...signers)
       sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
         skipPreflight: true
@@ -511,7 +513,8 @@ export class Exchange {
     signers,
     exchangeAccount
   }: Swap) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
+    await this.getState()
+    // const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const swapIx = await this.swapInstruction({
       amount,
       exchangeAccount,
@@ -529,11 +532,13 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const swapTx = new Transaction().add(updateIx).add(approveIx).add(swapIx)
-    const txs = await this.processOperations([swapTx])
-    signers ? txs[0].partialSign(...signers) : null
 
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    // const swapTx = new Transaction().add(updateIx).add(approveIx).add(swapIx)
+    // const txs = await this.processOperations([swapTx])
+    // signers ? txs[0].partialSign(...signers) : null
+
+    // return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    return this.updatePricesAndSend([approveIx, swapIx], signers, this.assetsList.head >= 20)
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
@@ -565,7 +570,7 @@ export class Exchange {
       to
     })
     await this.getState()
-    await this.updatePricesAndSend(mintIx, signers, this.assetsList.head > 20)
+    await this.updatePricesAndSend([mintIx], signers, this.assetsList.head >= 20)
   }
   public async deposit({
     amount,
@@ -610,7 +615,7 @@ export class Exchange {
       userCollateralAccount
     })
     await this.getState()
-    return this.updatePricesAndSend(withdrawIx, signers, this.assetsList.head > 20)
+    return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.head >= 20)
   }
 
   public async withdrawRewards({
