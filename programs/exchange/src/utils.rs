@@ -116,7 +116,7 @@ pub fn get_user_sny_collateral_balance(
 #[cfg(test)]
 mod tests {
 
-    use std::u64;
+    use std::{cell::RefCell, u64};
 
     use super::*;
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         let staking_round_length = 100;
         let amount_per_round = 300;
         let debt_shares = 999u64;
-        let mut staking = Staking {
+        let staking = Staking {
             round_length: staking_round_length,
             amount_per_round: amount_per_round,
             finished_round: StakingRound {
@@ -285,22 +285,27 @@ mod tests {
             },
             ..Default::default()
         };
+        let state = State {
+            debt_shares: debt_shares,
+            staking: staking,
+            ..Default::default()
+        };
         {
             // Should stay same
             let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut staking, 10, debt_shares);
+            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 200);
             assert_eq!(staking_copy, staking);
         }
         {
             // Should stay same
             let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut staking, 200, debt_shares);
+            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 200);
             assert_eq!(staking_copy, staking);
         }
         {
             // Should push new staking round
             let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut staking, 201, debt_shares);
+            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 201);
             assert_ne!(staking_copy, staking);
             assert_eq!(staking.finished_round, staking_copy.current_round);
             assert_eq!(staking.current_round, staking_copy.next_round);
