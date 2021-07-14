@@ -195,6 +195,7 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
+    await waitForBeggingOfASlot(connection)
     await Promise.all(
       tokens.slice(2, 12).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
