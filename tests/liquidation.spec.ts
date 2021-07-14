@@ -310,10 +310,11 @@ describe('liquidation', () => {
       // Withdraw liquidation penalty
       const withdrawPenaltyDestination = await collateralToken.createAccount(exchangeAuthority)
 
-      const withdrawPenaltyIx = await exchangeProgram.state.instruction.withdrawLiquidationPenalty(
+      const withdrawPenaltyIx = await exchangeProgram.instruction.withdrawLiquidationPenalty(
         liquidationFundAccountData.amount,
         {
           accounts: {
+            state: exchange.stateAddress,
             admin: EXCHANGE_ADMIN.publicKey,
             exchangeAuthority: exchangeAuthority,
             tokenProgram: TOKEN_PROGRAM_ID,
@@ -572,8 +573,9 @@ describe('liquidation', () => {
         snyReserve,
         snyLiquidationFund
       })
-      const liquidateIx = (await exchange.program.state.instruction.liquidate(maxAmount, {
+      const liquidateIx = (await exchange.program.instruction.liquidate(maxAmount, {
         accounts: {
+          state: exchange.stateAddress,
           exchangeAuthority: exchange.exchangeAuthority,
           assetsList: fakeAssetList.assetsList,
           tokenProgram: TOKEN_PROGRAM_ID,

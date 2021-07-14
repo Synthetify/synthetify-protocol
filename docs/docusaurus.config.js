@@ -9,7 +9,7 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Synthetify',
   projectName: 'Synthetify docs',
-  themeConfig: {
+   themeConfig: {
     navbar: {
       title: 'Synthetify',
       logo: {
@@ -22,6 +22,22 @@ module.exports = {
           activeBasePath: 'docs',
           label: 'Docs',
           position: 'left'
+        },
+        {
+          to: '/user-guide/',
+          activeBasePath: 'user-guide',
+          label: 'User Guide',
+          position: 'left'
+        },
+        {
+          href: 'https://twitter.com/synthetify?lang=en',
+          label: 'Twitter',
+          position: 'right'
+        },
+        {
+          href: 'https://discord.gg/Z9v9ez8u',
+          label: 'Discord',
+          position: 'right'
         },
         {
           href: 'https://github.com/Synthetify',
@@ -37,7 +53,7 @@ module.exports = {
           title: 'Docs',
           items: [
             {
-              label: 'Introduction',
+              label: 'home',
               to: 'docs/'
             }
           ]
