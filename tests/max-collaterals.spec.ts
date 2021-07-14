@@ -33,6 +33,7 @@ describe('max collaterals', () => {
   const wallet = provider.wallet.payer as Account
   // let collateralToken: Token
   let usdToken: Token
+  let btcSynthetic: Token
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
@@ -118,13 +119,14 @@ describe('max collaterals', () => {
     }
 
     // creating BTC
-    const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
+    const { token: btcToken, synthetic, reserve: btcReserve } = await createCollateralToken({
       decimals: 10,
       price: 50000,
       limit: new BN(1e12),
       collateralRatio: 10,
       ...createCollateralProps
     })
+    btcSynthetic = synthetic
     tokens.push(btcToken)
     reserves.push(btcReserve)
 
@@ -189,7 +191,6 @@ describe('max collaterals', () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
-    await waitForBeggingOfASlot(connection)
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -230,9 +231,8 @@ describe('max collaterals', () => {
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     // Deposit collaterals
-    // btc collateral: 50000 * 0,1 * 0,1 = 500
-    // other collateral 2 * 2 * 10 * 0,5 = 20
-    await waitForBeggingOfASlot(connection)
+    // btc collateral: 50000 * 0,001 * 0,1 = 5
+    // other collaterals: 2 * 2 * 10 * 0,5 = 20
     await Promise.all(
       tokens.slice(2, 5).map(async (collateralToken, index) => {
         const tokenIndeks = index + 2
@@ -259,7 +259,7 @@ describe('max collaterals', () => {
     assert.ok((await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-    const mintAmount = mulByPercentage(new BN(520 * 1e6), healthFactor)
+    const mintAmount = mulByPercentage(new BN(25 * 1e6), healthFactor)
 
     // Mint xUSD
     await exchange.mint({
@@ -335,5 +335,50 @@ describe('max collaterals', () => {
 
     assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
     assert.ok(exchangeAccountDataAfter.collaterals.every((i) => i.amount.eq(new BN(0))))
+  })
+  it.only('swap', async () => {
+    const accountOwner = new Account()
+    const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+    const collateralAmount = new BN(100)
+
+    const reserveAddress = reserves[2]
+    const collateralToken = tokens[2]
+
+    const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+
+    await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(collateralAmount))
+
+    await exchange.deposit({
+      amount: collateralAmount,
+      exchangeAccount,
+      owner: accountOwner.publicKey,
+      userCollateralAccount: userCollateralTokenAccount,
+      reserveAccount: reserveAddress,
+      collateralToken: collateralToken,
+      exchangeAuthority,
+      signers: [wallet, accountOwner]
+    })
+
+    const mintAmount = mulByPercentage(collateralAmount, healthFactor)
+    const btcTokenAccount = await btcSynthetic.createAccount(accountOwner.publicKey)
+    const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+    await exchange.mint({
+      amount: mintAmount,
+      exchangeAccount,
+      owner: accountOwner.publicKey,
+      to: usdTokenAccount,
+      signers: [accountOwner]
+    })
+
+    await exchange.swap({
+      amount: new BN(1),
+      exchangeAccount,
+      owner: accountOwner.publicKey,
+      userTokenAccountFor: btcTokenAccount,
+      userTokenAccountIn: usdTokenAccount,
+      tokenFor: btcSynthetic.publicKey,
+      tokenIn: usdToken.publicKey,
+      signers: [accountOwner]
+    })
   })
 })

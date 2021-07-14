@@ -270,59 +270,6 @@ describe('exchange', () => {
         ERRORS.ALLOWANCE
       )
     })
-    //   it('Deposit multiple', async () => {
-    //     const accountOwner = new Account()
-    //     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
-    //     const createCollateralProps = {
-    //       exchange,
-    //       exchangeAuthority,
-    //       oracleProgram,
-    //       connection,
-    //       wallet
-    //     }
-
-    //     const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
-    //       decimals: 8,
-    //       price: 50000,
-    //       limit: new BN(1e12),
-    //       ...createCollateralProps
-    //     })
-    //     const assetListDataBefore = await exchange.getAssetsList(assetsList)
-    //     const amount = new anchor.BN(100 * 1e6)
-
-    //     const userCollateralTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
-    //     await btcToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
-
-    //     const depositIx = await exchange.depositInstruction({
-    //       amount,
-    //       exchangeAccount,
-    //       userCollateralAccount: userCollateralTokenAccount,
-    //       owner: accountOwner.publicKey,
-    //       reserveAddress: btcReserve
-    //     })
-    //     const approveIx = Token.createApproveInstruction(
-    //       btcToken.programId,
-    //       userCollateralTokenAccount,
-    //       exchangeAuthority,
-    //       accountOwner.publicKey,
-    //       [],
-    //       tou64(amount)
-    //     )
-    //     await signAndSend(
-    //       new Transaction().add(approveIx).add(depositIx),
-    //       [wallet, accountOwner],
-    //       connection
-    //     )
-    //     const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-
-    //     assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
-    //     const assetListDataAfter = await exchange.getAssetsList(assetsList)
-    //     assert.ok(
-    //       assetListDataAfter.assets[2].collateral.reserveBalance
-    //         .sub(assetListDataBefore.assets[2].collateral.reserveBalance)
-    //         .eq(amount)
-    //     )
-    //   })
   })
   describe('#mint()', async () => {
     it('Mint #1', async () => {

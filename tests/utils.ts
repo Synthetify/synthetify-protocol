@@ -387,16 +387,23 @@ export const createCollateralToken = async ({
   collateralRatio
 }: ICreateCollaterToken): Promise<{
   token: Token
+  synthetic: Token
   feed: PublicKey
   reserve: PublicKey
   liquidationFund: PublicKey
 }> => {
   const state = await exchange.getState()
 
-  const newToken = await createToken({
+  const newCollateral = await createToken({
     connection,
     payer: wallet,
-    mintAuthority: wallet.publicKey,
+    mintAuthority: exchangeAuthority,
+    decimals: decimals
+  })
+  const newSynthetic = await createToken({
+    connection,
+    payer: wallet,
+    mintAuthority: exchangeAuthority,
     decimals: decimals
   })
 
@@ -409,17 +416,17 @@ export const createCollateralToken = async ({
     assetsAdmin: EXCHANGE_ADMIN,
     assetsList: state.assetsList,
     maxSupply: limit ?? new BN(1e12),
-    tokenAddress: newToken.publicKey,
+    tokenAddress: newSynthetic.publicKey,
     tokenDecimals: decimals,
     tokenFeed: oracleAddress
   })
 
-  const reserveAddress = await newToken.createAccount(exchangeAuthority)
-  const liquidationFund = await newToken.createAccount(exchangeAuthority)
+  const reserveAddress = await newCollateral.createAccount(exchangeAuthority)
+  const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
 
   const collateralStruct: Collateral = {
     isCollateral: true,
-    collateralAddress: newToken.publicKey,
+    collateralAddress: newCollateral.publicKey,
     reserveAddress,
     liquidationFund,
     reserveBalance: new BN(0),
@@ -434,7 +441,13 @@ export const createCollateralToken = async ({
   })
   await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
-  return { token: newToken, feed: oracleAddress, reserve: reserveAddress, liquidationFund }
+  return {
+    token: newCollateral,
+    synthetic: newSynthetic,
+    feed: oracleAddress,
+    reserve: reserveAddress,
+    liquidationFund
+  }
 }
 
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
