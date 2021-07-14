@@ -19,7 +19,7 @@ Staking view includes three different parts:
 
 ### Deposit
 
-To [deposit](/docs/platform#deposit), go to Deposit tab
+To [deposit](/docs/glossary#deposit), go to Deposit tab
 
 ![Deposit-tab](https://i.imgur.com/5RbIzpY.png)
 
@@ -49,7 +49,7 @@ If everything went smooth, you can see that:
 
 ### Mint
 
-To [mint](/docs/platform#mint), go to Mint tab.
+To [mint](/docs/glossary#mint), go to Mint tab.
 
 ![Mint-tab](https://i.imgur.com/bhlklSC.png)
 
@@ -78,7 +78,7 @@ If everything went smooth, you can see that:
 
 ### Withdraw
 
-To [withdraw](/docs/platform#withdraw), go to Withdraw tab.
+To [withdraw](/docs/glossary#withdraw), go to Withdraw tab.
 
 ![Withdraw-tab](https://i.imgur.com/lA3sfBP.png)
 
@@ -108,7 +108,7 @@ If everything went smooth, you can see that:
 
 ### Burn
 
-To [burn](/docs/platform#burn), go to Burn tab.
+To [burn](/docs/glossary#burn), go to Burn tab.
 
 ![Burn-tab](https://i.imgur.com/j6fXNrQ.png)
 

@@ -1,7 +1,7 @@
 ---
-title: Platform
+title: Glossary
 
-slug: /platform
+slug: /glossary
 ---
 
 ### Deposit
