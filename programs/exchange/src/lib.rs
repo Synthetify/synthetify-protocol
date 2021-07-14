@@ -344,11 +344,11 @@ pub mod exchange {
             .checked_div(100)
             .unwrap();
 
-        let asset = match assets_list
-            .assets
-            .iter_mut()
-            .find(|x| x.synthetic.asset_address.eq(&user_collateral_account.mint))
-        {
+        let asset = match assets_list.assets.iter_mut().find(|x| {
+            x.collateral
+                .collateral_address
+                .eq(&user_collateral_account.mint)
+        }) {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
