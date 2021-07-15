@@ -466,9 +466,83 @@ mod tests {
         }
         {
             // Should move tree round forward
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 401);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(borrow_state, state_copy);
+            assert_eq!(
+                borrow_state.staking.finished_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                borrow_state.staking.current_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.mul(2).into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                borrow_state.staking.next_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.mul(3).into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
         }
         {
             // Should move more then tree round round forward
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            // move seven round forward
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 810);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(borrow_state, state_copy);
+            assert_eq!(
+                borrow_state.staking.finished_round,
+                StakingRound {
+                    start: 700,
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                borrow_state.staking.current_round,
+                StakingRound {
+                    start: 800,
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                borrow_state.staking.next_round,
+                StakingRound {
+                    start: 900,
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
         }
     }
 }
