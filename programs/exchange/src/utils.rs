@@ -108,7 +108,7 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                         state
                             .staking
                             .round_length
-                            .checked_mul(round_diff.sub(2))
+                            .checked_mul(round_diff.checked_sub(2).unwrap())
                             .unwrap() as u64,
                     )
                     .unwrap(),
@@ -124,7 +124,7 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                         state
                             .staking
                             .round_length
-                            .checked_mul(round_diff.sub(1))
+                            .checked_mul(round_diff.checked_sub(1).unwrap())
                             .unwrap() as u64,
                     )
                     .unwrap(),
@@ -226,12 +226,14 @@ mod tests {
             current_round: StakingRound {
                 all_points: 2,
                 amount: 0,
-                start: slot + staking_round_length as u64,
+                start: slot.checked_add(staking_round_length as u64).unwrap(),
             },
             next_round: StakingRound {
                 all_points: 3,
                 amount: amount_per_round,
-                start: (slot + staking_round_length as u64)
+                start: slot
+                    .checked_add(staking_round_length as u64)
+                    .unwrap()
                     .checked_add(staking_round_length.into())
                     .unwrap(),
             },
@@ -369,34 +371,34 @@ mod tests {
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 150);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_eq!(state_copy, borrow_state);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_eq!(state_copy, state_after_adjustment);
         }
         {
             // Should stay same
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 200);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_eq!(state_copy, borrow_state);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_eq!(state_copy, state_after_adjustment);
         }
         {
             // Should move one round forward
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 201);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(borrow_state, state_copy);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
-                borrow_state.staking.finished_round,
+                state_after_adjustment.staking.finished_round,
                 state_copy.staking.current_round
             );
             assert_eq!(
-                borrow_state.staking.current_round,
+                state_after_adjustment.staking.current_round,
                 state_copy.staking.next_round
             );
             assert_eq!(
-                borrow_state.staking.next_round,
+                state_after_adjustment.staking.next_round,
                 StakingRound {
                     start: state_copy
                         .staking
@@ -414,18 +416,18 @@ mod tests {
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 300);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(borrow_state, state_copy);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
-                borrow_state.staking.finished_round,
+                state_after_adjustment.staking.finished_round,
                 state_copy.staking.current_round
             );
             assert_eq!(
-                borrow_state.staking.current_round,
+                state_after_adjustment.staking.current_round,
                 state_copy.staking.next_round
             );
             assert_eq!(
-                borrow_state.staking.next_round,
+                state_after_adjustment.staking.next_round,
                 StakingRound {
                     start: state_copy
                         .staking
@@ -443,14 +445,14 @@ mod tests {
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 301);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(borrow_state, state_copy);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
-                borrow_state.staking.finished_round,
+                state_after_adjustment.staking.finished_round,
                 state_copy.staking.next_round
             );
             assert_eq!(
-                borrow_state.staking.current_round,
+                state_after_adjustment.staking.current_round,
                 StakingRound {
                     start: state_copy
                         .staking
@@ -463,13 +465,13 @@ mod tests {
                 }
             );
             assert_eq!(
-                borrow_state.staking.next_round,
+                state_after_adjustment.staking.next_round,
                 StakingRound {
                     start: state_copy
                         .staking
                         .next_round
                         .start
-                        .checked_add(state_copy.staking.round_length.mul(2).into())
+                        .checked_add(state_copy.staking.round_length.checked_mul(2).unwrap() as u64)
                         .unwrap(),
                     all_points: debt_shares,
                     amount: state_copy.staking.amount_per_round,
@@ -481,10 +483,10 @@ mod tests {
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 401);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(borrow_state, state_copy);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
-                borrow_state.staking.finished_round,
+                state_after_adjustment.staking.finished_round,
                 StakingRound {
                     start: state_copy
                         .staking
@@ -497,26 +499,26 @@ mod tests {
                 }
             );
             assert_eq!(
-                borrow_state.staking.current_round,
+                state_after_adjustment.staking.current_round,
                 StakingRound {
                     start: state_copy
                         .staking
                         .next_round
                         .start
-                        .checked_add(state_copy.staking.round_length.mul(2).into())
+                        .checked_add(state_copy.staking.round_length.checked_mul(2).unwrap() as u64)
                         .unwrap(),
                     all_points: debt_shares,
                     amount: state_copy.staking.amount_per_round,
                 }
             );
             assert_eq!(
-                borrow_state.staking.next_round,
+                state_after_adjustment.staking.next_round,
                 StakingRound {
                     start: state_copy
                         .staking
                         .next_round
                         .start
-                        .checked_add(state_copy.staking.round_length.mul(3).into())
+                        .checked_add(state_copy.staking.round_length.checked_mul(3).unwrap() as u64)
                         .unwrap(),
                     all_points: debt_shares,
                     amount: state_copy.staking.amount_per_round,
@@ -529,10 +531,10 @@ mod tests {
             let state_copy = state.clone();
             // move seven round forward
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 810);
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(borrow_state, state_copy);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
-                borrow_state.staking.finished_round,
+                state_after_adjustment.staking.finished_round,
                 StakingRound {
                     start: 700,
                     all_points: debt_shares,
@@ -540,7 +542,7 @@ mod tests {
                 }
             );
             assert_eq!(
-                borrow_state.staking.current_round,
+                state_after_adjustment.staking.current_round,
                 StakingRound {
                     start: 800,
                     all_points: debt_shares,
@@ -548,7 +550,7 @@ mod tests {
                 }
             );
             assert_eq!(
-                borrow_state.staking.next_round,
+                state_after_adjustment.staking.next_round,
                 StakingRound {
                     start: 900,
                     all_points: debt_shares,
@@ -597,18 +599,18 @@ mod tests {
             // |    |   |
             // f    c   n
             // 100  200 300
-            let borrow_state = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(state_copy, borrow_state);
+            let state_after_first_adjustment = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_copy, state_after_first_adjustment);
             assert_eq!(
-                borrow_state.staking.finished_round.start,
+                state_after_first_adjustment.staking.finished_round.start,
                 state_copy.staking.current_round.start
             );
             assert_eq!(
-                borrow_state.staking.current_round.start,
+                state_after_first_adjustment.staking.current_round.start,
                 state_copy.staking.next_round.start
             );
             assert_eq!(
-                borrow_state.staking.next_round.start,
+                state_after_first_adjustment.staking.next_round.start,
                 state_copy
                     .staking
                     .next_round
@@ -617,12 +619,18 @@ mod tests {
                     .unwrap()
             );
             // change round length
-            let mut state_ref_mut = state_ref.try_borrow_mut().unwrap();
-            state_ref_mut.staking.round_length = 25;
-            adjust_staking_rounds(&mut state_ref_mut, 401);
-            assert_eq!(375, state_ref_mut.staking.finished_round.start);
-            assert_eq!(400, state_ref_mut.staking.current_round.start);
-            assert_eq!(425, state_ref_mut.staking.next_round.start);
+            let mut state_after_second_adjustment = state_ref.try_borrow_mut().unwrap();
+            state_after_second_adjustment.staking.round_length = 25;
+            adjust_staking_rounds(&mut state_after_second_adjustment, 401);
+            assert_eq!(
+                375,
+                state_after_second_adjustment.staking.finished_round.start
+            );
+            assert_eq!(
+                400,
+                state_after_second_adjustment.staking.current_round.start
+            );
+            assert_eq!(425, state_after_second_adjustment.staking.next_round.start);
         }
     }
 }
