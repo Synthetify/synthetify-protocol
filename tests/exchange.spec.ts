@@ -182,7 +182,7 @@ describe('exchange', () => {
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListData = await exchange.getAssetsList(assetsList)
-      assert.ok(assetListData.assets[1].collateral.reserveBalance.eq(amount))
+      assert.ok(assetListData.collaterals[0].reserveBalance.eq(amount))
     })
     it('Deposit collateral next', async () => {
       const accountOwner = new Account()
@@ -232,8 +232,8 @@ describe('exchange', () => {
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataAfter.assets[1].collateral.reserveBalance
-          .sub(assetListDataBefore.assets[1].collateral.reserveBalance)
+        assetListDataAfter.collaterals[0].reserveBalance
+          .sub(assetListDataBefore.collaterals[0].reserveBalance)
           .eq(amount)
       )
     })
@@ -269,7 +269,7 @@ describe('exchange', () => {
       )
     })
   })
-  describe('#mint()', async () => {
+  describe.only('#mint()', async () => {
     it('Mint #1', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
@@ -300,7 +300,7 @@ describe('exchange', () => {
 
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListAfter.assets[0].synthetic.supply.eq(usdMintAmount))
+      assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
 
       // Increase user xusd balance
       const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
@@ -348,8 +348,8 @@ describe('exchange', () => {
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListAfter.assets[0].synthetic.supply.eq(
-          assetsListBefore.assets[0].synthetic.supply.add(usdMintAmount)
+        assetsListAfter.synthetics[0].supply.eq(
+          assetsListBefore.synthetics[0].supply.add(usdMintAmount)
         )
       )
 
@@ -442,8 +442,8 @@ describe('exchange', () => {
       // Updating amount in assetList check
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.assets[1].collateral.reserveBalance
-          .sub(assetListDataAfter.assets[1].collateral.reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance
+          .sub(assetListDataAfter.collaterals[0].reserveBalance)
           .eq(withdrawAmount)
       )
 
@@ -511,8 +511,8 @@ describe('exchange', () => {
       // Updating amount in assetList
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.assets[1].collateral.reserveBalance
-          .sub(assetListDataAfter.assets[1].collateral.reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance
+          .sub(assetListDataAfter.collaterals[0].reserveBalance)
           .eq(withdrawAmount)
       )
 
@@ -729,10 +729,10 @@ describe('exchange', () => {
         userTokenAccountFor: btcTokenAccount,
         userTokenAccountIn: usdTokenAccount,
         tokenFor: btcToken.publicKey,
-        tokenIn: assetsListData.assets[0].synthetic.assetAddress,
+        tokenIn: assetsListData.synthetics[0].assetAddress,
         signers: [accountOwner]
       })
-      const btcAsset = assetsListData.assets.find((a) =>
+      const btcSynthetic = assetsListData.synthetics.find((a) =>
         a.synthetic.assetAddress.equals(btcToken.publicKey)
       )
 

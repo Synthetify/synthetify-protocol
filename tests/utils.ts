@@ -4,6 +4,7 @@ import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList } from '@synthetify/sdk/lib/exchange'
+import { Synthetic } from '@synthetify/sdk/src/exchange'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
@@ -18,20 +19,20 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset) => {
-  return amount
-    .mul(asset.price)
-    .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Synthetic) => {
+  return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 export const calculateDebt = (assetsList: AssetsList) => {
-  return assetsList.assets.reduce((acc, asset) => {
+  return assetsList.synthetics.reduce((acc, synthetic) => {
+    console.log(synthetic)
+    const asset = assetsList.assets[synthetic.assetIndex]
     return acc.add(
-      asset.synthetic.supply
+      synthetic.supply
         .mul(asset.price)
-        .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+        .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -53,11 +54,13 @@ export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
 export const calculateAmountAfterFee = (
   assetIn: Asset,
   assetFor: Asset,
+  syntheticIn: Synthetic,
+  syntheticFor: Synthetic,
   effectiveFee: number,
   amount: BN
 ) => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  const decimal_change = 10 ** (assetFor.synthetic.decimals - assetIn.synthetic.decimals)
+  const decimal_change = 10 ** (syntheticFor.decimals - syntheticIn.decimals)
   if (decimal_change < 1) {
     return amountOutBeforeFee
       .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))

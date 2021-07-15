@@ -296,7 +296,6 @@ describe('staking', () => {
 
       const ix = await exchange.setAsCollateralInstruction({
         collateral: btcCollateral,
-        signer: EXCHANGE_ADMIN.publicKey,
         assetsList,
         collateralFeed: btcFeed
       })

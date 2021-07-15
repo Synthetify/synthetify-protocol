@@ -8,9 +8,10 @@ pub const PRICE_OFFSET: u8 = 6;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
-    let assets = &assets_list.assets;
-    let head = assets_list.head as usize;
-    for asset in assets[..head].iter() {
+    let synthetics = &assets_list.synthetics;
+    let head = assets_list.head_synthetics as usize;
+    for synthetic in synthetics[..head].iter() {
+        let asset = &assets_list.assets[synthetic.asset_index as usize];
         if asset.last_update < (slot - max_delay as u64) {
             return Err(ErrorCode::OutdatedOracle.into());
         }
@@ -18,10 +19,10 @@ pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u3
         // rounding up to be sure that debt is not less than minted tokens
         debt += div_up(
             (asset.price as u128)
-                .checked_mul(asset.synthetic.supply as u128)
+                .checked_mul(synthetic.supply as u128)
                 .unwrap(),
             10u128
-                .checked_pow((asset.synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
+                .checked_pow((synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         );
     }
@@ -31,26 +32,19 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
     let mut max_debt = 0u128;
     let head = account.head as usize;
     for collateral_entry in account.collaterals[..head].iter() {
-        let asset = assets_list
-            .assets
-            .iter()
-            .find(|x| {
-                x.collateral
-                    .collateral_address
-                    .eq(&collateral_entry.collateral_address)
-            })
-            .unwrap();
+        let collateral = &assets_list.collaterals[collateral_entry.index as usize];
+        let asset = &assets_list.assets[collateral.asset_index as usize];
         // rounding up to be sure that debt is not less than minted tokens
         max_debt += (asset.price as u128)
             .checked_mul(collateral_entry.amount as u128)
             .unwrap()
-            .checked_mul(asset.collateral.collateral_ratio.into())
+            .checked_mul(collateral.collateral_ratio.into())
             .unwrap()
             .checked_div(100)
             .unwrap()
             .checked_div(
                 10u128
-                    .checked_pow((asset.collateral.decimals + PRICE_OFFSET - ACCURACY).into())
+                    .checked_pow((collateral.decimals + PRICE_OFFSET - ACCURACY).into())
                     .unwrap(),
             )
             .unwrap();
@@ -175,6 +169,8 @@ pub fn amount_to_discount(amount: u64) -> u8 {
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
+    synthetic_in: &Synthetic,
+    synthetic_for: &Synthetic,
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
@@ -193,8 +189,7 @@ pub fn calculate_swap_out_amount(
         )
         .unwrap();
     // If assets have different decimals we need to scale them.
-    let decimal_difference =
-        asset_for.synthetic.decimals as i32 - asset_in.synthetic.decimals as i32;
+    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount = amount.checked_div(decimal_change).unwrap();
@@ -205,7 +200,13 @@ pub fn calculate_swap_out_amount(
         return scaled_amount.try_into().unwrap();
     }
 }
-pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, amount: u64) -> u64 {
+pub fn calculate_burned_shares(
+    asset: &Asset,
+    synthetic: &Synthetic,
+    all_debt: u64,
+    all_shares: u64,
+    amount: u64,
+) -> u64 {
     if all_debt == 0 {
         return 0u64;
     }
@@ -215,7 +216,7 @@ pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, am
         .unwrap()
         .checked_div(
             10u128
-                .checked_pow((asset.synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
+                .checked_pow((synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         )
         .unwrap();
@@ -230,8 +231,6 @@ pub fn calculate_burned_shares(asset: &Asset, all_debt: u64, all_shares: u64, am
 // This should always retur user_debt if xusd === 1 USD
 // Should we remove this funtion ?
 pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
-    assert_eq!(asset.synthetic.decimals, 6);
-
     // rounding up to be sure that burned amount is not less than user debt
     let burned_amount_token = div_up(
         (user_debt as u128)
@@ -241,8 +240,8 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     );
     return burned_amount_token.try_into().unwrap();
 }
-pub fn usd_to_token_amount(asset: &Asset, amount: u64) -> u64 {
-    let decimal_difference = asset.collateral.decimals as i32 - ACCURACY as i32;
+pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) -> u64 {
+    let decimal_difference = collateral.decimals as i32 - ACCURACY as i32;
     if decimal_difference < 0 {
         let amount = (amount as u128)
             .checked_mul(10u128.pow(PRICE_OFFSET.into()))

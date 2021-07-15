@@ -135,9 +135,9 @@ export class Exchange {
     const userAccount = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
     )) as ExchangeAccount
-    const snyAsset = this.assetsList.assets[1]
+    const snyCollateral = this.assetsList.collaterals[0]
     const collateralEntry = userAccount.collaterals.find((entry) =>
-      entry.collateralAddress.equals(snyAsset.collateral.collateralAddress)
+      entry.collateralAddress.equals(snyCollateral.collateralAddress)
     )
     if (collateralEntry) {
       return collateralEntry.amount
@@ -243,7 +243,7 @@ export class Exchange {
       accounts: {
         state: this.stateAddress,
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
@@ -292,7 +292,7 @@ export class Exchange {
         exchangeAuthority: this.exchangeAuthority,
         assetsList: this.state.assetsList,
         tokenProgram: TOKEN_PROGRAM_ID,
-        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
         liquidatorUsdAccount: liquidatorUsdAccount,
         liquidatorCollateralAccount: liquidatorCollateralAccount,
         exchangeAccount: exchangeAccount,
@@ -312,7 +312,7 @@ export class Exchange {
       accounts: {
         state: this.stateAddress,
         exchangeAuthority: this.exchangeAuthority,
-        usdToken: this.assetsList.assets[0].synthetic.assetAddress,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
         userTokenAccountBurn: userTokenAccountBurn,
         tokenProgram: TOKEN_PROGRAM_ID,
         exchangeAccount: exchangeAccount,
@@ -596,7 +596,9 @@ export class Exchange {
   // Asset list
   public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
     const assetList = (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
-    assetList.assets = assetList.assets.slice(0, assetList.head)
+    assetList.assets = assetList.assets.slice(0, assetList.headAssets)
+    assetList.collaterals = assetList.collaterals.slice(0, assetList.headCollaterals)
+    assetList.synthetics = assetList.synthetics.slice(0, assetList.headSynthetics)
     return assetList
   }
   public onAssetsListChange(address: PublicKey, fn: (list: AssetsList) => void) {
@@ -762,16 +764,18 @@ export interface Asset {
   price: BN
   lastUpdate: BN
   confidence: number
-  synthetic: Synthetic
-  collateral: Collateral
 }
 export interface AssetsList {
   initialized: boolean
-  head: number
+  headAssets: number
+  headCollaterals: number
+  headSynthetics: number
   assets: Array<Asset>
+  collaterals: Array<Collateral>
+  synthetics: Array<Synthetic>
 }
 export interface Collateral {
-  isCollateral: boolean
+  assetIndex: number
   collateralAddress: PublicKey
   reserveAddress: PublicKey
   liquidationFund: PublicKey
@@ -780,6 +784,7 @@ export interface Collateral {
   decimals: number
 }
 export interface Synthetic {
+  assetIndex: number
   assetAddress: PublicKey
   supply: BN
   maxSupply: BN
