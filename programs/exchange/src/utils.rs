@@ -397,5 +397,78 @@ mod tests {
                 }
             );
         }
+        {
+            // Should move one round forward
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 300);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(borrow_state, state_copy);
+            assert_eq!(
+                borrow_state.staking.finished_round,
+                state_copy.staking.current_round
+            );
+            assert_eq!(
+                borrow_state.staking.current_round,
+                state_copy.staking.next_round
+            );
+            assert_eq!(
+                borrow_state.staking.next_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+        }
+        {
+            // Should move two round forward
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 301);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(borrow_state, state_copy);
+            assert_eq!(
+                borrow_state.staking.finished_round,
+                state_copy.staking.next_round
+            );
+            assert_eq!(
+                borrow_state.staking.current_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                borrow_state.staking.next_round,
+                StakingRound {
+                    start: state_copy
+                        .staking
+                        .next_round
+                        .start
+                        .checked_add(state_copy.staking.round_length.mul(2).into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+        }
+        {
+            // Should move tree round forward
+        }
+        {
+            // Should move more then tree round round forward
+        }
     }
 }
