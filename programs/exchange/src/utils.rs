@@ -476,7 +476,7 @@ mod tests {
             );
         }
         {
-            // Should move tree round forward
+            // Should move three round forward
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 401);
@@ -523,7 +523,7 @@ mod tests {
             );
         }
         {
-            // Should move more then tree round round forward
+            // Should move more then tree round forward
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
             // move seven round forward
