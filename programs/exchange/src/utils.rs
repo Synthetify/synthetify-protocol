@@ -92,7 +92,7 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add((state.staking.round_length.mul(2)).into())
+                    .checked_add(state.staking.round_length.checked_mul(2).unwrap() as u64)
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -104,7 +104,13 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.mul(round_diff.sub(2)).into())
+                    .checked_add(
+                        state
+                            .staking
+                            .round_length
+                            .checked_mul(round_diff.sub(2))
+                            .unwrap() as u64,
+                    )
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -114,7 +120,13 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.mul(round_diff.sub(1)).into())
+                    .checked_add(
+                        state
+                            .staking
+                            .round_length
+                            .checked_mul(round_diff.sub(1))
+                            .unwrap() as u64,
+                    )
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -124,7 +136,7 @@ pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.mul(round_diff).into())
+                    .checked_add(state.staking.round_length.checked_mul(round_diff).unwrap() as u64)
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
