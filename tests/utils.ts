@@ -3,7 +3,7 @@ import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
-import { Asset, AssetsList } from '@synthetify/sdk/lib/exchange'
+import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
 import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
@@ -19,7 +19,8 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Synthetic) => {
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
+  console.log()
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -27,7 +28,6 @@ export const sleep = async (ms: number) => {
 }
 export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.synthetics.reduce((acc, synthetic) => {
-    console.log(synthetic)
     const asset = assetsList.assets[synthetic.assetIndex]
     return acc.add(
       synthetic.supply
