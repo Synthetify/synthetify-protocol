@@ -672,6 +672,23 @@ export class Exchange {
       }
     )) as TransactionInstruction
   }
+  public async addSyntheticInstruction({
+    assetsList,
+    assetAddress,
+    priceFeed,
+    decimals,
+    maxSupply
+  }: AddSyntheticInstruction) {
+    return (await this.program.instruction.addSynthetic(maxSupply, decimals, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList,
+        assetAddress: assetAddress,
+        feedAddress: priceFeed
+      }
+    })) as TransactionInstruction
+  }
 
   public async initializeAssetsList({
     assetsList,
@@ -826,6 +843,13 @@ export interface SetAsCollateralInstruction {
   collateral: Collateral
   assetsList: PublicKey
   collateralFeed: PublicKey
+}
+export interface AddSyntheticInstruction {
+  assetAddress: PublicKey
+  assetsList: PublicKey
+  priceFeed: PublicKey
+  maxSupply: BN
+  decimals: number
 }
 
 export interface Mint {

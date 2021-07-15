@@ -13,7 +13,8 @@ import {
   assertThrowsAsync,
   IAddNewAssets,
   addNewAssets,
-  DEFAULT_PUBLIC_KEY
+  DEFAULT_PUBLIC_KEY,
+  U64_MAX
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
@@ -504,6 +505,66 @@ describe('admin', () => {
     //   // we hit limit of account size and cannot add another asset
     //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
     // })
+  })
+  describe('#addSynthetic()', async () => {
+    it('Should add new synthetic ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const addedSynthetic = afterAssetList.synthetics.find((a) =>
+        a.assetAddress.equals(newSynthetic.publicKey)
+      )
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
+
+      // Check synthetic initial fields
+      assert.ok(addedSynthetic.assetAddress.equals(newSynthetic.publicKey))
+      assert.ok(addedSynthetic.decimals === 8)
+      assert.ok(addedSynthetic.maxSupply.eq(new BN(100)))
+      assert.ok(addedSynthetic.supply.eqn(0))
+      assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
+      assert.ok(
+        afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
+          assetForSynthetic.feedAddress
+        )
+      )
+    })
+    it('Should fail without admin signature', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
   })
   describe('#setMaxSupply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)

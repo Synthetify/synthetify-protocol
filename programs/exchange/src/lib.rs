@@ -1117,6 +1117,29 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+        let asset_index = match assets_list
+            .assets
+            .iter_mut()
+            .position(|x| x.feed_address == *ctx.accounts.feed_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        // TODO missing liquidation_fund
+        let new_synthetic = Synthetic {
+            asset_index: asset_index as u8,
+            decimals: decimals,
+            asset_address: *ctx.accounts.asset_address.key,
+            max_supply: max_supply,
+            settlement_slot: u64::MAX,
+            supply: 0,
+        };
+        assets_list.append_synthetic(new_synthetic);
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 #[derive(Default)]
@@ -1214,6 +1237,18 @@ pub struct AddCollateral<'info> {
     pub reserve_account: CpiAccount<'info, TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
+#[derive(Accounts)]
+pub struct AddSynthetic<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub asset_address: AccountInfo<'info>,
+    pub feed_address: AccountInfo<'info>,
+}
+
 #[derive(Accounts)]
 pub struct New<'info> {
     pub admin: AccountInfo<'info>,
