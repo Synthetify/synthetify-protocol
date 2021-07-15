@@ -558,6 +558,44 @@ mod tests {
                 }
             );
         }
+        {
+            // Large numbers
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            // move seven round forward
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 1_287_161_137);
+            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            let expected_finished_round_slot: u64 = 1287161000;
+            assert_ne!(state_after_adjustment, state_copy);
+            assert_eq!(
+                state_after_adjustment.staking.finished_round,
+                StakingRound {
+                    start: expected_finished_round_slot,
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                state_after_adjustment.staking.current_round,
+                StakingRound {
+                    start: expected_finished_round_slot
+                        .checked_add(staking_round_length.into())
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+            assert_eq!(
+                state_after_adjustment.staking.next_round,
+                StakingRound {
+                    start: expected_finished_round_slot
+                        .checked_add(staking_round_length.checked_mul(2).unwrap() as u64)
+                        .unwrap(),
+                    all_points: debt_shares,
+                    amount: state_copy.staking.amount_per_round,
+                }
+            );
+        }
     }
     #[test]
     fn adjust_staking_rounds_with_variable_round_length_test() {
