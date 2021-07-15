@@ -321,7 +321,7 @@ mod tests {
         }
     }
     #[test]
-    fn adjust_staking_rounds_test() {
+    fn adjust_staking_rounds_with_fixed_round_length_test() {
         let staking_round_length = 100;
         let amount_per_round = 300;
         let debt_shares = 999u64;
@@ -543,6 +543,90 @@ mod tests {
                     amount: state_copy.staking.amount_per_round,
                 }
             );
+        }
+    }
+    #[test]
+    fn adjust_staking_rounds_with_variable_round_length_test() {
+        let staking_round_length = 100;
+        let amount_per_round = 300;
+        let debt_shares = 999u64;
+        let staking = Staking {
+            round_length: staking_round_length,
+            amount_per_round: amount_per_round,
+            finished_round: StakingRound {
+                all_points: 0,
+                amount: 0,
+                start: 0,
+            },
+            current_round: StakingRound {
+                all_points: 0,
+                amount: 0,
+                start: staking_round_length as u64,
+            },
+            next_round: StakingRound {
+                all_points: 0,
+                amount: amount_per_round,
+                start: (staking_round_length as u64)
+                    .checked_add(staking_round_length.into())
+                    .unwrap(),
+            },
+            ..Default::default()
+        };
+        let state = State {
+            debt_shares: debt_shares,
+            staking: staking,
+            ..Default::default()
+        };
+        {
+            // Should move one round forward
+            let state_copy = state.clone();
+            let state_ref = RefCell::new(state);
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 201);
+            // |    |   |
+            // f    c   n
+            // 100  200 300
+            let mut borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(state_copy, borrow_state);
+            assert_eq!(
+                borrow_state.staking.finished_round.start,
+                state_copy.staking.current_round.start
+            );
+            assert_eq!(
+                borrow_state.staking.current_round.start,
+                state_copy.staking.next_round.start
+            );
+            assert_eq!(
+                borrow_state.staking.next_round.start,
+                state_copy
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(staking_round_length.into())
+                    .unwrap()
+            );
+
+            // change round length
+            borrow_state.staking.round_length = 50;
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 300);
+            // Should stay same
+            assert_eq!(
+                borrow_state.staking.finished_round.start,
+                state_copy.staking.current_round.start
+            );
+            assert_eq!(
+                borrow_state.staking.current_round.start,
+                state_copy.staking.next_round.start
+            );
+            assert_eq!(
+                borrow_state.staking.next_round.start,
+                state_copy
+                    .staking
+                    .next_round
+                    .start
+                    .checked_add(staking_round_length.into())
+                    .unwrap()
+            );
+            // overwrite previous round length
         }
     }
 }
