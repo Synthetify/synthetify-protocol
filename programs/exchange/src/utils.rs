@@ -354,33 +354,46 @@ mod tests {
         };
         {
             // Should stay same
-            let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 200);
-            assert_eq!(staking_copy, staking);
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 150);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_eq!(state_copy, borrow_state);
         }
         {
             // Should stay same
-            let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 200);
-            assert_eq!(staking_copy, staking);
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 200);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_eq!(state_copy, borrow_state);
         }
         {
-            // Should push new staking round
-            let staking_copy = staking.clone();
-            adjust_staking_rounds(&mut RefCell::new(state).try_borrow_mut().unwrap(), 201);
-            assert_ne!(staking_copy, staking);
-            assert_eq!(staking.finished_round, staking_copy.current_round);
-            assert_eq!(staking.current_round, staking_copy.next_round);
+            // Should move one round forward
+            let state_ref = RefCell::new(state);
+            let state_copy = state.clone();
+            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 201);
+            let borrow_state = *state_ref.try_borrow_mut().unwrap();
+            assert_ne!(borrow_state, state_copy);
             assert_eq!(
-                staking.next_round,
+                borrow_state.staking.finished_round,
+                state_copy.staking.current_round
+            );
+            assert_eq!(
+                borrow_state.staking.current_round,
+                state_copy.staking.next_round
+            );
+            assert_eq!(
+                borrow_state.staking.next_round,
                 StakingRound {
-                    start: staking_copy
+                    start: state_copy
+                        .staking
                         .next_round
                         .start
-                        .checked_add(staking_copy.round_length.into())
+                        .checked_add(state_copy.staking.round_length.into())
                         .unwrap(),
                     all_points: debt_shares,
-                    amount: staking_copy.amount_per_round,
+                    amount: state_copy.staking.amount_per_round,
                 }
             );
         }
