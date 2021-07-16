@@ -607,6 +607,51 @@ describe('admin', () => {
       )
     })
   })
+  describe('#addCollateral()', async () => {
+    it('Should add new collateral ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const liquidationAccount = new Account()
+      const reserveAccount = new Account()
+      const collateralRatio = 150
+      const reserveBalance = new BN(1000000)
+      const decimals = 8
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals
+      })
+
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund: liquidationAccount.publicKey,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount: reserveAccount.publicKey,
+        reserveBalance: reserveBalance,
+        decimals,
+        collateralRatio
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const addedCollateral = afterAssetList.collaterals.find((a) =>
+        a.collateralAddress.equals(newCollateral.publicKey)
+      )
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
+
+      // Check collateral initial fields
+      assert.ok(addedCollateral.assetIndex === 0)
+      assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
+      assert.ok(addedCollateral.collateralRatio === collateralRatio)
+      assert.ok(addedCollateral.decimals === decimals)
+      assert.ok(addedCollateral.liquidationFund.equals(liquidationAccount.publicKey))
+      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount.publicKey))
+      assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
+    })
+  })
   describe('#setMaxSupply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)
 
