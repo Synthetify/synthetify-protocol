@@ -940,6 +940,46 @@
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "addSynthetic",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetAddress",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "feedAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxSupply",
+          "type": "u64"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1436,5 +1476,8 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "DEPzjnvm3d386XoCxRueWorbyNBxF65FWmWzy13ypBcG"
+  }
 }

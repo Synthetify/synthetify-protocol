@@ -431,8 +431,10 @@ pub mod exchange {
             slot,
         )
         .unwrap();
-        // let sny_collateral = &mut assets_list.collaterals[0];
-        let collateral_amount = 12;
+        let sny_collateral = &mut collaterals[0];
+
+        let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
         let effective_fee = state
@@ -446,7 +448,6 @@ pub mod exchange {
                 .unwrap(),
             )
             .unwrap();
-
         // Output amount ~ 100% - fee of input
         let amount_for = calculate_swap_out_amount(
             &assets[synthetics[synthetic_in_index].asset_index as usize],
@@ -456,6 +457,7 @@ pub mod exchange {
             amount,
             effective_fee,
         );
+
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 

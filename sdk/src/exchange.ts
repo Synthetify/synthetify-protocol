@@ -722,13 +722,11 @@ export class Exchange {
       signers: [exchangeAdmin]
     })
   }
-  public async addNewAssetInstruction({
-    assetsList,
-    assetFeedAddress
-  }: AddNewAssetInstruction): Promise<TransactionInstruction> {
+  public async addNewAssetInstruction({ assetsList, assetFeedAddress }: AddNewAssetInstruction) {
     return (await this.program.instruction.addNewAsset(assetFeedAddress, {
       accounts: {
         state: this.stateAddress,
+        signer: this.state.admin,
         assetsList
       }
     })) as TransactionInstruction
