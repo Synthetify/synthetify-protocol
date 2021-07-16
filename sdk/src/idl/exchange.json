@@ -635,18 +635,6 @@
         {
           "name": "newAssetFeedAddress",
           "type": "publicKey"
-        },
-        {
-          "name": "newAssetAddress",
-          "type": "publicKey"
-        },
-        {
-          "name": "newAssetDecimals",
-          "type": "u8"
-        },
-        {
-          "name": "newAssetMaxSupply",
-          "type": "u64"
         }
       ]
     },
@@ -1448,8 +1436,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "7aiGztA6848RHUoxdeuU9eqPnhawxP7mooZ5C9vBAqrL"
-  }
+  ]
 }
