@@ -1,5 +1,5 @@
 import { Idl, Program, Provider, web3 } from '@project-serum/anchor'
-import { BN, Exchange, Network } from '@synthetify/sdk'
+import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import {
   createAssetsList,
   createToken,
@@ -9,7 +9,7 @@ import {
 } from '../tests/utils'
 import { admin } from './testAdmin'
 import oracleIdl from '../target/idl/pyth.json'
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
 const initialTokens = [
@@ -147,14 +147,21 @@ const main = async () => {
     await sleep(2000)
 
     const state = await exchange.getState()
-    await exchange.addNewAsset({
-      assetsAdmin: wallet,
-      assetsList: state.assetsList,
-      maxSupply: asset.limit,
-      tokenAddress: newToken.publicKey,
-      tokenDecimals: asset.decimals,
-      tokenFeed: asset.priceFeed
+    const newAssetIx = await exchange.addNewAssetInstruction({
+      assetsList: assetsList,
+      assetFeedAddress: asset.priceFeed
     })
+    await signAndSend(new Transaction().add(newAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+    await sleep(5000)
+
+    const addEthSynthetic = await exchange.addSyntheticInstruction({
+      assetAddress: newToken.publicKey,
+      assetsList,
+      decimals: asset.decimals + 1,
+      maxSupply: asset.limit,
+      priceFeed: asset.priceFeed
+    })
+    await signAndSend(new Transaction().add(addEthSynthetic), [wallet, EXCHANGE_ADMIN], connection)
   }
   await sleep(5000)
   const state = await exchange.getState()
@@ -165,10 +172,10 @@ const main = async () => {
   await exchange.updatePrices(state.assetsList)
   const assets = await exchange.getAssetsList(state.assetsList)
 
-  for (const asset of assets.assets) {
+  for (const asset of assets.synthetics) {
     console.log('##########')
-    console.log(asset.synthetic.assetAddress.toString())
-    console.log(asset.price.toString())
+    console.log(asset.assetAddress.toString())
+    console.log(assets.assets[asset.assetIndex].price.toString())
   }
 }
 main()
