@@ -534,7 +534,18 @@ describe('admin', () => {
       assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
       assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
       assert.ok(addedNewAsset.price.eq(new BN(0)))
-    })
+    }),
+      it('Should fail without admin signature', async () => {
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
   })
   describe('#addSynthetic()', async () => {
     it('Should add new synthetic ', async () => {
