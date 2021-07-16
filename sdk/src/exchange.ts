@@ -722,22 +722,16 @@ export class Exchange {
       signers: [exchangeAdmin]
     })
   }
-  public async addNewAsset({
+  public async addNewAssetInstruction({
     assetsList,
-    assetsAdmin,
-    maxSupply,
-    tokenAddress,
-    tokenDecimals,
-    tokenFeed
-  }: AddNewAsset) {
-    return await this.program.rpc.addNewAsset(tokenFeed, tokenAddress, tokenDecimals, maxSupply, {
+    assetFeedAddress
+  }: AddNewAssetInstruction): Promise<TransactionInstruction> {
+    return (await this.program.instruction.addNewAsset(assetFeedAddress, {
       accounts: {
         state: this.stateAddress,
-        signer: assetsAdmin.publicKey,
-        assetsList: assetsList
-      },
-      signers: [assetsAdmin]
-    })
+        assetsList
+      }
+    })) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -820,13 +814,9 @@ export interface SetAssetMaxSupply {
   exchangeAdmin: Account
   newMaxSupply: BN
 }
-export interface AddNewAsset {
-  tokenFeed: PublicKey
-  tokenAddress: PublicKey
+export interface AddNewAssetInstruction {
   assetsList: PublicKey
-  tokenDecimals: number
-  maxSupply: BN
-  assetsAdmin: Account
+  assetFeedAddress: PublicKey
 }
 export interface SetPriceFeedInstruction {
   assetsList: PublicKey

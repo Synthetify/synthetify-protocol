@@ -506,6 +506,47 @@ describe('admin', () => {
     //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
     // })
   })
+  describe('#addNewAsset', async () => {
+    it('Should add new asset ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const newAssetFeedPublicKey = new Account().publicKey
+      const ix = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: newAssetFeedPublicKey
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+      // Check new asset is included in asset list
+      const addedNewAsset = afterAssetList.assets.find((a) =>
+        a.feedAddress.equals(newAssetFeedPublicKey)
+      )
+      console.log(addedNewAsset)
+
+      // Check new asset exist
+      assert.ok(addedNewAsset)
+
+      // Check new asset initial fields
+      assert.ok(addedNewAsset.confidence === 0)
+      assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
+      assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
+      assert.ok(addedNewAsset.price.eq(new BN(0)))
+    }),
+      it('Should fail without admin signature', async () => {
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
+  })
   describe('#addSynthetic()', async () => {
     it('Should add new synthetic ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
