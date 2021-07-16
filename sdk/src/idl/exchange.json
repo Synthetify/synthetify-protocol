@@ -916,6 +916,11 @@
           "isSigner": false
         },
         {
+          "name": "liquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "reserveAccount",
           "isMut": false,
           "isSigner": false

@@ -731,6 +731,34 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  public async addCollateralInstruction({
+    assetsList,
+    assetAddress,
+    liquidationFund,
+    reserveAccount,
+    feedAddress,
+    collateralRatio,
+    reserveBalance,
+    decimals
+  }: AddCollateralInstruction) {
+    return (await this.program.instruction.addCollateral(
+      reserveBalance,
+      decimals,
+      collateralRatio,
+      {
+        accounts: {
+          admin: this.state.admin,
+          state: this.stateAddress,
+          signer: this.state.admin,
+          assetsList,
+          assetAddress,
+          liquidationFund,
+          feedAddress,
+          reserveAccount
+        }
+      }
+    )) as TransactionInstruction
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -837,6 +865,16 @@ export interface AddSyntheticInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
   maxSupply: BN
+  decimals: number
+}
+export interface AddCollateralInstruction {
+  assetsList: PublicKey
+  assetAddress: PublicKey
+  liquidationFund: PublicKey
+  feedAddress: PublicKey
+  reserveBalance: BN
+  reserveAccount: PublicKey
+  collateralRatio: number
   decimals: number
 }
 
