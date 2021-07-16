@@ -944,14 +944,9 @@ pub mod exchange {
         token::transfer(cpi_ctx, amount)?;
         Ok(())
     }
+    // admin methods
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
-    pub fn add_new_asset(
-        ctx: Context<AddNewAsset>,
-        new_asset_feed_address: Pubkey,
-        new_asset_address: Pubkey,
-        new_asset_decimals: u8,
-        new_asset_max_supply: u64,
-    ) -> Result<()> {
+    pub fn add_new_asset(ctx: Context<AddNewAsset>, new_asset_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         if !assets_list.initialized {
             return Err(ErrorCode::Uninitialized.into());
@@ -966,7 +961,7 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
-    // admin methods
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
