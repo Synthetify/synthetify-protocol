@@ -12,6 +12,7 @@ pub mod exchange {
         convert::TryInto,
     };
 
+    use anchor_lang::Key;
     use pyth::pc::Price;
 
     use crate::math::{
@@ -431,10 +432,8 @@ pub mod exchange {
             slot,
         )
         .unwrap();
-        let sny_collateral = &mut collaterals[0];
-
-        let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
-
+        // let sny_collateral = &mut assets_list.collaterals[0];
+        let collateral_amount = 12;
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
         let effective_fee = state
@@ -448,6 +447,7 @@ pub mod exchange {
                 .unwrap(),
             )
             .unwrap();
+
         // Output amount ~ 100% - fee of input
         let amount_for = calculate_swap_out_amount(
             &assets[synthetics[synthetic_in_index].asset_index as usize],
@@ -457,7 +457,6 @@ pub mod exchange {
             amount,
             effective_fee,
         );
-
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
@@ -1101,17 +1100,16 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        // TODO missing liquidation_fund
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
-            liquidation_fund: *ctx.accounts.asset_address.key,
+            liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             reserve_balance: reserve_balance,
             decimals: decimals,
             collateral_ratio: collateral_ratio,
         };
-
+        assets_list.append_collateral(new_collateral);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1125,7 +1123,6 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        // TODO missing liquidation_fund
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
             decimals: decimals,
@@ -1231,7 +1228,8 @@ pub struct AddCollateral<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub reserve_account: CpiAccount<'info, TokenAccount>,
+    pub liquidation_fund: AccountInfo<'info>,
+    pub reserve_account: AccountInfo<'info>,
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]

@@ -916,6 +916,11 @@
           "isSigner": false
         },
         {
+          "name": "liquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "reserveAccount",
           "isMut": false,
           "isSigner": false
@@ -1478,6 +1483,6 @@
     }
   ],
   "metadata": {
-    "address": "DEPzjnvm3d386XoCxRueWorbyNBxF65FWmWzy13ypBcG"
+    "address": "8Wang5aZbJLXaqHCoCWKyXxUYiP4UEDxNcnahcWmi6tY"
   }
 }
