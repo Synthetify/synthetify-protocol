@@ -8,9 +8,9 @@ export enum Network {
 }
 
 export const DEV_NET = {
-  exchange: new PublicKey('2MDpnAdPjS6EJgRiVEGMFK9mgNgxYv2tvUpPCxJrmrJX'),
-  oracle: new PublicKey('J9p6hixvj9FT2niHAogKzWnEuB4SRodwfM3ivUewi1JC'),
-  exchangeAuthority: new PublicKey('HTsnsmNsZhU4jhinASoKam7umiRzmYtt3AX8BHEvcuHL')
+  exchange: new PublicKey('Fka99HSG9ErxA3zURgoLeSkSdvoKFAHHaHV1iYup12De'),
+  oracle: new PublicKey('FqcnGwHttTjRzb87bDsDHbkEzhZwG8Nht86NziRN2qiw'),
+  exchangeAuthority: new PublicKey('6Ngr2N3CGjvWQMA15u4xEgPShfdyKWJ4mpDw7J7rWCx4')
 }
 export const TEST_NET = {
   exchange: new PublicKey('9buhRrePiSBr6no7mR8is5UAx19YXjLTJuPcuvg2LSSd'),

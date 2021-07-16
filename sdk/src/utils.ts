@@ -8,7 +8,7 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { Asset, AssetsList, ExchangeAccount } from './exchange'
+import { Asset, AssetsList, Collateral, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 6
@@ -73,7 +73,8 @@ export const calculateLiquidation = (
   penaltyToLiquidator: number,
   penaltyToExchange: number,
   liquidationRate: number,
-  asset: Asset
+  asset: Asset,
+  collateral: Collateral
 ) => {
   if (maxDebt.gt(debtValue)) {
     throw new Error('Account is safe')
@@ -86,7 +87,7 @@ export const calculateLiquidation = (
 
   const seizedInToken = seizedCollateralInUsd
     .muln(10 ** ORACLE_OFFSET)
-    .muln(10 ** (asset.collateral.decimals - ACCURACY))
+    .muln(10 ** (collateral.decimals - ACCURACY))
     .div(asset.price)
 
   const collateralToExchange = divUp(
@@ -98,12 +99,12 @@ export const calculateLiquidation = (
 }
 
 export const calculateDebt = (assetsList: AssetsList) => {
-  return assetsList.assets.reduce(
-    (acc, asset) =>
+  return assetsList.synthetics.reduce(
+    (acc, synthetic) =>
       acc.add(
-        asset.synthetic.supply
-          .mul(asset.price)
-          .div(new BN(10 ** (asset.synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+        synthetic.supply
+          .mul(assetsList.assets[synthetic.assetIndex].price)
+          .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
       ),
     new BN(0)
   )
@@ -113,29 +114,24 @@ export const calculateUserCollateral = (
   assetsList: AssetsList
 ) => {
   return exchangeAccount.collaterals.reduce((acc, entry) => {
+    const collateral = assetsList.collaterals[entry.index]
     return acc.add(
       entry.amount
-        .mul(assetsList.assets[entry.index].price)
-        .div(
-          new BN(
-            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
-          )
-        )
+        .mul(assetsList.assets[collateral.assetIndex].price)
+        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
 export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsList: AssetsList) => {
   return exchangeAccount.collaterals.reduce((acc, entry) => {
+    const collateral = assetsList.collaterals[entry.index]
+    const asset = assetsList.assets[collateral.assetIndex]
     return acc.add(
       entry.amount
-        .mul(assetsList.assets[entry.index].price)
-        .muln(assetsList.assets[entry.index].collateral.collateralRatio)
+        .mul(asset.price)
+        .muln(collateral.collateralRatio)
         .divn(100)
-        .div(
-          new BN(
-            10 ** (assetsList.assets[entry.index].collateral.decimals + ORACLE_OFFSET - ACCURACY)
-          )
-        )
+        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -150,9 +146,9 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  '2jGL8abhSy9DNH4nV4FdEYt9gDaaeas9vBkns2XuRR4G': 'xUSD',
-  '5t389pri6gNFREqzFwXc2iTYQ3q6XhMKqer3kKHsJy8v': 'SNY',
-  C9K3txVDuiYVJAbSmvzTxujgCi2D3xXPhDvcSiyuTBTK: 'xBTC',
-  APpGJ2fKmqW3ormrUCifbDronjrBsZ4N1uS2xxCBzYuj: 'xSOL',
-  CvVw8scGXiEkLuZ2q7VNXCD5mDr9KVjWircMQy9d9Fi1: 'xSRM'
+  Sp7hoXrvaBA42RLsmFshjAmFT3CZemVDm5WGhsy18Cz: 'xUSD',
+  EUdH9pgy4GtgYb42sj9MjiRW5i4s7HaEAbcNzwRhuaYa: 'SNY',
+  '5JvEdz8xUTb3UYCQ6XuWVbpcGTAmrpESmhDQ86kCz5ur': 'xBTC',
+  '8zGRx7MVmJxWgRbqZxkUg1GCz3gXNm3ivNVGYoU6Rduf': 'xSOL',
+  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM'
 }

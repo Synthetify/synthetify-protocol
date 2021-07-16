@@ -163,21 +163,21 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
     return;
 }
 
-pub fn set_asset_supply(asset: &mut Asset, new_supply: u64) -> ProgramResult {
-    if new_supply.gt(&asset.synthetic.max_supply) {
+pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {
+    if new_supply.gt(&synthetic.max_supply) {
         return Err(ErrorCode::MaxSupply.into());
     }
-    asset.synthetic.supply = new_supply;
+    synthetic.supply = new_supply;
     Ok(())
 }
 pub fn get_user_sny_collateral_balance(
     exchange_account: &ExchangeAccount,
-    sny_asset: &Asset,
+    sny_asset: &Collateral,
 ) -> u64 {
-    let entry = exchange_account.collaterals.iter().find(|x| {
-        x.collateral_address
-            .eq(&sny_asset.collateral.collateral_address)
-    });
+    let entry = exchange_account
+        .collaterals
+        .iter()
+        .find(|x| x.collateral_address.eq(&sny_asset.collateral_address));
     match entry {
         Some(x) => return x.amount,
         None => return 0,

@@ -13,7 +13,8 @@ import {
   assertThrowsAsync,
   IAddNewAssets,
   addNewAssets,
-  DEFAULT_PUBLIC_KEY
+  DEFAULT_PUBLIC_KEY,
+  U64_MAX
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
@@ -504,6 +505,181 @@ describe('admin', () => {
     //   // we hit limit of account size and cannot add another asset
     //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
     // })
+  })
+  describe('#addNewAsset', async () => {
+    it('Should add new asset ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const newAssetFeedPublicKey = new Account().publicKey
+      const ix = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: newAssetFeedPublicKey
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+      // Check new asset is included in asset list
+      const addedNewAsset = afterAssetList.assets.find((a) =>
+        a.feedAddress.equals(newAssetFeedPublicKey)
+      )
+      console.log(addedNewAsset)
+
+      // Check new asset exist
+      assert.ok(addedNewAsset)
+
+      // Check new asset initial fields
+      assert.ok(addedNewAsset.confidence === 0)
+      assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
+      assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
+      assert.ok(addedNewAsset.price.eq(new BN(0)))
+    }),
+      it('Should fail without admin signature', async () => {
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
+  })
+  describe('#addSynthetic()', async () => {
+    it('Should add new synthetic ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const addedSynthetic = afterAssetList.synthetics.find((a) =>
+        a.assetAddress.equals(newSynthetic.publicKey)
+      )
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
+
+      // Check synthetic initial fields
+      assert.ok(addedSynthetic.assetAddress.equals(newSynthetic.publicKey))
+      assert.ok(addedSynthetic.decimals === 8)
+      assert.ok(addedSynthetic.maxSupply.eq(new BN(100)))
+      assert.ok(addedSynthetic.supply.eqn(0))
+      assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
+      assert.ok(
+        afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
+          assetForSynthetic.feedAddress
+        )
+      )
+    })
+    it('Should fail without admin signature', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+  })
+  describe('#addCollateral()', async () => {
+    it('Should add new collateral ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const reserveBalance = new BN(1000000)
+      const decimals = 8
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals
+      })
+      const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
+      const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
+      const collateralRatio = 50
+
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount,
+        reserveBalance: reserveBalance,
+        decimals,
+        collateralRatio
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+
+      const addedCollateral = afterAssetList.collaterals.find((a) =>
+        a.collateralAddress.equals(newCollateral.publicKey)
+      )
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
+
+      // Check collateral initial fields
+      assert.ok(addedCollateral.assetIndex === 0)
+      assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
+      assert.ok(addedCollateral.collateralRatio === collateralRatio)
+      assert.ok(addedCollateral.decimals === decimals)
+      assert.ok(addedCollateral.liquidationFund.equals(liquidationAccount.publicKey))
+      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount.publicKey))
+      assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
+    }),
+      it('Should fail without admin signature', async () => {
+        const beforeAssetList = await exchange.getAssetsList(assetsList)
+        const assetForCollateral = beforeAssetList.assets[0]
+        const liquidationAccount = new Account()
+        const reserveAccount = new Account()
+        const collateralRatio = 150
+        const reserveBalance = new BN(1000000)
+        const decimals = 8
+        const newCollateral = await createToken({
+          connection,
+          payer: wallet,
+          mintAuthority: exchangeAuthority,
+          decimals: 8
+        })
+        const ix = await exchange.addCollateralInstruction({
+          assetsList,
+          assetAddress: newCollateral.publicKey,
+          liquidationFund: liquidationAccount.publicKey,
+          feedAddress: assetForCollateral.feedAddress,
+          reserveAccount: reserveAccount.publicKey,
+          reserveBalance: reserveBalance,
+          decimals,
+          collateralRatio
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
   })
   describe('#setMaxSupply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)
