@@ -611,9 +611,6 @@ describe('admin', () => {
     it('Should add new collateral ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const assetForCollateral = beforeAssetList.assets[0]
-      const liquidationAccount = new Account()
-      const reserveAccount = new Account()
-      const collateralRatio = 150
       const reserveBalance = new BN(1000000)
       const decimals = 8
       const newCollateral = await createToken({
@@ -622,13 +619,16 @@ describe('admin', () => {
         mintAuthority: exchangeAuthority,
         decimals
       })
+      const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
+      const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
+      const collateralRatio = 50
 
       const ix = await exchange.addCollateralInstruction({
         assetsList,
         assetAddress: newCollateral.publicKey,
-        liquidationFund: liquidationAccount.publicKey,
+        liquidationFund,
         feedAddress: assetForCollateral.feedAddress,
-        reserveAccount: reserveAccount.publicKey,
+        reserveAccount,
         reserveBalance: reserveBalance,
         decimals,
         collateralRatio
