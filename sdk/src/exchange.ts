@@ -729,10 +729,8 @@ export class Exchange {
     return (await this.program.instruction.addNewAsset(assetFeedAddress, {
       accounts: {
         state: this.stateAddress,
-        signer: this.state.admin,
         assetsList
-      },
-      signers: [this.state.admin]
+      }
     })) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
