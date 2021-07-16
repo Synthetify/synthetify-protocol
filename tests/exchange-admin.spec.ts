@@ -650,7 +650,36 @@ describe('admin', () => {
       assert.ok(addedCollateral.liquidationFund.equals(liquidationAccount.publicKey))
       assert.ok(addedCollateral.reserveAddress.equals(reserveAccount.publicKey))
       assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
-    })
+    }),
+      it('Should fail without admin signature', async () => {
+        const beforeAssetList = await exchange.getAssetsList(assetsList)
+        const assetForCollateral = beforeAssetList.assets[0]
+        const liquidationAccount = new Account()
+        const reserveAccount = new Account()
+        const collateralRatio = 150
+        const reserveBalance = new BN(1000000)
+        const decimals = 8
+        const newCollateral = await createToken({
+          connection,
+          payer: wallet,
+          mintAuthority: exchangeAuthority,
+          decimals: 8
+        })
+        const ix = await exchange.addCollateralInstruction({
+          assetsList,
+          assetAddress: newCollateral.publicKey,
+          liquidationFund: liquidationAccount.publicKey,
+          feedAddress: assetForCollateral.feedAddress,
+          reserveAccount: reserveAccount.publicKey,
+          reserveBalance: reserveBalance,
+          decimals,
+          collateralRatio
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
   })
   describe('#setMaxSupply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)
