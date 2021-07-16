@@ -1,23 +1,20 @@
 ---
-title: Synthetic Tokens
+title: Synthetic tokens
 
 slug: /synthetic-tokens
 ---
 
 ### Overview
 
-All synthetic assets closely track the price of specific assets assigned to them e.g. xBTC will have the same price as BTC on centralized exchanges. Synthetic assets have a form of Solana SPL-Token and can be freely transferred between wallets or used in other DeFi applications.
+All synthetic assets closely track the price of specific assets assigned to them e.g. xBTC will have the same price as BTC on centralized exchanges. Synthetic assets have a form of Solana [SPL-Token](https://spl.solana.com/token) and can be freely transferred between wallets or used in other DeFi applications.
 
 Prices of all synthetic assets are provided by decentralized oracles build on top of Solana blockchain. Only synthetic USD (xUSD) has a static predefined value that is 1 USD.
 
-### Mint
+Icons for synthetic tokens in Synthetify.
 
-Synthetic assets can be created by Stakers of the system and then exchanged on Synthetify exchange. Exchange of two different synthetic tokens is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in much lower exchange fees and slippage.
-
-### Burn
-
-Synthetic tokens can be burned by Stakers to reduce their debt and free collateral tokens.
-
-### Mint limit
-
-To ensure safety of the system each asset has a predefined but adjustable limit of the amount of tokens that can be created.
+![xSNY](https://i.imgur.com/BaIKDIt.jpg)
+![xSOL](https://i.imgur.com/YIYLMKW.jpg)
+![xBTC](https://i.imgur.com/4vv5935.jpg)
+![xETH](https://i.imgur.com/vcyCqf7.jpg)
+![xUSD](https://i.imgur.com/Nfz1WRY.jpg)
+![xSRM](https://i.imgur.com/zy0N0wD.jpg)
