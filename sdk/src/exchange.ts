@@ -116,6 +116,7 @@ export class Exchange {
         systemProgram: SystemProgram.programId
       }
     })
+    this.stateAddress = stateAddress
   }
   public async getState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState

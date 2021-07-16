@@ -41,12 +41,12 @@ const provider = Provider.local('https://api.devnet.solana.com', {
 })
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '2MDpnAdPjS6EJgRiVEGMFK9mgNgxYv2tvUpPCxJrmrJX'
+  'Fka99HSG9ErxA3zURgoLeSkSdvoKFAHHaHV1iYup12De'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'J9p6hixvj9FT2niHAogKzWnEuB4SRodwfM3ivUewi1JC'
+  'FqcnGwHttTjRzb87bDsDHbkEzhZwG8Nht86NziRN2qiw'
 )
-const authority = 'HTsnsmNsZhU4jhinASoKam7umiRzmYtt3AX8BHEvcuHL'
+const authority = '6Ngr2N3CGjvWQMA15u4xEgPShfdyKWJ4mpDw7J7rWCx4'
 
 const main = async () => {
   const connection = provider.connection
@@ -100,15 +100,14 @@ const main = async () => {
     snyLiquidationFund
   })
   const assetsList = data.assetsList
-  console.log(assetsList.toString())
   console.log('Initialize Exchange')
   await sleep(5000)
   await exchange.init({
     admin: wallet.publicKey,
     assetsList,
     nonce,
-    amountPerRound: new BN(100),
-    stakingRoundLength: 300,
+    amountPerRound: new BN(100 * 1e6),
+    stakingRoundLength: 100,
     stakingFundAccount: stakingFundAccount
   })
   while (true) {
@@ -151,7 +150,7 @@ const main = async () => {
       assetsList: assetsList,
       assetFeedAddress: asset.priceFeed
     })
-    await signAndSend(new Transaction().add(newAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+    await signAndSend(new Transaction().add(newAssetIx), [wallet], connection)
     await sleep(5000)
 
     const addEthSynthetic = await exchange.addSyntheticInstruction({
@@ -161,7 +160,7 @@ const main = async () => {
       maxSupply: asset.limit,
       priceFeed: asset.priceFeed
     })
-    await signAndSend(new Transaction().add(addEthSynthetic), [wallet, EXCHANGE_ADMIN], connection)
+    await signAndSend(new Transaction().add(addEthSynthetic), [wallet], connection)
   }
   await sleep(5000)
   const state = await exchange.getState()

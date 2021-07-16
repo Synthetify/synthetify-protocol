@@ -146,9 +146,9 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  '2jGL8abhSy9DNH4nV4FdEYt9gDaaeas9vBkns2XuRR4G': 'xUSD',
-  '5t389pri6gNFREqzFwXc2iTYQ3q6XhMKqer3kKHsJy8v': 'SNY',
-  C9K3txVDuiYVJAbSmvzTxujgCi2D3xXPhDvcSiyuTBTK: 'xBTC',
-  APpGJ2fKmqW3ormrUCifbDronjrBsZ4N1uS2xxCBzYuj: 'xSOL',
-  CvVw8scGXiEkLuZ2q7VNXCD5mDr9KVjWircMQy9d9Fi1: 'xSRM'
+  Sp7hoXrvaBA42RLsmFshjAmFT3CZemVDm5WGhsy18Cz: 'xUSD',
+  EUdH9pgy4GtgYb42sj9MjiRW5i4s7HaEAbcNzwRhuaYa: 'SNY',
+  '5JvEdz8xUTb3UYCQ6XuWVbpcGTAmrpESmhDQ86kCz5ur': 'xBTC',
+  '8zGRx7MVmJxWgRbqZxkUg1GCz3gXNm3ivNVGYoU6Rduf': 'xSOL',
+  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM'
 }

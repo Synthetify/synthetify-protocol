@@ -38,15 +38,15 @@ const initialTokens = [
 // })
 const provider = Provider.local('http://127.0.0.1:8899', {
   // preflightCommitment: 'max',
-  skipPreflight: true
+  // skipPreflight: true
 })
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '8ixZBWTk7nm96Rso3PbqvY7epnNouf5vb9SjHBvjmPqJ'
+  '3n8LkY6AHFint9qXGASDuFbPDNsxfQjfQPoGBEtsQWeM'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'HfwDLqu3SEgMxqZffrvZJunR97LmCrKDN6zDXPUiZEtB'
+  'BhxjwhwdgsgjL3RZC7KqFydCyE3KPMzxSAMdP3sdWZhw'
 )
-const authority = 'CxmyR2rzKWjbTJThQWGeaDF4ACeXq3RSg45Q1rhzgkXv'
+const authority = 'CvStoyXqhnJY4dV34EM3GC83SFtFxQm8bU7YhoPHpBf9'
 
 const main = async () => {
   const connection = provider.connection
@@ -100,15 +100,14 @@ const main = async () => {
     snyLiquidationFund
   })
   const assetsList = data.assetsList
-  console.log(assetsList.toString())
   console.log('Initialize Exchange')
   await sleep(5000)
   await exchange.init({
     admin: wallet.publicKey,
     assetsList,
     nonce,
-    amountPerRound: new BN(100),
-    stakingRoundLength: 300,
+    amountPerRound: new BN(100 * 1e6),
+    stakingRoundLength: 100,
     stakingFundAccount: stakingFundAccount
   })
   while (true) {
@@ -157,7 +156,7 @@ const main = async () => {
       assetsList: assetsList,
       assetFeedAddress: oracleAddress
     })
-    await signAndSend(new Transaction().add(newAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+    await signAndSend(new Transaction().add(newAssetIx), [wallet], connection)
     await sleep(5000)
 
     const addEthSynthetic = await exchange.addSyntheticInstruction({
@@ -167,7 +166,7 @@ const main = async () => {
       maxSupply: asset.limit,
       priceFeed: oracleAddress
     })
-    await signAndSend(new Transaction().add(addEthSynthetic), [wallet, EXCHANGE_ADMIN], connection)
+    await signAndSend(new Transaction().add(addEthSynthetic), [wallet], connection)
   }
   await sleep(5000)
   const state = await exchange.getState()
