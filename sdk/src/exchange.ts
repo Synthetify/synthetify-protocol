@@ -533,7 +533,7 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    return this.updatePricesAndSend([approveIx, swapIx], signers, false)
+    return this.updatePricesAndSend([approveIx, swapIx], signers, this.assetsList.headAssets >= 20)
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
@@ -565,8 +565,7 @@ export class Exchange {
       to
     })
     await this.getState()
-    // await this.updatePricesAndSend([mintIx], signers, this.assetsList.head >= 20)
-    await this.updatePricesAndSend([mintIx], signers, false)
+    await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
   }
   public async deposit({
     amount,
@@ -611,8 +610,7 @@ export class Exchange {
       userCollateralAccount
     })
     await this.getState()
-    // return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.head >= 20)
-    return this.updatePricesAndSend([withdrawIx], signers, false)
+    return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.headAssets >= 20)
   }
 
   public async withdrawRewards({
