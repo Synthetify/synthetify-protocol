@@ -533,13 +533,7 @@ export class Exchange {
       [],
       tou64(amount)
     )
-
-    // const swapTx = new Transaction().add(updateIx).add(approveIx).add(swapIx)
-    // const txs = await this.processOperations([swapTx])
-    // signers ? txs[0].partialSign(...signers) : null
-
-    // return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
-    return this.updatePricesAndSend([approveIx, swapIx], signers, this.assetsList.head >= 20)
+    return this.updatePricesAndSend([approveIx, swapIx], signers, false)
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
@@ -571,7 +565,8 @@ export class Exchange {
       to
     })
     await this.getState()
-    await this.updatePricesAndSend([mintIx], signers, this.assetsList.head >= 20)
+    // await this.updatePricesAndSend([mintIx], signers, this.assetsList.head >= 20)
+    await this.updatePricesAndSend([mintIx], signers, false)
   }
   public async deposit({
     amount,
@@ -616,7 +611,8 @@ export class Exchange {
       userCollateralAccount
     })
     await this.getState()
-    return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.head >= 20)
+    // return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.head >= 20)
+    return this.updatePricesAndSend([withdrawIx], signers, false)
   }
 
   public async withdrawRewards({
@@ -701,27 +697,6 @@ export class Exchange {
     )) as TransactionInstruction
   }
 
-  public async setAsCollateralInstruction({
-    assetsList,
-    collateral,
-    collateralFeed
-  }: SetAsCollateralInstruction) {
-    return (await this.program.instruction.setAsCollateral(
-      collateral.reserveBalance,
-      collateral.decimals,
-      collateral.collateralRatio,
-      {
-        accounts: {
-          state: this.stateAddress,
-          admin: this.state.admin,
-          assetsList,
-          assetAddress: collateral.collateralAddress,
-          reserveAccount: collateral.reserveAddress,
-          feedAddress: collateralFeed
-        }
-      }
-    )) as TransactionInstruction
-  }
   public async addSyntheticInstruction({
     assetsList,
     assetAddress,
@@ -905,11 +880,6 @@ export interface SetLiquidationPenaltiesInstruction {
   penaltyToLiquidator: number
 }
 
-export interface SetAsCollateralInstruction {
-  collateral: Collateral
-  assetsList: PublicKey
-  collateralFeed: PublicKey
-}
 export interface AddSyntheticInstruction {
   assetAddress: PublicKey
   assetsList: PublicKey

@@ -126,8 +126,6 @@ pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in
         .checked_mul(10u128.pow(PRICE_OFFSET.into()))
         .unwrap()
         .checked_div(collateral_asset.price as u128)
-        .unwrap()
-        .checked_mul(10u128.pow((collateral_asset.collateral.decimals - PRICE_OFFSET).into()))
         .unwrap();
     return tokens.try_into().unwrap();
 }

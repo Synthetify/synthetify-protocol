@@ -144,44 +144,44 @@ export const createAssetsList = async ({
   })
   return { assetsList, usdToken }
 }
-// export const addNewAssets = async ({
-//   connection,
-//   wallet,
-//   oracleProgram,
-//   exchange,
-//   assetsList,
-//   newAssetDecimals,
-//   newAssetLimit,
-//   newAssetsNumber = 1
-// }: IAddNewAssets) => {
-//   let newAssetsResults: Array<{ assetAddress: PublicKey; feedAddress: PublicKey }> = []
-//   for (var newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
-//     const newToken = await createToken({
-//       connection,
-//       payer: wallet,
-//       mintAuthority: wallet.publicKey,
-//       decimals: newAssetDecimals
-//     })
-//     const newTokenFeed = await createPriceFeed({
-//       oracleProgram,
-//       initPrice: 2
-//     })
+export const addNewAssets = async ({
+  connection,
+  wallet,
+  oracleProgram,
+  exchange,
+  assetsList,
+  newAssetDecimals,
+  newAssetLimit,
+  newAssetsNumber = 1
+}: IAddNewAssets) => {
+  let newAssetsResults: Array<{ assetAddress: PublicKey; feedAddress: PublicKey }> = []
+  for (var newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
+    const newToken = await createToken({
+      connection,
+      payer: wallet,
+      mintAuthority: wallet.publicKey,
+      decimals: newAssetDecimals
+    })
+    const newTokenFeed = await createPriceFeed({
+      oracleProgram,
+      initPrice: 2
+    })
 
-//     await exchange.addNewAsset({
-//       assetsAdmin: EXCHANGE_ADMIN,
-//       assetsList,
-//       maxSupply: newAssetLimit,
-//       tokenAddress: newToken.publicKey,
-//       tokenDecimals: newAssetDecimals,
-//       tokenFeed: newTokenFeed
-//     })
-//     newAssetsResults.push({
-//       assetAddress: newToken.publicKey,
-//       feedAddress: newTokenFeed
-//     })
-//   }
-//   return newAssetsResults
-// }
+    await exchange.addNewAsset({
+      assetsAdmin: EXCHANGE_ADMIN,
+      assetsList,
+      maxSupply: newAssetLimit,
+      tokenAddress: newToken.publicKey,
+      tokenDecimals: newAssetDecimals,
+      tokenFeed: newTokenFeed
+    })
+    newAssetsResults.push({
+      assetAddress: newToken.publicKey,
+      feedAddress: newTokenFeed
+    })
+  }
+  return newAssetsResults
+}
 
 export const newAccountWithLamports = async (connection, lamports = 1e10) => {
   const account = new web3.Account()
@@ -279,18 +279,15 @@ export const createAccountWithMultipleCollaterals = async ({
   amountOfCollateralToken,
   amountOfOtherToken
 }: IAccountWithMultipleCollaterals) => {
-  const {
-    accountOwner,
-    exchangeAccount,
-    userCollateralTokenAccount
-  } = await createAccountWithCollateral({
-    amount: amountOfCollateralToken,
-    reserveAddress,
-    collateralToken,
-    collateralTokenMintAuthority: mintAuthority,
-    exchange,
-    exchangeAuthority
-  })
+  const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+    await createAccountWithCollateral({
+      amount: amountOfCollateralToken,
+      reserveAddress,
+      collateralToken,
+      collateralTokenMintAuthority: mintAuthority,
+      exchange,
+      exchangeAuthority
+    })
 
   const userOtherTokenAccount = await otherToken.createAccount(accountOwner.publicKey)
   await otherToken.mintTo(userOtherTokenAccount, mintAuthority, [], tou64(amountOfOtherToken))
@@ -332,18 +329,15 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   usdToken,
   reserveAddress
 }: IAccountWithCollateralandMint) => {
-  const {
-    accountOwner,
-    exchangeAccount,
-    userCollateralTokenAccount
-  } = await createAccountWithCollateral({
-    amount,
-    reserveAddress,
-    collateralToken,
-    collateralTokenMintAuthority,
-    exchange,
-    exchangeAuthority
-  })
+  const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+    await createAccountWithCollateral({
+      amount,
+      reserveAddress,
+      collateralToken,
+      collateralTokenMintAuthority,
+      exchange,
+      exchangeAuthority
+    })
   // create usd account
   const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
@@ -375,7 +369,6 @@ interface ICreateCollaterToken {
   wallet: Account
   price: number
   decimals: number
-  limit?: BN
   collateralRatio?: number
 }
 export const createCollateralToken = async ({
@@ -386,69 +379,51 @@ export const createCollateralToken = async ({
   wallet,
   price,
   decimals,
-  limit,
   collateralRatio
 }: ICreateCollaterToken): Promise<{
   token: Token
-  synthetic: Token
   feed: PublicKey
   reserve: PublicKey
   liquidationFund: PublicKey
 }> => {
-  const state = await exchange.getState()
+  const { assetsList } = await exchange.getState()
 
-  const collateral = await createToken({
+  const collateralToken = await createToken({
     connection,
     payer: wallet,
     mintAuthority: wallet.publicKey,
     decimals: decimals
   })
-  const synthetic = await createToken({
-    connection,
-    payer: wallet,
-    mintAuthority: exchangeAuthority,
-    decimals: decimals
-  })
-
   const oracleAddress = await createPriceFeed({
     oracleProgram,
     initPrice: price,
     expo: -decimals
   })
-  await exchange.addNewAsset({
-    assetsAdmin: EXCHANGE_ADMIN,
-    assetsList: state.assetsList,
-    maxSupply: limit ?? new BN(1e12),
-    tokenAddress: synthetic.publicKey,
-    tokenDecimals: decimals,
-    tokenFeed: oracleAddress
+  const addAssetIx = await exchange.addNewAssetInstruction({
+    assetsList,
+    assetFeedAddress: oracleAddress
   })
+  await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
 
-  const reserveAddress = await collateral.createAccount(exchangeAuthority)
-  const liquidationFund = await collateral.createAccount(exchangeAuthority)
+  const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
+  const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
 
-  const collateralStruct: Collateral = {
-    isCollateral: true,
-    collateralAddress: collateral.publicKey,
-    reserveAddress,
+  const addCollateralIx = await exchange.addCollateralInstruction({
+    assetsList,
+    assetAddress: collateralToken.publicKey,
     liquidationFund,
+    reserveAccount,
+    feedAddress: oracleAddress,
+    collateralRatio,
     reserveBalance: new BN(0),
-    collateralRatio: collateralRatio ?? 50,
-    decimals: decimals
-  }
-
-  const ix = await exchange.setAsCollateralInstruction({
-    collateral: collateralStruct,
-    assetsList: state.assetsList,
-    collateralFeed: oracleAddress
+    decimals
   })
-  await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
 
   return {
-    token: collateral,
-    synthetic,
+    token: collateralToken,
     feed: oracleAddress,
-    reserve: reserveAddress,
+    reserve: reserveAccount,
     liquidationFund
   }
 }
