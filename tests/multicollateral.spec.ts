@@ -159,24 +159,36 @@ describe('max collaterals', () => {
     )
 
     const assetsListAfter = await exchange.getAssetsList(assetsList)
-    assert.ok(assetsListAfter.headAssets == ASSET_LIMIT)
-    assert.ok(assetsListAfter.headCollaterals == ASSET_LIMIT - 1)
-    assert.ok(assetsListAfter.headSynthetics == 2)
+    assert.equal(assetsListAfter.headAssets, ASSET_LIMIT)
+    assert.equal(assetsListAfter.headCollaterals, ASSET_LIMIT - 1)
+    assert.equal(assetsListAfter.headSynthetics, 2)
 
     // sorting to match order
-    const sortedTokens = assetsListAfter.assets
-      .slice(3)
-      .map(({ feedAddress }) => createdTokens.find((i) => i.feed.equals(feedAddress)))
+    const sortedTokens = assetsListAfter.collaterals
+      .slice(2)
+      .map(({ collateralAddress }) =>
+        createdTokens.find((i) => i.token.publicKey.equals(collateralAddress))
+      )
+
+    // console.log(assetsListAfter.collaterals.map(({ collateralAddress }) => collateralAddress))
+    // console.log(sortedTokens.map(({ token }) => token.publicKey))
 
     assert.ok(sortedTokens.every((token) => token != undefined))
+    assert.ok(
+      sortedTokens.every(({ token }, i) =>
+        assetsListAfter.collaterals[i + 2].collateralAddress.equals(token.publicKey)
+      )
+    )
+    assert.equal(tokens.length, 3)
 
     tokens = tokens.concat(sortedTokens.map((i) => i.token))
-    syntheticTokens = syntheticTokens.concat(sortedTokens.map((i) => i.synthetic))
+    // console.log(tokens.map((token) => token.publicKey))
+
     reserves = reserves.concat(sortedTokens.map((i) => i.reserve))
-    assert.ok(sortedTokens.length == ASSET_LIMIT - 3)
-    assert.ok(tokens.length == ASSET_LIMIT)
-    // assert.ok(syntheticTokens.length == ASSET_LIMIT)
-    assert.ok(reserves.length == ASSET_LIMIT)
+    assert.equal(sortedTokens.length, ASSET_LIMIT - 3)
+    assert.equal(tokens.length, ASSET_LIMIT)
+    assert.equal(syntheticTokens.length, 3)
+    assert.equal(reserves.length, ASSET_LIMIT)
   })
   it.only('Initialize', async () => {
     const state = await exchange.getState()
@@ -191,7 +203,20 @@ describe('max collaterals', () => {
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.accountVersion === 0)
   })
-  it('creating assets over limit', async () => {
+  it.only('Initialize tokens', async () => {
+    const state = await exchange.getState()
+    // Check initialized addreses
+    assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
+    assert.ok(state.halted === false)
+    assert.ok(state.assetsList.equals(assetsList))
+    // Check initialized parameters
+    assert.ok(state.nonce === nonce)
+    assert.ok(state.maxDelay === 0)
+    assert.ok(state.fee === 300)
+    assert.ok(state.debtShares.eq(new BN(0)))
+    assert.ok(state.accountVersion === 0)
+  })
+  it.only('creating assets over limit', async () => {
     await assertThrowsAsync(
       createCollateralToken({
         exchange,
@@ -204,7 +229,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it('deposit', async () => {
+  it.only('deposit', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -240,7 +265,7 @@ describe('max collaterals', () => {
         const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
         assert.ok(userExchangeAccountAfter.collaterals[index].amount.eq(amount))
         const assetListData = await exchange.getAssetsList(assetsList)
-        assert.ok(assetListData.assets[tokenIndeks].collateral.reserveBalance.eq(amount))
+        assert.ok(assetListData.collaterals[tokenIndeks - 1].reserveBalance.eq(amount))
       })
     )
   })
