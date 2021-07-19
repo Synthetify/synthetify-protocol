@@ -1,5 +1,5 @@
 import { Idl, Program, Provider, web3 } from '@project-serum/anchor'
-import { BN, Exchange, Network } from '@synthetify/sdk'
+import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import {
   createAssetsList,
   createToken,
@@ -9,7 +9,7 @@ import {
 } from '../tests/utils'
 import { admin } from './testAdmin'
 import oracleIdl from '../target/idl/pyth.json'
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
 const initialTokens = [
@@ -38,15 +38,15 @@ const initialTokens = [
 // })
 const provider = Provider.local('http://127.0.0.1:8899', {
   // preflightCommitment: 'max',
-  skipPreflight: true
+  // skipPreflight: true
 })
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '8ixZBWTk7nm96Rso3PbqvY7epnNouf5vb9SjHBvjmPqJ'
+  '3n8LkY6AHFint9qXGASDuFbPDNsxfQjfQPoGBEtsQWeM'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'HfwDLqu3SEgMxqZffrvZJunR97LmCrKDN6zDXPUiZEtB'
+  'BhxjwhwdgsgjL3RZC7KqFydCyE3KPMzxSAMdP3sdWZhw'
 )
-const authority = 'CxmyR2rzKWjbTJThQWGeaDF4ACeXq3RSg45Q1rhzgkXv'
+const authority = 'CvStoyXqhnJY4dV34EM3GC83SFtFxQm8bU7YhoPHpBf9'
 
 const main = async () => {
   const connection = provider.connection
@@ -100,15 +100,14 @@ const main = async () => {
     snyLiquidationFund
   })
   const assetsList = data.assetsList
-  console.log(assetsList.toString())
   console.log('Initialize Exchange')
   await sleep(5000)
   await exchange.init({
     admin: wallet.publicKey,
     assetsList,
     nonce,
-    amountPerRound: new BN(100),
-    stakingRoundLength: 300,
+    amountPerRound: new BN(100 * 1e6),
+    stakingRoundLength: 100,
     stakingFundAccount: stakingFundAccount
   })
   while (true) {
@@ -153,24 +152,31 @@ const main = async () => {
     })
     await sleep(2000)
     const state = await exchange.getState()
-    await exchange.addNewAsset({
-      assetsAdmin: wallet,
-      assetsList: state.assetsList,
-      maxSupply: asset.limit,
-      tokenAddress: newToken.publicKey,
-      tokenDecimals: asset.decimals,
-      tokenFeed: oracleAddress
+    const newAssetIx = await exchange.addNewAssetInstruction({
+      assetsList: assetsList,
+      assetFeedAddress: oracleAddress
     })
+    await signAndSend(new Transaction().add(newAssetIx), [wallet], connection)
+    await sleep(5000)
+
+    const addEthSynthetic = await exchange.addSyntheticInstruction({
+      assetAddress: newToken.publicKey,
+      assetsList,
+      decimals: asset.decimals + 1,
+      maxSupply: asset.limit,
+      priceFeed: oracleAddress
+    })
+    await signAndSend(new Transaction().add(addEthSynthetic), [wallet], connection)
   }
   await sleep(5000)
   const state = await exchange.getState()
   await exchange.updatePrices(state.assetsList)
   await sleep(12000)
   const assets = await exchange.getAssetsList(state.assetsList)
-  for (const asset of assets.assets) {
+  for (const asset of assets.synthetics) {
     console.log('##########')
-    console.log(asset.synthetic.assetAddress.toString())
-    console.log(asset.price.toString())
+    console.log(asset.assetAddress.toString())
+    console.log(assets.assets[asset.assetIndex].price.toString())
   }
 }
 main()

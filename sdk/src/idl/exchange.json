@@ -635,18 +635,6 @@
         {
           "name": "newAssetFeedAddress",
           "type": "publicKey"
-        },
-        {
-          "name": "newAssetAddress",
-          "type": "publicKey"
-        },
-        {
-          "name": "newAssetDecimals",
-          "type": "u8"
-        },
-        {
-          "name": "newAssetMaxSupply",
-          "type": "u64"
         }
       ]
     },
@@ -874,7 +862,7 @@
       ],
       "args": [
         {
-          "name": "assetAddress",
+          "name": "oldFeedAddress",
           "type": "publicKey"
         }
       ]
@@ -905,7 +893,7 @@
       ]
     },
     {
-      "name": "setAsCollateral",
+      "name": "addCollateral",
       "accounts": [
         {
           "name": "state",
@@ -924,6 +912,11 @@
         },
         {
           "name": "assetAddress",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "liquidationFund",
           "isMut": false,
           "isSigner": false
         },
@@ -952,6 +945,46 @@
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "addSynthetic",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetAddress",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "feedAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxSupply",
+          "type": "u64"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -965,7 +998,15 @@
             "type": "bool"
           },
           {
-            "name": "head",
+            "name": "headAssets",
+            "type": "u8"
+          },
+          {
+            "name": "headCollaterals",
+            "type": "u8"
+          },
+          {
+            "name": "headSynthetics",
             "type": "u8"
           },
           {
@@ -974,6 +1015,28 @@
               "array": [
                 {
                   "defined": "Asset"
+                },
+                30
+              ]
+            }
+          },
+          {
+            "name": "collaterals",
+            "type": {
+              "array": [
+                {
+                  "defined": "Collateral"
+                },
+                30
+              ]
+            }
+          },
+          {
+            "name": "synthetics",
+            "type": {
+              "array": [
+                {
+                  "defined": "Synthetic"
                 },
                 30
               ]
@@ -1229,18 +1292,6 @@
           {
             "name": "confidence",
             "type": "u32"
-          },
-          {
-            "name": "synthetic",
-            "type": {
-              "defined": "Synthetic"
-            }
-          },
-          {
-            "name": "collateral",
-            "type": {
-              "defined": "Collateral"
-            }
           }
         ]
       }
@@ -1251,8 +1302,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "isCollateral",
-            "type": "bool"
+            "name": "assetIndex",
+            "type": "u8"
           },
           {
             "name": "collateralAddress",
@@ -1286,6 +1337,10 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "assetIndex",
+            "type": "u8"
+          },
           {
             "name": "assetAddress",
             "type": "publicKey"
@@ -1428,6 +1483,6 @@
     }
   ],
   "metadata": {
-    "address": "5YDJRx15hUGkmwKWaHW3pJYkzSTYG3eGupPju5cHmjgz"
+    "address": "Fka99HSG9ErxA3zURgoLeSkSdvoKFAHHaHV1iYup12De"
   }
 }

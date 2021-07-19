@@ -7,8 +7,12 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::convert::TryInto;
+    use std::{
+        cell::{RefCell, RefMut},
+        convert::TryInto,
+    };
 
+    use anchor_lang::Key;
     use pyth::pc::Price;
 
     use crate::math::{
@@ -54,42 +58,35 @@ pub mod exchange {
             last_update: u64::MAX,           // we dont update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
-            synthetic: Synthetic {
-                decimals: 6,
-                asset_address: usd_token,
-                supply: 0,
-                max_supply: u64::MAX, // no limit for usd asset
-                settlement_slot: u64::MAX,
-            },
-            collateral: Collateral {
-                is_collateral: false,
-                ..Default::default()
-            },
         };
-        let collateral_asset = Asset {
+        let usd_synthetic = Synthetic {
+            decimals: 6,
+            asset_address: usd_token,
+            supply: 0,
+            max_supply: u64::MAX, // no limit for usd asset
+            settlement_slot: u64::MAX,
+            asset_index: 0,
+        };
+        let sny_asset = Asset {
             feed_address: collateral_token_feed,
             last_update: 0,
             price: 0,
             confidence: 0,
-            synthetic: Synthetic {
-                decimals: 6,
-                asset_address: collateral_token,
-                supply: 0,
-                max_supply: 0,
-                settlement_slot: u64::MAX,
-            },
-            collateral: Collateral {
-                is_collateral: true,
-                collateral_ratio: 10,
-                collateral_address: collateral_token,
-                reserve_balance: 0,
-                decimals: 6,
-                reserve_address: *ctx.accounts.sny_reserve.key,
-                liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
-            },
         };
-        assets_list.append(usd_asset);
-        assets_list.append(collateral_asset);
+        let sny_collateral = Collateral {
+            asset_index: 1,
+            collateral_ratio: 10,
+            collateral_address: collateral_token,
+            reserve_balance: 0,
+            decimals: 6,
+            reserve_address: *ctx.accounts.sny_reserve.key,
+            liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
+        };
+
+        assets_list.append_asset(usd_asset);
+        assets_list.append_asset(sny_asset);
+        assets_list.append_synthetic(usd_synthetic);
+        assets_list.append_collateral(sny_collateral);
         assets_list.initialized = true;
         Ok(())
     }
@@ -209,36 +206,29 @@ pub mod exchange {
             return Err(ErrorCode::InvalidSigner.into());
         }
 
-        let asset_index = assets_list
-            .assets
+        let collateral_index = assets_list
+            .collaterals
             .iter_mut()
             .position(|x| {
-                x.collateral
-                    .reserve_address
+                x.reserve_address
                     .eq(ctx.accounts.reserve_address.to_account_info().key)
             })
             .unwrap();
-        let asset = &mut assets_list.assets[asset_index];
-        if !asset.collateral.is_collateral {
-            return Err(ErrorCode::NotCollateral.into());
-        }
-        asset.collateral.reserve_balance = asset
-            .collateral
-            .reserve_balance
-            .checked_add(amount)
-            .unwrap();
+        let collateral = &mut assets_list.collaterals[collateral_index];
 
-        let exchange_account_collateral = exchange_account.collaterals.iter_mut().find(|x| {
-            x.collateral_address
-                .eq(&asset.collateral.collateral_address)
-        });
+        collateral.reserve_balance = collateral.reserve_balance.checked_add(amount).unwrap();
+
+        let exchange_account_collateral = exchange_account
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address.eq(&collateral.collateral_address));
 
         match exchange_account_collateral {
             Some(entry) => entry.amount = entry.amount.checked_add(amount).unwrap(),
             None => exchange_account.append(CollateralEntry {
                 amount,
-                collateral_address: asset.collateral.collateral_address,
-                index: asset_index as u8,
+                collateral_address: collateral.collateral_address,
+                index: collateral_index as u8,
                 ..Default::default()
             }),
         }
@@ -279,11 +269,11 @@ pub mod exchange {
             .checked_div(100)
             .unwrap();
 
-        let assets = &mut assets_list.assets;
+        let synthetics = &mut assets_list.synthetics;
 
         // We can only mint xUSD
         // Both xUSD and collateral token have static index in assets array
-        let mint_asset = &assets[0];
+        let mut xusd_synthetic = &mut synthetics[0];
 
         if max_borrow < amount.checked_add(user_debt).unwrap().into() {
             return Err(ErrorCode::MintLimit.into());
@@ -301,8 +291,8 @@ pub mod exchange {
         exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
         state.staking.next_round.all_points = state.debt_shares;
 
-        let new_supply = mint_asset.synthetic.supply.checked_add(amount).unwrap();
-        set_asset_supply(&mut assets[0], new_supply)?;
+        let new_supply = xusd_synthetic.supply.checked_add(amount).unwrap();
+        set_synthetic_supply(&mut xusd_synthetic, new_supply)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         // Mint xUSD to user
@@ -343,33 +333,33 @@ pub mod exchange {
             .unwrap()
             .checked_div(100)
             .unwrap();
-
-        let asset = match assets_list.assets.iter_mut().find(|x| {
-            x.collateral
-                .collateral_address
-                .eq(&user_collateral_account.mint)
-        }) {
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let mut collateral = match collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address.eq(&user_collateral_account.mint))
+        {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let mut exchange_account_collateral =
-            match exchange_account.collaterals.iter_mut().find(|x| {
-                x.collateral_address
-                    .eq(&asset.collateral.collateral_address)
-            }) {
-                Some(v) => v,
-                None => return Err(ErrorCode::NoAssetFound.into()),
-            };
+        let mut exchange_account_collateral = match exchange_account
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address.eq(&collateral.collateral_address))
+        {
+            Some(v) => v,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         // Check if not overdrafing
         let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
             max_borrow as u64,
             user_debt,
-            asset.collateral.collateral_ratio,
+            collateral.collateral_ratio,
             state.health_factor,
         );
-        let max_withdrawable = calculate_max_withdrawable(asset, max_withdraw_in_usd);
+        let collateral_asset = &assets[collateral.asset_index as usize];
+        let max_withdrawable = calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
 
         if amount > max_withdrawable {
             return Err(ErrorCode::WithdrawLimit.into());
@@ -382,11 +372,7 @@ pub mod exchange {
             .unwrap();
 
         // Update reserve balance in AssetList
-        asset.collateral.reserve_balance = asset
-            .collateral
-            .reserve_balance
-            .checked_sub(amount)
-            .unwrap(); // should never fail
+        collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap(); // should never fail
 
         // Send withdrawn collateral to user
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -414,7 +400,8 @@ pub mod exchange {
         let token_address_for = ctx.accounts.token_for.key;
         let slot = Clock::get()?.slot;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let assets = &mut assets_list.assets;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
         let user_token_account_in = &ctx.accounts.user_token_account_in;
         let tx_signer = ctx.accounts.owner.key;
 
@@ -422,34 +409,32 @@ pub mod exchange {
         if !tx_signer.eq(&user_token_account_in.owner) {
             return Err(ErrorCode::InvalidSigner.into());
         }
-        if token_address_for.eq(&assets[1].synthetic.asset_address) {
-            return Err(ErrorCode::SyntheticCollateral.into());
-        }
         // Swaping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
         }
         //Get indexes of both assets
-        let asset_in_index = assets
+        let synthetic_in_index = synthetics
             .iter()
-            .position(|x| x.synthetic.asset_address == *token_address_in)
+            .position(|x| x.asset_address == *token_address_in)
             .unwrap();
-        let asset_for_index = assets
+        let synthetic_for_index = synthetics
             .iter()
-            .position(|x| x.synthetic.asset_address == *token_address_for)
+            .position(|x| x.asset_address == *token_address_for)
             .unwrap();
 
         // Check is oracles have been updated
         check_feed_update(
             assets,
-            asset_in_index,
-            asset_for_index,
+            synthetics[synthetic_in_index].asset_index as usize,
+            synthetics[synthetic_for_index].asset_index as usize,
             state.max_delay,
             slot,
         )
         .unwrap();
+        let sny_collateral = &mut collaterals[0];
 
-        let collateral_amount = get_user_sny_collateral_balance(exchange_account, &assets[1]);
+        let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
         let effective_fee = state
@@ -463,31 +448,31 @@ pub mod exchange {
                 .unwrap(),
             )
             .unwrap();
-
         // Output amount ~ 100% - fee of input
         let amount_for = calculate_swap_out_amount(
-            &assets[asset_in_index],
-            &assets[asset_for_index],
+            &assets[synthetics[synthetic_in_index].asset_index as usize],
+            &assets[synthetics[synthetic_for_index].asset_index as usize],
+            &synthetics[synthetic_in_index],
+            &synthetics[synthetic_for_index],
             amount,
             effective_fee,
         );
+
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
         // Set new supply output token
-        let new_supply_output = assets[asset_for_index]
-            .synthetic
+        let new_supply_output = synthetics[synthetic_for_index]
             .supply
             .checked_add(amount_for)
             .unwrap();
-        set_asset_supply(&mut assets[asset_for_index], new_supply_output)?;
+        set_synthetic_supply(&mut synthetics[synthetic_for_index], new_supply_output)?;
         // Set new supply input token
-        let new_supply_input = assets[asset_in_index]
-            .synthetic
+        let new_supply_input = synthetics[synthetic_in_index]
             .supply
             .checked_sub(amount)
             .unwrap();
-        set_asset_supply(&mut assets[asset_in_index], new_supply_input)?;
+        set_synthetic_supply(&mut synthetics[synthetic_in_index], new_supply_input)?;
         // Burn input token
         let cpi_ctx_burn: CpiContext<Burn> = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::burn(cpi_ctx_burn, amount)?;
@@ -515,8 +500,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
-
-        let assets = &mut assets_list.assets;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
         let user_token_account_burn = &ctx.accounts.user_token_account_burn;
@@ -527,12 +511,18 @@ pub mod exchange {
         }
         // xUSD got static index 0
         let burn_asset = &mut assets[0];
+        let burn_synthetic = &mut synthetics[0];
 
         let user_debt = calculate_user_debt_in_usd(exchange_account, debt, state.debt_shares);
 
         // Rounding down - debt is burned in favor of the system
-        let burned_shares =
-            calculate_burned_shares(&burn_asset, user_debt, exchange_account.debt_shares, amount);
+        let burned_shares = calculate_burned_shares(
+            &burn_asset,
+            &burn_synthetic,
+            user_debt,
+            exchange_account.debt_shares,
+            amount,
+        );
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -562,13 +552,9 @@ pub mod exchange {
             exchange_account.user_staking_data.current_round_points = 0;
 
             // Change supply
-            set_asset_supply(
-                burn_asset,
-                burn_asset
-                    .synthetic
-                    .supply
-                    .checked_sub(burned_amount)
-                    .unwrap(),
+            set_synthetic_supply(
+                burn_synthetic,
+                burn_synthetic.supply.checked_sub(burned_amount).unwrap(),
             )?;
             // Burn token
             // We do not use full allowance maybe its better to burn full allowance
@@ -611,9 +597,9 @@ pub mod exchange {
             }
 
             // Change supply
-            set_asset_supply(
-                burn_asset,
-                burn_asset.synthetic.supply.checked_sub(amount).unwrap(),
+            set_synthetic_supply(
+                burn_synthetic,
+                burn_synthetic.supply.checked_sub(amount).unwrap(),
             )?;
             // Burn token
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
@@ -673,16 +659,17 @@ pub mod exchange {
         if amount.gt(&max_repay) {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let asset = match assets_list
-            .assets
+        let liquidated_collateral = match collaterals
             .iter_mut()
-            .find(|x| x.synthetic.asset_address.eq(&reserve_account.mint))
+            .find(|x| x.collateral_address.eq(&reserve_account.mint))
         {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
+        let liquidated_asset = &assets[liquidated_collateral.asset_index as usize];
         let seized_collateral_in_usd = div_up(
             amount
                 .checked_mul(
@@ -709,13 +696,16 @@ pub mod exchange {
             .checked_sub(burned_debt_shares)
             .unwrap();
 
-        let seized_collateral_in_token =
-            usd_to_token_amount(asset, seized_collateral_in_usd.try_into().unwrap());
+        let seized_collateral_in_token = usd_to_token_amount(
+            liquidated_asset,
+            liquidated_collateral,
+            seized_collateral_in_usd.try_into().unwrap(),
+        );
 
         let mut exchange_account_collateral =
             match exchange_account.collaterals.iter_mut().find(|x| {
                 x.collateral_address
-                    .eq(&asset.collateral.collateral_address)
+                    .eq(&liquidated_collateral.collateral_address)
             }) {
                 Some(v) => v,
                 None => return Err(ErrorCode::NoAssetFound.into()),
@@ -724,8 +714,7 @@ pub mod exchange {
             .amount
             .checked_sub(seized_collateral_in_token)
             .unwrap();
-        asset.collateral.reserve_balance = asset
-            .collateral
+        liquidated_collateral.reserve_balance = liquidated_collateral
             .reserve_balance
             .checked_sub(seized_collateral_in_token)
             .unwrap();
@@ -784,7 +773,7 @@ pub mod exchange {
                 .liquidation_fund
                 .to_account_info()
                 .key
-                .eq(&asset.collateral.liquidation_fund)
+                .eq(&liquidated_collateral.liquidation_fund)
             {
                 return Err(ErrorCode::ExchangeLiquidationAccount.into());
             }
@@ -801,12 +790,11 @@ pub mod exchange {
         }
         {
             // burn xUSD
-            let new_supply = assets_list.assets[0]
-                .synthetic
+            let new_supply = assets_list.synthetics[0]
                 .supply
                 .checked_sub(amount)
                 .unwrap();
-            set_asset_supply(&mut assets_list.assets[0], new_supply)?;
+            set_synthetic_supply(&mut assets_list.synthetics[0], new_supply)?;
             let burn_accounts = Burn {
                 mint: ctx.accounts.usd_token.to_account_info(),
                 to: ctx.accounts.liquidator_usd_account.to_account_info(),
@@ -938,16 +926,12 @@ pub mod exchange {
         }
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let liquidation_fund = ctx.accounts.liquidation_fund.to_account_info().key;
-        let asset = assets_list
-            .assets
+        let collateral = assets_list
+            .collaterals
             .iter_mut()
-            .find(|x| x.collateral.liquidation_fund.eq(liquidation_fund))
+            .find(|x| x.liquidation_fund.eq(liquidation_fund))
             .unwrap();
-        asset.collateral.reserve_balance = asset
-            .collateral
-            .reserve_balance
-            .checked_sub(amount)
-            .unwrap();
+        collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap();
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer_seeds = &[&seeds[..]];
 
@@ -962,14 +946,9 @@ pub mod exchange {
         token::transfer(cpi_ctx, amount)?;
         Ok(())
     }
+    // admin methods
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
-    pub fn add_new_asset(
-        ctx: Context<AddNewAsset>,
-        new_asset_feed_address: Pubkey,
-        new_asset_address: Pubkey,
-        new_asset_decimals: u8,
-        new_asset_max_supply: u64,
-    ) -> Result<()> {
+    pub fn add_new_asset(ctx: Context<AddNewAsset>, new_asset_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         if !assets_list.initialized {
             return Err(ErrorCode::Uninitialized.into());
@@ -979,23 +958,12 @@ pub mod exchange {
             last_update: 0,
             price: 0,
             confidence: 0,
-            synthetic: Synthetic {
-                decimals: new_asset_decimals,
-                asset_address: new_asset_address,
-                supply: 0,
-                max_supply: new_asset_max_supply,
-                settlement_slot: u64::MAX,
-            },
-            collateral: Collateral {
-                is_collateral: false,
-                ..Default::default()
-            },
         };
 
-        assets_list.append(new_asset);
+        assets_list.append_asset(new_asset);
         Ok(())
     }
-    // admin methods
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
@@ -1076,25 +1044,25 @@ pub mod exchange {
     ) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
-        let asset = assets_list
-            .assets
+        let synthetic = assets_list
+            .synthetics
             .iter_mut()
-            .find(|x| x.synthetic.asset_address == asset_address);
+            .find(|x| x.asset_address == asset_address);
 
-        match asset {
-            Some(asset) => asset.synthetic.max_supply = new_max_supply,
+        match synthetic {
+            Some(x) => x.max_supply = new_max_supply,
             None => return Err(ErrorCode::NoAssetFound.into()),
         }
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
-    pub fn set_price_feed(ctx: Context<SetPriceFeed>, asset_address: Pubkey) -> Result<()> {
+    pub fn set_price_feed(ctx: Context<SetPriceFeed>, old_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
         let asset = assets_list
             .assets
             .iter_mut()
-            .find(|x| x.synthetic.asset_address == asset_address);
+            .find(|x| x.feed_address == old_feed_address);
 
         match asset {
             Some(asset) => asset.feed_address = *ctx.accounts.price_feed.key,
@@ -1117,32 +1085,54 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_as_collateral(
-        ctx: Context<SetAsCollateral>,
+    pub fn add_collateral(
+        ctx: Context<AddCollateral>,
         reserve_balance: u64,
         decimals: u8,
         collateral_ratio: u8,
     ) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
-        let asset = match assets_list
+
+        let asset_index = match assets_list
             .assets
             .iter_mut()
-            .find(|x| x.feed_address == *ctx.accounts.feed_address.key)
+            .position(|x| x.feed_address == *ctx.accounts.feed_address.key)
         {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-
-        if asset.collateral.is_collateral == true {
-            return Err(ErrorCode::AlreadyACollateral.into());
-        }
-
-        asset.collateral.is_collateral = true;
-        asset.collateral.collateral_address = *ctx.accounts.asset_address.key;
-        asset.collateral.reserve_address = *ctx.accounts.reserve_account.to_account_info().key;
-        asset.collateral.reserve_balance = reserve_balance;
-        asset.collateral.decimals = decimals;
-        asset.collateral.collateral_ratio = collateral_ratio;
+        let new_collateral = Collateral {
+            asset_index: asset_index as u8,
+            collateral_address: *ctx.accounts.asset_address.key,
+            liquidation_fund: *ctx.accounts.liquidation_fund.key,
+            reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
+            reserve_balance: reserve_balance,
+            decimals: decimals,
+            collateral_ratio: collateral_ratio,
+        };
+        assets_list.append_collateral(new_collateral);
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+        let asset_index = match assets_list
+            .assets
+            .iter_mut()
+            .position(|x| x.feed_address == *ctx.accounts.feed_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let new_synthetic = Synthetic {
+            asset_index: asset_index as u8,
+            decimals: decimals,
+            asset_address: *ctx.accounts.asset_address.key,
+            max_supply: max_supply,
+            settlement_slot: u64::MAX,
+            supply: 0,
+        };
+        assets_list.append_synthetic(new_synthetic);
         Ok(())
     }
 }
@@ -1150,13 +1140,38 @@ pub mod exchange {
 #[derive(Default)]
 pub struct AssetsList {
     pub initialized: bool,
-    pub head: u8,
+    pub head_assets: u8,
+    pub head_collaterals: u8,
+    pub head_synthetics: u8,
     pub assets: [Asset; 30],
+    pub collaterals: [Collateral; 30],
+    pub synthetics: [Synthetic; 30],
 }
 impl AssetsList {
-    fn append(&mut self, msg: Asset) {
-        self.assets[(self.head) as usize] = msg;
-        self.head += 1;
+    fn append_asset(&mut self, new_asset: Asset) {
+        self.assets[(self.head_assets) as usize] = new_asset;
+        self.head_assets += 1;
+    }
+    fn append_collateral(&mut self, new_collateral: Collateral) {
+        self.collaterals[(self.head_collaterals) as usize] = new_collateral;
+        self.head_collaterals += 1;
+    }
+    fn append_synthetic(&mut self, new_synthetic: Synthetic) {
+        self.synthetics[(self.head_synthetics) as usize] = new_synthetic;
+        self.head_synthetics += 1;
+    }
+    fn split_borrow(
+        &mut self,
+    ) -> (
+        &mut [Asset; 30],
+        &mut [Collateral; 30],
+        &mut [Synthetic; 30],
+    ) {
+        (
+            &mut self.assets,
+            &mut self.collaterals,
+            &mut self.synthetics,
+        )
     }
 }
 #[derive(Accounts)]
@@ -1206,7 +1221,7 @@ pub struct SetPriceFeed<'info> {
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
-pub struct SetAsCollateral<'info> {
+pub struct AddCollateral<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
     #[account(signer)]
@@ -1214,9 +1229,22 @@ pub struct SetAsCollateral<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub reserve_account: CpiAccount<'info, TokenAccount>,
+    pub liquidation_fund: AccountInfo<'info>,
+    pub reserve_account: AccountInfo<'info>,
     pub feed_address: AccountInfo<'info>,
 }
+#[derive(Accounts)]
+pub struct AddSynthetic<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub asset_address: AccountInfo<'info>,
+    pub feed_address: AccountInfo<'info>,
+}
+
 #[derive(Accounts)]
 pub struct New<'info> {
     pub admin: AccountInfo<'info>,
@@ -1529,18 +1557,15 @@ pub struct UserStaking {
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct Asset {
-    // Synthetic values
     pub feed_address: Pubkey, // 32 Pyth oracle account address
     pub price: u64,           // 8
     pub last_update: u64,     // 8
     pub confidence: u32,      // 4 unused
-    pub synthetic: Synthetic,
-    pub collateral: Collateral, // Collateral values
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct Collateral {
-    pub is_collateral: bool,        // 1
+    pub asset_index: u8,            // 1
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
     pub liquidation_fund: Pubkey,   // 32
@@ -1551,6 +1576,7 @@ pub struct Collateral {
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct Synthetic {
+    pub asset_index: u8,       // 1
     pub asset_address: Pubkey, // 32
     pub supply: u64,           // 8
     pub decimals: u8,          // 1
@@ -1671,7 +1697,7 @@ fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -
     if !usd_token
         .to_account_info()
         .key
-        .eq(&assets_list.load()?.assets[0].synthetic.asset_address)
+        .eq(&assets_list.load()?.synthetics[0].asset_address)
     {
         return Err(ErrorCode::NotSyntheticUsd.into());
     }
