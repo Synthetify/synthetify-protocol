@@ -8,11 +8,9 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::{
-        cell::{RefCell, RefMut},
         convert::TryInto,
     };
 
-    use anchor_lang::Key;
     use pyth::pc::Price;
 
     use crate::math::{
@@ -333,7 +331,7 @@ pub mod exchange {
             .unwrap()
             .checked_div(100)
             .unwrap();
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
             .iter_mut()
             .find(|x| x.collateral_address.eq(&user_collateral_account.mint))
@@ -342,10 +340,11 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let mut exchange_account_collateral = match exchange_account
+        let (entry_index, mut exchange_account_collateral) = match exchange_account
             .collaterals
             .iter_mut()
-            .find(|x| x.collateral_address.eq(&collateral.collateral_address))
+            .enumerate()
+            .find(|(_, x)| x.collateral_address.eq(&collateral.collateral_address))
         {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
@@ -370,6 +369,10 @@ pub mod exchange {
             .amount
             .checked_sub(amount)
             .unwrap();
+
+        if exchange_account_collateral.amount == 0 {
+            exchange_account.remove(entry_index);
+        }
 
         // Update reserve balance in AssetList
         collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap(); // should never fail
@@ -1280,12 +1283,16 @@ pub struct ExchangeAccount {
 pub struct CollateralEntry {
     amount: u64,
     collateral_address: Pubkey,
-    index: u8, // index could be usefull to quickly find asset in list
+    index: u8,
 }
 impl ExchangeAccount {
     fn append(&mut self, entry: CollateralEntry) {
         self.collaterals[(self.head) as usize] = entry;
         self.head += 1;
+    }
+    fn remove(&mut self, index: usize) {
+        self.collaterals[index] = self.collaterals[(self.head - 1) as usize];
+        self.head -= 1;
     }
 }
 #[derive(Accounts)]

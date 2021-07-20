@@ -338,8 +338,7 @@ describe('max collaterals', () => {
       })
     )
 
-    const exchangeAccountDataAfter = await exchange.getExchangeAccount(exchangeAccount)
-    assert.ok(exchangeAccountDataAfter.collaterals.every((i) => i.amount.eq(new BN(0))))
+    assert.equal((await exchange.getExchangeAccount(exchangeAccount)).head, 0)
   })
   it('swap', async () => {
     const accountOwner = new Account()
