@@ -19,8 +19,8 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_user_debt_in_usd,
-        usd_to_token_amount, PRICE_OFFSET,
+        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax_in_usd,
+        calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -449,7 +449,7 @@ pub mod exchange {
             )
             .unwrap();
         // Output amount ~ 100% - fee of input
-        let amount_for = calculate_swap_out_amount(
+        let (amount_for, fee_usd) = calculate_swap_out_amount(
             &assets[synthetics[synthetic_in_index].asset_index as usize],
             &assets[synthetics[synthetic_for_index].asset_index as usize],
             &synthetics[synthetic_in_index],
@@ -461,6 +461,11 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
+        // Update pool fee
+        let pool_fee = calculate_swap_tax_in_usd(fee_usd, state.swap_tax);
+        state.pool_fee = pool_fee;
+
+        // TODO: Update supply after tax
         // Set new supply output token
         let new_supply_output = synthetics[synthetic_for_index]
             .supply
@@ -1593,7 +1598,7 @@ pub struct State {
     pub debt_shares: u64,          //8
     pub assets_list: Pubkey,       //32
     pub health_factor: u8,         //1   In % 1-100% modifier for debt
-    pub max_delay: u32,            //4   Delay bettwen last oracle update 100 blocks ~ 1 min
+    pub max_delay: u32,            //4   Delay between last oracle update 100 blocks ~ 1 min
     pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
     pub swap_tax: u8,              //8   In % range 0-20%
     pub pool_fee: u64,             //64  Amount on tax from swap
