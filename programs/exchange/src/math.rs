@@ -435,6 +435,7 @@ mod tests {
             let mut assets_list = AssetsList {
                 ..Default::default()
             };
+
             // debt 1000
             assets_list.append_asset(Asset {
                 price: 10 * 10u64.pow(PRICE_OFFSET.into()),
@@ -444,7 +445,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: 100 * 10u64.pow(6),
                 decimals: 6,
-                asset_index: assets_list.head_assets as u8 -1,
+                asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
 
@@ -457,7 +458,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: 200 * 10u64.pow(6),
                 decimals: 6,
-                asset_index: assets_list.head_assets as u8 -1,
+                asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
 
@@ -470,7 +471,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: 50 * 10u64.pow(8),
                 decimals: 8,
-                asset_index: assets_list.head_assets as u8 -1,
+                asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
 
@@ -484,513 +485,527 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
-        // {
-        //     let slot = 100;
-        //     let mut assets_list = AssetsList {
-        //         ..Default::default()
-        //     };
-        //     // debt 200_000_000
-        //     let asset_1 = Asset {
-        //         price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: slot - 10,
-        //         synthetic: Synthetic {
-        //             decimals: 6,
-        //             supply: 100_000_000 * 10u64.pow(6),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 5_000_000_000
-        //     let asset_2 = Asset {
-        //         price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: 100_000 * 10u64.pow(8),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 1_000_000
-        //     let asset_3 = Asset {
-        //         price: (1 * 10u64.pow(PRICE_OFFSET.into())),
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: 1_000_000 * 10u64.pow(8),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     assets_list.append(asset_1);
-        //     assets_list.append(asset_2);
-        //     assets_list.append(asset_3);
-        //     let assets_ref = RefCell::new(assets_list);
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
 
-        //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
-        //     match result {
-        //         Ok(debt) => assert_eq!(debt, 5201000000_000000),
-        //         Err(_) => assert!(false, "Shouldn't check"),
-        //     }
-        // }
-        // {
-        //     let slot = 100;
-        //     let mut assets_list = AssetsList {
-        //         ..Default::default()
-        //     };
-        //     // debt 200_000_000
-        //     let asset_1 = Asset {
-        //         price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: slot - 10,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: 100_000_000 * 10u64.pow(8),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 5_000_000_000
-        //     let asset_2 = Asset {
-        //         price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: 100_000 * 10u64.pow(8),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 0.0001
-        //     let asset_3 = Asset {
-        //         price: (0.0001 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 6,
-        //             supply: 1 * 10u64.pow(6),
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 0.152407...
-        //     let asset_4 = Asset {
-        //         price: (1.2345 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: (0.12345678 * 10u64.pow(8) as f64) as u64,
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     assets_list.append(asset_1);
-        //     assets_list.append(asset_2);
-        //     assets_list.append(asset_3);
-        //     assets_list.append(asset_4);
-        //     let assets_ref = RefCell::new(assets_list);
+            // debt 200_000_000
+            assets_list.append_asset(Asset {
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: slot - 10,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 100_000_000 * 10u64.pow(6),
+                decimals: 6,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
-        //     match result {
-        //         Ok(debt) => assert_eq!(debt, 5200000000_152508),
-        //         Err(_) => assert!(false, "Shouldn't check"),
-        //     }
-        // }
-        // {
-        //     let slot = 100;
-        //     let mut assets_list = AssetsList {
-        //         ..Default::default()
-        //     };
-        //     // debt 198807739,182321
-        //     let asset_1 = Asset {
-        //         price: (1.567 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: slot - 10,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: (126871562.97531672 * 10u64.pow(8) as f64) as u64,
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 733398054,012891
-        //     let asset_2 = Asset {
-        //         price: (51420.19 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 6,
-        //             supply: (14262.842164 * 10u64.pow(6) as f64) as u64,
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     // debt 5138,531149
-        //     let asset_3 = Asset {
-        //         price: (3.9672 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         synthetic: Synthetic {
-        //             decimals: 8,
-        //             supply: (1295.25386912 * 10u64.pow(8) as f64) as u64,
-        //             ..Default::default()
-        //         },
-        //         ..Default::default()
-        //     };
-        //     assets_list.append(asset_1);
-        //     assets_list.append(asset_2);
-        //     assets_list.append(asset_3);
-        //     let assets_ref = RefCell::new(assets_list);
+            // debt 5_000_000_000
+            assets_list.append_asset(Asset {
+                price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 100_000 * 10u64.pow(8),
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
-        //     match result {
-        //         Ok(debt) => assert_eq!(debt, 932210931_726364),
-        //         Err(_) => assert!(false, "Shouldn't check"),
-        //     }
+            // debt 1_000_000
+            assets_list.append_asset(Asset {
+                price: (1 * 10u64.pow(PRICE_OFFSET.into())),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 1_000_000 * 10u64.pow(8),
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            let assets_ref = RefCell::new(assets_list);
+
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            match result {
+                Ok(debt) => assert_eq!(debt, 5201000000_000000),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+
+            // debt 200_000_000
+            assets_list.append_asset(Asset {
+                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: slot - 10,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 100_000_000 * 10u64.pow(8),
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 5_000_000_000
+            assets_list.append_asset(Asset {
+                price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 100_000 * 10u64.pow(8),
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 0.0001
+            assets_list.append_asset(Asset {
+                price: (0.0001 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 1 * 10u64.pow(6),
+                decimals: 6,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 0.152407...
+            assets_list.append_asset(Asset {
+                price: (1.2345 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: (0.12345678 * 10u64.pow(8) as f64) as u64,
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            let assets_ref = RefCell::new(assets_list);
+
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            match result {
+                Ok(debt) => assert_eq!(debt, 5200000000_152508),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+
+            // debt 198807739,182321
+            assets_list.append_asset(Asset {
+                price: (1.567 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
+                last_update: slot - 10,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: (126871562.97531672 * 10u64.pow(8) as f64) as u64,
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 733398054,012891
+            assets_list.append_asset(Asset {
+                price: (51420.19 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: (14262.842164 * 10u64.pow(6) as f64) as u64,
+                decimals: 6,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 5138,531149
+            assets_list.append_asset(Asset {
+                price: (3.9672 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: (1295.25386912 * 10u64.pow(8) as f64) as u64,
+                decimals: 8,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            let assets_ref = RefCell::new(assets_list);
+
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            match result {
+                Ok(debt) => assert_eq!(debt, 932210931_726364),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
     }
-//     #[test]
-//     fn test_calculate_debt_error() {
-//         let slot = 100;
-//         let mut assets_list = AssetsList {
-//             ..Default::default()
-//         };
-//         let asset_1 = Asset {
-//             price: 10 * 10u64.pow(PRICE_OFFSET.into()),
-//             last_update: slot - 10,
-//             synthetic: Synthetic {
-//                 decimals: 8,
-//                 supply: 100 * 10u64.pow(8),
-//                 ..Default::default()
-//             },
-//             feed_address: Pubkey::new_unique(),
-//             ..Default::default()
-//         };
-//         // debt 1000
-//         let asset_2 = Asset {
-//             price: 12 * 10u64.pow(PRICE_OFFSET.into()),
-//             last_update: 100,
-//             synthetic: Synthetic {
-//                 decimals: 8,
-//                 supply: 200 * 10u64.pow(8),
-//                 ..Default::default()
-//             },
-//             ..Default::default()
-//         };
-//         assets_list.append(asset_1);
-//         assets_list.append(asset_2);
-//         let assets_ref = RefCell::new(assets_list);
+    //     #[test]
+    //     fn test_calculate_debt_error() {
+    //         let slot = 100;
+    //         let mut assets_list = AssetsList {
+    //             ..Default::default()
+    //         };
+    //         let asset_1 = Asset {
+    //             price: 10 * 10u64.pow(PRICE_OFFSET.into()),
+    //             last_update: slot - 10,
+    //             synthetic: Synthetic {
+    //                 decimals: 8,
+    //                 supply: 100 * 10u64.pow(8),
+    //                 ..Default::default()
+    //             },
+    //             feed_address: Pubkey::new_unique(),
+    //             ..Default::default()
+    //         };
+    //         // debt 1000
+    //         let asset_2 = Asset {
+    //             price: 12 * 10u64.pow(PRICE_OFFSET.into()),
+    //             last_update: 100,
+    //             synthetic: Synthetic {
+    //                 decimals: 8,
+    //                 supply: 200 * 10u64.pow(8),
+    //                 ..Default::default()
+    //             },
+    //             ..Default::default()
+    //         };
+    //         assets_list.append(asset_1);
+    //         assets_list.append(asset_2);
+    //         let assets_ref = RefCell::new(assets_list);
 
-//         // debt 2400
-//         let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
-//         assert!(result.is_err());
-//     }
-//     #[test]
-//     fn test_calculate_user_debt() {
-//         {
-//             let user_account = ExchangeAccount {
-//                 debt_shares: 0,
-//                 owner: Pubkey::default(),
-//                 ..Default::default()
-//             };
-//             let debt = 1_000_000;
+    //         // debt 2400
+    //         let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
+    //         assert!(result.is_err());
+    //     }
+    //     #[test]
+    //     fn test_calculate_user_debt() {
+    //         {
+    //             let user_account = ExchangeAccount {
+    //                 debt_shares: 0,
+    //                 owner: Pubkey::default(),
+    //                 ..Default::default()
+    //             };
+    //             let debt = 1_000_000;
 
-//             let result = calculate_user_debt_in_usd(&user_account, debt, 0);
-//             assert_eq!(result, 0);
-//         }
-//         {
-//             let user_account = ExchangeAccount {
-//                 debt_shares: 100,
-//                 owner: Pubkey::default(),
-//                 ..Default::default()
-//             };
-//             let debt = 4400_162356;
+    //             let result = calculate_user_debt_in_usd(&user_account, debt, 0);
+    //             assert_eq!(result, 0);
+    //         }
+    //         {
+    //             let user_account = ExchangeAccount {
+    //                 debt_shares: 100,
+    //                 owner: Pubkey::default(),
+    //                 ..Default::default()
+    //             };
+    //             let debt = 4400_162356;
 
-//             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-//             assert_eq!(result, 356_577177)
-//         }
-//         {
-//             let user_account = ExchangeAccount {
-//                 debt_shares: 1525783,
-//                 owner: Pubkey::default(),
-//                 ..Default::default()
-//             };
-//             let debt = 932210931_726361;
+    //             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
+    //             assert_eq!(result, 356_577177)
+    //         }
+    //         {
+    //             let user_account = ExchangeAccount {
+    //                 debt_shares: 1525783,
+    //                 owner: Pubkey::default(),
+    //                 ..Default::default()
+    //             };
+    //             let debt = 932210931_726361;
 
-//             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-//             assert_eq!(result, 115211)
-//         }
-//         {
-//             let user_account = ExchangeAccount {
-//                 debt_shares: 9234567898765432,
-//                 owner: Pubkey::default(),
-//                 ..Default::default()
-//             };
-//             let debt = 526932210931_726361;
+    //             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+    //             assert_eq!(result, 115211)
+    //         }
+    //         {
+    //             let user_account = ExchangeAccount {
+    //                 debt_shares: 9234567898765432,
+    //                 owner: Pubkey::default(),
+    //                 ..Default::default()
+    //             };
+    //             let debt = 526932210931_726361;
 
-//             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-//             assert_eq!(result, 394145294459_835461)
-//         }
-//     }
-//     #[test]
-//     fn test_calculate_max_withdrawable() {
-//         {
-//             let asset = Asset {
-//                 collateral: Collateral {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-//                 ..Default::default()
-//             };
-//             let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
-//             assert_eq!(max_withdrawable, 0u64);
-//         }
-//         {
-//             let asset = Asset {
-//                 collateral: Collateral {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-//                 ..Default::default()
-//             };
-//             let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
-//             assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
-//         }
-//     }
-//     #[test]
-//     fn test_amount_to_shares() {
-//         // not initialized shares
-//         {
-//             let all_shares = 0;
-//             let full_amount = 0;
-//             let amount = 0;
+    //             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+    //             assert_eq!(result, 394145294459_835461)
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_calculate_max_withdrawable() {
+    //         {
+    //             let asset = Asset {
+    //                 collateral: Collateral {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 ..Default::default()
+    //             };
+    //             let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
+    //             assert_eq!(max_withdrawable, 0u64);
+    //         }
+    //         {
+    //             let asset = Asset {
+    //                 collateral: Collateral {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 ..Default::default()
+    //             };
+    //             let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
+    //             assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_amount_to_shares() {
+    //         // not initialized shares
+    //         {
+    //             let all_shares = 0;
+    //             let full_amount = 0;
+    //             let amount = 0;
 
-//             let amount_by_rounding_down =
-//                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-//             let amount_by_rounding_up =
-//                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-//             assert_eq!(amount_by_rounding_down, 0);
-//             assert_eq!(amount_by_rounding_up, 0);
-//         }
-//         // zero amount
-//         {
-//             let all_shares = 100;
-//             let full_amount = 100 * 10u64.pow(6);
-//             let amount = 0;
+    //             let amount_by_rounding_down =
+    //                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+    //             let amount_by_rounding_up =
+    //                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+    //             assert_eq!(amount_by_rounding_down, 0);
+    //             assert_eq!(amount_by_rounding_up, 0);
+    //         }
+    //         // zero amount
+    //         {
+    //             let all_shares = 100;
+    //             let full_amount = 100 * 10u64.pow(6);
+    //             let amount = 0;
 
-//             let amount_by_rounding_down =
-//                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-//             let amount_by_rounding_up =
-//                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-//             assert_eq!(amount_by_rounding_down, 0);
-//             assert_eq!(amount_by_rounding_up, 0);
-//         }
-//         // basic
-//         {
-//             let all_shares = 10;
-//             let full_amount = 100;
-//             let amount = 10;
+    //             let amount_by_rounding_down =
+    //                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+    //             let amount_by_rounding_up =
+    //                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+    //             assert_eq!(amount_by_rounding_down, 0);
+    //             assert_eq!(amount_by_rounding_up, 0);
+    //         }
+    //         // basic
+    //         {
+    //             let all_shares = 10;
+    //             let full_amount = 100;
+    //             let amount = 10;
 
-//             let amount_by_rounding_down =
-//                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-//             let amount_by_rounding_up =
-//                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-//             // 1/10 of all_shares
-//             assert_eq!(amount_by_rounding_down, 1);
-//             assert_eq!(amount_by_rounding_up, 1);
-//         }
-//         // large numbers
-//         {
-//             let all_shares = 10u64.pow(6);
-//             let full_amount = 1_000_000_000 * 10u64.pow(10);
-//             let amount = 198_112 * 10u64.pow(10);
+    //             let amount_by_rounding_down =
+    //                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+    //             let amount_by_rounding_up =
+    //                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+    //             // 1/10 of all_shares
+    //             assert_eq!(amount_by_rounding_down, 1);
+    //             assert_eq!(amount_by_rounding_up, 1);
+    //         }
+    //         // large numbers
+    //         {
+    //             let all_shares = 10u64.pow(6);
+    //             let full_amount = 1_000_000_000 * 10u64.pow(10);
+    //             let amount = 198_112 * 10u64.pow(10);
 
-//             let amount_by_rounding_down =
-//                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-//             let amount_by_rounding_up =
-//                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-//             // 198,112
-//             assert_eq!(amount_by_rounding_down, 198);
-//             assert_eq!(amount_by_rounding_up, 199);
-//         }
-//     }
-//     #[test]
-//     fn test_amount_to_discount() {
-//         {
-//             let amount = 0u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 0)
-//         }
-//         {
-//             let amount = 12u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 0)
-//         }
-//         {
-//             let amount = 1_999u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 0)
-//         }
-//         {
-//             let amount = 2_000u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 1)
-//         }
-//         {
-//             let amount = 4_900u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 2)
-//         }
-//         {
-//             let amount = 1_024_000u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 10)
-//         }
-//         {
-//             let amount = 1_048_576_000u64 * 10u64.pow(6);
-//             let result = amount_to_discount(amount);
-//             assert_eq!(result, 20);
-//             let result = amount_to_discount(amount - 1);
-//             assert_eq!(result, 19);
-//             // max discount 20%
-//             let result = amount_to_discount(amount * 2);
-//             assert_eq!(result, 20);
-//         }
-//     }
-//     #[test]
-//     fn test_calculate_swap_out_amount() {
-//         {
-//             let asset_usd = Asset {
-//                 synthetic: Synthetic {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-//                 ..Default::default()
-//             };
-//             let asset_btc = Asset {
-//                 synthetic: Synthetic {
-//                     decimals: 8,
-//                     ..Default::default()
-//                 },
-//                 price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
-//                 ..Default::default()
-//             };
-//             let asset_eth = Asset {
-//                 synthetic: Synthetic {
-//                     decimals: 7,
-//                     ..Default::default()
-//                 },
-//                 price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-//                 ..Default::default()
-//             };
-//             let fee = 300u32;
-//             let result =
-//                 calculate_swap_out_amount(&asset_usd, &asset_btc, 50000 * 10u64.pow(6), fee);
-//             assert_eq!(result, 0_99700000);
-//             let result = calculate_swap_out_amount(&asset_btc, &asset_usd, 1 * 10u64.pow(8), fee);
-//             assert_eq!(result, 49850_000_000);
-//             let result = calculate_swap_out_amount(&asset_btc, &asset_eth, 99700000, fee);
-//             assert_eq!(result, 24_850_2250);
-//         }
-//     }
-//     #[test]
-//     fn test_calculate_burned_shares() {
-//         // all_debt
-//         {
-//             // 7772,102...
-//             let asset = Asset {
-//                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-//                 synthetic: Synthetic {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             };
-//             let all_debt = 1598;
-//             let all_shares = 90;
-//             let amount = 9857;
-//             let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
-//             assert_eq!(burned_shares, 7772);
-//         }
-//         // user_debt
-//         {
-//             // user_debt = 0
-//             let asset = Asset {
-//                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-//                 synthetic: Synthetic {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             };
-//             let user_debt = 0;
-//             let user_shares = 0;
-//             let amount = 0;
-//             let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
-//             assert_eq!(burned_shares, 0);
-//         }
-//     }
-//     #[test]
-//     fn test_usd_to_token_amount() {
-//         // round down
-//         {
-//             let asset = Asset {
-//                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-//                 collateral: Collateral {
-//                     decimals: 6,
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             };
-//             let amount = 100;
-//             let token_amount = usd_to_token_amount(&asset, amount);
-//             // 7,142...
-//             assert_eq!(token_amount, 7);
-//         }
-//         // large amount
-//         {
-//             let asset = Asset {
-//                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
-//                 collateral: Collateral {
-//                     decimals: 10,
-//                     ..Default::default()
-//                 },
-//                 ..Default::default()
-//             };
+    //             let amount_by_rounding_down =
+    //                 amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+    //             let amount_by_rounding_up =
+    //                 amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+    //             // 198,112
+    //             assert_eq!(amount_by_rounding_down, 198);
+    //             assert_eq!(amount_by_rounding_up, 199);
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_amount_to_discount() {
+    //         {
+    //             let amount = 0u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 0)
+    //         }
+    //         {
+    //             let amount = 12u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 0)
+    //         }
+    //         {
+    //             let amount = 1_999u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 0)
+    //         }
+    //         {
+    //             let amount = 2_000u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 1)
+    //         }
+    //         {
+    //             let amount = 4_900u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 2)
+    //         }
+    //         {
+    //             let amount = 1_024_000u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 10)
+    //         }
+    //         {
+    //             let amount = 1_048_576_000u64 * 10u64.pow(6);
+    //             let result = amount_to_discount(amount);
+    //             assert_eq!(result, 20);
+    //             let result = amount_to_discount(amount - 1);
+    //             assert_eq!(result, 19);
+    //             // max discount 20%
+    //             let result = amount_to_discount(amount * 2);
+    //             assert_eq!(result, 20);
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_calculate_swap_out_amount() {
+    //         {
+    //             let asset_usd = Asset {
+    //                 synthetic: Synthetic {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 price: 1 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 ..Default::default()
+    //             };
+    //             let asset_btc = Asset {
+    //                 synthetic: Synthetic {
+    //                     decimals: 8,
+    //                     ..Default::default()
+    //                 },
+    //                 price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 ..Default::default()
+    //             };
+    //             let asset_eth = Asset {
+    //                 synthetic: Synthetic {
+    //                     decimals: 7,
+    //                     ..Default::default()
+    //                 },
+    //                 price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 ..Default::default()
+    //             };
+    //             let fee = 300u32;
+    //             let result =
+    //                 calculate_swap_out_amount(&asset_usd, &asset_btc, 50000 * 10u64.pow(6), fee);
+    //             assert_eq!(result, 0_99700000);
+    //             let result = calculate_swap_out_amount(&asset_btc, &asset_usd, 1 * 10u64.pow(8), fee);
+    //             assert_eq!(result, 49850_000_000);
+    //             let result = calculate_swap_out_amount(&asset_btc, &asset_eth, 99700000, fee);
+    //             assert_eq!(result, 24_850_2250);
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_calculate_burned_shares() {
+    //         // all_debt
+    //         {
+    //             // 7772,102...
+    //             let asset = Asset {
+    //                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 synthetic: Synthetic {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 ..Default::default()
+    //             };
+    //             let all_debt = 1598;
+    //             let all_shares = 90;
+    //             let amount = 9857;
+    //             let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
+    //             assert_eq!(burned_shares, 7772);
+    //         }
+    //         // user_debt
+    //         {
+    //             // user_debt = 0
+    //             let asset = Asset {
+    //                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 synthetic: Synthetic {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 ..Default::default()
+    //             };
+    //             let user_debt = 0;
+    //             let user_shares = 0;
+    //             let amount = 0;
+    //             let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
+    //             assert_eq!(burned_shares, 0);
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_usd_to_token_amount() {
+    //         // round down
+    //         {
+    //             let asset = Asset {
+    //                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 collateral: Collateral {
+    //                     decimals: 6,
+    //                     ..Default::default()
+    //                 },
+    //                 ..Default::default()
+    //             };
+    //             let amount = 100;
+    //             let token_amount = usd_to_token_amount(&asset, amount);
+    //             // 7,142...
+    //             assert_eq!(token_amount, 7);
+    //         }
+    //         // large amount
+    //         {
+    //             let asset = Asset {
+    //                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+    //                 collateral: Collateral {
+    //                     decimals: 10,
+    //                     ..Default::default()
+    //                 },
+    //                 ..Default::default()
+    //             };
 
-//             let amount = 1_003_900_802 * 10u64.pow(8);
-//             let token_amount = usd_to_token_amount(&asset, amount);
-//             // 11031876945054945054
-//             assert_eq!(token_amount, 11031876945054945054)
-//         }
-//     }
-//     #[test]
-//     fn test_calculate_confidence() {
-//         let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
-//         // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
-//         {
-//             let price = 100_000_000i64;
-//             let conf = 100_000_000u64;
-//             let confidence = calculate_confidence(conf, price);
-//             assert_eq!(confidence, (1f64 * f64::from(offset)) as u32)
-//         }
-//         // 1% -> 0.01 * 10 ** CONFIDENCE_OFFSET
-//         {
-//             let price = 100_000_000i64;
-//             let conf = 1_000_000u64;
-//             let confidence = calculate_confidence(conf, price);
-//             assert_eq!(confidence, (0.01 * f64::from(offset)) as u32)
-//         }
-//         // 0.1% -> 0.001 * 10 ** CONFIDENCE_OFFSET
-//         {
-//             let price = 100_000_000i64;
-//             let conf = 100_000u64;
-//             let confidence = calculate_confidence(conf, price);
-//             assert_eq!(confidence, (0.001 * f64::from(offset)) as u32)
-//         }
-//         // 0.01% -> 0.0001 * 10 ** CONFIDENCE_OFFSET
-//         {
-//             let price = 100_000_000i64;
-//             let conf = 10_000u64;
-//             let confidence = calculate_confidence(conf, price);
-//             assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
-//         }
-//     }
+    //             let amount = 1_003_900_802 * 10u64.pow(8);
+    //             let token_amount = usd_to_token_amount(&asset, amount);
+    //             // 11031876945054945054
+    //             assert_eq!(token_amount, 11031876945054945054)
+    //         }
+    //     }
+    //     #[test]
+    //     fn test_calculate_confidence() {
+    //         let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
+    //         // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
+    //         {
+    //             let price = 100_000_000i64;
+    //             let conf = 100_000_000u64;
+    //             let confidence = calculate_confidence(conf, price);
+    //             assert_eq!(confidence, (1f64 * f64::from(offset)) as u32)
+    //         }
+    //         // 1% -> 0.01 * 10 ** CONFIDENCE_OFFSET
+    //         {
+    //             let price = 100_000_000i64;
+    //             let conf = 1_000_000u64;
+    //             let confidence = calculate_confidence(conf, price);
+    //             assert_eq!(confidence, (0.01 * f64::from(offset)) as u32)
+    //         }
+    //         // 0.1% -> 0.001 * 10 ** CONFIDENCE_OFFSET
+    //         {
+    //             let price = 100_000_000i64;
+    //             let conf = 100_000u64;
+    //             let confidence = calculate_confidence(conf, price);
+    //             assert_eq!(confidence, (0.001 * f64::from(offset)) as u32)
+    //         }
+    //         // 0.01% -> 0.0001 * 10 ** CONFIDENCE_OFFSET
+    //         {
+    //             let price = 100_000_000i64;
+    //             let conf = 10_000u64;
+    //             let confidence = calculate_confidence(conf, price);
+    //             assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
+    //         }
+    //     }
 }
