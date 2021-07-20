@@ -752,18 +752,6 @@ mod tests {
             let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
             assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
         }
-        {
-            let asset = Asset {
-                collateral: Collateral {
-                    decimals: 8,
-                    ..Default::default()
-                },
-                price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
-            assert_eq!(max_withdrawable, 50 * 10u64.pow(8))
-        }
     }
     #[test]
     fn test_amount_to_shares() {

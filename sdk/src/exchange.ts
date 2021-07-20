@@ -515,7 +515,6 @@ export class Exchange {
     exchangeAccount
   }: Swap) {
     await this.getState()
-    // const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const swapIx = await this.swapInstruction({
       amount,
       exchangeAccount,

@@ -350,10 +350,6 @@ pub mod exchange {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        // Kinda redundant but otherwise panics at unwrap
-        if max_borrow == 0 {
-            return Err(ErrorCode::WithdrawLimit.into());
-        }
 
         // Check if not overdrafing
         let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
