@@ -166,7 +166,7 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return discount as u8;
     }
 }
-pub fn calculate_swap_tax_in_usd(total_fee: u64, swap_tax: u8) -> u64 {
+pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
     let tax_percent = swap_tax
         .checked_mul(20)
         .unwrap()
@@ -943,6 +943,34 @@ mod tests {
             assert_eq!(burned_shares, 0);
         }
     }
+    #[test]
+    fn test_calculate_swap_tax() {
+        // MIN - 0%
+        {
+            let total_fee: u64 = 1_227_775;
+            let swap_tax: u8 = 0;
+            let swap_tax_in_usd = calculate_swap_tax(total_fee, swap_tax);
+            // expect 0 tax
+            assert_eq!(swap_tax_in_usd, 0);
+        }
+        // MAX - 20%
+        {
+            let total_fee: u64 = 1_227_775;
+            let swap_tax: u8 = u8::MAX;
+            let swap_tax = calculate_swap_tax(total_fee, swap_tax);
+            // 245555
+            assert_eq!(swap_tax, 245555);
+        }
+        // ~10,04% (valid rounding)
+        {
+            let total_fee: u64 = 1_227_775;
+            let swap_tax: u8 = 128;
+            // 123258,980392157
+            let swap_tax = calculate_swap_tax(total_fee, swap_tax);
+            assert_eq!(swap_tax, 123258);
+        }
+    }
+
     #[test]
     fn test_usd_to_token_amount() {
         // round down

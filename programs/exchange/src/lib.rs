@@ -19,7 +19,7 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax_in_usd,
+        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
         calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
@@ -462,7 +462,7 @@ pub mod exchange {
         let signer = &[&seeds[..]];
 
         // Update pool fee
-        let pool_fee = calculate_swap_tax_in_usd(fee_usd, state.swap_tax);
+        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax);
         state.pool_fee = pool_fee;
 
         // Update xUSD supply based on tax
