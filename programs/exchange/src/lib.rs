@@ -8,11 +8,9 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::{
-        cell::{RefCell, RefMut},
         convert::TryInto,
     };
 
-    use anchor_lang::Key;
     use pyth::pc::Price;
 
     use crate::math::{
