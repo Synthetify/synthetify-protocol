@@ -465,7 +465,10 @@ pub mod exchange {
         let pool_fee = calculate_swap_tax_in_usd(fee_usd, state.swap_tax);
         state.pool_fee = pool_fee;
 
-        // TODO: Update supply after tax
+        // Update xUSD supply based on tax
+        let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();
+        set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
+
         // Set new supply output token
         let new_supply_output = synthetics[synthetic_for_index]
             .supply
