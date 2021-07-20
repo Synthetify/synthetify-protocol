@@ -552,11 +552,11 @@ describe('admin', () => {
         expo: -6
       })
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
+      const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
       const ix = await exchange.setPriceFeedInstruction({
         assetsList,
         priceFeed: newPriceFeed,
-        tokenAddress: beforeAsset.assetAddress
+        oldPriceFeed: beforeAsset.feedAddress
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)

@@ -624,9 +624,9 @@ export class Exchange {
   public async setPriceFeedInstruction({
     assetsList,
     priceFeed,
-    tokenAddress
+    oldPriceFeed
   }: SetPriceFeedInstruction) {
-    return (await this.program.instruction.setPriceFeed(tokenAddress, {
+    return (await this.program.instruction.setPriceFeed(oldPriceFeed, {
       accounts: {
         state: this.stateAddress,
         signer: this.state.admin,
@@ -848,7 +848,7 @@ export interface AddNewAssetInstruction {
 export interface SetPriceFeedInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
-  tokenAddress: PublicKey
+  oldPriceFeed: PublicKey
 }
 
 export interface SetLiquidationPenaltiesInstruction {
