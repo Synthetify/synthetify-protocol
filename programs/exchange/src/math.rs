@@ -175,7 +175,15 @@ pub fn calculate_swap_tax_in_usd(total_fee: u64, swap_tax: u8) -> u64 {
 
     return total_fee.checked_mul(tax_percent as u64).unwrap();
 }
-pub fn calculate_burned_swap() {}
+pub fn calculate_amount_decreased_by_tax(amount: u64, swap_tax: u8) -> u64 {
+    let tax_percent = swap_tax
+        .checked_mul(20)
+        .unwrap()
+        .checked_div(u8::MAX)
+        .unwrap();
+    let decreased_by_tax = amount.checked_mul(tax_percent as u64).unwrap();
+    return amount.checked_sub(decreased_by_tax).unwrap();
+}
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
