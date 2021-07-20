@@ -167,13 +167,15 @@ pub fn amount_to_discount(amount: u64) -> u8 {
     }
 }
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
-    let tax_percent = swap_tax
+    let divisor = 100u64.checked_mul(u8::MAX.into()).unwrap() as u128;
+
+    return (swap_tax as u128)
         .checked_mul(20)
         .unwrap()
-        .checked_div(u8::MAX)
-        .unwrap();
-
-    return total_fee.checked_mul(tax_percent as u64).unwrap();
+        .checked_mul(total_fee as u128)
+        .unwrap()
+        .checked_div(divisor)
+        .unwrap() as u64;
 }
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
