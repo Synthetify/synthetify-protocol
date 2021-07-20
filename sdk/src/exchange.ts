@@ -82,7 +82,7 @@ export class Exchange {
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
-    this.program.account.state.subscribe('singleGossip').on('change', (state: ExchangeState) => {
+    this.program.account.state.subscribe(this.stateAddress).on('change', (state: ExchangeState) => {
       fn(state)
     })
   }
