@@ -369,7 +369,7 @@ interface ICreateCollaterToken {
   wallet: Account
   price: number
   decimals: number
-  collateralRatio?: number
+  collateralRatio: number
 }
 export const createCollateralToken = async ({
   exchange,

@@ -17,8 +17,9 @@ import {
   waitForBeggingOfASlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { sleep } from '../sdk/lib/utils'
 
-const ASSET_LIMIT = 30 // >=20 splits transaction
+const ASSET_LIMIT = 4 // >=20 splits transaction
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()
@@ -153,6 +154,7 @@ describe('max collaterals', () => {
         createCollateralToken({
           decimals: 6,
           price: 2,
+          collateralRatio: 50,
           ...createCollateralProps
         })
       )
@@ -307,31 +309,27 @@ describe('max collaterals', () => {
     const amount = new BN(10 * 1e6)
     const listOffset = 3
 
-    const tokenAccounts = await Promise.all(
-      tokens.map(async (collateralToken) => collateralToken.createAccount(accountOwner.publicKey))
-    )
-
     await waitForBeggingOfASlot(connection)
     // Deposit tokens
-    await Promise.all(
-      tokens.slice(listOffset, 10).map(async (collateralToken, index) => {
-        const tokenIndex = index + listOffset
-        const userCollateralTokenAccount = tokenAccounts[tokenIndex]
+    // await Promise.all(
+    //   tokens.slice(listOffset, 10).map(async (collateralToken, index) => {
+    //     const tokenIndex = index + listOffset
+    //     const userCollateralTokenAccount = tokenAccounts[tokenIndex]
 
-        await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+    //     await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
 
-        await exchange.deposit({
-          amount,
-          exchangeAccount,
-          owner: accountOwner.publicKey,
-          userCollateralAccount: userCollateralTokenAccount,
-          reserveAccount: reserves[tokenIndex],
-          collateralToken: tokens[tokenIndex],
-          exchangeAuthority,
-          signers: [wallet, accountOwner]
-        })
-      })
-    )
+    //     await exchange.deposit({
+    //       amount,
+    //       exchangeAccount,
+    //       owner: accountOwner.publicKey,
+    //       userCollateralAccount: userCollateralTokenAccount,
+    //       reserveAccount: reserves[tokenIndex],
+    //       collateralToken: tokens[tokenIndex],
+    //       exchangeAuthority,
+    //       signers: [wallet, accountOwner]
+    //     })
+    //   })
+    // )
 
     await waitForBeggingOfASlot(connection)
     // Withdraw tokens
@@ -339,22 +337,31 @@ describe('max collaterals', () => {
     await Promise.all(
       tokens.slice(listOffset, listOffset + 1).map(async (collateralToken, index) => {
         const tokenIndex = index + listOffset
-        const userCollateralAccount = await tokens[tokenIndex].createAccount(accountOwner.publicKey)
+        const userCollateralAccount = await collateralToken.createAccount(accountOwner.publicKey)
 
-        // assert.ok(collateralToken.publicKey.equals(tokens[tokenIndex].publicKey))
-
-        await tokens[tokenIndex].mintTo(userCollateralAccount, wallet, [], tou64(amount))
+        await collateralToken.mintTo(userCollateralAccount, wallet, [], tou64(amount))
 
         await exchange.deposit({
-          amount: new BN(10),
+          amount,
           exchangeAccount,
           owner: accountOwner.publicKey,
           userCollateralAccount,
           reserveAccount: reserves[tokenIndex],
-          collateralToken: tokens[tokenIndex],
+          collateralToken,
           exchangeAuthority,
           signers: [wallet, accountOwner]
         })
+
+        console.log('state:', await exchange.getState())
+        console.log(
+          'user coll',
+          await (
+            await exchange.getExchangeAccount(exchangeAccount)
+          ).collaterals[0]
+        )
+        console.log('list', await (await exchange.getAssetsList(assetsList)).collaterals)
+        console.log('curr', tokens[tokenIndex].publicKey)
+        await sleep(1000)
 
         await exchange.withdraw({
           amount,
@@ -364,18 +371,12 @@ describe('max collaterals', () => {
           reserveAccount: reserves[tokenIndex],
           signers: [accountOwner]
         })
+
+        const collateralAccountData = await collateralToken.getAccountInfo(userCollateralAccount)
       })
     )
 
-    // Check saldos
-    const tokenAccountsDataAfter = await Promise.all(
-      tokenAccounts
-        .slice(listOffset, 10)
-        .map((account, index) => tokens[index + listOffset].getAccountInfo(account))
-    )
     const exchangeAccountDataAfter = await exchange.getExchangeAccount(exchangeAccount)
-
-    assert.ok(tokenAccountsDataAfter.every((i) => i.amount.eq(amount)))
     assert.ok(exchangeAccountDataAfter.collaterals.every((i) => i.amount.eq(new BN(0))))
   })
   it('swap', async () => {
