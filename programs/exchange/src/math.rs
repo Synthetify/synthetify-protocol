@@ -166,6 +166,11 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return discount as u8;
     }
 }
+// TODO
+pub fn calculate_swap_tax_usd(total_fee: u64, swap_tax: u8) {
+    // percent = swap_tax * (20 / 255)
+    // let tax_percent = swap_tax.checked_mul(20).unwrap().checked_div()
+}
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
@@ -173,12 +178,12 @@ pub fn calculate_swap_out_amount(
     synthetic_for: &Synthetic,
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-) -> u64 {
-    let amount_before_fee = (asset_in.price as u128)
+) -> (u64, u64) {
+    let in_usd = (asset_in.price as u128)
         .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(asset_for.price as u128)
         .unwrap();
+
+    let amount_before_fee = in_usd.checked_div(asset_for.price as u128).unwrap();
     let amount = amount_before_fee
         .checked_sub(
             amount_before_fee
@@ -193,11 +198,19 @@ pub fn calculate_swap_out_amount(
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount = amount.checked_div(decimal_change).unwrap();
-        return scaled_amount.try_into().unwrap();
+        let out_usd = (asset_for.price as u128)
+            .checked_mul(scaled_amount as u128)
+            .unwrap();
+        let fee = in_usd.checked_sub(out_usd).unwrap() as u64;
+        return (scaled_amount.try_into().unwrap(), fee);
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
         let scaled_amount = amount.checked_mul(decimal_change).unwrap();
-        return scaled_amount.try_into().unwrap();
+        let out_usd = (asset_for.price as u128)
+            .checked_mul(scaled_amount as u128)
+            .unwrap();
+        let fee = in_usd.checked_sub(out_usd).unwrap() as u64;
+        return (scaled_amount.try_into().unwrap(), fee);
     }
 }
 pub fn calculate_burned_shares(
