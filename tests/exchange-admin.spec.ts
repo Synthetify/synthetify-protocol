@@ -11,8 +11,6 @@ import {
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
-  IAddNewAssets,
-  // addNewAssets,
   DEFAULT_PUBLIC_KEY,
   U64_MAX
 } from './utils'

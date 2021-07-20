@@ -108,16 +108,6 @@ export type AddNewAssetResult = {
   assetAddress: PublicKey
   feedAddress: PublicKey
 }
-export interface IAddNewAssets {
-  exchange: Exchange
-  oracleProgram: Program
-  connection: Connection
-  wallet: Account
-  assetsList: PublicKey
-  newAssetDecimals: number
-  newAssetLimit: BN
-  newAssetsNumber?: number
-}
 export const createAssetsList = async ({
   exchange,
   collateralToken,
@@ -143,44 +133,6 @@ export const createAssetsList = async ({
     snyLiquidationFund
   })
   return { assetsList, usdToken }
-}
-export const addNewAssets = async ({
-  connection,
-  wallet,
-  oracleProgram,
-  exchange,
-  assetsList,
-  newAssetDecimals,
-  newAssetLimit,
-  newAssetsNumber = 1
-}: IAddNewAssets) => {
-  let newAssetsResults: Array<{ assetAddress: PublicKey; feedAddress: PublicKey }> = []
-  for (var newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
-    const newToken = await createToken({
-      connection,
-      payer: wallet,
-      mintAuthority: wallet.publicKey,
-      decimals: newAssetDecimals
-    })
-    const newTokenFeed = await createPriceFeed({
-      oracleProgram,
-      initPrice: 2
-    })
-
-    await exchange.addNewAsset({
-      assetsAdmin: EXCHANGE_ADMIN,
-      assetsList,
-      maxSupply: newAssetLimit,
-      tokenAddress: newToken.publicKey,
-      tokenDecimals: newAssetDecimals,
-      tokenFeed: newTokenFeed
-    })
-    newAssetsResults.push({
-      assetAddress: newToken.publicKey,
-      feedAddress: newTokenFeed
-    })
-  }
-  return newAssetsResults
 }
 
 export const newAccountWithLamports = async (connection, lamports = 1e10) => {
@@ -358,6 +310,73 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
     userCollateralTokenAccount,
     usdTokenAccount,
     usdMintAmount
+  }
+}
+
+interface ICreateCollaterToken {
+  exchange: Exchange
+  exchangeAuthority: PublicKey
+  oracleProgram: Program
+  connection: Connection
+  wallet: Account
+  price: number
+  decimals: number
+  collateralRatio: number
+}
+export const createCollateralToken = async ({
+  exchange,
+  exchangeAuthority,
+  oracleProgram,
+  connection,
+  wallet,
+  price,
+  decimals,
+  collateralRatio
+}: ICreateCollaterToken): Promise<{
+  token: Token
+  feed: PublicKey
+  reserve: PublicKey
+  liquidationFund: PublicKey
+}> => {
+  const { assetsList } = await exchange.getState()
+
+  const collateralToken = await createToken({
+    connection,
+    payer: wallet,
+    mintAuthority: wallet.publicKey,
+    decimals: decimals
+  })
+  const oracleAddress = await createPriceFeed({
+    oracleProgram,
+    initPrice: price,
+    expo: -decimals
+  })
+  const addAssetIx = await exchange.addNewAssetInstruction({
+    assetsList,
+    assetFeedAddress: oracleAddress
+  })
+  await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+
+  const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
+  const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
+
+  const addCollateralIx = await exchange.addCollateralInstruction({
+    assetsList,
+    assetAddress: collateralToken.publicKey,
+    liquidationFund,
+    reserveAccount,
+    feedAddress: oracleAddress,
+    collateralRatio,
+    reserveBalance: new BN(0),
+    decimals
+  })
+  await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
+
+  return {
+    token: collateralToken,
+    feed: oracleAddress,
+    reserve: reserveAccount,
+    liquidationFund
   }
 }
 
