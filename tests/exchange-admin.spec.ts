@@ -472,8 +472,8 @@ describe('admin', () => {
       assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
       assert.ok(addedCollateral.collateralRatio === collateralRatio)
       assert.ok(addedCollateral.decimals === decimals)
-      assert.ok(addedCollateral.liquidationFund.equals(liquidationAccount.publicKey))
-      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount.publicKey))
+      assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
+      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
       assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
     }),
       it('Should fail without admin signature', async () => {
