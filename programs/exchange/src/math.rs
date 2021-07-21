@@ -120,15 +120,6 @@ pub fn calculate_max_withdraw_in_usd(
         .checked_div(health_factor.into())
         .unwrap();
 }
-pub fn calculate_max_withdrawable(collateral_asset: &Asset, user_max_withdraw_in_usd: u64) -> u64 {
-    // collateral and usd have same number of decimals
-    let tokens = (user_max_withdraw_in_usd as u128)
-        .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-        .unwrap()
-        .checked_div(collateral_asset.price as u128)
-        .unwrap();
-    return tokens.try_into().unwrap();
-}
 pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     // full_amount is always != 0 if all_shares > 0
     if all_shares == 0 {
@@ -697,80 +688,53 @@ mod tests {
         let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
         assert!(result.is_err());
     }
-    //     #[test]
-    //     fn test_calculate_user_debt() {
-    //         {
-    //             let user_account = ExchangeAccount {
-    //                 debt_shares: 0,
-    //                 owner: Pubkey::default(),
-    //                 ..Default::default()
-    //             };
-    //             let debt = 1_000_000;
+    #[test]
+    fn test_calculate_user_debt() {
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 0,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 1_000_000;
 
-    //             let result = calculate_user_debt_in_usd(&user_account, debt, 0);
-    //             assert_eq!(result, 0);
-    //         }
-    //         {
-    //             let user_account = ExchangeAccount {
-    //                 debt_shares: 100,
-    //                 owner: Pubkey::default(),
-    //                 ..Default::default()
-    //             };
-    //             let debt = 4400_162356;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 0);
+            assert_eq!(result, 0);
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 100,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 4400_162356;
 
-    //             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-    //             assert_eq!(result, 356_577177)
-    //         }
-    //         {
-    //             let user_account = ExchangeAccount {
-    //                 debt_shares: 1525783,
-    //                 owner: Pubkey::default(),
-    //                 ..Default::default()
-    //             };
-    //             let debt = 932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
+            assert_eq!(result, 356_577177)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 1525783,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 932210931_726361;
 
-    //             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //             assert_eq!(result, 115211)
-    //         }
-    //         {
-    //             let user_account = ExchangeAccount {
-    //                 debt_shares: 9234567898765432,
-    //                 owner: Pubkey::default(),
-    //                 ..Default::default()
-    //             };
-    //             let debt = 526932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 115211)
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 9234567898765432,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = 526932210931_726361;
 
-    //             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //             assert_eq!(result, 394145294459_835461)
-    //         }
-    //     }
-    //     #[test]
-    //     fn test_calculate_max_withdrawable() {
-    //         {
-    //             let asset = Asset {
-    //                 collateral: Collateral {
-    //                     decimals: 6,
-    //                     ..Default::default()
-    //                 },
-    //                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //                 ..Default::default()
-    //             };
-    //             let max_withdrawable = calculate_max_withdrawable(&asset, 0u64);
-    //             assert_eq!(max_withdrawable, 0u64);
-    //         }
-    //         {
-    //             let asset = Asset {
-    //                 collateral: Collateral {
-    //                     decimals: 6,
-    //                     ..Default::default()
-    //                 },
-    //                 price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //                 ..Default::default()
-    //             };
-    //             let max_withdrawable = calculate_max_withdrawable(&asset, 100 * 10u64.pow(6));
-    //             assert_eq!(max_withdrawable, 50 * 10u64.pow(6))
-    //         }
-    //     }
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, 394145294459_835461)
+        }
+    }
     //     #[test]
     //     fn test_amount_to_shares() {
     //         // not initialized shares

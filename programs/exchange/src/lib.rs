@@ -7,18 +7,15 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::{
-        convert::TryInto,
-    };
+    use std::convert::TryInto;
 
     use pyth::pc::Price;
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
-        calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_user_debt_in_usd,
-        usd_to_token_amount, PRICE_OFFSET,
+        calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
+        calculate_swap_out_amount, calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -357,7 +354,8 @@ pub mod exchange {
             state.health_factor,
         );
         let collateral_asset = &assets[collateral.asset_index as usize];
-        let max_withdrawable = calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+        let max_withdrawable =
+            usd_to_token_amount(collateral_asset, collateral, max_withdraw_in_usd);
 
         if amount > max_withdrawable {
             return Err(ErrorCode::WithdrawLimit.into());
