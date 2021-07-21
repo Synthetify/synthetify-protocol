@@ -1091,6 +1091,7 @@ pub mod exchange {
         decimals: u8,
         collateral_ratio: u8,
     ) -> Result<()> {
+        msg!("Synthetify:Admin: ADD COLLATERAL");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
         let asset_index = match assets_list
