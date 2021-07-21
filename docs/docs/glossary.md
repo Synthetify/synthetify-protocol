@@ -6,15 +6,15 @@ slug: /glossary
 
 ### Deposit
 
-Deposit allows user to be a part of a collateral by locking their SNY tokens.
+Deposit allows the user to be a part of a collateral by locking their SNY tokens.
 
 ### Mint
 
-Synthetic assets can be created by Stakers of the system and then exchanged on Synthetify exchange. Exchange of two different synthetic tokens is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in much lower exchange fees and slippage.
+Synthetic assets can be created by Stakers of the platform and then exchanged on Synthetify exchange. Exchange of two different synthetic assets is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in much lower exchange fees and slippage.
 
 ### Mint limit
 
-To ensure safety of the system each asset has a predefined but adjustable limit of the amount of tokens that can be created.
+To ensure safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created.
 
 ### Withdraw
 
@@ -32,15 +32,15 @@ For now only SNY token can be a collateral, other assets will be added in the fu
 
 ### Collateral Ratio
 
-Locked collateral to the value of minted tokens is called the collateral ratio.
+Locked collateral to the value of minted tokens is called a collateral ratio.
 
 ### Liquidation
 
-Liquidation means collateral decrease by asset burn. To ensure platform stability Stakers can be liquidated and part of their collateral will be transferred to Liquidators in exchange for paying back part of Staker debt. It takes place everytime overrunning the collateral ratio happens.
+Liquidation means a collateral decrease by asset burn. To ensure platform stability Stakers can be liquidated and part of their collateral will be transferred to Liquidators in exchange for paying back part of a Staker debt. It takes place everytime overrunning the collateral ratio occurs.
 
 ### Risk
 
-The user can remove provided liquidity at any time. However there are few risks which affects locked assets.
+The user can remove provided liquidity at any time. However there are a few risks which can affect locked assets.
 
 #### Market risk
 
@@ -48,17 +48,17 @@ Market risk is a possibility to experience losses due to price change. Cryptocur
 
 #### Liquidity Risk
 
-Liquidity risk is a potential issue especcialy on micro-cap assets. It could happen that exchanging earned asset will be obstructed because of illiquidity on the market.
+Liquidity risk is a potential issue especially on micro-cap assets. It could happen that exchanging earned asset will be obstructed because of illiquidity on the market.
 
 #### Rewards Loss Risk
 
 There are three stages of providing liquidity:
 
-1. Subscribtion
+1. Subscription
 2. Staking
 3. Claiming.
 
-In phase 1 and 3 there is no possibility to loss staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with lossing all previousl earned rewards.
+In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing all previously earned rewards.
 
 ### Listing new assets
 
