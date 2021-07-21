@@ -150,5 +150,6 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   EUdH9pgy4GtgYb42sj9MjiRW5i4s7HaEAbcNzwRhuaYa: 'SNY',
   '5JvEdz8xUTb3UYCQ6XuWVbpcGTAmrpESmhDQ86kCz5ur': 'xBTC',
   '8zGRx7MVmJxWgRbqZxkUg1GCz3gXNm3ivNVGYoU6Rduf': 'xSOL',
-  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM'
+  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM',
+  So11111111111111111111111111111111111111112: 'WSOL'
 }
