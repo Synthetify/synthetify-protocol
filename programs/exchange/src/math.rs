@@ -835,7 +835,6 @@ mod tests {
             assert_eq!(result, 20);
         }
     }
-    // #[test]
     // fn test_calculate_swap_out_amount() {
     //     {
     //         let asset_usd = Asset {
@@ -911,70 +910,71 @@ mod tests {
             assert_eq!(burned_shares, 0);
         }
     }
-    //     #[test]
-    //     fn test_usd_to_token_amount() {
-    //         // round down
-    //         {
-    //             let asset = Asset {
-    //                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //                 collateral: Collateral {
-    //                     decimals: 6,
-    //                     ..Default::default()
-    //                 },
-    //                 ..Default::default()
-    //             };
-    //             let amount = 100;
-    //             let token_amount = usd_to_token_amount(&asset, amount);
-    //             // 7,142...
-    //             assert_eq!(token_amount, 7);
-    //         }
-    //         // large amount
-    //         {
-    //             let asset = Asset {
-    //                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
-    //                 collateral: Collateral {
-    //                     decimals: 10,
-    //                     ..Default::default()
-    //                 },
-    //                 ..Default::default()
-    //             };
+    #[test]
+    fn test_usd_to_token_amount() {
+        // round down
+        {
+            let asset = Asset {
+                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let collateral = Collateral {
+                decimals: 6,
+                ..Default::default()
+            };
 
-    //             let amount = 1_003_900_802 * 10u64.pow(8);
-    //             let token_amount = usd_to_token_amount(&asset, amount);
-    //             // 11031876945054945054
-    //             assert_eq!(token_amount, 11031876945054945054)
-    //         }
-    //     }
-    //     #[test]
-    //     fn test_calculate_confidence() {
-    //         let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
-    //         // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
-    //         {
-    //             let price = 100_000_000i64;
-    //             let conf = 100_000_000u64;
-    //             let confidence = calculate_confidence(conf, price);
-    //             assert_eq!(confidence, (1f64 * f64::from(offset)) as u32)
-    //         }
-    //         // 1% -> 0.01 * 10 ** CONFIDENCE_OFFSET
-    //         {
-    //             let price = 100_000_000i64;
-    //             let conf = 1_000_000u64;
-    //             let confidence = calculate_confidence(conf, price);
-    //             assert_eq!(confidence, (0.01 * f64::from(offset)) as u32)
-    //         }
-    //         // 0.1% -> 0.001 * 10 ** CONFIDENCE_OFFSET
-    //         {
-    //             let price = 100_000_000i64;
-    //             let conf = 100_000u64;
-    //             let confidence = calculate_confidence(conf, price);
-    //             assert_eq!(confidence, (0.001 * f64::from(offset)) as u32)
-    //         }
-    //         // 0.01% -> 0.0001 * 10 ** CONFIDENCE_OFFSET
-    //         {
-    //             let price = 100_000_000i64;
-    //             let conf = 10_000u64;
-    //             let confidence = calculate_confidence(conf, price);
-    //             assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
-    //         }
-    //     }
+            let amount = 100;
+            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            // 7,142...
+            assert_eq!(token_amount, 7);
+        }
+        // large amount
+        {
+            let asset = Asset {
+                price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let collateral = Collateral {
+                decimals: 10,
+                ..Default::default()
+            };
+
+            let amount = 1_003_900_802 * 10u64.pow(8);
+            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            // 11031876945054945054
+            assert_eq!(token_amount, 11031876945054945054)
+        }
+    }
+    #[test]
+    fn test_calculate_confidence() {
+        let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
+        // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
+        {
+            let price = 100_000_000i64;
+            let conf = 100_000_000u64;
+            let confidence = calculate_confidence(conf, price);
+            assert_eq!(confidence, (1f64 * f64::from(offset)) as u32)
+        }
+        // 1% -> 0.01 * 10 ** CONFIDENCE_OFFSET
+        {
+            let price = 100_000_000i64;
+            let conf = 1_000_000u64;
+            let confidence = calculate_confidence(conf, price);
+            assert_eq!(confidence, (0.01 * f64::from(offset)) as u32)
+        }
+        // 0.1% -> 0.001 * 10 ** CONFIDENCE_OFFSET
+        {
+            let price = 100_000_000i64;
+            let conf = 100_000u64;
+            let confidence = calculate_confidence(conf, price);
+            assert_eq!(confidence, (0.001 * f64::from(offset)) as u32)
+        }
+        // 0.01% -> 0.0001 * 10 ** CONFIDENCE_OFFSET
+        {
+            let price = 100_000_000i64;
+            let conf = 10_000u64;
+            let confidence = calculate_confidence(conf, price);
+            assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
+        }
+    }
 }

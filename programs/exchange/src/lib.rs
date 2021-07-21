@@ -328,7 +328,7 @@ pub mod exchange {
             .unwrap()
             .checked_div(100)
             .unwrap();
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
             .iter_mut()
             .find(|x| x.collateral_address.eq(&user_collateral_account.mint))
