@@ -24,11 +24,13 @@ import {
   toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
-  mulByPercentage
+  mulByPercentage,
+  createCollateralToken
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { Collateral } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
