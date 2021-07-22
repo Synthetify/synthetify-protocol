@@ -526,32 +526,30 @@ mod tests {
             },
             ..Default::default()
         };
-        let state = State {
+        let original_state = State {
             debt_shares: debt_shares,
             staking: staking,
             ..Default::default()
         };
         {
             // Should move one round forward
-            let state_copy = state.clone();
-            let state_ref = RefCell::new(state);
-            adjust_staking_rounds(&mut state_ref.borrow_mut(), 201);
+            let mut adjusted_state = original_state.clone();
+            adjust_staking_rounds(&mut adjusted_state, 201);
             // |    |   |
             // f    c   n
             // 100  200 300
-            let state_after_first_adjustment = *state_ref.borrow_mut();
-            assert_ne!(state_copy, state_after_first_adjustment);
+            assert_ne!(original_state, adjusted_state);
             assert_eq!(
-                state_after_first_adjustment.staking.finished_round.start,
-                state_copy.staking.current_round.start
+                adjusted_state.staking.finished_round.start,
+                original_state.staking.current_round.start
             );
             assert_eq!(
-                state_after_first_adjustment.staking.current_round.start,
-                state_copy.staking.next_round.start
+                adjusted_state.staking.current_round.start,
+                original_state.staking.next_round.start
             );
             assert_eq!(
-                state_after_first_adjustment.staking.next_round.start,
-                state_copy
+                adjusted_state.staking.next_round.start,
+                original_state
                     .staking
                     .next_round
                     .start
@@ -559,18 +557,12 @@ mod tests {
                     .unwrap()
             );
             // change round length
-            let mut state_after_second_adjustment = state_ref.borrow_mut();
-            state_after_second_adjustment.staking.round_length = 25;
-            adjust_staking_rounds(&mut state_after_second_adjustment, 401);
-            assert_eq!(
-                375,
-                state_after_second_adjustment.staking.finished_round.start
-            );
-            assert_eq!(
-                400,
-                state_after_second_adjustment.staking.current_round.start
-            );
-            assert_eq!(425, state_after_second_adjustment.staking.next_round.start);
+
+            adjusted_state.staking.round_length = 25;
+            adjust_staking_rounds(&mut adjusted_state, 401);
+            assert_eq!(375, adjusted_state.staking.finished_round.start);
+            assert_eq!(400, adjusted_state.staking.current_round.start);
+            assert_eq!(425, adjusted_state.staking.next_round.start);
         }
     }
     #[test]
