@@ -1616,7 +1616,6 @@ pub struct Init<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
-
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]

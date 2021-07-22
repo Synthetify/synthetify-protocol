@@ -668,4 +668,15 @@ mod tests {
             assert_eq!(425, state_after_second_adjustment.staking.next_round.start);
         }
     }
+    #[test]
+    fn test_check_feed_update() {
+        let list = AssetsList {
+            ..Default::default()
+        };
+        list.append_asset(Asset {
+            last_update: 10,
+            ..Default::default()
+        });
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 100).is_err());
+    }
 }
