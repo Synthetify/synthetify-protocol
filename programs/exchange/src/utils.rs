@@ -168,7 +168,7 @@ pub fn get_user_sny_collateral_balance(
 mod tests {
 
     use super::*;
-    use std::{cell::RefCell, u64};
+    use std::u64;
 
     #[test]
     fn adjust_staking_account_test() {
@@ -628,14 +628,60 @@ mod tests {
 
     #[test]
     fn test_get_user_sny_collateral_balance() {
+        let sny_address = Pubkey::new_unique();
+        let sny_asset = Collateral {
+            collateral_address: sny_address,
+            ..Default::default()
+        };
+
         // Empty list
         {
             let exchange_account = ExchangeAccount {
                 ..Default::default()
             };
-            let sny_asset = Collateral {
+
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, 0)
+        }
+        // With other assets
+        {
+            let mut exchange_account = ExchangeAccount {
                 ..Default::default()
             };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: sny_address,
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, 100)
+        }
+        // Without SNY
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
 
             let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
             assert_eq!(amount, 0)
