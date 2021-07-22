@@ -670,13 +670,25 @@ mod tests {
     }
     #[test]
     fn test_check_feed_update() {
-        let list = AssetsList {
+        let mut list = AssetsList {
             ..Default::default()
         };
         list.append_asset(Asset {
             last_update: 10,
             ..Default::default()
         });
+        list.append_asset(Asset {
+            last_update: 10,
+            ..Default::default()
+        });
+
+        // Outdated
         assert!(check_feed_update(&list.assets, 0, 1, 10, 100).is_err());
+        // Outdated a little
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 21).is_err());
+        // On the limit
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 20).is_ok());
+        // No tollerance
+        assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
     }
 }
