@@ -22,23 +22,21 @@ const main = async () => {
   console.log(assetsList.collaterals)
   const token = new Token(connection, TOKEN_MINT, TOKEN_PROGRAM_ID, DEVNET_ADMIN_ACCOUNT)
   const tokenInfo = await token.getMintInfo()
-  console.log(DEVNET_ADMIN_ACCOUNT.publicKey.toString())
-  console.log(state.admin.toString())
-  // const liquidationFund = await token.createAccount(exchange.exchangeAuthority)
-  // const reserveAccount = await token.createAccount(exchange.exchangeAuthority)
-  // console.log(console.log(assetsList.assets))
+  const liquidationFund = await token.createAccount(exchange.exchangeAuthority)
+  const reserveAccount = await token.createAccount(exchange.exchangeAuthority)
+  console.log(console.log(assetsList.assets))
 
-  // await sleep(1000)
-  // const ix = await exchange.addCollateralInstruction({
-  //   assetAddress: TOKEN_MINT,
-  //   assetsList: state.assetsList,
-  //   collateralRatio: 30,
-  //   decimals: tokenInfo.decimals,
-  //   feedAddress: assetsList.assets[3].feedAddress,
-  //   liquidationFund,
-  //   reserveAccount,
-  //   reserveBalance: new BN(0)
-  // })
-  // await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
+  await sleep(1000)
+  const ix = await exchange.addCollateralInstruction({
+    assetAddress: TOKEN_MINT,
+    assetsList: state.assetsList,
+    collateralRatio: 30,
+    decimals: tokenInfo.decimals,
+    feedAddress: assetsList.assets[3].feedAddress,
+    liquidationFund,
+    reserveAccount,
+    reserveBalance: new BN(0)
+  })
+  await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
 }
 main()
