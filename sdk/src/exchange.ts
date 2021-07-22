@@ -435,6 +435,32 @@ export class Exchange {
     await this.wallet.signAllTransactions(txs)
     return txs
   }
+  private async updatePricesAndSend(ixs: TransactionInstruction[], signers, split?: boolean) {
+    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
+
+    if (!split) {
+      let tx = new Transaction().add(updateIx)
+      ixs.forEach((ix) => tx.add(ix))
+
+      const txs = await this.processOperations([tx])
+      if (signers) txs[0].partialSign(...signers)
+      return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    } else {
+      let tx = new Transaction()
+      ixs.forEach((ix) => tx.add(ix))
+
+      const txs = await this.processOperations([new Transaction().add(updateIx), tx])
+      if (signers) txs[1].partialSign(...signers)
+      sendAndConfirmRawTransaction(this.connection, txs[0].serialize(), {
+        skipPreflight: true
+      })
+      await sleep(100)
+      return sendAndConfirmRawTransaction(this.connection, txs[1].serialize(), {
+        skipPreflight: true
+      })
+    }
+  }
+
   public async checkAccount(exchangeAccount: PublicKey) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const checkIx = await this.checkAccountInstruction(exchangeAccount)
@@ -488,7 +514,7 @@ export class Exchange {
     signers,
     exchangeAccount
   }: Swap) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
+    await this.getState()
     const swapIx = await this.swapInstruction({
       amount,
       exchangeAccount,
@@ -506,11 +532,7 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const swapTx = new Transaction().add(updateIx).add(approveIx).add(swapIx)
-    const txs = await this.processOperations([swapTx])
-    signers ? txs[0].partialSign(...signers) : null
-
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    return this.updatePricesAndSend([approveIx, swapIx], signers, this.assetsList.headAssets >= 20)
   }
   public async burn({ amount, exchangeAccount, owner, userTokenAccountBurn, signers }: Burn) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
@@ -535,18 +557,41 @@ export class Exchange {
     return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
   }
   public async mint({ amount, exchangeAccount, owner, to, signers }: Mint) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const mintIx = await this.mintInstruction({
       amount,
       exchangeAccount,
       owner,
       to
     })
-    const mintTx = new Transaction().add(updateIx).add(mintIx)
-    const txs = await this.processOperations([mintTx])
-    signers ? txs[0].partialSign(...signers) : null
-
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    await this.getState()
+    await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
+  }
+  public async deposit({
+    amount,
+    exchangeAccount,
+    owner,
+    userCollateralAccount,
+    reserveAccount,
+    collateralToken,
+    exchangeAuthority,
+    signers
+  }: Deposit) {
+    const depositIx = await this.depositInstruction({
+      amount,
+      exchangeAccount,
+      userCollateralAccount,
+      owner,
+      reserveAddress: reserveAccount
+    })
+    const approveIx = Token.createApproveInstruction(
+      collateralToken.programId,
+      userCollateralAccount,
+      exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    await signAndSend(new Transaction().add(approveIx).add(depositIx), signers, this.connection)
   }
   public async withdraw({
     amount,
@@ -556,7 +601,6 @@ export class Exchange {
     signers,
     reserveAccount
   }: Withdraw) {
-    const updateIx = await this.updatePricesInstruction(this.state.assetsList)
     const withdrawIx = await this.withdrawInstruction({
       reserveAccount,
       amount,
@@ -564,12 +608,10 @@ export class Exchange {
       owner,
       userCollateralAccount
     })
-    const withdrawTx = new Transaction().add(updateIx).add(withdrawIx)
-    const txs = await this.processOperations([withdrawTx])
-    signers ? txs[0].partialSign(...signers) : null
-
-    return sendAndConfirmRawTransaction(this.connection, txs[0].serialize())
+    await this.getState()
+    return this.updatePricesAndSend([withdrawIx], signers, this.assetsList.headAssets >= 20)
   }
+
   public async withdrawRewards({
     exchangeAccount,
     owner,
@@ -652,27 +694,6 @@ export class Exchange {
     )) as TransactionInstruction
   }
 
-  public async setAsCollateralInstruction({
-    assetsList,
-    collateral,
-    collateralFeed
-  }: SetAsCollateralInstruction) {
-    return (await this.program.instruction.setAsCollateral(
-      collateral.reserveBalance,
-      collateral.decimals,
-      collateral.collateralRatio,
-      {
-        accounts: {
-          state: this.stateAddress,
-          admin: this.state.admin,
-          assetsList,
-          assetAddress: collateral.collateralAddress,
-          reserveAccount: collateral.reserveAddress,
-          feedAddress: collateralFeed
-        }
-      }
-    )) as TransactionInstruction
-  }
   public async addSyntheticInstruction({
     assetsList,
     assetAddress,
@@ -856,11 +877,6 @@ export interface SetLiquidationPenaltiesInstruction {
   penaltyToLiquidator: number
 }
 
-export interface SetAsCollateralInstruction {
-  collateral: Collateral
-  assetsList: PublicKey
-  collateralFeed: PublicKey
-}
 export interface AddSyntheticInstruction {
   assetAddress: PublicKey
   assetsList: PublicKey
@@ -913,6 +929,16 @@ export interface Burn {
   userTokenAccountBurn: PublicKey
   amount: BN
   signers?: Array<Account>
+}
+interface Deposit {
+  amount: BN
+  exchangeAccount: PublicKey
+  owner: PublicKey
+  userCollateralAccount: PublicKey
+  reserveAccount: PublicKey
+  collateralToken: Token
+  exchangeAuthority: PublicKey
+  signers: Array<Account>
 }
 export interface Withdraw {
   reserveAccount: PublicKey

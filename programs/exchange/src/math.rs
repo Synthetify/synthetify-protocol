@@ -174,6 +174,7 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> u64 {
+    // maybe we should calculate decimal difference first not to lose precision
     let amount_before_fee = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap()
