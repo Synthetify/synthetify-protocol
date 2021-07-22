@@ -588,4 +588,41 @@ mod tests {
         // No tollerance
         assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
     }
+
+    #[test]
+    fn test_set_synthetic_supply() {
+        // Regular
+        {
+            let mut synthetic = Synthetic {
+                supply: 10,
+                max_supply: 100,
+                ..Default::default()
+            };
+            let result = set_synthetic_supply(&mut synthetic, 50);
+            assert!(result.is_ok());
+            assert_eq!(synthetic.max_supply, 100);
+            assert_eq!(synthetic.supply, 50);
+        }
+        // Up to limit
+        {
+            let mut synthetic = Synthetic {
+                supply: 10,
+                max_supply: 100,
+                ..Default::default()
+            };
+            let result = set_synthetic_supply(&mut synthetic, 100);
+            assert!(result.is_ok());
+            assert_eq!(synthetic.supply, 100);
+        }
+        // Over limit
+        {
+            let mut synthetic = Synthetic {
+                supply: 10,
+                max_supply: 100,
+                ..Default::default()
+            };
+            let result = set_synthetic_supply(&mut synthetic, 101);
+            assert!(result.is_err());
+        }
+    }
 }
