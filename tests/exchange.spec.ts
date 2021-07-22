@@ -1111,13 +1111,10 @@ describe('exchange', () => {
 
       const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
-      console.log(zeroMaxSupplyToken.publicKey.toString())
       const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       const ethSynthetic = assetsListDataAfter.synthetics.find((a) =>
         a.assetAddress.equals(zeroMaxSupplyToken.publicKey)
       )
-      console.log(assetsListDataAfter.synthetics)
-      console.log(ethSynthetic.assetAddress.toString())
       await assertThrowsAsync(
         exchange.swap({
           amount: new BN(1e6),

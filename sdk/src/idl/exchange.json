@@ -1481,5 +1481,8 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "2wQEcMX3zygScusHB2tzz1Qqsgxn5VrLSV5tqVYxhBDF"
+  }
 }

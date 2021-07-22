@@ -108,16 +108,6 @@ export type AddNewAssetResult = {
   assetAddress: PublicKey
   feedAddress: PublicKey
 }
-export interface IAddNewAssets {
-  exchange: Exchange
-  oracleProgram: Program
-  connection: Connection
-  wallet: Account
-  assetsList: PublicKey
-  newAssetDecimals: number
-  newAssetLimit: BN
-  newAssetsNumber?: number
-}
 export const createAssetsList = async ({
   exchange,
   collateralToken,
@@ -144,44 +134,6 @@ export const createAssetsList = async ({
   })
   return { assetsList, usdToken }
 }
-// export const addNewAssets = async ({
-//   connection,
-//   wallet,
-//   oracleProgram,
-//   exchange,
-//   assetsList,
-//   newAssetDecimals,
-//   newAssetLimit,
-//   newAssetsNumber = 1
-// }: IAddNewAssets) => {
-//   let newAssetsResults: Array<{ assetAddress: PublicKey; feedAddress: PublicKey }> = []
-//   for (let newAssetNumber = 0; newAssetNumber < newAssetsNumber; newAssetNumber++) {
-//     const newToken = await createToken({
-//       connection,
-//       payer: wallet,
-//       mintAuthority: wallet.publicKey,
-//       decimals: newAssetDecimals
-//     })
-//     const newTokenFeed = await createPriceFeed({
-//       oracleProgram,
-//       initPrice: 2
-//     })
-
-//     await exchange.addNewAsset({
-//       assetsAdmin: EXCHANGE_ADMIN,
-//       assetsList,
-//       maxSupply: newAssetLimit,
-//       tokenAddress: newToken.publicKey,
-//       tokenDecimals: newAssetDecimals,
-//       tokenFeed: newTokenFeed
-//     })
-//     newAssetsResults.push({
-//       assetAddress: newToken.publicKey,
-//       feedAddress: newTokenFeed
-//     })
-//   }
-//   return newAssetsResults
-// }
 
 export const newAccountWithLamports = async (connection, lamports = 1e10) => {
   const account = new web3.Account()

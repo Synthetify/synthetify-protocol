@@ -14,7 +14,8 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   createAccountWithMultipleCollaterals,
   skipToSlot,
-  mulByPercentage
+  mulByPercentage,
+  createCollateralToken
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { Collateral } from '../sdk/lib/exchange'
@@ -133,20 +134,16 @@ describe('staking', () => {
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
       const collateralAmount = new BN(1000 * 1e6)
-      const {
-        accountOwner,
-        exchangeAccount,
-        usdTokenAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        reserveAddress: reserveAddress,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
+      const { accountOwner, exchangeAccount, usdTokenAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateralAndMaxMintUsd({
+          reserveAddress: reserveAddress,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount,
+          usdToken
+        })
 
       const healthFactor = new BN((await exchange.getState()).healthFactor)
 
@@ -215,17 +212,16 @@ describe('staking', () => {
         )
       )
 
-      const {
-        exchangeAccount: exchangeAccount2nd
-      } = await createAccountWithCollateralAndMaxMintUsd({
-        reserveAddress,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount,
-        usdToken
-      })
+      const { exchangeAccount: exchangeAccount2nd } =
+        await createAccountWithCollateralAndMaxMintUsd({
+          reserveAddress,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount,
+          usdToken
+        })
       const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
       assert.ok(
         exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(
@@ -261,63 +257,30 @@ describe('staking', () => {
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
     })
     it('with multiple collaterals', async () => {
-      // Creating needed tokens and accounts
-      const btcToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: CollateralTokenMinter.publicKey,
-        decimals: 9
-      })
-
-      const btcFeed = await createPriceFeed({
+      const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
+        exchange,
+        exchangeAuthority,
         oracleProgram,
-        initPrice: 50000,
-        expo: -9
+        connection,
+        wallet,
+        price: 2,
+        decimals: 8,
+        collateralRatio: 50
       })
-
-      await exchange.addNewAsset({
-        assetsAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        maxSupply: new BN(10).pow(new BN(18)),
-        tokenAddress: btcToken.publicKey,
-        tokenDecimals: 9,
-        tokenFeed: btcFeed
-      })
-
-      const btcCollateral: Collateral = {
-        isCollateral: true,
-        collateralAddress: btcToken.publicKey,
-        reserveAddress: await btcToken.createAccount(exchangeAuthority),
-        liquidationFund: await btcToken.createAccount(exchangeAuthority),
-        reserveBalance: new BN(0),
-        collateralRatio: 50,
-        decimals: 8
-      }
-
-      const ix = await exchange.setAsCollateralInstruction({
-        collateral: btcCollateral,
-        assetsList,
-        collateralFeed: btcFeed
-      })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       const collateralAmount = new BN(20 * 1e8)
-      const {
-        accountOwner,
-        exchangeAccount,
-        userOtherTokenAccount,
-        userCollateralTokenAccount
-      } = await createAccountWithMultipleCollaterals({
-        reserveAddress: reserveAddress,
-        otherReserveAddress: btcCollateral.reserveAddress,
-        collateralToken,
-        otherToken: btcToken,
-        exchangeAuthority,
-        exchange,
-        mintAuthority: CollateralTokenMinter.publicKey,
-        amountOfCollateralToken: collateralAmount,
-        amountOfOtherToken: collateralAmount
-      })
+      const { accountOwner, exchangeAccount, userOtherTokenAccount, userCollateralTokenAccount } =
+        await createAccountWithMultipleCollaterals({
+          reserveAddress: reserveAddress,
+          otherReserveAddress: btcReserve,
+          collateralToken,
+          otherToken: btcToken,
+          exchangeAuthority,
+          exchange,
+          mintAuthority: CollateralTokenMinter.publicKey,
+          amountOfCollateralToken: collateralAmount,
+          amountOfOtherToken: collateralAmount
+        })
 
       // Minting using both collaterals
       const healthFactor = new BN((await exchange.getState()).healthFactor)
