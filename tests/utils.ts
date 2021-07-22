@@ -71,6 +71,9 @@ export const calculateAmountAfterFee = (
       .mul(new BN(decimal_change))
   }
 }
+export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
+  return totalFee.muln(swapTax).divn(100)
+}
 interface ICreateToken {
   connection: Connection
   payer: Account
