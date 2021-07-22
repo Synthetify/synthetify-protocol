@@ -1808,4 +1808,38 @@ mod tests {
             assert_eq!(exchange_account.collaterals[0].index, 2);
         }
     }
+
+    #[test]
+    fn test_assets_list_methods() {
+        // Freshly created
+        {
+            let assets_list = AssetsList {
+                ..Default::default()
+            };
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 0);
+        }
+        // Append assets
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_asset(Asset {
+                price: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.assets[0].price }, 2);
+            assert_eq!(assets_list.head_assets, 1);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 0);
+
+            assets_list.append_asset(Asset {
+                price: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.assets[1].price }, 3);
+            assert_eq!(assets_list.head_assets, 2);
+        }
+    }
 }
