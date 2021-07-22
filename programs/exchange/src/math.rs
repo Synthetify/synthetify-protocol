@@ -1,8 +1,9 @@
-use std::{cell::RefMut, convert::TryInto};
+use std::{cell::RefMut, convert::TryInto, ops::Div};
 
 use crate::*;
 
 // Min decimals for asset = 6
+pub const XUSD_DECIMAL: u8 = 6;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 
@@ -155,6 +156,24 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return 20;
     } else {
         return discount as u8;
+    }
+}
+pub fn calculate_price_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
+    let decimal_diff = (decimal as i32).checked_sub(XUSD_DECIMAL as i32).unwrap();
+    // price * amount / decimal
+
+    if decimal_diff > 0 {
+        return (price as u128)
+            .checked_mul(amount as u128)
+            .unwrap()
+            .checked_div(10u128.checked_pow(decimal_diff as u32).unwrap())
+            .unwrap() as u64;
+    } else {
+        return (price as u128)
+            .checked_mul(amount as u128)
+            .unwrap()
+            .checked_mul(10u128.checked_pow(-decimal_diff as u32).unwrap())
+            .unwrap() as u64;
     }
 }
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
