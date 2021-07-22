@@ -148,6 +148,7 @@ pub mod exchange {
         state.max_delay = 0;
         state.fee = 300;
         state.swap_tax = 20;
+        state.pool_fee = 0;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;

@@ -157,14 +157,14 @@ pub fn amount_to_discount(amount: u64) -> u8 {
         return discount as u8;
     }
 }
-pub fn calculate_price_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
+pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
     return (price as u128)
         .checked_mul(amount as u128)
         .unwrap()
         .checked_div(10u128.checked_pow(decimal as u32).unwrap())
         .unwrap() as u64;
 }
-pub fn calculate_price_difference_in_usd(
+pub fn calculate_value_difference_in_usd(
     price_in: u64,
     amount_in: u64,
     decimal_in: u8,
@@ -173,10 +173,10 @@ pub fn calculate_price_difference_in_usd(
     decimal_out: u8,
 ) -> u64 {
     // price in should be always bigger than price out
-    let price_in = calculate_price_in_usd(price_in, amount_in, decimal_in);
-    let price_out = calculate_price_in_usd(price_out, amount_out, decimal_out);
+    let value_in = calculate_value_in_usd(price_in, amount_in, decimal_in);
+    let value_out = calculate_value_in_usd(price_out, amount_out, decimal_out);
 
-    return price_in.checked_sub(price_out).unwrap();
+    return value_in.checked_sub(value_out).unwrap();
 }
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
     return (swap_tax as u128)
@@ -212,7 +212,7 @@ pub fn calculate_swap_out_amount(
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount = amount_after_fee.checked_div(decimal_change).unwrap();
-        let fee_in_usd = calculate_price_difference_in_usd(
+        let fee_in_usd = calculate_value_difference_in_usd(
             asset_in.price,
             amount as u64,
             synthetic_in.decimals,
@@ -224,7 +224,7 @@ pub fn calculate_swap_out_amount(
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
         let scaled_amount = amount_after_fee.checked_mul(decimal_change).unwrap();
-        let fee_in_usd = calculate_price_difference_in_usd(
+        let fee_in_usd = calculate_value_difference_in_usd(
             asset_in.price,
             amount as u64,
             synthetic_in.decimals,
@@ -1126,55 +1126,55 @@ mod tests {
         }
     }
     #[test]
-    fn test_calculate_price_in_usd() {
+    fn test_calculate_value_in_usd() {
         // zero price
         {
             let price = 0;
             let amount = 2 * 10u64.pow(PRICE_OFFSET.into());
             let decimal = PRICE_OFFSET;
-            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 0 USD
-            assert_eq!(price_in_usd, 0);
+            assert_eq!(value_in_usd, 0);
         }
         // No amount
         {
             let price = 50 * 10u64.pow(PRICE_OFFSET.into());
             let amount = 0;
             let decimal = PRICE_OFFSET;
-            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 0 USD
-            assert_eq!(price_in_usd, 0);
+            assert_eq!(value_in_usd, 0);
         }
         // decimal same as xUSD
         {
             let price = 3 * 10u64.pow(PRICE_OFFSET.into());
             let amount = 2 * 10u64.pow(6);
             let decimal = PRICE_OFFSET;
-            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 6 USD
-            assert_eq!(price_in_usd, 6 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 6 * 10u64.pow(PRICE_OFFSET.into()));
         }
         // decimal lower than xUSD
         {
             let price = 112 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 2 * 10u64.pow(6);
             let decimal = 4;
-            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 22400 USD
-            assert_eq!(price_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET.into()));
         }
         // decimal bigger than xUSD
         {
             let price = 91 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 2 * 10u64.pow(12);
             let decimal = 10;
-            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 18200 USD
-            assert_eq!(price_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET.into()));
         }
     }
     #[test]
-    fn test_calculate_price_difference_in_usd() {
+    fn test_calculate_value_difference_in_usd() {
         let xbtc_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
         let xbtc_decimal = 8u8;
 
@@ -1185,7 +1185,7 @@ mod tests {
             let xbtc_amount = 1 * 10u64.pow(8);
             let xusd_amount = 28_999 * 10u64.pow(6);
 
-            let price_difference_in_usd = calculate_price_difference_in_usd(
+            let value_difference_in_usd = calculate_value_difference_in_usd(
                 xbtc_price,
                 xbtc_amount,
                 xbtc_decimal,
@@ -1195,7 +1195,7 @@ mod tests {
             );
             // should be 1_001
             assert_eq!(
-                price_difference_in_usd,
+                value_difference_in_usd,
                 1_001 * 10u64.pow(PRICE_OFFSET as u32)
             );
         }
@@ -1203,7 +1203,7 @@ mod tests {
         {
             let xbtc_amount = 89 * 10u64.pow(6);
             let xusd_amount = 35_000 * 10u64.pow(6);
-            let price_difference_in_usd = calculate_price_difference_in_usd(
+            let value_difference_in_usd = calculate_value_difference_in_usd(
                 xusd_price,
                 xusd_amount,
                 xusd_decimal,
@@ -1212,7 +1212,7 @@ mod tests {
                 xbtc_decimal,
             );
             // should be 8_300
-            assert_eq!(price_difference_in_usd, 8_300 * 10u64.pow(6));
+            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(6));
         }
     }
 
