@@ -454,73 +454,73 @@ describe('exchange', () => {
         )
       )
     })
-    it('withdraw fully', async () => {
-      const collateralAmount = new BN(100 * 1e6)
-      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
-        await createAccountWithCollateral({
-          reserveAddress: snyReserve,
-          collateralToken,
-          exchangeAuthority,
-          exchange,
-          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-          amount: collateralAmount
-        })
+    // it('withdraw fully', async () => {
+    //   const collateralAmount = new BN(100 * 1e6)
+    //   const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+    //     await createAccountWithCollateral({
+    //       reserveAddress: snyReserve,
+    //       collateralToken,
+    //       exchangeAuthority,
+    //       exchange,
+    //       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+    //       amount: collateralAmount
+    //     })
 
-      // Get data before
-      const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
+    //   // Get data before
+    //   const exchangeAccountBefore = await exchange.getExchangeAccount(exchangeAccount)
 
-      const exchangeCollateralBalanceBefore = (await collateralToken.getAccountInfo(snyReserve))
-        .amount
+    //   const exchangeCollateralBalanceBefore = (await collateralToken.getAccountInfo(snyReserve))
+    //     .amount
 
-      const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
-        userCollateralTokenAccount
-      )
-      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
-      const assetListDataBefore = await exchange.getAssetsList(assetsList)
+    //   const userCollateralTokenAccountBefore = await collateralToken.getAccountInfo(
+    //     userCollateralTokenAccount
+    //   )
+    //   assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+    //   const assetListDataBefore = await exchange.getAssetsList(assetsList)
 
-      assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
-      const withdrawAmount = collateralAmount
+    //   assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
+    //   const withdrawAmount = collateralAmount
 
-      // Withdraw
-      await exchange.withdraw({
-        reserveAccount: snyReserve,
-        amount: withdrawAmount,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userCollateralAccount: userCollateralTokenAccount,
-        signers: [accountOwner]
-      })
+    //   // Withdraw
+    //   await exchange.withdraw({
+    //     reserveAccount: snyReserve,
+    //     amount: withdrawAmount,
+    //     exchangeAccount,
+    //     owner: accountOwner.publicKey,
+    //     userCollateralAccount: userCollateralTokenAccount,
+    //     signers: [accountOwner]
+    //   })
 
-      // Adding tokens to account on token
-      const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
-        userCollateralTokenAccount
-      )
-      assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
+    //   // Adding tokens to account on token
+    //   const userCollateralTokenAccountAfter = await collateralToken.getAccountInfo(
+    //     userCollateralTokenAccount
+    //   )
+    //   assert.ok(userCollateralTokenAccountAfter.amount.eq(withdrawAmount))
 
-      // Removing tokens from reserves
-      const exchangeCollateralBalanceAfter = (await collateralToken.getAccountInfo(snyReserve))
-        .amount
-      assert.ok(
-        exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
-      )
+    //   // Removing tokens from reserves
+    //   const exchangeCollateralBalanceAfter = (await collateralToken.getAccountInfo(snyReserve))
+    //     .amount
+    //   assert.ok(
+    //     exchangeCollateralBalanceAfter.eq(exchangeCollateralBalanceBefore.sub(withdrawAmount))
+    //   )
 
-      // Updating amount in assetList
-      const assetListDataAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(
-        assetListDataBefore.collaterals[0].reserveBalance
-          .sub(assetListDataAfter.collaterals[0].reserveBalance)
-          .eq(withdrawAmount)
-      )
+    //   // Updating amount in assetList
+    //   const assetListDataAfter = await exchange.getAssetsList(assetsList)
+    //   assert.ok(
+    //     assetListDataBefore.collaterals[0].reserveBalance
+    //       .sub(assetListDataAfter.collaterals[0].reserveBalance)
+    //       .eq(withdrawAmount)
+    //   )
 
-      // Updating exchange account check
-      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(
-        exchangeAccountAfter.collaterals[0].amount.eq(
-          exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
-        )
-      )
-      assert.ok(exchangeAccountAfter.collaterals[0].amount.eq(new BN(0)))
-    })
+    //   // Updating exchange account check
+    //   const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+    //   assert.ok(
+    //     exchangeAccountAfter.collaterals[0].amount.eq(
+    //       exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
+    //     )
+    //   )
+    //   assert.ok(exchangeAccountAfter.collaterals[0].amount.eq(new BN(0)))
+    // })
     it('withdraw over limit', async () => {
       const collateralAmount = new BN(100 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
@@ -604,7 +604,7 @@ describe('exchange', () => {
       )
     })
   })
-  describe('#swap()', async () => {
+  describe.only('#swap()', async () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
@@ -704,7 +704,7 @@ describe('exchange', () => {
         connection
       )
     })
-    it.only('Swap usd->btc->eth with 0% discount', async () => {
+    it('Swap usd->btc->eth with 0% discount', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
@@ -913,110 +913,7 @@ describe('exchange', () => {
         a.assetAddress.equals(btcToken.publicKey)
       )
       const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
-      await exchange.swap({
-        amount: usdMintAmount,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccountFor: btcTokenAccount,
-        userTokenAccountIn: usdTokenAccount,
-        tokenFor: btcToken.publicKey,
-        tokenIn: usdSynthetic.assetAddress,
-        signers: [accountOwner]
-      })
-
-      const btcAmountOut = calculateAmountAfterFee(
-        usdAsset,
-        btcAsset,
-        usdSynthetic,
-        btcSynthetic,
-        effectiveFee,
-        usdMintAmount
-      )
-      const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
-      assert.ok(userBtcTokenAccountAfter.amount.eq(btcAmountOut))
-
-      const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
-
-      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(
-        assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
-        )
-      )
-      const ethSynthetic = assetsListData.synthetics.find((a) =>
-        a.assetAddress.equals(ethToken.publicKey)
-      )
-      const ethAsset = assetsListData.assets[ethSynthetic.assetIndex]
-
-      const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
-      assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
-
-      await exchange.swap({
-        amount: btcAmountOut,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccountFor: ethTokenAccount,
-        userTokenAccountIn: btcTokenAccount,
-        tokenFor: ethToken.publicKey,
-        tokenIn: btcToken.publicKey,
-        signers: [accountOwner]
-      })
-
-      const ethAmountOut = calculateAmountAfterFee(
-        btcAsset,
-        ethAsset,
-        btcSynthetic,
-        ethSynthetic,
-        effectiveFee,
-        btcAmountOut
-      )
-      const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
-      assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
-    })
-    it('Swap usd->btc->eth with 3% discount', async () => {
-      const collateralAmount = new BN(10000 * 1e6)
-      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
-        await createAccountWithCollateral({
-          reserveAddress: snyReserve,
-          collateralToken,
-          exchangeAuthority,
-          exchange,
-          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-          amount: collateralAmount
-        })
-      // create usd account
-      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
-      const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
-
-      // We can mint max 2000 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
-      await exchange.mint({
-        amount: usdMintAmount,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        to: usdTokenAccount,
-        signers: [accountOwner]
-      })
-
-      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
-      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
-
-      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
-
-      const assetsListData = await exchange.getAssetsList(assetsList)
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
-      assert.ok(effectiveFee === 291) // discount 3%
-
-      const usdSynthetic = assetsListData.synthetics[0]
-      const usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
-      const btcSynthetic = assetsListData.synthetics.find((a) =>
-        a.assetAddress.equals(btcToken.publicKey)
-      )
-      const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+      const stateBeforeSwap = await exchange.getState()
 
       await exchange.swap({
         amount: usdMintAmount,
@@ -1043,10 +940,26 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+      // 100$(IN value), 99.7$(OUT value)
+      // expected fee 0.3$ -> 3 * 10^5
+      // expected admin tax 0.06$ -> 6 * 10^4
+      const stateAfterSwap = await exchange.getState()
+      const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
+      const totalFee = calculateFee(
+        usdAsset,
+        usdSynthetic,
+        usdMintAmount,
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut
+      )
+      const adminTax = calculateSwapTax(totalFee, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSwap.poolFee.eq(stateBeforeSwap.poolFee.add(adminTax)))
+      // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
+        assetsListDataAfterSwap.synthetics[0].supply.eq(
+          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
@@ -1057,29 +970,135 @@ describe('exchange', () => {
       const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
 
-      await exchange.swap({
-        amount: btcAmountOut,
-        exchangeAccount,
-        owner: accountOwner.publicKey,
-        userTokenAccountFor: ethTokenAccount,
-        userTokenAccountIn: btcTokenAccount,
-        tokenFor: ethToken.publicKey,
-        tokenIn: btcToken.publicKey,
-        signers: [accountOwner]
-      })
+      // second swap
+      // await exchange.swap({
+      //   amount: btcAmountOut,
+      //   exchangeAccount,
+      //   owner: accountOwner.publicKey,
+      //   userTokenAccountFor: ethTokenAccount,
+      //   userTokenAccountIn: btcTokenAccount,
+      //   tokenFor: ethToken.publicKey,
+      //   tokenIn: btcToken.publicKey,
+      //   signers: [accountOwner]
+      // })
 
-      const ethAmountOut = calculateAmountAfterFee(
-        btcAsset,
-        ethAsset,
-        btcSynthetic,
-        ethSynthetic,
-        effectiveFee,
-        btcAmountOut
-      )
-      const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
-      assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
+      // const ethAmountOut = calculateAmountAfterFee(
+      //   btcAsset,
+      //   ethAsset,
+      //   btcSynthetic,
+      //   ethSynthetic,
+      //   effectiveFee,
+      //   btcAmountOut
+      // )
+      // const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
+      // assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
     })
-    it('Swap usd->usd should fail', async () => {
+    // it('Swap usd->btc->eth with 3% discount', async () => {
+    //   const collateralAmount = new BN(10000 * 1e6)
+    //   const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+    //     await createAccountWithCollateral({
+    //       reserveAddress: snyReserve,
+    //       collateralToken,
+    //       exchangeAuthority,
+    //       exchange,
+    //       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+    //       amount: collateralAmount
+    //     })
+    //   // create usd account
+    //   const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+    //   const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+    //   const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
+
+    //   // We can mint max 2000 * 1e6
+    //   const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+    //   await exchange.mint({
+    //     amount: usdMintAmount,
+    //     exchangeAccount,
+    //     owner: accountOwner.publicKey,
+    //     to: usdTokenAccount,
+    //     signers: [accountOwner]
+    //   })
+
+    //   const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+    //   assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+    //   const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+    //   assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+    //   const assetsListData = await exchange.getAssetsList(assetsList)
+    //   const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
+    //   const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
+    //   assert.ok(effectiveFee === 291) // discount 3%
+
+    //   const usdSynthetic = assetsListData.synthetics[0]
+    //   const usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
+    //   const btcSynthetic = assetsListData.synthetics.find((a) =>
+    //     a.assetAddress.equals(btcToken.publicKey)
+    //   )
+    //   const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+
+    //   await exchange.swap({
+    //     amount: usdMintAmount,
+    //     exchangeAccount,
+    //     owner: accountOwner.publicKey,
+    //     userTokenAccountFor: btcTokenAccount,
+    //     userTokenAccountIn: usdTokenAccount,
+    //     tokenFor: btcToken.publicKey,
+    //     tokenIn: usdSynthetic.assetAddress,
+    //     signers: [accountOwner]
+    //   })
+
+    //   const btcAmountOut = calculateAmountAfterFee(
+    //     usdAsset,
+    //     btcAsset,
+    //     usdSynthetic,
+    //     btcSynthetic,
+    //     effectiveFee,
+    //     usdMintAmount
+    //   )
+    //   const userBtcTokenAccountAfter = await btcToken.getAccountInfo(btcTokenAccount)
+    //   assert.ok(userBtcTokenAccountAfter.amount.eq(btcAmountOut))
+
+    //   const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+    //   assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
+
+    //   const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+    //   assert.ok(
+    //     assetsListDataAfter.synthetics[0].supply.eq(
+    //       assetsListData.synthetics[0].supply.sub(usdMintAmount)
+    //     )
+    //   )
+    //   const ethSynthetic = assetsListData.synthetics.find((a) =>
+    //     a.assetAddress.equals(ethToken.publicKey)
+    //   )
+    //   const ethAsset = assetsListData.assets[ethSynthetic.assetIndex]
+
+    //   const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
+    //   assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
+
+    //   await exchange.swap({
+    //     amount: btcAmountOut,
+    //     exchangeAccount,
+    //     owner: accountOwner.publicKey,
+    //     userTokenAccountFor: ethTokenAccount,
+    //     userTokenAccountIn: btcTokenAccount,
+    //     tokenFor: ethToken.publicKey,
+    //     tokenIn: btcToken.publicKey,
+    //     signers: [accountOwner]
+    //   })
+
+    //   const ethAmountOut = calculateAmountAfterFee(
+    //     btcAsset,
+    //     ethAsset,
+    //     btcSynthetic,
+    //     ethSynthetic,
+    //     effectiveFee,
+    //     btcAmountOut
+    //   )
+    //   const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
+    //   assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
+    // })
+    /* it('Swap usd->usd should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
@@ -1226,7 +1245,7 @@ describe('exchange', () => {
         }),
         ERRORS.ALLOWANCE
       )
-    })
+    }) */
   })
   describe('#burn()', async () => {
     const debtBurnAccuracy = new BN(10)
