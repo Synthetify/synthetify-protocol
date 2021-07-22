@@ -7,20 +7,15 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::{
-        cell::{RefCell, RefMut},
-        convert::TryInto,
-    };
+    use std::convert::TryInto;
 
-    use anchor_lang::Key;
     use pyth::pc::Price;
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
-        calculate_max_withdraw_in_usd, calculate_max_withdrawable,
-        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_user_debt_in_usd,
-        usd_to_token_amount, PRICE_OFFSET,
+        calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
+        calculate_swap_out_amount, calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -333,7 +328,7 @@ pub mod exchange {
             .unwrap()
             .checked_div(100)
             .unwrap();
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
             .iter_mut()
             .find(|x| x.collateral_address.eq(&user_collateral_account.mint))
@@ -342,10 +337,11 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let mut exchange_account_collateral = match exchange_account
+        let (entry_index, mut exchange_account_collateral) = match exchange_account
             .collaterals
             .iter_mut()
-            .find(|x| x.collateral_address.eq(&collateral.collateral_address))
+            .enumerate()
+            .find(|(_, x)| x.collateral_address.eq(&collateral.collateral_address))
         {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
@@ -359,7 +355,8 @@ pub mod exchange {
             state.health_factor,
         );
         let collateral_asset = &assets[collateral.asset_index as usize];
-        let max_withdrawable = calculate_max_withdrawable(collateral_asset, max_withdraw_in_usd);
+        let max_withdrawable =
+            usd_to_token_amount(collateral_asset, collateral, max_withdraw_in_usd);
 
         if amount > max_withdrawable {
             return Err(ErrorCode::WithdrawLimit.into());
@@ -370,6 +367,10 @@ pub mod exchange {
             .amount
             .checked_sub(amount)
             .unwrap();
+
+        if exchange_account_collateral.amount == 0 {
+            exchange_account.remove(entry_index);
+        }
 
         // Update reserve balance in AssetList
         collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap(); // should never fail
@@ -1281,12 +1282,19 @@ pub struct ExchangeAccount {
 pub struct CollateralEntry {
     amount: u64,
     collateral_address: Pubkey,
-    index: u8, // index could be usefull to quickly find asset in list
+    index: u8,
 }
 impl ExchangeAccount {
     fn append(&mut self, entry: CollateralEntry) {
         self.collaterals[(self.head) as usize] = entry;
         self.head += 1;
+    }
+    fn remove(&mut self, index: usize) {
+        self.collaterals[index] = self.collaterals[(self.head - 1) as usize];
+        self.collaterals[(self.head - 1) as usize] = CollateralEntry {
+            ..Default::default()
+        };
+        self.head -= 1;
     }
 }
 #[derive(Accounts)]

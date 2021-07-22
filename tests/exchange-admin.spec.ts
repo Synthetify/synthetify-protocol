@@ -11,8 +11,6 @@ import {
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
-  IAddNewAssets,
-  addNewAssets,
   DEFAULT_PUBLIC_KEY,
   U64_MAX
 } from './utils'
@@ -131,32 +129,25 @@ describe('admin', () => {
     // Length should be 2
     assert.ok(assetsListData.assets.length === 2)
     // Authority of list
-    const collateralAsset = assetsListData.assets[assetsListData.assets.length - 1]
 
     // Check feed address
-    assert.ok(collateralAsset.feedAddress.equals(collateralTokenFeed))
+    const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
+    assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
+    assert.ok(snyAsset.price.eq(new BN(0)))
 
     // Check token address
-    assert.ok(collateralAsset.collateral.collateralAddress.equals(collateralToken.publicKey))
+    const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
+    assert.ok(snyCollateral.collateralAddress.equals(collateralToken.publicKey))
 
-    // Check price
-    assert.ok(collateralAsset.price.eq(new BN(0)))
-
+    // USD token address
     const usdAsset = assetsListData.assets[0]
-
-    // USD token checks
-
-    // Check token address
-    assert.ok(usdAsset.synthetic.assetAddress.equals(usdToken.publicKey))
-
-    // Check decimals
-    assert.ok(usdAsset.synthetic.decimals === initTokensDecimals)
-
-    // Check asset limit
-    assert.ok(usdAsset.synthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
-
-    // Check price
     assert.ok(usdAsset.price.eq(new BN(1e6)))
+
+    // xUSD checks
+    const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
+    assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
+    assert.ok(usdSynthetic.decimals === initTokensDecimals)
+    assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
@@ -340,172 +331,6 @@ describe('admin', () => {
       assert.ok(state.staking.roundLength === length)
     })
   })
-  describe('#setAsCollateral()', async () => {
-    it('Fail without admin signature', async () => {
-      // Creating needed accounts
-      const someToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: exchangeAuthority,
-        decimals: 8
-      })
-
-      const someFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 4,
-        expo: -8
-      })
-
-      await exchange.addNewAsset({
-        assetsAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        maxSupply: new BN(10).pow(new BN(18)),
-        tokenAddress: someToken.publicKey,
-        tokenDecimals: 8,
-        tokenFeed: someFeed
-      })
-
-      // Collateral structure
-      const someCollateral: Collateral = {
-        isCollateral: true,
-        collateralAddress: someToken.publicKey,
-        reserveAddress: await someToken.createAccount(exchangeAuthority),
-        liquidationFund: await someToken.createAccount(exchangeAuthority),
-        reserveBalance: new BN(0),
-        collateralRatio: 50,
-        decimals: 8
-      }
-
-      // Setting collateral
-      const ix = await exchange.setAsCollateralInstruction({
-        collateral: someCollateral,
-        assetsList,
-        collateralFeed: someFeed
-      })
-
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS.SIGNATURE
-      )
-    })
-    it('change value', async () => {
-      // Creating needed accounts
-      const someToken = await createToken({
-        connection,
-        payer: wallet,
-        mintAuthority: exchangeAuthority,
-        decimals: 8
-      })
-
-      const someFeed = await createPriceFeed({
-        oracleProgram,
-        initPrice: 4,
-        expo: -8
-      })
-
-      await exchange.addNewAsset({
-        assetsAdmin: EXCHANGE_ADMIN,
-        assetsList,
-        maxSupply: new BN(10).pow(new BN(18)),
-        tokenAddress: someToken.publicKey,
-        tokenDecimals: 8,
-        tokenFeed: someFeed
-      })
-
-      // Collateral structure
-      const someCollateral: Collateral = {
-        isCollateral: true,
-        collateralAddress: someToken.publicKey,
-        reserveAddress: await someToken.createAccount(exchangeAuthority),
-        liquidationFund: await someToken.createAccount(exchangeAuthority),
-        reserveBalance: new BN(0),
-        collateralRatio: 50,
-        decimals: 8
-      }
-
-      // Setting collateral
-      const ix = await exchange.setAsCollateralInstruction({
-        collateral: someCollateral,
-        assetsList,
-        collateralFeed: someFeed
-      })
-
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-
-      // Getting data After
-      const assetData = await exchange.getAssetsList(assetsList)
-      const lastAsset = assetData.assets[assetData.head - 1].collateral
-
-      // Check if collateral is set on the right asset
-      assert.ok(assetData.assets[assetData.head - 1].feedAddress.equals(someFeed))
-
-      // Check collateral feed
-      assert.ok(lastAsset.isCollateral == someCollateral.isCollateral)
-      assert.ok(lastAsset.collateralAddress.equals(someCollateral.collateralAddress))
-      assert.ok(lastAsset.reserveAddress.equals(someCollateral.reserveAddress))
-      assert.ok(lastAsset.reserveBalance.eq(someCollateral.reserveBalance))
-      assert.ok(lastAsset.collateralRatio == someCollateral.collateralRatio)
-      assert.ok(lastAsset.decimals == someCollateral.decimals)
-    })
-  })
-  describe('#addNewAsset()', async () => {
-    it('Should add new asset ', async () => {
-      const newAssetLimit = new BN(3 * 1e4)
-      const newAssetDecimals = 8
-      const addNewAssetParams: IAddNewAssets = {
-        connection,
-        wallet,
-        oracleProgram,
-        exchange,
-        assetsList,
-        newAssetDecimals,
-        newAssetLimit
-      }
-
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const [createdAsset] = await addNewAssets(addNewAssetParams)
-      const afterAssetList = await exchange.getAssetsList(assetsList)
-
-      const newAsset = afterAssetList.assets[afterAssetList.assets.length - 1]
-
-      // Length should be increased by 1
-      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
-
-      // Isn't a collateral
-      assert.ok(newAsset.collateral.isCollateral == false)
-
-      // Check feed address
-      assert.ok(newAsset.feedAddress.equals(createdAsset.feedAddress))
-
-      // Check token address
-      assert.ok(newAsset.synthetic.assetAddress.equals(createdAsset.assetAddress))
-
-      // Check decimals
-      assert.ok(newAsset.synthetic.decimals === newAssetDecimals)
-
-      // Check asset limit
-      assert.ok(newAsset.synthetic.maxSupply.eq(newAssetLimit))
-
-      // Check price
-      assert.ok(newAsset.price.eq(new BN(0)))
-    })
-    // it('Should not add new asset ', async () => {
-    //   const newAssetDecimals = 8
-    //   const newAssetLimit = new BN(3 * 1e4)
-
-    //   const addNewAssetParams: IAddNewAssets = {
-    //     connection,
-    //     wallet,
-    //     oracleProgram,
-    //     exchange,
-    //     assetsList,
-    //     newAssetDecimals,
-    //     newAssetLimit
-    //   }
-    //   // we hit limit of account size and cannot add another asset
-    //   await assertThrowsAsync(addNewAssets(addNewAssetParams), ERRORS.SERIALIZATION)
-    // })
-  })
   describe('#addNewAsset', async () => {
     it('Should add new asset ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
@@ -524,8 +349,6 @@ describe('admin', () => {
       const addedNewAsset = afterAssetList.assets.find((a) =>
         a.feedAddress.equals(newAssetFeedPublicKey)
       )
-      console.log(addedNewAsset)
-
       // Check new asset exist
       assert.ok(addedNewAsset)
 
@@ -647,8 +470,8 @@ describe('admin', () => {
       assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
       assert.ok(addedCollateral.collateralRatio === collateralRatio)
       assert.ok(addedCollateral.decimals === decimals)
-      assert.ok(addedCollateral.liquidationFund.equals(liquidationAccount.publicKey))
-      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount.publicKey))
+      assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
+      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
       assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
     }),
       it('Should fail without admin signature', async () => {
@@ -684,7 +507,7 @@ describe('admin', () => {
   describe('#setMaxSupply()', async () => {
     const newAssetLimit = new BN(4 * 1e4)
 
-    it('Error should be throwed while setting new max supply', async () => {
+    it('Error should be thrown while setting new max supply', async () => {
       await assertThrowsAsync(
         exchange.setAssetMaxSupply({
           assetAddress: new Account().publicKey,
@@ -698,17 +521,15 @@ describe('admin', () => {
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.notOk(
-        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
-          newAssetLimit
-        )
+        afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
       )
     })
     it('New max supply should be set', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
 
       await exchange.setAssetMaxSupply({
-        assetAddress: beforeAsset.synthetic.assetAddress,
+        assetAddress: beforeAsset.assetAddress,
         exchangeAdmin: EXCHANGE_ADMIN,
         assetsList,
         newMaxSupply: newAssetLimit
@@ -717,9 +538,7 @@ describe('admin', () => {
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.ok(
-        afterAssetList.assets[afterAssetList.assets.length - 1].synthetic.maxSupply.eq(
-          newAssetLimit
-        )
+        afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
       )
     })
   })
@@ -731,11 +550,11 @@ describe('admin', () => {
         expo: -6
       })
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      let beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
       const ix = await exchange.setPriceFeedInstruction({
         assetsList,
         priceFeed: newPriceFeed,
-        tokenAddress: beforeAsset.synthetic.assetAddress
+        oldPriceFeed: beforeAsset.feedAddress
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
