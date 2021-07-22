@@ -71,6 +71,17 @@ export const calculateAmountAfterFee = (
       .mul(new BN(decimal_change))
   }
 }
+export const calculateFeeInUSD = (
+  asset: Asset,
+  synthetic: Synthetic,
+  amount: BN,
+  effectiveFee: number
+) => {
+  return asset.price
+    .mul(amount)
+    .muln(effectiveFee)
+    .div(new BN(10).pow(new BN(synthetic.decimals)))
+}
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   return totalFee.muln(swapTax).divn(100)
 }
