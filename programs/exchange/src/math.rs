@@ -1041,14 +1041,14 @@ mod tests {
                 decimals: 8,
                 ..Default::default()
             };
-            // let asset_eth = Asset {
-            //     price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-            //     ..Default::default()
-            // };
-            // let synthetic_eth = Synthetic {
-            //     decimals: 7,
-            //     ..Default::default()
-            // };
+            let asset_eth = Asset {
+                price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let synthetic_eth = Synthetic {
+                decimals: 7,
+                ..Default::default()
+            };
             let fee = 300u32;
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_usd,
@@ -1063,24 +1063,31 @@ mod tests {
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
 
-            // let (out_amount, swap_fee) = calculate_swap_out_amount(
-            //     &asset_btc,
-            //     &asset_usd,
-            //     &synthetic_btc,
-            //     &synthetic_usd,
-            //     1 * 10u64.pow(8),
-            //     fee,
-            // );
-            // assert_eq!(out_amount, 49850_000_000);
-            // let (out_amount, swap_fee) = calculate_swap_out_amount(
-            //     &asset_btc,
-            //     &asset_eth,
-            //     &synthetic_btc,
-            //     &synthetic_eth,
-            //     99700000,
-            //     fee,
-            // );
-            // assert_eq!(out_amount, 24_850_2250);
+            let (out_amount, swap_fee) = calculate_swap_out_amount(
+                &asset_btc,
+                &asset_usd,
+                &synthetic_btc,
+                &synthetic_usd,
+                1 * 10u64.pow(8),
+                fee,
+            );
+            // out amount should be 49850 USD
+            assert_eq!(out_amount, 49850_000_000);
+            // fee should be 150 USD
+            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+
+            let (out_amount, swap_fee) = calculate_swap_out_amount(
+                &asset_btc,
+                &asset_eth,
+                &synthetic_btc,
+                &synthetic_eth,
+                99700000,
+                fee,
+            );
+            // out amount should be 24.850225 ETH
+            assert_eq!(out_amount, 24_850_2250);
+            // fee should be 149,55 USD
+            assert_eq!(swap_fee, 14955 * 10u64.pow(4));
         }
     }
     #[test]
