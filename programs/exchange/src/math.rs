@@ -1107,6 +1107,19 @@ mod tests {
             // should be 0
             assert_eq!(price_in_usd, 0);
         }
+        // decimal same as xUSD
+        {
+            let price = 3;
+            let amount = 2 * 10u64.pow(6);
+            let decimal = XUSD_DECIMAL;
+            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            // 6 * 10^6
+            assert_eq!(price_in_usd, 6 * 10u64.pow(6));
+        }
+        // decimal lower than xUSD
+        {}
+        // decimal bigger than xUSD
+        {}
     }
     #[test]
     fn test_calculate_swap_tax() {
