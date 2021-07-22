@@ -1137,31 +1137,48 @@ mod tests {
             assert_eq!(price_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET as u32));
         }
     }
-    // #[test]
-    // fn test_calculate_price_difference_in_usd() {
-    //     let xBTC_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
-    //     let xBTC_decimal = 8u8;
-    //     let xBTC_amount = 1 * 10u64.pow(8);
+    #[test]
+    fn test_calculate_price_difference_in_usd() {
+        let xbtc_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
+        let xbtc_decimal = 8u8;
 
-    //     let xUSD_price = 1 * 10u64.pow(6);
-    //     let xUSD_decimal = 6u8;
-    //     let xUSD_amount = 28_999 * 10u64.pow(6);
+        let xusd_price = 1 * 10u64.pow(PRICE_OFFSET as u32);
+        let xusd_decimal = 6u8;
+        // xUSD -> xBTC
+        {
+            let xbtc_amount = 1 * 10u64.pow(8);
+            let xusd_amount = 28_999 * 10u64.pow(6);
 
-    //     // xUSD -> xBTC
-    //     {
-    //         let price_difference_in_usd = calculate_price_difference_in_usd(
-    //             xBTC_price,
-    //             xBTC_amount,
-    //             xBTC_decimal,
-    //             xUSD_price,
-    //             xUSD_amount,
-    //             xUSD_decimal,
-    //         );
-    //         assert_eq!(price_difference_in_usd, 1_001 * 10u64.pow(6));
-    //     }
-    //     // xBTC -> xUSD
-    //     {}
-    // }
+            let price_difference_in_usd = calculate_price_difference_in_usd(
+                xbtc_price,
+                xbtc_amount,
+                xbtc_decimal,
+                xusd_price,
+                xusd_amount,
+                xusd_decimal,
+            );
+            // should be 1_001
+            assert_eq!(
+                price_difference_in_usd,
+                1_001 * 10u64.pow(PRICE_OFFSET as u32)
+            );
+        }
+        // xBTC -> xUSD
+        {
+            let xbtc_amount = 89 * 10u64.pow(6);
+            let xusd_amount = 35_000 * 10u64.pow(6);
+            let price_difference_in_usd = calculate_price_difference_in_usd(
+                xusd_price,
+                xusd_amount,
+                xusd_decimal,
+                xbtc_price,
+                xbtc_amount,
+                xbtc_decimal,
+            );
+            // should be 8_300
+            assert_eq!(price_difference_in_usd, 8_300 * 10u64.pow(6));
+        }
+    }
 
     #[test]
     fn test_calculate_swap_tax() {
