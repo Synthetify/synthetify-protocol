@@ -176,6 +176,20 @@ pub fn calculate_price_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
             .unwrap() as u64;
     }
 }
+pub fn calculate_price_difference_in_usd(
+    price_in: u64,
+    amount_in: u64,
+    decimal_in: u8,
+    price_out: u64,
+    amount_out: u64,
+    decimal_out: u8,
+) -> u64 {
+    // price in should be always bigger than price out
+    let price_in = calculate_price_in_usd(price_in, amount_in, decimal_in);
+    let price_out = calculate_price_in_usd(price_out, amount_out, decimal_out);
+
+    return price_in.checked_sub(price_out).unwrap();
+}
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
     let divisor = 100u64.checked_mul(u8::MAX.into()).unwrap() as u128;
 
