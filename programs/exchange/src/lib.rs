@@ -1810,7 +1810,7 @@ mod tests {
     }
 
     #[test]
-    fn test_assets_list_methods() {
+    fn test_assets_list_appending() {
         // Freshly created
         {
             let assets_list = AssetsList {
@@ -1840,6 +1840,48 @@ mod tests {
             });
             assert_eq!({ assets_list.assets[1].price }, 3);
             assert_eq!(assets_list.head_assets, 2);
+        }
+        // Append collaterals
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_collateral(Collateral {
+                asset_index: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.collaterals[0].asset_index }, 2);
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 1);
+            assert_eq!(assets_list.head_synthetics, 0);
+
+            assets_list.append_collateral(Collateral {
+                asset_index: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.collaterals[1].asset_index }, 3);
+            assert_eq!(assets_list.head_collaterals, 2);
+        }
+        // Append synthetics
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_synthetic(Synthetic {
+                asset_index: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.synthetics[0].asset_index }, 2);
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 1);
+
+            assets_list.append_synthetic(Synthetic {
+                asset_index: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.synthetics[1].asset_index }, 3);
+            assert_eq!(assets_list.head_synthetics, 2);
         }
     }
 }
