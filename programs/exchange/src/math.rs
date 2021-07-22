@@ -202,7 +202,7 @@ pub fn calculate_swap_out_amount(
         .unwrap()
         .checked_div(asset_for.price as u128)
         .unwrap();
-    let amount = amount_before_fee
+    let amount_after_fee = amount_before_fee
         .checked_sub(
             amount_before_fee
                 .checked_mul(fee as u128)
@@ -215,10 +215,10 @@ pub fn calculate_swap_out_amount(
     let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        let scaled_amount = amount.checked_div(decimal_change).unwrap();
+        let scaled_amount = amount_after_fee.checked_div(decimal_change).unwrap();
         let fee_in_usd = calculate_price_difference_in_usd(
             asset_in.price,
-            amount_before_fee as u64,
+            amount as u64,
             synthetic_in.decimals,
             asset_for.price,
             scaled_amount as u64,
@@ -227,10 +227,10 @@ pub fn calculate_swap_out_amount(
         return (scaled_amount.try_into().unwrap(), fee_in_usd);
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
-        let scaled_amount = amount.checked_mul(decimal_change).unwrap();
+        let scaled_amount = amount_after_fee.checked_mul(decimal_change).unwrap();
         let fee_in_usd = calculate_price_difference_in_usd(
             asset_in.price,
-            amount_before_fee as u64,
+            amount as u64,
             synthetic_in.decimals,
             asset_for.price,
             scaled_amount as u64,
@@ -1022,43 +1022,67 @@ mod tests {
             assert_eq!(result, 20);
         }
     }
-    // #[test]
-    // fn test_calculate_swap_out_amount() {
-    //     {
-    //         let asset_usd = Asset {
-    //             synthetic: Synthetic {
-    //                 decimals: 6,
-    //                 ..Default::default()
-    //             },
-    //             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let asset_btc = Asset {
-    //             synthetic: Synthetic {
-    //                 decimals: 8,
-    //                 ..Default::default()
-    //             },
-    //             price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let asset_eth = Asset {
-    //             synthetic: Synthetic {
-    //                 decimals: 7,
-    //                 ..Default::default()
-    //             },
-    //             price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let fee = 300u32;
-    //         let result =
-    //             calculate_swap_out_amount(&asset_usd, &asset_btc, 50000 * 10u64.pow(6), fee);
-    //         assert_eq!(result, 0_99700000);
-    //         let result = calculate_swap_out_amount(&asset_btc, &asset_usd, 1 * 10u64.pow(8), fee);
-    //         assert_eq!(result, 49850_000_000);
-    //         let result = calculate_swap_out_amount(&asset_btc, &asset_eth, 99700000, fee);
-    //         assert_eq!(result, 24_850_2250);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_swap_out_amount() {
+        {
+            let asset_usd = Asset {
+                price: 1 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let synthetic_usd = Synthetic {
+                decimals: 6,
+                ..Default::default()
+            };
+            let asset_btc = Asset {
+                price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
+                ..Default::default()
+            };
+            let synthetic_btc = Synthetic {
+                decimals: 8,
+                ..Default::default()
+            };
+            // let asset_eth = Asset {
+            //     price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
+            //     ..Default::default()
+            // };
+            // let synthetic_eth = Synthetic {
+            //     decimals: 7,
+            //     ..Default::default()
+            // };
+            let fee = 300u32;
+            let (out_amount, swap_fee) = calculate_swap_out_amount(
+                &asset_usd,
+                &asset_btc,
+                &synthetic_usd,
+                &synthetic_btc,
+                50000 * 10u64.pow(6),
+                fee,
+            );
+            // out amount should be 0.997 BTC
+            assert_eq!(out_amount, 0_99700000);
+            // fee should be 150 USD
+            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+
+            // let (out_amount, swap_fee) = calculate_swap_out_amount(
+            //     &asset_btc,
+            //     &asset_usd,
+            //     &synthetic_btc,
+            //     &synthetic_usd,
+            //     1 * 10u64.pow(8),
+            //     fee,
+            // );
+            // assert_eq!(out_amount, 49850_000_000);
+            // let (out_amount, swap_fee) = calculate_swap_out_amount(
+            //     &asset_btc,
+            //     &asset_eth,
+            //     &synthetic_btc,
+            //     &synthetic_eth,
+            //     99700000,
+            //     fee,
+            // );
+            // assert_eq!(out_amount, 24_850_2250);
+        }
+    }
     #[test]
     fn test_calculate_burned_shares() {
         // all_debt
@@ -1103,7 +1127,7 @@ mod tests {
         // zero price
         {
             let price = 0;
-            let amount = 2 * 10u64.pow(PRICE_OFFSET as u32);
+            let amount = 2 * 10u64.pow(PRICE_OFFSET.into());
             let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 0 USD
@@ -1111,7 +1135,7 @@ mod tests {
         }
         // No amount
         {
-            let price = 50 * 10u64.pow(PRICE_OFFSET as u32);
+            let price = 50 * 10u64.pow(PRICE_OFFSET.into());
             let amount = 0;
             let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
@@ -1120,12 +1144,12 @@ mod tests {
         }
         // decimal same as xUSD
         {
-            let price = 3 * 10u64.pow(PRICE_OFFSET as u32);
+            let price = 3 * 10u64.pow(PRICE_OFFSET.into());
             let amount = 2 * 10u64.pow(6);
             let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 6 USD
-            assert_eq!(price_in_usd, 6 * 10u64.pow(PRICE_OFFSET as u32));
+            assert_eq!(price_in_usd, 6 * 10u64.pow(PRICE_OFFSET.into()));
         }
         // decimal lower than xUSD
         {
@@ -1134,7 +1158,7 @@ mod tests {
             let decimal = 4;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 22400 USD
-            assert_eq!(price_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET as u32));
+            assert_eq!(price_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET.into()));
         }
         // decimal bigger than xUSD
         {
@@ -1143,7 +1167,7 @@ mod tests {
             let decimal = 10;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 18200 USD
-            assert_eq!(price_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET as u32));
+            assert_eq!(price_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET.into()));
         }
     }
     #[test]
