@@ -3,7 +3,6 @@ use std::{cell::RefMut, convert::TryInto, ops::Div};
 use crate::*;
 
 // Min decimals for asset = 6
-pub const XUSD_DECIMAL: u8 = 6;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 
@@ -159,7 +158,7 @@ pub fn amount_to_discount(amount: u64) -> u8 {
     }
 }
 pub fn calculate_price_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
-    let decimal_diff = (decimal as i32).checked_sub(XUSD_DECIMAL as i32).unwrap();
+    let decimal_diff = (decimal as i32).checked_sub(PRICE_OFFSET as i32).unwrap();
     // price * amount / decimal
 
     if decimal_diff > 0 {
@@ -187,6 +186,8 @@ pub fn calculate_price_difference_in_usd(
     // price in should be always bigger than price out
     let price_in = calculate_price_in_usd(price_in, amount_in, decimal_in);
     let price_out = calculate_price_in_usd(price_out, amount_out, decimal_out);
+    println!("{:?}", price_in);
+    println!("{:?}", price_out);
 
     return price_in.checked_sub(price_out).unwrap();
 }
@@ -1106,49 +1107,75 @@ mod tests {
         // zero price
         {
             let price = 0;
-            let amount = 2 * 10u64.pow(6);
-            let decimal = XUSD_DECIMAL;
+            let amount = 2 * 10u64.pow(PRICE_OFFSET as u32);
+            let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 0 USD
             assert_eq!(price_in_usd, 0);
         }
         // No amount
         {
-            let price = 50 * 10u64.pow(6);
+            let price = 50 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 0;
-            let decimal = XUSD_DECIMAL;
+            let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 0 USD
             assert_eq!(price_in_usd, 0);
         }
         // decimal same as xUSD
         {
-            let price = 3;
+            let price = 3 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 2 * 10u64.pow(6);
-            let decimal = XUSD_DECIMAL;
+            let decimal = PRICE_OFFSET;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 6 USD
-            assert_eq!(price_in_usd, 6 * 10u64.pow(6));
+            assert_eq!(price_in_usd, 6 * 10u64.pow(PRICE_OFFSET as u32));
         }
         // decimal lower than xUSD
         {
-            let price = 112;
+            let price = 112 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 2 * 10u64.pow(6);
             let decimal = 4;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 22400 USD
-            assert_eq!(price_in_usd, 22_400 * 10u64.pow(6));
+            assert_eq!(price_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET as u32));
         }
         // decimal bigger than xUSD
         {
-            let price = 91;
+            let price = 91 * 10u64.pow(PRICE_OFFSET as u32);
             let amount = 2 * 10u64.pow(12);
             let decimal = 10;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
             // should be 18200 USD
-            assert_eq!(price_in_usd, 18_200 * 10u64.pow(6));
+            assert_eq!(price_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET as u32));
         }
     }
+    // #[test]
+    // fn test_calculate_price_difference_in_usd() {
+    //     let xBTC_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
+    //     let xBTC_decimal = 8u8;
+    //     let xBTC_amount = 1 * 10u64.pow(8);
+
+    //     let xUSD_price = 1 * 10u64.pow(6);
+    //     let xUSD_decimal = 6u8;
+    //     let xUSD_amount = 28_999 * 10u64.pow(6);
+
+    //     // xUSD -> xBTC
+    //     {
+    //         let price_difference_in_usd = calculate_price_difference_in_usd(
+    //             xBTC_price,
+    //             xBTC_amount,
+    //             xBTC_decimal,
+    //             xUSD_price,
+    //             xUSD_amount,
+    //             xUSD_decimal,
+    //         );
+    //         assert_eq!(price_difference_in_usd, 1_001 * 10u64.pow(6));
+    //     }
+    //     // xBTC -> xUSD
+    //     {}
+    // }
+
     #[test]
     fn test_calculate_swap_tax() {
         // MIN - 0%
