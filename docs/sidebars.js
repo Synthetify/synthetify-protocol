@@ -7,7 +7,7 @@ module.exports = {
       type: 'category',
       label: 'Protocol',
       collapsed: true,
-      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens', 'platform'] 
+      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens', 'glossary'] 
     },
     {
       type: 'category',
