@@ -1740,3 +1740,72 @@ fn version<'info>(
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exchange_account_methods() {
+        // Freshly created
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            assert_eq!(exchange_account.head, 0);
+        }
+        // Append
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+            assert_eq!(exchange_account.head, 2);
+            assert_eq!(exchange_account.collaterals[0].index, 1);
+            assert_eq!(exchange_account.collaterals[1].index, 2);
+        }
+        // Remove
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+            exchange_account.remove(0);
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[0].index, 2);
+        }
+        // Remove then append
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.remove(0);
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[0].index, 2);
+        }
+    }
+}
