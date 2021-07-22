@@ -25,12 +25,14 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
-  createCollateralToken
+  createCollateralToken,
+  calculateFee,
+  calculateSwapTax
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
+import { Collateral, Synthetic } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -701,7 +703,7 @@ describe('exchange', () => {
         connection
       )
     })
-    it('Swap usd->btc->eth with 0% discount', async () => {
+    it.only('Swap usd->btc->eth with 0% discount', async () => {
       const collateralAmount = new BN(1000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
@@ -737,6 +739,9 @@ describe('exchange', () => {
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
       assert.ok(effectiveFee === 300) // discount 0%
+      const poolFee = exchange.state.poolFee // pull fee should equals 0 before swaps
+      assert.ok(poolFee.eq(new BN(0)))
+
       await exchange.swap({
         exchangeAccount,
         amount: usdMintAmount,
@@ -767,10 +772,18 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
+      const stateAfterSwap = await exchange.getState()
       const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+      // expected fee 0.3$ -> 3 * 10^5
+      // expected admin tax 0.06$ -> 6 * 10^4
+      const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
+      const adminTax = calculateSwapTax(totalFee, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSwap.poolFee.eq(adminTax))
+      // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
         assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
+          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
