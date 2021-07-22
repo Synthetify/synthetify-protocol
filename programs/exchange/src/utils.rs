@@ -625,4 +625,20 @@ mod tests {
             assert!(result.is_err());
         }
     }
+
+    #[test]
+    fn test_get_user_sny_collateral_balance() {
+        // Empty list
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            let sny_asset = Collateral {
+                ..Default::default()
+            };
+
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, 0)
+        }
+    }
 }
