@@ -1088,6 +1088,27 @@ mod tests {
         }
     }
     #[test]
+    fn test_calculate_price_in_usd() {
+        // zero price
+        {
+            let price = 0;
+            let amount = 2 * 10u64.pow(6);
+            let decimal = XUSD_DECIMAL;
+            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            // should be 0
+            assert_eq!(price_in_usd, 0);
+        }
+        // No amount
+        {
+            let price = 50 * 10u64.pow(6);
+            let amount = 0;
+            let decimal = XUSD_DECIMAL;
+            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            // should be 0
+            assert_eq!(price_in_usd, 0);
+        }
+    }
+    #[test]
     fn test_calculate_swap_tax() {
         // MIN - 0%
         {
