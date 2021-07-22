@@ -158,22 +158,11 @@ pub fn amount_to_discount(amount: u64) -> u8 {
     }
 }
 pub fn calculate_price_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
-    let decimal_diff = (decimal as i32).checked_sub(PRICE_OFFSET as i32).unwrap();
-    // price * amount / decimal
-
-    if decimal_diff > 0 {
-        return (price as u128)
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_div(10u128.checked_pow(decimal_diff as u32).unwrap())
-            .unwrap() as u64;
-    } else {
-        return (price as u128)
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_mul(10u128.checked_pow(-decimal_diff as u32).unwrap())
-            .unwrap() as u64;
-    }
+    return (price as u128)
+        .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(10u128.checked_pow(decimal as u32).unwrap())
+        .unwrap() as u64;
 }
 pub fn calculate_price_difference_in_usd(
     price_in: u64,
@@ -186,8 +175,6 @@ pub fn calculate_price_difference_in_usd(
     // price in should be always bigger than price out
     let price_in = calculate_price_in_usd(price_in, amount_in, decimal_in);
     let price_out = calculate_price_in_usd(price_out, amount_out, decimal_out);
-    println!("{:?}", price_in);
-    println!("{:?}", price_out);
 
     return price_in.checked_sub(price_out).unwrap();
 }
