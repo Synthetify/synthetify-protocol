@@ -33,7 +33,7 @@ pub fn div_up(a: u128, b: u128) -> u128 {
         .unwrap();
 }
 
-pub fn adjust_staking_rounds(state: &mut RefMut<State>, slot: u64) {
+pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
     if slot <= state.staking.next_round.start {
         return;
     }
@@ -317,9 +317,7 @@ mod tests {
             next_round: StakingRound {
                 all_points: 0,
                 amount: amount_per_round,
-                start: (staking_round_length as u64)
-                    .checked_add(staking_round_length.into())
-                    .unwrap(),
+                start: (staking_round_length * 2).into(),
             },
             ..Default::default()
         };
@@ -330,46 +328,42 @@ mod tests {
         };
         {
             // Should stay same
-            let state_ref = RefCell::new(state);
-            let state_copy = state.clone();
-            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 150);
-            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
-            assert_eq!(state_copy, state_after_adjustment);
+            let mut adjusted_state = state.clone();
+            adjust_staking_rounds(&mut adjusted_state, 150);
+            assert_eq!(state, adjusted_state);
         }
         {
             // Should stay same
-            let state_ref = RefCell::new(state);
-            let state_copy = state.clone();
-            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 200);
-            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
-            assert_eq!(state_copy, state_after_adjustment);
+            let mut adjusted_state = state.clone();
+            adjust_staking_rounds(&mut adjusted_state, 200);
+            assert_eq!(state, adjusted_state);
         }
         {
             // Should move one round forward
             let state_ref = RefCell::new(state);
-            let state_copy = state.clone();
-            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 201);
+            let mut adjusted_state = state.clone();
+            adjust_staking_rounds(&mut adjusted_state, 201);
             let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
-            assert_ne!(state_after_adjustment, state_copy);
+            assert_ne!(state_after_adjustment, state);
             assert_eq!(
                 state_after_adjustment.staking.finished_round,
-                state_copy.staking.current_round
+                state.staking.current_round
             );
             assert_eq!(
                 state_after_adjustment.staking.current_round,
-                state_copy.staking.next_round
+                state.staking.next_round
             );
             assert_eq!(
                 state_after_adjustment.staking.next_round,
                 StakingRound {
-                    start: state_copy
+                    start: state
                         .staking
                         .next_round
                         .start
-                        .checked_add(state_copy.staking.round_length.into())
+                        .checked_add(state.staking.round_length.into())
                         .unwrap(),
                     all_points: debt_shares,
-                    amount: state_copy.staking.amount_per_round,
+                    amount: state.staking.amount_per_round,
                 }
             );
         }
@@ -377,8 +371,8 @@ mod tests {
             // Should move one round forward
             let state_ref = RefCell::new(state);
             let state_copy = state.clone();
-            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 300);
-            let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
+            adjust_staking_rounds(&mut state_ref.borrow_mut(), 300);
+            let state_after_adjustment = *state_ref.borrow_mut();
             assert_ne!(state_after_adjustment, state_copy);
             assert_eq!(
                 state_after_adjustment.staking.finished_round,
@@ -595,11 +589,11 @@ mod tests {
             // Should move one round forward
             let state_copy = state.clone();
             let state_ref = RefCell::new(state);
-            adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 201);
+            adjust_staking_rounds(&mut state_ref.borrow_mut(), 201);
             // |    |   |
             // f    c   n
             // 100  200 300
-            let state_after_first_adjustment = *state_ref.try_borrow_mut().unwrap();
+            let state_after_first_adjustment = *state_ref.borrow_mut();
             assert_ne!(state_copy, state_after_first_adjustment);
             assert_eq!(
                 state_after_first_adjustment.staking.finished_round.start,
@@ -619,7 +613,7 @@ mod tests {
                     .unwrap()
             );
             // change round length
-            let mut state_after_second_adjustment = state_ref.try_borrow_mut().unwrap();
+            let mut state_after_second_adjustment = state_ref.borrow_mut();
             state_after_second_adjustment.staking.round_length = 25;
             adjust_staking_rounds(&mut state_after_second_adjustment, 401);
             assert_eq!(
