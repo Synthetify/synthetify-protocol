@@ -1884,4 +1884,28 @@ mod tests {
             assert_eq!(assets_list.head_synthetics, 2);
         }
     }
+
+    #[test]
+    fn test_assets_list_split_borrow() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        assets_list.append_asset(Asset {
+            price: 2,
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            asset_index: 0,
+            ..Default::default()
+        });
+        assets_list.append_synthetic(Synthetic {
+            asset_index: 0,
+            ..Default::default()
+        });
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        assert_eq!({ assets[0].price }, 2);
+        assert_eq!(collaterals[0].asset_index, 0);
+        assert_eq!(synthetics[0].asset_index, 0);
+    }
 }
