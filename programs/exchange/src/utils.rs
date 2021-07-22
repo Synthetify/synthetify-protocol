@@ -353,7 +353,7 @@ mod tests {
                 adjusted_state.staking.next_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + original_state.staking.round_length.into(),
+                        + original_state.staking.round_length as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
@@ -376,14 +376,14 @@ mod tests {
                 adjusted_state.staking.next_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + original_state.staking.round_length.into(),
+                        + original_state.staking.round_length as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
             );
         }
         {
-            // Should move two round forward
+            // Should move two rounds forward
             let mut adjusted_state = original_state.clone();
             adjust_staking_rounds(&mut adjusted_state, 301);
             assert_ne!(adjusted_state, original_state);
@@ -395,7 +395,7 @@ mod tests {
                 adjusted_state.staking.current_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + original_state.staking.round_length.into(),
+                        + original_state.staking.round_length as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
@@ -404,14 +404,14 @@ mod tests {
                 adjusted_state.staking.next_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + (original_state.staking.round_length * 2).into(),
+                        + (original_state.staking.round_length * 2) as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
             );
         }
         {
-            // Should move three round forward
+            // Should move three rounds forward
             let mut adjusted_state = original_state.clone();
             adjust_staking_rounds(&mut adjusted_state, 401);
             assert_ne!(adjusted_state, original_state);
@@ -419,7 +419,7 @@ mod tests {
                 adjusted_state.staking.finished_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + original_state.staking.round_length.into(),
+                        + original_state.staking.round_length as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
@@ -428,7 +428,7 @@ mod tests {
                 adjusted_state.staking.current_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + (original_state.staking.round_length * 2).into(),
+                        + (original_state.staking.round_length * 2) as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
@@ -437,17 +437,17 @@ mod tests {
                 adjusted_state.staking.next_round,
                 StakingRound {
                     start: original_state.staking.next_round.start
-                        + (original_state.staking.round_length * 3).into(),
+                        + (original_state.staking.round_length * 3) as u64,
                     all_points: debt_shares,
                     amount: original_state.staking.amount_per_round,
                 }
             );
         }
         {
-            // Should move more then tree round forward
+            // Should move more than three rounds forward
             let state_ref = RefCell::new(original_state);
             let state_copy = original_state.clone();
-            // move seven round forward
+            // move seven rounds forward
             adjust_staking_rounds(&mut state_ref.try_borrow_mut().unwrap(), 810);
             let state_after_adjustment = *state_ref.try_borrow_mut().unwrap();
             assert_ne!(state_after_adjustment, state_copy);
