@@ -1095,7 +1095,7 @@ mod tests {
             let amount = 2 * 10u64.pow(6);
             let decimal = XUSD_DECIMAL;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
-            // should be 0
+            // should be 0 USD
             assert_eq!(price_in_usd, 0);
         }
         // No amount
@@ -1104,7 +1104,7 @@ mod tests {
             let amount = 0;
             let decimal = XUSD_DECIMAL;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
-            // should be 0
+            // should be 0 USD
             assert_eq!(price_in_usd, 0);
         }
         // decimal same as xUSD
@@ -1113,13 +1113,27 @@ mod tests {
             let amount = 2 * 10u64.pow(6);
             let decimal = XUSD_DECIMAL;
             let price_in_usd = calculate_price_in_usd(price, amount, decimal);
-            // 6 * 10^6
+            // should be 6 USD
             assert_eq!(price_in_usd, 6 * 10u64.pow(6));
         }
         // decimal lower than xUSD
-        {}
+        {
+            let price = 112;
+            let amount = 2 * 10u64.pow(6);
+            let decimal = 4;
+            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            // should be 22400 USD
+            assert_eq!(price_in_usd, 22_400 * 10u64.pow(6));
+        }
         // decimal bigger than xUSD
-        {}
+        {
+            let price = 91;
+            let amount = 2 * 10u64.pow(12);
+            let decimal = 10;
+            let price_in_usd = calculate_price_in_usd(price, amount, decimal);
+            // should be 18200 USD
+            assert_eq!(price_in_usd, 18_200 * 10u64.pow(6));
+        }
     }
     #[test]
     fn test_calculate_swap_tax() {
