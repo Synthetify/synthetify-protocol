@@ -566,6 +566,12 @@ mod tests {
         }
     }
     #[test]
+    fn test_div_up() {
+        assert_eq!(div_up(0, 1), 0);
+        assert_eq!(div_up(1, 2), 1);
+        assert_eq!(div_up(2 * 10u128.pow(20) + 1, 2), 10u128.pow(20) + 1);
+    }
+    #[test]
     fn test_check_feed_update() {
         let mut list = AssetsList {
             ..Default::default()
