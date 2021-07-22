@@ -72,16 +72,16 @@ export const calculateAmountAfterFee = (
   }
 }
 export const calculateFee = (
+  assetFrom: Asset,
+  syntheticFrom: Synthetic,
+  amountFrom: BN,
   asset: Asset,
   synthetic: Synthetic,
-  amount: BN,
-  effectiveFee: number
+  amount: BN
 ): BN => {
-  // effectiveFee 300 -> 0.3%
-  return asset.price
-    .mul(amount)
-    .muln(effectiveFee)
-    .div(new BN(10).pow(new BN(synthetic.decimals + 5)))
+  const valueFrom = assetFrom.price.mul(amountFrom).div(new BN(10 ** syntheticFrom.decimals))
+  const value = asset.price.mul(amount).div(new BN(10 ** synthetic.decimals))
+  return valueFrom.sub(value)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
