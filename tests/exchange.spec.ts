@@ -604,7 +604,7 @@ describe('exchange', () => {
       )
     })
   })
-  describe.only('#swap()', async () => {
+  describe('#swap()', async () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
@@ -1162,7 +1162,7 @@ describe('exchange', () => {
         )
       )
     })
-    /* it('Swap usd->usd should fail', async () => {
+    it('Swap usd->usd should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
@@ -1309,7 +1309,7 @@ describe('exchange', () => {
         }),
         ERRORS.ALLOWANCE
       )
-    }) */
+    })
   })
   describe('#burn()', async () => {
     const debtBurnAccuracy = new BN(10)
