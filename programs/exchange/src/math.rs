@@ -197,11 +197,11 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> (u64, u64) {
-    let in_usd = (asset_in.price as u128)
+    let amount_before_fee = (asset_in.price as u128)
         .checked_mul(amount as u128)
+        .unwrap()
+        .checked_div(asset_for.price as u128)
         .unwrap();
-
-    let amount_before_fee = in_usd.checked_div(asset_for.price as u128).unwrap();
     let amount = amount_before_fee
         .checked_sub(
             amount_before_fee
@@ -216,19 +216,27 @@ pub fn calculate_swap_out_amount(
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount = amount.checked_div(decimal_change).unwrap();
-        let out_usd = (asset_for.price as u128)
-            .checked_mul(scaled_amount as u128)
-            .unwrap();
-        let fee_usd = in_usd.checked_sub(out_usd).unwrap() as u64;
-        return (scaled_amount.try_into().unwrap(), fee_usd);
+        let fee_in_usd = calculate_price_difference_in_usd(
+            asset_in.price,
+            amount_before_fee as u64,
+            synthetic_in.decimals,
+            asset_for.price,
+            scaled_amount as u64,
+            synthetic_for.decimals,
+        );
+        return (scaled_amount.try_into().unwrap(), fee_in_usd);
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
         let scaled_amount = amount.checked_mul(decimal_change).unwrap();
-        let out_usd = (asset_for.price as u128)
-            .checked_mul(scaled_amount as u128)
-            .unwrap();
-        let fee_usd = in_usd.checked_sub(out_usd).unwrap() as u64;
-        return (scaled_amount.try_into().unwrap(), fee_usd);
+        let fee_in_usd = calculate_price_difference_in_usd(
+            asset_in.price,
+            amount_before_fee as u64,
+            synthetic_in.decimals,
+            asset_for.price,
+            scaled_amount as u64,
+            synthetic_for.decimals,
+        );
+        return (scaled_amount.try_into().unwrap(), fee_in_usd);
     }
 }
 pub fn calculate_burned_shares(
@@ -1014,6 +1022,7 @@ mod tests {
             assert_eq!(result, 20);
         }
     }
+    // #[test]
     // fn test_calculate_swap_out_amount() {
     //     {
     //         let asset_usd = Asset {
