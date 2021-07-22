@@ -71,18 +71,20 @@ export const calculateAmountAfterFee = (
       .mul(new BN(decimal_change))
   }
 }
-export const calculateFeeInUSD = (
+export const calculateFee = (
   asset: Asset,
   synthetic: Synthetic,
   amount: BN,
   effectiveFee: number
-) => {
+): BN => {
+  // effectiveFee 300 -> 0.3%
   return asset.price
     .mul(amount)
     .muln(effectiveFee)
-    .div(new BN(10).pow(new BN(synthetic.decimals)))
+    .div(new BN(10).pow(new BN(synthetic.decimals + 5)))
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
+  // swapTax 20 -> 20%
   return totalFee.muln(swapTax).divn(100)
 }
 interface ICreateToken {
