@@ -144,8 +144,7 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {
-    // Curly braces make copy and prevents warnings
-    if new_supply.gt(&{ synthetic.max_supply }) {
+    if new_supply > synthetic.max_supply {
         return Err(ErrorCode::MaxSupply.into());
     }
     synthetic.supply = new_supply;
