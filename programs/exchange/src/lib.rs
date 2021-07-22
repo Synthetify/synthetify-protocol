@@ -501,7 +501,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, _, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
         let user_token_account_burn = &ctx.accounts.user_token_account_burn;
@@ -660,7 +660,7 @@ pub mod exchange {
         if amount.gt(&max_repay) {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, collaterals, _) = assets_list.split_borrow();
 
         let liquidated_collateral = match collaterals
             .iter_mut()

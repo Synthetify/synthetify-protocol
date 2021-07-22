@@ -144,7 +144,8 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {
-    if new_supply.gt(&synthetic.max_supply) {
+    // Curly braces make copy and prevents warnings
+    if new_supply.gt(&{ synthetic.max_supply }) {
         return Err(ErrorCode::MaxSupply.into());
     }
     synthetic.supply = new_supply;
@@ -221,21 +222,19 @@ mod tests {
                 exchange_account_copy.user_staking_data
             );
             assert_eq!(
-                exchange_account.user_staking_data.finished_round_points,
-                exchange_account.debt_shares
+                { exchange_account.user_staking_data.finished_round_points },
+                { exchange_account.debt_shares }
             );
             assert_eq!(
-                exchange_account.user_staking_data.current_round_points,
-                exchange_account.debt_shares
+                { exchange_account.user_staking_data.current_round_points },
+                { exchange_account.debt_shares }
             );
-            assert_eq!(
-                exchange_account.user_staking_data.next_round_points,
+            assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
                 exchange_account.debt_shares
-            );
-            assert_eq!(
-                exchange_account.user_staking_data.last_update,
+            });
+            assert_eq!({ exchange_account.user_staking_data.last_update }, {
                 staking.current_round.start + 1
-            );
+            });
         }
         {
             // Last update before current round but after finished round
@@ -257,21 +256,19 @@ mod tests {
                 exchange_account_copy.user_staking_data
             );
             assert_eq!(
-                exchange_account.user_staking_data.finished_round_points,
-                exchange_account_copy.user_staking_data.current_round_points
+                { exchange_account.user_staking_data.finished_round_points },
+                { exchange_account_copy.user_staking_data.current_round_points }
             );
             assert_eq!(
-                exchange_account.user_staking_data.current_round_points,
-                exchange_account_copy.user_staking_data.next_round_points
+                { exchange_account.user_staking_data.current_round_points },
+                { exchange_account_copy.user_staking_data.next_round_points }
             );
-            assert_eq!(
-                exchange_account.user_staking_data.next_round_points,
+            assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
                 exchange_account.debt_shares
-            );
-            assert_eq!(
-                exchange_account.user_staking_data.last_update,
+            });
+            assert_eq!({ exchange_account.user_staking_data.last_update }, {
                 staking.current_round.start + 1
-            );
+            });
         }
         {
             // Last update in current round
@@ -520,9 +517,7 @@ mod tests {
             next_round: StakingRound {
                 all_points: 0,
                 amount: amount_per_round,
-                start: (staking_round_length as u64)
-                    .checked_add(staking_round_length.into())
-                    .unwrap(),
+                start: staking_round_length as u64 + staking_round_length as u64,
             },
             ..Default::default()
         };
@@ -539,30 +534,24 @@ mod tests {
             // f    c   n
             // 100  200 300
             assert_ne!(original_state, adjusted_state);
-            assert_eq!(
-                adjusted_state.staking.finished_round.start,
+
+            // Curly braces force copy and makes warning disappear
+            assert_eq!({ adjusted_state.staking.finished_round.start }, {
                 original_state.staking.current_round.start
-            );
-            assert_eq!(
-                adjusted_state.staking.current_round.start,
+            });
+            assert_eq!({ adjusted_state.staking.current_round.start }, {
                 original_state.staking.next_round.start
-            );
-            assert_eq!(
-                adjusted_state.staking.next_round.start,
-                original_state
-                    .staking
-                    .next_round
-                    .start
-                    .checked_add(staking_round_length.into())
-                    .unwrap()
-            );
+            });
+            assert_eq!({ adjusted_state.staking.next_round.start }, {
+                original_state.staking.next_round.start + staking_round_length as u64
+            });
             // change round length
 
             adjusted_state.staking.round_length = 25;
             adjust_staking_rounds(&mut adjusted_state, 401);
-            assert_eq!(375, adjusted_state.staking.finished_round.start);
-            assert_eq!(400, adjusted_state.staking.current_round.start);
-            assert_eq!(425, adjusted_state.staking.next_round.start);
+            assert_eq!(375, { adjusted_state.staking.finished_round.start });
+            assert_eq!(400, { adjusted_state.staking.current_round.start });
+            assert_eq!(425, { adjusted_state.staking.next_round.start });
         }
     }
     #[test]
@@ -606,8 +595,8 @@ mod tests {
             };
             let result = set_synthetic_supply(&mut synthetic, 50);
             assert!(result.is_ok());
-            assert_eq!(synthetic.max_supply, 100);
-            assert_eq!(synthetic.supply, 50);
+            assert_eq!({ synthetic.max_supply }, 100);
+            assert_eq!({ synthetic.supply }, 50);
         }
         // Up to limit
         {
@@ -618,7 +607,7 @@ mod tests {
             };
             let result = set_synthetic_supply(&mut synthetic, 100);
             assert!(result.is_ok());
-            assert_eq!(synthetic.supply, 100);
+            assert_eq!({ synthetic.supply }, 100);
         }
         // Over limit
         {
