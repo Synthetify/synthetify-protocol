@@ -7,9 +7,7 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::{
-        convert::TryInto,
-    };
+    use std::convert::TryInto;
 
     use pyth::pc::Price;
 
@@ -1292,6 +1290,9 @@ impl ExchangeAccount {
     }
     fn remove(&mut self, index: usize) {
         self.collaterals[index] = self.collaterals[(self.head - 1) as usize];
+        self.collaterals[(self.head - 1) as usize] = CollateralEntry {
+            ..Default::default()
+        };
         self.head -= 1;
     }
 }
