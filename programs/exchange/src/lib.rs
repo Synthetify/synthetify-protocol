@@ -147,6 +147,7 @@ pub mod exchange {
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
         state.fee = 300;
+        state.swap_tax = 20;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;
@@ -465,7 +466,7 @@ pub mod exchange {
 
         // Update pool fee
         let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax);
-        state.pool_fee = pool_fee;
+        state.pool_fee = state.pool_fee.checked_add(pool_fee).unwrap();
 
         // Update xUSD supply based on tax
         let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();

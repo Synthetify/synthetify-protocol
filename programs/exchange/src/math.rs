@@ -179,14 +179,10 @@ pub fn calculate_price_difference_in_usd(
     return price_in.checked_sub(price_out).unwrap();
 }
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
-    let divisor = 100u64.checked_mul(u8::MAX.into()).unwrap() as u128;
-
     return (swap_tax as u128)
-        .checked_mul(20)
-        .unwrap()
         .checked_mul(total_fee as u128)
         .unwrap()
-        .checked_div(divisor)
+        .checked_div(100)
         .unwrap() as u64;
 }
 pub fn calculate_swap_out_amount(
@@ -1233,18 +1229,18 @@ mod tests {
         // MAX - 20%
         {
             let total_fee: u64 = 1_227_775;
-            let swap_tax: u8 = u8::MAX;
+            let swap_tax: u8 = 20;
             let swap_tax = calculate_swap_tax(total_fee, swap_tax);
             // 245555
             assert_eq!(swap_tax, 245555);
         }
-        // ~10,04% (valid rounding)
+        // ~11% (valid rounding)
         {
             let total_fee: u64 = 1_227_775;
-            let swap_tax: u8 = 128;
-            // 123258,980392157
+            let swap_tax: u8 = 11;
+            // 135055,25
             let swap_tax = calculate_swap_tax(total_fee, swap_tax);
-            assert_eq!(swap_tax, 123258);
+            assert_eq!(swap_tax, 135_055);
         }
     }
 
