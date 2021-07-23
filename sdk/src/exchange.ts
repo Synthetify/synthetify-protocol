@@ -1021,6 +1021,8 @@ export interface ExchangeState {
   healthFactor: number
   maxDelay: number
   fee: number
+  swapTax: number
+  poolFee: BN
   liquidationRate: number
   penaltyToLiquidator: number
   penaltyToExchange: number

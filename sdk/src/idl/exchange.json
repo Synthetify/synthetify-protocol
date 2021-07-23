@@ -1132,6 +1132,14 @@
             "type": "u32"
           },
           {
+            "name": "swapTax",
+            "type": "u8"
+          },
+          {
+            "name": "poolFee",
+            "type": "u64"
+          },
+          {
             "name": "liquidationRate",
             "type": "u8"
           },
@@ -1481,8 +1489,5 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ],
-  "metadata": {
-    "address": "7LHLLgQ2C6uiaFfq78evknX45PKXYn8Xh6B82Prxpnzt"
-  }
+  ]
 }

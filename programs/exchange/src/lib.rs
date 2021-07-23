@@ -15,7 +15,8 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
-        calculate_swap_out_amount, calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
+        calculate_swap_out_amount, calculate_swap_tax, calculate_user_debt_in_usd,
+        usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -146,6 +147,8 @@ pub mod exchange {
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
         state.fee = 300;
+        state.swap_tax = 20;
+        state.pool_fee = 0;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;
@@ -450,7 +453,7 @@ pub mod exchange {
             )
             .unwrap();
         // Output amount ~ 100% - fee of input
-        let amount_for = calculate_swap_out_amount(
+        let (amount_for, fee_usd) = calculate_swap_out_amount(
             &assets[synthetics[synthetic_in_index].asset_index as usize],
             &assets[synthetics[synthetic_for_index].asset_index as usize],
             &synthetics[synthetic_in_index],
@@ -461,6 +464,14 @@ pub mod exchange {
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
+
+        // Update pool fee
+        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax);
+        state.pool_fee = state.pool_fee.checked_add(pool_fee).unwrap();
+
+        // Update xUSD supply based on tax
+        let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();
+        set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
 
         // Set new supply output token
         let new_supply_output = synthetics[synthetic_for_index]
@@ -1602,8 +1613,10 @@ pub struct State {
     pub debt_shares: u64,          //8
     pub assets_list: Pubkey,       //32
     pub health_factor: u8,         //1   In % 1-100% modifier for debt
-    pub max_delay: u32,            //4   Delay bettwen last oracle update 100 blocks ~ 1 min
+    pub max_delay: u32,            //4   Delay between last oracle update 100 blocks ~ 1 min
     pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
+    pub swap_tax: u8,              //8   In % range 0-20%
+    pub pool_fee: u64,             //64  Amount on tax from swap
     pub liquidation_rate: u8,      //1   Size of debt repay in liquidation
     pub penalty_to_liquidator: u8, //1   In % range 0-25%
     pub penalty_to_exchange: u8,   //1   In % range 0-25%
