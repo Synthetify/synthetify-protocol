@@ -7,7 +7,7 @@ use crate::*;
 // Min decimals for asset = 6
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
-pub const INTEREST_DECIMAL: u8 = 18;
+pub const INTEREST_RATE_DECIMAL: u8 = 18;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
@@ -349,7 +349,7 @@ pub fn calculate_compounded_interest(
     let interest = (annual_interest_rate as u128)
         .checked_div(frequency as u128)
         .unwrap()
-        .checked_add(10u128.pow(INTEREST_DECIMAL.into()))
+        .checked_add(10u128.pow(INTEREST_RATE_DECIMAL.into()))
         .unwrap();
 
     println!("interest: {:?}", interest);
@@ -1369,23 +1369,27 @@ mod tests {
             // should be 131072
             assert_eq!(result, 131072 * offset);
         }
-        // 1.00000001^31536000, with interest decimal
+        // 1.000000015^788400, with interest decimal
         {
-            let decimal: u8 = INTEREST_DECIMAL;
-            let offset: u128 = 10u128.pow((decimal - 8).into());
-            let base: u128 = 100_000_001;
-            let exp: u128 = 31536000;
-            let result = pow_with_accuracy(base * offset, exp, decimal);
-            // 1.370752...
-            assert_eq!(result, 1370752704658266584);
-        }
-        // 1.000000001^2, with interest decimal
-        {
-            let decimal: u8 = INTEREST_DECIMAL;
+            let decimal: u8 = INTEREST_RATE_DECIMAL;
             let offset: u128 = 10u128.pow((decimal - 9).into());
-            let base: u128 = 1_000_000_001;
+            let base: u128 = 1_000_000_015;
+            let exp: u128 = 788400;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+            // expected 1.01189621...
+            // real     1.01189620...
+            assert_eq!(result, 1011896218696361412);
+        }
+        // 1.000000015^2, with interest decimal
+        {
+            let decimal: u8 = INTEREST_RATE_DECIMAL;
+            let offset: u128 = 10u128.pow((decimal - 9).into());
+            let base: u128 = 1_000_000_015;
             let exp: u128 = 2;
             let result = pow_with_accuracy(base * offset, exp, decimal);
+            // expected 1.00000004...
+            // real     1.00000003...
+            assert_eq!(result, 1000000045000000675);
         }
         // edge cases
         // pow 0
