@@ -1607,22 +1607,24 @@ pub struct Synthetic {
 #[derive(PartialEq, Default, Debug)]
 pub struct State {
     //8 Account signature
-    pub admin: Pubkey,             //32
-    pub halted: bool,              //1
-    pub nonce: u8,                 //1
-    pub debt_shares: u64,          //8
-    pub assets_list: Pubkey,       //32
-    pub health_factor: u8,         //1   In % 1-100% modifier for debt
-    pub max_delay: u32,            //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
-    pub swap_tax: u8,              //8   In % range 0-20%
-    pub pool_fee: u64,             //64  Amount on tax from swap
-    pub liquidation_rate: u8,      //1   Size of debt repay in liquidation
-    pub penalty_to_liquidator: u8, //1   In % range 0-25%
-    pub penalty_to_exchange: u8,   //1   In % range 0-25%
-    pub liquidation_buffer: u32,   //4   Time given user to fix collateralization ratio
-    pub account_version: u8,       //1 Version of account supported by program
-    pub staking: Staking,          //116
+    pub admin: Pubkey,                  //32
+    pub halted: bool,                   //1
+    pub nonce: u8,                      //1
+    pub debt_shares: u64,               //8
+    pub assets_list: Pubkey,            //32
+    pub health_factor: u8,              //1   In % 1-100% modifier for debt
+    pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
+    pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
+    pub swap_tax: u8,                   //8   In % range 0-20%
+    pub pool_fee: u64,                  //64  Amount on tax from swap
+    pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
+    pub penalty_to_liquidator: u8,      //1   In % range 0-25%
+    pub penalty_to_exchange: u8,        //1   In % range 0-25%
+    pub liquidation_buffer: u32,        //4   Time given user to fix collateralization ratio
+    pub account_version: u8,            //1   Version of account supported by program
+    pub debt_interest_rate: u8,         //8   In % range 0-20%
+    pub accumulated_debt_interest: u64, //64  Accumulated debt interest
+    pub staking: Staking,               //116
     pub bump: u8,
 }
 #[derive(Accounts)]
