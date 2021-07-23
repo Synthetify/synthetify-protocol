@@ -1,4 +1,4 @@
-use std::{cell::RefMut, convert::TryInto};
+use std::{cell::RefMut, convert::TryInto, ops::Div};
 
 use anchor_lang::__private::bytemuck::Contiguous;
 
@@ -346,22 +346,19 @@ pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
     return result;
 }
 pub fn calculate_compounded_interest(
-    base_price: u64,
+    base_value: u64,
     annual_interest_rate: u128,
-    // periods: u64,
     frequency: u128,
 ) -> u64 {
     // base_price * (1 + annual_interest_rate / frequency) ^ frequency
     let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
     let interest = (annual_interest_rate as u128)
-        .checked_div(frequency as u128)
-        .unwrap()
         .checked_add(interest_offset)
         .unwrap();
     let compounded = pow_with_accuracy(interest, frequency, INTEREST_RATE_DECIMAL);
-    let scaled_price = (base_price as u128).checked_mul(compounded).unwrap();
+    let scaled_price = (base_value as u128).checked_mul(compounded).unwrap();
 
-    return div_up(scaled_price, interest_offset) as u64;
+    return div_up(scaled_price, interest_offset).try_into().unwrap();
 }
 
 #[cfg(test)]
@@ -1425,20 +1422,21 @@ mod tests {
             assert_eq!(result, base * offset);
         }
     }
-    // #[test]
-    // fn test_calculate_compounded_interest() {
-    //     {
-    //         // 300 000$
-    //         // should be 1% APY
-    //         let base_price = 300_000 * 10u64.pow(PRICE_OFFSET.into());
-    //         // 1/31536000 = 32 * 10^-9
-    //         // interest_rate 1% = 1*10^18
-    //         // 32 * 10^9
-    //         let annual_interest_rate = 32 * 10u64.pow(9);
-    //         let frequency: u64 = 31536000;
-    //         let compounded_interest =
-    //             calculate_compounded_interest(base_price, annual_interest_rate, frequency);
-    //         println!("{:?}", compounded_interest);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_compounded_interest() {
+        {
+            // value = 300 000$
+            // annual ratio = 0.000000015%
+            // frequency = 788400 (every minute in year)
+            let base_value = 300_000 * 10u64.pow(PRICE_OFFSET.into());
+            let annual_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
+            let frequency: u128 = 788400;
+            let compounded_value =
+                calculate_compounded_interest(base_value, annual_interest_rate, frequency);
+
+            // expected 303568.865... $
+            // real     303568.861... $
+            assert_eq!(compounded_value, 303568865609);
+        }
+    }
 }
