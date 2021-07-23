@@ -193,46 +193,31 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> (u64, u64) {
-    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
-    let decimal_change = 10u128.pow((decimal_difference.abs()) as u32);
-
-    let amount_before_fee = if decimal_difference > 0 {
-        (asset_in.price as u128)
-            .checked_mul(decimal_change)
-            .unwrap()
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_div(asset_for.price as u128)
-            .unwrap()
-    } else {
-        (asset_in.price as u128)
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_div(asset_for.price as u128)
-            .unwrap()
-            .checked_div(decimal_change)
-            .unwrap()
-    };
-
-    let amount_out = amount_before_fee
-        .checked_sub(
-            amount_before_fee
-                .checked_mul(fee as u128)
-                .unwrap()
-                .checked_div(100000)
-                .unwrap(),
-        )
+    let value_in = calculate_value_in_usd(asset_in.price, amount, synthetic_in.decimals);
+    let fee_in_usd = value_in
+        .checked_mul(fee as u64)
+        .unwrap()
+        .checked_div(100000)
         .unwrap();
+    let value_out = value_in.checked_sub(fee_in_usd).unwrap();
 
-    let fee_in_usd = calculate_value_difference_in_usd(
-        asset_in.price,
-        amount as u64,
-        synthetic_in.decimals,
-        asset_for.price,
-        amount_out as u64,
-        synthetic_for.decimals,
-    );
-    (amount_out as u64, fee_in_usd)
+    let decimal_difference = synthetic_for.decimals as i32 + PRICE_OFFSET as i32 - ACCURACY as i32;
+
+    if decimal_difference < 0 {
+        let amount_out = (value_out as u128)
+            .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
+            .unwrap()
+            .checked_div(asset_for.price as u128)
+            .unwrap();
+        (amount_out as u64, fee_in_usd)
+    } else {
+        let amount_out = (value_out as u128)
+            .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
+            .unwrap()
+            .checked_div(asset_for.price as u128)
+            .unwrap();
+        (amount_out as u64, fee_in_usd)
+    }
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
