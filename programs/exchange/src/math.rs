@@ -214,7 +214,7 @@ pub fn calculate_swap_out_amount(
             .unwrap()
     };
 
-    let amount_after_fee = amount_before_fee
+    let amount_out = amount_before_fee
         .checked_sub(
             amount_before_fee
                 .checked_mul(fee as u128)
@@ -224,22 +224,15 @@ pub fn calculate_swap_out_amount(
         )
         .unwrap();
 
-    // let scaled_amount = if decimal_difference > 0 {
-    //     amount_after_fee.checked_mul(decimal_change).unwrap()
-    // } else {
-    //     amount_after_fee.checked_div(decimal_change).unwrap()
-    // };
-    let scaled_amount = amount_after_fee;
-
     let fee_in_usd = calculate_value_difference_in_usd(
         asset_in.price,
         amount as u64,
         synthetic_in.decimals,
         asset_for.price,
-        scaled_amount as u64,
+        amount_out as u64,
         synthetic_for.decimals,
     );
-    return (scaled_amount.try_into().unwrap(), fee_in_usd);
+    (amount_out as u64, fee_in_usd)
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
@@ -1052,44 +1045,76 @@ mod tests {
                 ..Default::default()
             };
             let fee = 300u32;
-            let (out_amount, swap_fee) = calculate_swap_out_amount(
-                &asset_usd,
-                &asset_btc,
-                &synthetic_usd,
-                &synthetic_btc,
-                50000 * 10u64.pow(6),
-                fee,
-            );
-            // out amount should be 0.997 BTC
-            assert_eq!(out_amount, 0_99700000);
-            // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
-
-            let (out_amount, swap_fee) = calculate_swap_out_amount(
-                &asset_btc,
-                &asset_usd,
-                &synthetic_btc,
-                &synthetic_usd,
-                1 * 10u64.pow(8),
-                fee,
-            );
-            // out amount should be 49850 USD
-            assert_eq!(out_amount, 49850_000_000);
-            // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
-
-            let (out_amount, swap_fee) = calculate_swap_out_amount(
-                &asset_btc,
-                &asset_eth,
-                &synthetic_btc,
-                &synthetic_eth,
-                99700000,
-                fee,
-            );
-            // out amount should be 24.850225 ETH
-            assert_eq!(out_amount, 24_850_2250);
-            // fee should be 149,55 USD
-            assert_eq!(swap_fee, 14955 * 10u64.pow(4));
+            {
+                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                    &asset_usd,
+                    &asset_btc,
+                    &synthetic_usd,
+                    &synthetic_btc,
+                    50000 * 10u64.pow(6),
+                    fee,
+                );
+                // out amount should be 0.997 BTC
+                assert_eq!(out_amount, 0_99700000);
+                // fee should be 150 USD
+                assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            }
+            {
+                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                    &asset_btc,
+                    &asset_usd,
+                    &synthetic_btc,
+                    &synthetic_usd,
+                    1 * 10u64.pow(8),
+                    fee,
+                );
+                // out amount should be 49850 USD
+                assert_eq!(out_amount, 49850_000_000);
+                // fee should be 150 USD
+                assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            }
+            {
+                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                    &asset_btc,
+                    &asset_eth,
+                    &synthetic_btc,
+                    &synthetic_eth,
+                    99700000,
+                    fee,
+                );
+                // out amount should be 24.850225 ETH
+                assert_eq!(out_amount, 24_850_2250);
+                // fee should be 149,55 USD
+                assert_eq!(swap_fee, 14955 * 10u64.pow(4));
+            }
+            // Small amounts to smaller decimals
+            {
+                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                    &asset_btc,
+                    &asset_eth,
+                    &synthetic_btc,
+                    &synthetic_eth,
+                    2,
+                    fee,
+                );
+                // out amount should be 0 ETH
+                assert_eq!(out_amount, 5);
+                msg!("swap_fee: {:?}", swap_fee);
+            }
+            // Small amounts to bigger decimals
+            {
+                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                    &asset_eth,
+                    &asset_btc,
+                    &synthetic_eth,
+                    &synthetic_btc,
+                    5,
+                    fee,
+                );
+                // out amount should be 0 ETH
+                assert_eq!(out_amount, 2);
+                msg!("swap_fee: {:?}", swap_fee);
+            }
         }
     }
     #[test]
