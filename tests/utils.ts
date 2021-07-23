@@ -71,6 +71,22 @@ export const calculateAmountAfterFee = (
       .mul(new BN(decimal_change))
   }
 }
+export const calculateFee = (
+  assetFrom: Asset,
+  syntheticFrom: Synthetic,
+  amountFrom: BN,
+  asset: Asset,
+  synthetic: Synthetic,
+  amount: BN
+): BN => {
+  const valueFrom = assetFrom.price.mul(amountFrom).div(new BN(10 ** syntheticFrom.decimals))
+  const value = asset.price.mul(amount).div(new BN(10 ** synthetic.decimals))
+  return valueFrom.sub(value)
+}
+export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
+  // swapTax 20 -> 20%
+  return totalFee.muln(swapTax).divn(100)
+}
 interface ICreateToken {
   connection: Connection
   payer: Account
