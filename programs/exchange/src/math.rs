@@ -1360,7 +1360,23 @@ mod tests {
     #[test]
     fn test_pow_with_accuracy() {
         // Zero base
+        {
+            let decimal: u8 = PRICE_OFFSET;
+            let offset: u128 = 10u128.pow(decimal.into());
+            let base: u128 = 0;
+            let exp: u128 = 100;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+            assert_eq!(result, 0);
+        }
         // Zero exponent
+        {
+            let decimal: u8 = PRICE_OFFSET;
+            let offset: u128 = 10u128.pow(decimal.into());
+            let base: u128 = 10;
+            let exp: u128 = 0;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+            assert_eq!(result, 1 * offset);
+        }
         // 2^17, with price decimal
         {
             let decimal: u8 = PRICE_OFFSET;
