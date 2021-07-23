@@ -317,15 +317,23 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
         .try_into()
         .unwrap();
 }
-pub fn try_pow(mut base: u128, mut exp: u128) -> u128 {
+pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
     let mut result: u128 = base;
 
     while exp > 0 {
         exp /= 2;
-        base = base.checked_mul(base).unwrap();
+        base = base
+            .checked_mul(base)
+            .unwrap()
+            .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
+            .unwrap();
 
         if exp % 2 != 0 {
-            result = result.checked_mul(base).unwrap();
+            result = result
+                .checked_mul(base)
+                .unwrap()
+                .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
+                .unwrap();
         }
     }
 
@@ -344,7 +352,10 @@ pub fn calculate_compounded_interest(
         .checked_add(10u128.pow(INTEREST_DECIMAL.into()))
         .unwrap();
 
-    let compounded = try_pow(interest, frequency.into());
+    println!("interest: {:?}", interest);
+    println!("frequency {:?}", frequency);
+
+    let compounded = interest.checked_pow(frequency as u32).unwrap();
     return base_price.checked_mul(compounded as u64).unwrap() as u64;
 }
 
@@ -1348,17 +1359,35 @@ mod tests {
     }
     #[test]
     fn test_try_pow() {
-        // 2^17
+        // 2^17, with price decimal
         {
-            let result = try_pow(2, 17);
+            let decimal: u8 = PRICE_OFFSET;
+            let exp = 10u128.pow(decimal.into());
+            let result = pow_with_accuracy(2 * exp, 17, decimal);
             // should be 131072
-            assert_eq!(result, 131072);
+            assert_eq!(result, 131072 * 10u128.pow(PRICE_OFFSET.into()));
         }
         // 123 ^ 11
-        {
-            let result = try_pow(123, 11);
-            // should be 97489136981438262577827
-            assert_eq!(result, 97489136981438262577827);
-        }
+        // {
+        //     let result = pow_with_accuracy(123, 11, PRICE_OFFSET);
+        //     // should be 97489136981438262577827
+        //     assert_eq!(result, 97489136981438262577827);
+        // }
     }
+    // #[test]
+    // fn test_calculate_compounded_interest() {
+    //     {
+    //         // 300 000$
+    //         // should be 1% APY
+    //         let base_price = 300_000 * 10u64.pow(PRICE_OFFSET.into());
+    //         // 1/31536000 = 32 * 10^-9
+    //         // interest_rate 1% = 1*10^18
+    //         // 32 * 10^9
+    //         let annual_interest_rate = 32 * 10u64.pow(9);
+    //         let frequency: u64 = 31536000;
+    //         let compounded_interest =
+    //             calculate_compounded_interest(base_price, annual_interest_rate, frequency);
+    //         println!("{:?}", compounded_interest);
+    //     }
+    // }
 }
