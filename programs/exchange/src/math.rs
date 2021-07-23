@@ -192,7 +192,7 @@ pub fn calculate_swap_out_amount(
     synthetic_for: &Synthetic,
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-) -> (u64, u64) {
+) -> Result<(u64, u64)> {
     let value_in = calculate_value_in_usd(asset_in.price, amount, synthetic_in.decimals);
     let fee_in_usd = value_in
         .checked_mul(fee as u64)
@@ -200,6 +200,11 @@ pub fn calculate_swap_out_amount(
         .checked_div(100000)
         .unwrap();
     let value_out = value_in.checked_sub(fee_in_usd).unwrap();
+
+    require!(
+        value_in > (10u64.checked_pow((PRICE_OFFSET - 2u8) as u32).unwrap()),
+        AmountTooSmall
+    );
 
     let decimal_difference = synthetic_for.decimals as i32 + PRICE_OFFSET as i32 - ACCURACY as i32;
 
@@ -209,14 +214,14 @@ pub fn calculate_swap_out_amount(
             .unwrap()
             .checked_div(asset_for.price as u128)
             .unwrap();
-        (amount_out as u64, fee_in_usd)
+        Ok((amount_out as u64, fee_in_usd))
     } else {
         let amount_out = (value_out as u128)
             .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
             .unwrap()
             .checked_div(asset_for.price as u128)
             .unwrap();
-        (amount_out as u64, fee_in_usd)
+        Ok((amount_out as u64, fee_in_usd))
     }
 }
 pub fn calculate_burned_shares(
