@@ -347,19 +347,22 @@ pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
 }
 pub fn calculate_compounded_interest(
     base_value: u64,
-    annual_interest_rate: u128,
-    frequency: u128,
+    periodic_interest_rate: u128,
+    periods_number: u128,
 ) -> u64 {
     // base_price * (1 + annual_interest_rate / frequency) ^ frequency
     let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
-    let interest = (annual_interest_rate as u128)
+    let interest = (periodic_interest_rate as u128)
         .checked_add(interest_offset)
         .unwrap();
-    let compounded = pow_with_accuracy(interest, frequency, INTEREST_RATE_DECIMAL);
-    let scaled_price = (base_value as u128).checked_mul(compounded).unwrap();
+    let compounded = pow_with_accuracy(interest, periods_number, INTEREST_RATE_DECIMAL);
+    let scaled_value = (base_value as u128).checked_mul(compounded).unwrap();
 
-    return div_up(scaled_price, interest_offset).try_into().unwrap();
+    return div_up(scaled_value, interest_offset).try_into().unwrap();
 }
+// pub fn calculate_minute_interest_rate() {
+//     const MINUTES_IN_YEAR: u32 = 525600;
+// }
 
 #[cfg(test)]
 mod tests {
@@ -1389,16 +1392,16 @@ mod tests {
             // should be 131072
             assert_eq!(result, 131072 * offset);
         }
-        // 1.000000015^788400, with interest decimal
+        // 1.00000002^525600, with interest decimal
         {
             let decimal: u8 = INTEREST_RATE_DECIMAL;
-            let offset: u128 = 10u128.pow((decimal - 9).into());
-            let base: u128 = 1_000_000_015;
-            let exp: u128 = 788400;
+            let offset: u128 = 10u128.pow((decimal - 8).into());
+            let base: u128 = 1_000_000_02;
+            let exp: u128 = 525600;
             let result = pow_with_accuracy(base * offset, exp, decimal);
-            // expected 1.01189621...
-            // real     1.01189620...
-            assert_eq!(result, 1011896218696361412);
+            // expected 1.01056746...
+            // real     1.01056744...
+            assert_eq!(result, 1010567465286720267);
         }
         // 1.000000015^2, with interest decimal
         {
@@ -1411,12 +1414,12 @@ mod tests {
             // real     1.00000003...
             assert_eq!(result, 1000000045000000675);
         }
-        // 1^788400, with interest decimal
+        // 1^525600, with interest decimal
         {
             let decimal: u8 = INTEREST_RATE_DECIMAL;
             let offset: u128 = 10u128.pow((decimal).into());
             let base: u128 = 1;
-            let exp: u128 = 788400;
+            let exp: u128 = 525600;
             let result = pow_with_accuracy(base * offset, exp, decimal);
             // expected not change value
             assert_eq!(result, base * offset);
@@ -1424,44 +1427,43 @@ mod tests {
     }
     #[test]
     fn test_calculate_compounded_interest() {
-        // frequency = 0
+        // periods_number = 0
         {
             // value = 100 000$
-            // annual ratio = 0.000000015%
+            // period ratio = 0.0000015%
             let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
-            let annual_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
-            let frequency: u128 = 0;
+            let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
+            let periods_number: u128 = 0;
             let compounded_value =
-                calculate_compounded_interest(base_value, annual_interest_rate, frequency);
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
             // should be the same
             assert_eq!(compounded_value, base_value);
         }
-        // frequency = 1
+        // periods_number = 1
         {
             // value = 100 000$
-            // annual ratio = 0.000000015%
+            // period ratio = 0.0000015%
             let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
-            let annual_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
-            let frequency: u128 = 1;
+            let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
+            let periods_number: u128 = 1;
             let compounded_value =
-                calculate_compounded_interest(base_value, annual_interest_rate, frequency);
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
             // expected 100000.0015... $
             // real     100000.0015... $
             assert_eq!(compounded_value, 100_000_001_500);
         }
-        // frequency = 788400 (every minute of the year )
+        // periods_number = 525600 (every minute of the year )
         {
             // value = 300 000$
-            // annual ratio = 0.000000015%
+            // period ratio = 0.000002%
             let base_value = 300_000 * 10u64.pow(PRICE_OFFSET.into());
-            let annual_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
-            let frequency: u128 = 788400;
+            let period_interest_rate = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
+            let periods_number: u128 = 525600;
             let compounded_value =
-                calculate_compounded_interest(base_value, annual_interest_rate, frequency);
-
-            // expected 303568.865... $
-            // real     303568.861... $
-            assert_eq!(compounded_value, 303568865609);
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // expected 303170.23958... $
+            // real     303170.23352... $
+            assert_eq!(compounded_value, 303170239587);
         }
     }
 }
