@@ -1358,21 +1358,38 @@ mod tests {
         }
     }
     #[test]
-    fn test_try_pow() {
+    fn test_pow_with_accuracy() {
         // 2^17, with price decimal
         {
             let decimal: u8 = PRICE_OFFSET;
-            let exp = 10u128.pow(decimal.into());
-            let result = pow_with_accuracy(2 * exp, 17, decimal);
+            let offset: u128 = 10u128.pow(decimal.into());
+            let base: u128 = 2;
+            let exp: u128 = 17;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
             // should be 131072
-            assert_eq!(result, 131072 * 10u128.pow(PRICE_OFFSET.into()));
+            assert_eq!(result, 131072 * offset);
         }
-        // 123 ^ 11
-        // {
-        //     let result = pow_with_accuracy(123, 11, PRICE_OFFSET);
-        //     // should be 97489136981438262577827
-        //     assert_eq!(result, 97489136981438262577827);
-        // }
+        // 1.00000001^31536000, with interest decimal
+        {
+            let decimal: u8 = INTEREST_DECIMAL;
+            let offset: u128 = 10u128.pow((decimal - 8).into());
+            let base: u128 = 100_000_001;
+            let exp: u128 = 31536000;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+            // 1.370752...
+            assert_eq!(result, 1370752704658266584);
+        }
+        // 1.000000001^2, with interest decimal
+        {
+            let decimal: u8 = INTEREST_DECIMAL;
+            let offset: u128 = 10u128.pow((decimal - 9).into());
+            let base: u128 = 1_000_000_001;
+            let exp: u128 = 2;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+        }
+        // edge cases
+        // pow 0
+        // pow 1
     }
     // #[test]
     // fn test_calculate_compounded_interest() {
