@@ -1,4 +1,4 @@
-use std::{cell::RefMut, convert::TryInto, ops::Div};
+use std::{cell::RefMut, convert::TryInto};
 
 use crate::*;
 
@@ -193,7 +193,9 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> (u64, u64) {
-    // maybe we should calculate decimal difference first not to lose precision
+    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
+    let decimal_change = 10u128.pow((decimal_difference.abs()) as u32);
+
     let amount_before_fee = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap()
@@ -208,33 +210,22 @@ pub fn calculate_swap_out_amount(
                 .unwrap(),
         )
         .unwrap();
-    // If assets have different decimals we need to scale them.
-    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
-    if decimal_difference < 0 {
-        let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        let scaled_amount = amount_after_fee.checked_div(decimal_change).unwrap();
-        let fee_in_usd = calculate_value_difference_in_usd(
-            asset_in.price,
-            amount as u64,
-            synthetic_in.decimals,
-            asset_for.price,
-            scaled_amount as u64,
-            synthetic_for.decimals,
-        );
-        return (scaled_amount.try_into().unwrap(), fee_in_usd);
+
+    let scaled_amount = if decimal_difference > 0 {
+        amount_after_fee.checked_mul(decimal_change).unwrap()
     } else {
-        let decimal_change = 10u128.pow(decimal_difference as u32);
-        let scaled_amount = amount_after_fee.checked_mul(decimal_change).unwrap();
-        let fee_in_usd = calculate_value_difference_in_usd(
-            asset_in.price,
-            amount as u64,
-            synthetic_in.decimals,
-            asset_for.price,
-            scaled_amount as u64,
-            synthetic_for.decimals,
-        );
-        return (scaled_amount.try_into().unwrap(), fee_in_usd);
-    }
+        amount_after_fee.checked_div(decimal_change).unwrap()
+    };
+
+    let fee_in_usd = calculate_value_difference_in_usd(
+        asset_in.price,
+        amount as u64,
+        synthetic_in.decimals,
+        asset_for.price,
+        scaled_amount as u64,
+        synthetic_for.decimals,
+    );
+    return (scaled_amount.try_into().unwrap(), fee_in_usd);
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
