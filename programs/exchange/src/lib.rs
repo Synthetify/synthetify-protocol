@@ -512,7 +512,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, _, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
         let user_token_account_burn = &ctx.accounts.user_token_account_burn;
@@ -671,7 +671,7 @@ pub mod exchange {
         if amount.gt(&max_repay) {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, collaterals, _) = assets_list.split_borrow();
 
         let liquidated_collateral = match collaterals
             .iter_mut()
@@ -1639,7 +1639,6 @@ pub struct Init<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
-
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
@@ -1755,4 +1754,173 @@ fn version<'info>(
         AccountVersion
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exchange_account_methods() {
+        // Freshly created
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            assert_eq!(exchange_account.head, 0);
+        }
+        // Append
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+            assert_eq!(exchange_account.head, 2);
+            assert_eq!(exchange_account.collaterals[0].index, 1);
+            assert_eq!(exchange_account.collaterals[1].index, 2);
+        }
+        // Remove
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+            exchange_account.remove(0);
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[0].index, 2);
+        }
+        // Remove then append
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+
+            exchange_account.append(CollateralEntry {
+                index: 1,
+                ..Default::default()
+            });
+            exchange_account.remove(0);
+            exchange_account.append(CollateralEntry {
+                index: 2,
+                ..Default::default()
+            });
+
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[0].index, 2);
+        }
+    }
+
+    #[test]
+    fn test_assets_list_appending() {
+        // Freshly created
+        {
+            let assets_list = AssetsList {
+                ..Default::default()
+            };
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 0);
+        }
+        // Append assets
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_asset(Asset {
+                price: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.assets[0].price }, 2);
+            assert_eq!(assets_list.head_assets, 1);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 0);
+
+            assets_list.append_asset(Asset {
+                price: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.assets[1].price }, 3);
+            assert_eq!(assets_list.head_assets, 2);
+        }
+        // Append collaterals
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_collateral(Collateral {
+                asset_index: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.collaterals[0].asset_index }, 2);
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 1);
+            assert_eq!(assets_list.head_synthetics, 0);
+
+            assets_list.append_collateral(Collateral {
+                asset_index: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.collaterals[1].asset_index }, 3);
+            assert_eq!(assets_list.head_collaterals, 2);
+        }
+        // Append synthetics
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            assets_list.append_synthetic(Synthetic {
+                asset_index: 2,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.synthetics[0].asset_index }, 2);
+            assert_eq!(assets_list.head_assets, 0);
+            assert_eq!(assets_list.head_collaterals, 0);
+            assert_eq!(assets_list.head_synthetics, 1);
+
+            assets_list.append_synthetic(Synthetic {
+                asset_index: 3,
+                ..Default::default()
+            });
+            assert_eq!({ assets_list.synthetics[1].asset_index }, 3);
+            assert_eq!(assets_list.head_synthetics, 2);
+        }
+    }
+
+    #[test]
+    fn test_assets_list_split_borrow() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        assets_list.append_asset(Asset {
+            price: 2,
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            asset_index: 0,
+            ..Default::default()
+        });
+        assets_list.append_synthetic(Synthetic {
+            asset_index: 0,
+            ..Default::default()
+        });
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        assert_eq!({ assets[0].price }, 2);
+        assert_eq!(collaterals[0].asset_index, 0);
+        assert_eq!(synthetics[0].asset_index, 0);
+    }
 }
