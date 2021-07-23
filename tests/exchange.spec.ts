@@ -514,12 +514,7 @@ describe('exchange', () => {
 
       // Updating exchange account check
       const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-      assert.ok(
-        exchangeAccountAfter.collaterals[0].amount.eq(
-          exchangeAccountBefore.collaterals[0].amount.sub(withdrawAmount)
-        )
-      )
-      assert.ok(exchangeAccountAfter.collaterals[0].amount.eq(new BN(0)))
+      assert.ok(exchangeAccountAfter.head == 0)
     })
     it('withdraw over limit', async () => {
       const collateralAmount = new BN(100 * 1e6)
