@@ -1424,6 +1424,18 @@ mod tests {
     }
     #[test]
     fn test_calculate_compounded_interest() {
+        // frequency = 0
+        {
+            // value = 100 000$
+            // annual ratio = 0.000000015%
+            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let annual_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
+            let frequency: u128 = 0;
+            let compounded_value =
+                calculate_compounded_interest(base_value, annual_interest_rate, frequency);
+            // should be the same
+            assert_eq!(compounded_value, base_value);
+        }
         // frequency = 1
         {
             // value = 100 000$
@@ -1433,8 +1445,6 @@ mod tests {
             let frequency: u128 = 1;
             let compounded_value =
                 calculate_compounded_interest(base_value, annual_interest_rate, frequency);
-
-            println!("{:?}", compounded_value);
             // expected 100000.0015... $
             // real     100000.0015... $
             assert_eq!(compounded_value, 100_000_001_500);
