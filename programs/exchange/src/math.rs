@@ -314,6 +314,20 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
         .try_into()
         .unwrap();
 }
+pub fn try_pow(mut base: u128, mut exp: u128) -> u128 {
+    let mut result: u128 = 1;
+
+    while exp > 0 {
+        exp /= 2;
+        base = base.checked_mul(base).unwrap();
+
+        if exp % 2 != 0 {
+            result = result.checked_mul(base).unwrap();
+        }
+    }
+
+    return result;
+}
 #[cfg(test)]
 mod tests {
     use std::{cell::RefCell, ops::Div};
