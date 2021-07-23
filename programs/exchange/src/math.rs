@@ -347,22 +347,21 @@ pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
 }
 pub fn calculate_compounded_interest(
     base_price: u64,
-    annual_interest_rate: u64,
+    annual_interest_rate: u128,
     // periods: u64,
-    frequency: u64,
+    frequency: u128,
 ) -> u64 {
     // base_price * (1 + annual_interest_rate / frequency) ^ frequency
+    let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
     let interest = (annual_interest_rate as u128)
         .checked_div(frequency as u128)
         .unwrap()
-        .checked_add(10u128.pow(INTEREST_RATE_DECIMAL.into()))
+        .checked_add(interest_offset)
         .unwrap();
+    let compounded = pow_with_accuracy(interest, frequency, INTEREST_RATE_DECIMAL);
+    let scaled_price = (base_price as u128).checked_mul(compounded).unwrap();
 
-    println!("interest: {:?}", interest);
-    println!("frequency {:?}", frequency);
-
-    let compounded = interest.checked_pow(frequency as u32).unwrap();
-    return base_price.checked_mul(compounded as u64).unwrap() as u64;
+    return div_up(scaled_price, interest_offset) as u64;
 }
 
 #[cfg(test)]
