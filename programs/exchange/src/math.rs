@@ -1,10 +1,13 @@
-use std::{cell::RefMut, convert::TryInto, ops::Div};
+use std::{cell::RefMut, convert::TryInto};
+
+use anchor_lang::__private::bytemuck::Contiguous;
 
 use crate::*;
 
 // Min decimals for asset = 6
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
+pub const INTEREST_DECIMAL: u8 = 18;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
@@ -328,6 +331,23 @@ pub fn try_pow(mut base: u128, mut exp: u128) -> u128 {
 
     return result;
 }
+pub fn calculate_compounded_interest(
+    base_price: u64,
+    annual_interest_rate: u64,
+    // periods: u64,
+    frequency: u64,
+) -> u64 {
+    // base_price * (1 + annual_interest_rate / frequency) ^ frequency
+    let interest = (annual_interest_rate as u128)
+        .checked_div(frequency as u128)
+        .unwrap()
+        .checked_add(10u128.pow(INTEREST_DECIMAL.into()))
+        .unwrap();
+
+    let compounded = try_pow(interest, frequency.into());
+    return base_price.checked_mul(compounded as u64).unwrap() as u64;
+}
+
 #[cfg(test)]
 mod tests {
     use std::{cell::RefCell, ops::Div};
