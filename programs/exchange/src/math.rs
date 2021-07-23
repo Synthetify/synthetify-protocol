@@ -315,7 +315,7 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
         .unwrap();
 }
 pub fn try_pow(mut base: u128, mut exp: u128) -> u128 {
-    let mut result: u128 = 1;
+    let mut result: u128 = base;
 
     while exp > 0 {
         exp /= 2;
@@ -1324,6 +1324,21 @@ mod tests {
             let conf = 10_000u64;
             let confidence = calculate_confidence(conf, price);
             assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
+        }
+    }
+    #[test]
+    fn test_try_pow() {
+        // 2^17
+        {
+            let result = try_pow(2, 17);
+            // should be 131072
+            assert_eq!(result, 131072);
+        }
+        // 123 ^ 11
+        {
+            let result = try_pow(123, 11);
+            // should be 97489136981438262577827
+            assert_eq!(result, 97489136981438262577827);
         }
     }
 }
