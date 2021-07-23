@@ -202,7 +202,7 @@ pub fn calculate_swap_out_amount(
     let value_out = value_in.checked_sub(fee_in_usd).unwrap();
 
     require!(
-        value_in > (10u64.checked_pow((PRICE_OFFSET - 2u8) as u32).unwrap()),
+        value_in >= (10u64.checked_pow((PRICE_OFFSET - 2u8) as u32).unwrap()),
         AmountTooSmall
     );
 
@@ -1008,7 +1008,7 @@ mod tests {
         }
     }
     #[test]
-    fn test_calculate_swap_out_amount() {
+    fn test_calculate_swap_out_amount() -> Result<()> {
         {
             let asset_usd = Asset {
                 price: 1 * 10u64.pow(PRICE_OFFSET.into()),
@@ -1043,7 +1043,8 @@ mod tests {
                     &synthetic_btc,
                     50000 * 10u64.pow(6),
                     fee,
-                );
+                )
+                .unwrap();
                 // out amount should be 0.997 BTC
                 assert_eq!(out_amount, 0_99700000);
                 // fee should be 150 USD
@@ -1057,7 +1058,8 @@ mod tests {
                     &synthetic_usd,
                     1 * 10u64.pow(8),
                     fee,
-                );
+                )
+                .unwrap();
                 // out amount should be 49850 USD
                 assert_eq!(out_amount, 49850_000_000);
                 // fee should be 150 USD
@@ -1071,29 +1073,31 @@ mod tests {
                     &synthetic_eth,
                     99700000,
                     fee,
-                );
+                )
+                .unwrap();
                 // out amount should be 24.850225 ETH
                 assert_eq!(out_amount, 24_850_2250);
                 // fee should be 149,55 USD
                 assert_eq!(swap_fee, 14955 * 10u64.pow(4));
             }
-            // Small amounts to smaller decimals
+            // Small amounts at limit
             {
-                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                let result = calculate_swap_out_amount(
                     &asset_btc,
                     &asset_eth,
                     &synthetic_btc,
                     &synthetic_eth,
-                    2,
+                    20,
                     fee,
                 );
-                // out amount should be 0 ETH
-                assert_eq!(out_amount, 5);
-                msg!("swap_fee: {:?}", swap_fee);
+                assert!(result.is_ok());
+                let (out_amount, swap_fee) = result.unwrap();
+                assert_eq!(out_amount, 49);
+                assert_eq!(swap_fee, 30);
             }
-            // Small amounts to bigger decimals
+            // Amount below bottom limit
             {
-                let (out_amount, swap_fee) = calculate_swap_out_amount(
+                let result = calculate_swap_out_amount(
                     &asset_eth,
                     &asset_btc,
                     &synthetic_eth,
@@ -1101,11 +1105,10 @@ mod tests {
                     5,
                     fee,
                 );
-                // out amount should be 0 ETH
-                assert_eq!(out_amount, 2);
-                msg!("swap_fee: {:?}", swap_fee);
+                assert!(result.is_err());
             }
         }
+        Ok(())
     }
     #[test]
     fn test_calculate_burned_shares() {
