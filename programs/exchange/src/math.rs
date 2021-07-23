@@ -1359,6 +1359,8 @@ mod tests {
     }
     #[test]
     fn test_pow_with_accuracy() {
+        // Zero base
+        // Zero exponent
         // 2^17, with price decimal
         {
             let decimal: u8 = PRICE_OFFSET;
@@ -1391,9 +1393,16 @@ mod tests {
             // real     1.00000003...
             assert_eq!(result, 1000000045000000675);
         }
-        // edge cases
-        // pow 0
-        // pow 1
+        // 1^788400, with interest decimal
+        {
+            let decimal: u8 = INTEREST_RATE_DECIMAL;
+            let offset: u128 = 10u128.pow((decimal).into());
+            let base: u128 = 1;
+            let exp: u128 = 788400;
+            let result = pow_with_accuracy(base * offset, exp, decimal);
+            // expected not change value
+            assert_eq!(result, base * offset);
+        }
     }
     // #[test]
     // fn test_calculate_compounded_interest() {
