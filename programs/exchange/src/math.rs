@@ -318,6 +318,12 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
         .unwrap();
 }
 pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
+    if exp == 0 {
+        return 1u128
+            .checked_mul(10u128.checked_pow(accuracy.into()).unwrap())
+            .unwrap();
+    }
+
     let mut result: u128 = base;
 
     while exp > 0 {
