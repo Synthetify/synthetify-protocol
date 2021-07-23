@@ -360,6 +360,15 @@ pub fn calculate_compounded_interest(
 
     return div_up(scaled_value, interest_offset).try_into().unwrap();
 }
+pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
+    const MAX_PERCENT: u128 = 20;
+    //range 0-20% (0-255)
+    return MAX_PERCENT
+        .checked_mul(debt_interest_rate.into())
+        .unwrap()
+        .checked_div(255u128.checked_mul(u8::MAX_VALUE.into()).unwrap())
+        .unwrap();
+}
 // pub fn calculate_minute_interest_rate() {
 //     const MINUTES_IN_YEAR: u32 = 525600;
 // }
