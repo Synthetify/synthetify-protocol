@@ -25,12 +25,15 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
-  createCollateralToken
+  createCollateralToken,
+  calculateFee,
+  calculateSwapTax,
+  calculateFee
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
+import { Collateral, Synthetic } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -732,6 +735,9 @@ describe('exchange', () => {
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
       assert.ok(effectiveFee === 300) // discount 0%
+      const stateBeforeSwap = await exchange.getState()
+      assert.ok(stateBeforeSwap.poolFee.eq(new BN(0))) // pull fee should equals 0 before swaps
+
       await exchange.swap({
         exchangeAccount,
         amount: usdMintAmount,
@@ -762,10 +768,26 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+      const stateAfterSwap = await exchange.getState()
+      const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
+      // 100$(IN value), 99.7$(OUT value)
+      // expected fee 0.3$ -> 3 * 10^5
+      // expected admin tax 0.06$ -> 6 * 10^4
+      const totalFee = calculateFee(
+        usdAsset,
+        usdSynthetic,
+        usdMintAmount,
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut
+      )
+      const adminTax = calculateSwapTax(totalFee, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSwap.poolFee.eq(adminTax))
+      // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
+        assetsListDataAfterSwap.synthetics[0].supply.eq(
+          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
@@ -797,6 +819,31 @@ describe('exchange', () => {
       )
       const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
+
+      const stateAfterSecondSwap = await exchange.getState()
+      const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
+      // 99.7$(IN value), 99.4$(OUT value)
+      // expected fee 0,3$ ->  3 * 10^5
+      // expected admin tax, additional pool fee, additional xUSD supply:
+      // 0,06$ -> 6 * 10^4
+      const totalFeeSecondSwap = calculateFee(
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut,
+        ethAsset,
+        ethSynthetic,
+        ethAmountOut
+      )
+      const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTax)
+
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSecondSwap.poolFee.eq(adminTaxSecondSwap.add(stateAfterSwap.poolFee)))
+      // supply should be equals supply before swap plus admin swap tax
+      assert.ok(
+        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        )
+      )
     })
     it('Swap usd->btc->eth with zero collateral', async () => {
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
@@ -860,6 +907,8 @@ describe('exchange', () => {
         a.assetAddress.equals(btcToken.publicKey)
       )
       const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+      const stateBeforeSwap = await exchange.getState()
+
       await exchange.swap({
         amount: usdMintAmount,
         exchangeAccount,
@@ -885,10 +934,26 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+      // 100$(IN value), 99.7$(OUT value)
+      // expected fee 0.3$ -> 3 * 10^5
+      // expected admin tax 0.06$ -> 6 * 10^4
+      const stateAfterSwap = await exchange.getState()
+      const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
+      const totalFee = calculateFee(
+        usdAsset,
+        usdSynthetic,
+        usdMintAmount,
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut
+      )
+      const adminTax = calculateSwapTax(totalFee, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSwap.poolFee.eq(stateBeforeSwap.poolFee.add(adminTax)))
+      // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
+        assetsListDataAfterSwap.synthetics[0].supply.eq(
+          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
@@ -920,6 +985,30 @@ describe('exchange', () => {
       )
       const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
+
+      // 99.7$(IN value), 99.4$(OUT value)
+      // expected fee 0,3$ -> 3 * 10^5
+      // expected admin tax, additional pool fee, additional xUSD supply:
+      // 0,06$ -> 6 * 10^4
+      const stateAfterSecondSwap = await exchange.getState()
+      const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
+      const totalFeeSecondSwap = calculateFee(
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut,
+        ethAsset,
+        ethSynthetic,
+        ethAmountOut
+      )
+      const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSecondSwap.poolFee.eq(stateAfterSwap.poolFee.add(adminTaxSecondSwap)))
+      // supply should be equals supply before swap plus admin swap tax
+      assert.ok(
+        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        )
+      )
     })
     it('Swap usd->btc->eth with 3% discount', async () => {
       const collateralAmount = new BN(10000 * 1e6)
@@ -964,6 +1053,7 @@ describe('exchange', () => {
         a.assetAddress.equals(btcToken.publicKey)
       )
       const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+      const stateBeforeSwap = await exchange.getState()
 
       await exchange.swap({
         amount: usdMintAmount,
@@ -990,12 +1080,29 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+      // 100$(IN value), 99.75$(OUT value)
+      // expected fee 0.25$ -> 25 * 10^4
+      // expected admin tax 0.05$ -> 5 * 10^4
+      const stateAfterSwap = await exchange.getState()
+      const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
+      const totalFee = calculateFee(
+        usdAsset,
+        usdSynthetic,
+        usdMintAmount,
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut
+      )
+      const adminTax = calculateSwapTax(totalFee, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSwap.poolFee.eq(stateBeforeSwap.poolFee.add(adminTax)))
+      // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfter.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount)
+        assetsListDataAfterSwap.synthetics[0].supply.eq(
+          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
         )
       )
+
       const ethSynthetic = assetsListData.synthetics.find((a) =>
         a.assetAddress.equals(ethToken.publicKey)
       )
@@ -1025,6 +1132,30 @@ describe('exchange', () => {
       )
       const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
+
+      // 99.75$(IN value), 99.458$(OUT value)
+      // expected fee 0,292$ ->  292 * 10^3
+      // expected admin tax, additional pool fee, additional xUSD supply:
+      // 0,0584$ -> 584 * 10^2
+      const stateAfterSecondSwap = await exchange.getState()
+      const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
+      const totalFeeSecondSwap = calculateFee(
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut,
+        ethAsset,
+        ethSynthetic,
+        ethAmountOut
+      )
+      const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTax)
+      // check poolFee was increased by admin swap tax
+      assert.ok(stateAfterSecondSwap.poolFee.eq(stateAfterSwap.poolFee.add(adminTaxSecondSwap)))
+      // supply should be equals supply before swap plus admin swap tax
+      assert.ok(
+        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        )
+      )
     })
     it('Swap usd->usd should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
