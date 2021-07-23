@@ -196,11 +196,24 @@ pub fn calculate_swap_out_amount(
     let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
     let decimal_change = 10u128.pow((decimal_difference.abs()) as u32);
 
-    let amount_before_fee = (asset_in.price as u128)
-        .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(asset_for.price as u128)
-        .unwrap();
+    let amount_before_fee = if decimal_difference > 0 {
+        (asset_in.price as u128)
+            .checked_mul(decimal_change)
+            .unwrap()
+            .checked_mul(amount as u128)
+            .unwrap()
+            .checked_div(asset_for.price as u128)
+            .unwrap()
+    } else {
+        (asset_in.price as u128)
+            .checked_mul(amount as u128)
+            .unwrap()
+            .checked_div(asset_for.price as u128)
+            .unwrap()
+            .checked_div(decimal_change)
+            .unwrap()
+    };
+
     let amount_after_fee = amount_before_fee
         .checked_sub(
             amount_before_fee
@@ -211,11 +224,12 @@ pub fn calculate_swap_out_amount(
         )
         .unwrap();
 
-    let scaled_amount = if decimal_difference > 0 {
-        amount_after_fee.checked_mul(decimal_change).unwrap()
-    } else {
-        amount_after_fee.checked_div(decimal_change).unwrap()
-    };
+    // let scaled_amount = if decimal_difference > 0 {
+    //     amount_after_fee.checked_mul(decimal_change).unwrap()
+    // } else {
+    //     amount_after_fee.checked_div(decimal_change).unwrap()
+    // };
+    let scaled_amount = amount_after_fee;
 
     let fee_in_usd = calculate_value_difference_in_usd(
         asset_in.price,
