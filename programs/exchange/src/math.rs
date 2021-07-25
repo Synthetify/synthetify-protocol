@@ -366,7 +366,9 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
     return MAX_PERCENT
         .checked_mul(debt_interest_rate.into())
         .unwrap()
-        .checked_div(255u128.checked_mul(u8::MAX_VALUE.into()).unwrap())
+        .checked_mul(10u128.checked_pow(INTEREST_RATE_DECIMAL.into()).unwrap())
+        .unwrap()
+        .checked_div(u8::MAX_VALUE.into())
         .unwrap();
 }
 // pub fn calculate_minute_interest_rate() {
@@ -1473,6 +1475,35 @@ mod tests {
             // expected 303170.23958... $
             // real     303170.23352... $
             assert_eq!(compounded_value, 303170239587);
+        }
+    }
+
+    #[test]
+    fn test_calculate_debt_interest_rate() {
+        let interest_rate_offset: u128 = 10u128.pow(INTEREST_RATE_DECIMAL.into());
+        // 0%
+        {
+            let debt_interest_rate = calculate_debt_interest_rate(0);
+            assert_eq!(debt_interest_rate, 0);
+        }
+        // ~0.15%
+        {
+            let debt_interest_rate = calculate_debt_interest_rate(2);
+            // real     0.156862745098039215...
+            // expected 0,156862745098039215
+            assert_eq!(debt_interest_rate, 156862745098039215);
+        }
+        // 1.02%
+        {
+            let debt_interest_rate = calculate_debt_interest_rate(13);
+            // real     1.019607843137254901...
+            // expected 1.019607843137254901
+            assert_eq!(debt_interest_rate, 1019607843137254901);
+        }
+        // 20%
+        {
+            let debt_interest_rate = calculate_debt_interest_rate(255);
+            assert_eq!(debt_interest_rate, 20 * interest_rate_offset);
         }
     }
 }
