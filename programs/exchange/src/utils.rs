@@ -1,3 +1,5 @@
+use std::cell::RefMut;
+
 use crate::math::{calculate_compounded_interest, calculate_debt_interest_rate, MINUTES_IN_YEAR};
 use crate::*;
 
@@ -144,13 +146,20 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
     return;
 }
 
-pub fn adjust_interest_debt(state: &mut State, total_debt: u64, timestamp: i64) {
+pub fn adjust_interest_debt(
+    state: &mut State,
+    assets_list: &RefMut<AssetsList>,
+    total_debt: u64,
+    timestamp: i64,
+) {
     let diff = timestamp.checked_sub(state.last_debt_adjustment).unwrap();
     if diff >= 60 {
+        let mut usd = assets_list.synthetics[0];
         let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
         let compounded_interest =
             calculate_compounded_interest(total_debt, debt_interest_rate, MINUTES_IN_YEAR.into());
 
+        usd.supply = usd.supply.checked_add(compounded_interest).unwrap();
         state.accumulated_debt_interest = compounded_interest;
         state.last_debt_adjustment = timestamp;
     }
