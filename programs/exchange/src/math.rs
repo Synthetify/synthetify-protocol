@@ -1559,4 +1559,33 @@ mod tests {
             assert_eq!(debt_interest_rate, 20 * interest_rate_offset);
         }
     }
+
+    #[test]
+    fn test_calculate_minute_interest_rate() {
+        // 0%
+        {
+            let minute_interest_rate = calculate_minute_interest_rate(0);
+
+            // should be 0
+            assert_eq!(minute_interest_rate, 0);
+        }
+        // 1%
+        {
+            let one_percent: u128 = 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
+            let minute_interest_rate = calculate_minute_interest_rate(one_percent);
+
+            // real     0.0000019025875190... %
+            // expected 0.0000019025875190    %
+            assert_eq!(minute_interest_rate, 19025875190);
+        }
+        // 20%
+        {
+            let twenty_percent: u128 = 20 * 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
+            let minute_interest_rate = calculate_minute_interest_rate(twenty_percent);
+
+            // real     0.0000380517503805...%
+            // expected 0.0000380517503805   %
+            assert_eq!(minute_interest_rate, 380517503805);
+        }
+    }
 }
