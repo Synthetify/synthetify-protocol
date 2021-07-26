@@ -1,6 +1,6 @@
-use std::cell::RefMut;
-
-use crate::math::{calculate_compounded_interest, calculate_debt_interest_rate, MINUTES_IN_YEAR};
+use crate::math::{
+    calculate_compounded_interest, calculate_debt_interest_rate, calculate_minute_interest_rate,
+};
 use crate::*;
 
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
@@ -148,16 +148,20 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 
 pub fn adjust_interest_debt(
     state: &mut State,
-    assets_list: &RefMut<AssetsList>,
+    usd: &mut Synthetic,
     total_debt: u64,
     timestamp: i64,
 ) {
-    let diff = timestamp.checked_sub(state.last_debt_adjustment).unwrap();
-    if diff >= 60 {
-        let mut usd = assets_list.synthetics[0];
+    let diff = timestamp
+        .checked_sub(state.last_debt_adjustment)
+        .unwrap()
+        .checked_div(60)
+        .unwrap();
+    if diff >= 1 {
         let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
+        let minute_interest_rate = calculate_minute_interest_rate(debt_interest_rate);
         let compounded_interest =
-            calculate_compounded_interest(total_debt, debt_interest_rate, MINUTES_IN_YEAR.into());
+            calculate_compounded_interest(total_debt, minute_interest_rate, diff as u128);
 
         usd.supply = usd.supply.checked_add(compounded_interest).unwrap();
         state.accumulated_debt_interest = compounded_interest;
@@ -189,8 +193,10 @@ pub fn get_user_sny_collateral_balance(
 #[cfg(test)]
 mod tests {
 
+    use crate::math::PRICE_OFFSET;
+
     use super::*;
-    use std::u64;
+    use std::{ops::Mul, u64};
 
     #[test]
     fn adjust_staking_account_test() {
@@ -701,6 +707,36 @@ mod tests {
 
             let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
             assert_eq!(amount, 0)
+        }
+    }
+
+    #[test]
+    fn test_adjust_interest_debt() {
+        let state = State {
+            debt_interest_rate: 10,
+            accumulated_debt_interest: 0,
+            last_debt_adjustment: 0,
+            ..Default::default()
+        };
+        let usd = Synthetic {
+            supply: 100_000 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        {
+            let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let current_timestamp = 65;
+            let mut state = state.clone();
+            let mut usd = usd.clone();
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+
+            // real     0.0019025... $
+            // expected 0.001903     $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, 100_000_001_903);
+            assert_eq!(accumulated_debt_interest, 1903);
+            assert_eq!(last_debt_adjustment, 65);
         }
     }
 }
