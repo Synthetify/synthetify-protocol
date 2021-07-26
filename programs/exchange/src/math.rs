@@ -1,7 +1,5 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use anchor_lang::__private::bytemuck::Contiguous;
-
 use crate::*;
 
 // Min decimals for asset = 6
@@ -363,14 +361,11 @@ pub fn calculate_compounded_interest(
     return div_up(scaled_value, interest_offset).try_into().unwrap();
 }
 pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
-    const MAX_PERCENT: u128 = 20;
-    //range 0-20% (0-255)
-    return MAX_PERCENT
-        .checked_mul(debt_interest_rate.into())
-        .unwrap()
+    // 1 -> 0.1%
+    return (debt_interest_rate as u128)
         .checked_mul(10u128.checked_pow(INTEREST_RATE_DECIMAL.into()).unwrap())
         .unwrap()
-        .checked_div(u8::MAX_VALUE.into())
+        .checked_div(1000)
         .unwrap();
 }
 pub fn calculate_minute_interest_rate(apr: u128) -> u128 {
@@ -1533,30 +1528,26 @@ mod tests {
 
     #[test]
     fn test_calculate_debt_interest_rate() {
-        let interest_rate_offset: u128 = 10u128.pow(INTEREST_RATE_DECIMAL.into());
+        let tenth_of_percent = 10u128.pow((INTEREST_RATE_DECIMAL - 3).into());
         // 0%
         {
             let debt_interest_rate = calculate_debt_interest_rate(0);
             assert_eq!(debt_interest_rate, 0);
         }
-        // ~0.15%
+        // 0.1%
         {
-            let debt_interest_rate = calculate_debt_interest_rate(2);
-            // real     0.156862745098039215...
-            // expected 0,156862745098039215
-            assert_eq!(debt_interest_rate, 156862745098039215);
+            let debt_interest_rate = calculate_debt_interest_rate(1);
+            assert_eq!(debt_interest_rate, tenth_of_percent);
         }
-        // 1.02%
+        // 1%
         {
-            let debt_interest_rate = calculate_debt_interest_rate(13);
-            // real     1.019607843137254901...
-            // expected 1.019607843137254901
-            assert_eq!(debt_interest_rate, 1019607843137254901);
+            let debt_interest_rate = calculate_debt_interest_rate(10);
+            assert_eq!(debt_interest_rate, 10 * tenth_of_percent);
         }
         // 20%
         {
-            let debt_interest_rate = calculate_debt_interest_rate(255);
-            assert_eq!(debt_interest_rate, 20 * interest_rate_offset);
+            let debt_interest_rate = calculate_debt_interest_rate(200);
+            assert_eq!(debt_interest_rate, 200 * tenth_of_percent);
         }
     }
 

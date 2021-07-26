@@ -1622,7 +1622,7 @@ pub struct State {
     pub penalty_to_exchange: u8,        //1   In % range 0-25%
     pub liquidation_buffer: u32,        //4   Time given user to fix collateralization ratio
     pub account_version: u8,            //1   Version of account supported by program
-    pub debt_interest_rate: u8,         //8   In % range 0-20%
+    pub debt_interest_rate: u8,         //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: u64, //64  Accumulated debt interest
     pub staking: Staking,               //116
     pub bump: u8,
