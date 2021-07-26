@@ -350,12 +350,14 @@ pub fn calculate_compounded_interest(
     periodic_interest_rate: u128,
     periods_number: u128,
 ) -> u64 {
-    // base_price * (1 + annual_interest_rate / frequency) ^ frequency
+    // base_price * ((1 + periodic_interest_rate) ^ periods_number - 1)
     let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
     let interest = (periodic_interest_rate as u128)
         .checked_add(interest_offset)
         .unwrap();
-    let compounded = pow_with_accuracy(interest, periods_number, INTEREST_RATE_DECIMAL);
+    let compounded = pow_with_accuracy(interest, periods_number, INTEREST_RATE_DECIMAL)
+        .checked_sub(interest_offset)
+        .unwrap();
     let scaled_value = (base_value as u128).checked_mul(compounded).unwrap();
 
     return div_up(scaled_value, interest_offset).try_into().unwrap();
@@ -372,6 +374,7 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
         .unwrap();
 }
 // pub fn calculate_minute_interest_rate() {
+//     // 1 / 525600 -> 1%
 //     const MINUTES_IN_YEAR: u32 = 525600;
 // }
 
@@ -1447,8 +1450,8 @@ mod tests {
             let periods_number: u128 = 0;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-            // should be the same
-            assert_eq!(compounded_value, base_value);
+            // should be 0
+            assert_eq!(compounded_value, 0);
         }
         // periods_number = 1
         {
@@ -1459,9 +1462,9 @@ mod tests {
             let periods_number: u128 = 1;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-            // expected 100000.0015... $
-            // real     100000.0015... $
-            assert_eq!(compounded_value, 100_000_001_500);
+            // expected 0.0015 $
+            // real     0.0015... $
+            assert_eq!(compounded_value, 1_500);
         }
         // periods_number = 525600 (every minute of the year )
         {
@@ -1472,11 +1475,19 @@ mod tests {
             let periods_number: u128 = 525600;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-            // expected 303170.23958... $
-            // real     303170.23352... $
-            assert_eq!(compounded_value, 303170239587);
+            // expected 3170.23958... $
+            // real     3170.23352... $
+            assert_eq!(compounded_value, 3_170_239587);
         }
     }
+
+    // #[test]
+    // fn test_calculate_multi_compounded_interest() {
+    //     // 100 000
+    //     // 10 000
+    //     // 5
+    //     // 415595
+    // }
 
     #[test]
     fn test_calculate_debt_interest_rate() {
