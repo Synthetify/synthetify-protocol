@@ -18,7 +18,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
-const ASSET_LIMIT = 30 // >=20 splits transaction
+const ASSET_LIMIT = 256 // >=20 splits transaction
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()

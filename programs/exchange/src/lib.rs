@@ -1150,15 +1150,35 @@ pub mod exchange {
     }
 }
 #[account(zero_copy)]
-#[derive(Default)]
+// #[derive(Default)]
 pub struct AssetsList {
     pub initialized: bool,
     pub head_assets: u8,
     pub head_collaterals: u8,
     pub head_synthetics: u8,
-    pub assets: [Asset; 30],
-    pub collaterals: [Collateral; 30],
-    pub synthetics: [Synthetic; 30],
+    pub assets: [Asset; 256],
+    pub collaterals: [Collateral; 256],
+    pub synthetics: [Synthetic; 256],
+}
+impl Default for AssetsList {
+    #[inline]
+    fn default() -> AssetsList {
+        AssetsList {
+            initialized: false,
+            head_assets: 0,
+            head_collaterals: 0,
+            head_synthetics: 0,
+            assets: [Asset {
+                ..Default::default()
+            }; 256],
+            collaterals: [Collateral {
+                ..Default::default()
+            }; 256],
+            synthetics: [Synthetic {
+                ..Default::default()
+            }; 256],
+        }
+    }
 }
 impl AssetsList {
     fn append_asset(&mut self, new_asset: Asset) {
@@ -1176,9 +1196,9 @@ impl AssetsList {
     fn split_borrow(
         &mut self,
     ) -> (
-        &mut [Asset; 30],
-        &mut [Collateral; 30],
-        &mut [Synthetic; 30],
+        &mut [Asset; 256],
+        &mut [Collateral; 256],
+        &mut [Synthetic; 256],
     ) {
         (
             &mut self.assets,
@@ -1286,7 +1306,7 @@ pub struct ExchangeAccount {
     pub user_staking_data: UserStaking, // Staking information
     pub head: u8,
     pub bump: u8,
-    pub collaterals: [CollateralEntry; 10],
+    pub collaterals: [CollateralEntry; 32],
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]

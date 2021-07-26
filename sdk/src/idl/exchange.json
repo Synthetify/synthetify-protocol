@@ -1016,7 +1016,7 @@
                 {
                   "defined": "Asset"
                 },
-                30
+                256
               ]
             }
           },
@@ -1027,7 +1027,7 @@
                 {
                   "defined": "Collateral"
                 },
-                30
+                256
               ]
             }
           },
@@ -1038,7 +1038,7 @@
                 {
                   "defined": "Synthetic"
                 },
-                30
+                256
               ]
             }
           }
@@ -1087,7 +1087,7 @@
                 {
                   "defined": "CollateralEntry"
                 },
-                10
+                32
               ]
             }
           }
