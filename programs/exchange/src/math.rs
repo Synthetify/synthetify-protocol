@@ -6,6 +6,7 @@ use crate::*;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
+pub const MINUTES_IN_YEAR: u32 = 525600;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
     let mut debt = 0u128;
@@ -369,7 +370,6 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
         .unwrap();
 }
 pub fn calculate_minute_interest_rate(apr: u128) -> u128 {
-    const MINUTES_IN_YEAR: u32 = 525600;
     return apr.checked_div(MINUTES_IN_YEAR.into()).unwrap();
 }
 

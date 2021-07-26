@@ -1,3 +1,4 @@
+use crate::math::{calculate_compounded_interest, calculate_debt_interest_rate, MINUTES_IN_YEAR};
 use crate::*;
 
 const BITS: u64 = (core::mem::size_of::<u64>() * 8) as u64;
@@ -141,6 +142,18 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 
     exchange_account.user_staking_data.last_update = staking.current_round.start + 1;
     return;
+}
+
+pub fn adjust_interest_debt(state: &mut State, total_debt: u64, timestamp: i64) {
+    let diff = timestamp.checked_sub(state.last_debt_adjustment).unwrap();
+    if diff >= 60 {
+        let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
+        let compounded_interest =
+            calculate_compounded_interest(total_debt, debt_interest_rate, MINUTES_IN_YEAR.into());
+
+        state.accumulated_debt_interest = compounded_interest;
+        state.last_debt_adjustment = timestamp;
+    }
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {

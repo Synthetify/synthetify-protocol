@@ -149,6 +149,7 @@ pub mod exchange {
         state.fee = 300;
         state.swap_tax = 20;
         state.pool_fee = 0;
+        state.debt_interest_rate = 10;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;
@@ -1624,6 +1625,7 @@ pub struct State {
     pub account_version: u8,            //1   Version of account supported by program
     pub debt_interest_rate: u8,         //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: u64, //64  Accumulated debt interest
+    pub last_debt_adjustment: i64,      //64
     pub staking: Staking,               //116
     pub bump: u8,
 }
