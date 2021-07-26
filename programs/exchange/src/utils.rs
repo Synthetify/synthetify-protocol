@@ -154,9 +154,8 @@ pub fn calculate_debt_with_interest(
     assets_list: &RefMut<AssetsList>,
     slot: u64,
     timestamp: i64,
-    max_delay: u32,
 ) -> Result<u64> {
-    let total_debt = calculate_debt(assets_list, slot, max_delay).unwrap();
+    let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
     let mut usd = assets_list.synthetics[0];
     let debt_with_interest = adjust_interest_debt(state, &mut usd, total_debt, timestamp);
     Ok(debt_with_interest as u64)
