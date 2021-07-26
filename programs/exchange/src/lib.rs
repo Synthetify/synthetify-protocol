@@ -133,6 +133,7 @@ pub mod exchange {
         amount_per_round: u64,
     ) -> Result<()> {
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let mut state = ctx.accounts.state.load_init()?;
 
         state.bump = bump;
@@ -149,6 +150,7 @@ pub mod exchange {
         state.swap_tax = 20;
         state.pool_fee = 0;
         state.debt_interest_rate = 10; // 1%
+        state.last_debt_adjustment = timestamp;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;

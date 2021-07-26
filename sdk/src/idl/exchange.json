@@ -1160,6 +1160,18 @@
             "type": "u8"
           },
           {
+            "name": "debtInterestRate",
+            "type": "u8"
+          },
+          {
+            "name": "accumulatedDebtInterest",
+            "type": "u64"
+          },
+          {
+            "name": "lastDebtAdjustment",
+            "type": "i64"
+          },
+          {
             "name": "staking",
             "type": {
               "defined": "Staking"
