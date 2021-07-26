@@ -373,14 +373,9 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
         .checked_div(u8::MAX_VALUE.into())
         .unwrap();
 }
-pub fn calculate_minute_interest_rate(apy: u128) -> u128 {
+pub fn calculate_minute_interest_rate(apr: u128) -> u128 {
     const MINUTES_IN_YEAR: u32 = 525600;
-    let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
-
-    let base = interest_offset.checked_add(apy).unwrap();
-    let exp = interest_offset.checked_div(MINUTES_IN_YEAR.into()).unwrap();
-    let compound = pow_with_accuracy(base, exp, INTEREST_RATE_DECIMAL);
-    return compound.checked_sub(interest_offset).unwrap();
+    return apr.checked_div(MINUTES_IN_YEAR.into()).unwrap();
 }
 
 #[cfg(test)]
@@ -1564,7 +1559,4 @@ mod tests {
             assert_eq!(debt_interest_rate, 20 * interest_rate_offset);
         }
     }
-
-    #[test]
-    fn test_calculate_minute_interest_rate() {}
 }
