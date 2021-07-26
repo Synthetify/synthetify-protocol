@@ -1,5 +1,8 @@
+use std::cell::RefMut;
+
 use crate::math::{
-    calculate_compounded_interest, calculate_debt_interest_rate, calculate_minute_interest_rate,
+    calculate_compounded_interest, calculate_debt, calculate_debt_interest_rate,
+    calculate_minute_interest_rate,
 };
 use crate::*;
 
@@ -146,12 +149,25 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
     return;
 }
 
+pub fn calculate_debt_with_interest(
+    state: &mut State,
+    assets_list: &RefMut<AssetsList>,
+    slot: u64,
+    timestamp: i64,
+    max_delay: u32,
+) -> Result<u64> {
+    let total_debt = calculate_debt(assets_list, slot, max_delay).unwrap();
+    let mut usd = assets_list.synthetics[0];
+    let debt_with_interest = adjust_interest_debt(state, &mut usd, total_debt, timestamp);
+    Ok(debt_with_interest as u64)
+}
+
 pub fn adjust_interest_debt(
     state: &mut State,
     usd: &mut Synthetic,
     total_debt: u64,
     timestamp: i64,
-) {
+) -> u64 {
     let diff = timestamp
         .checked_sub(state.last_debt_adjustment)
         .unwrap()
@@ -166,7 +182,9 @@ pub fn adjust_interest_debt(
         usd.supply = usd.supply.checked_add(compounded_interest).unwrap();
         state.accumulated_debt_interest = compounded_interest;
         state.last_debt_adjustment = timestamp;
+        return total_debt.checked_add(compounded_interest).unwrap();
     }
+    return total_debt;
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {
@@ -196,7 +214,7 @@ mod tests {
     use crate::math::PRICE_OFFSET;
 
     use super::*;
-    use std::{ops::Mul, u64};
+    use std::u64;
 
     #[test]
     fn adjust_staking_account_test() {
@@ -738,5 +756,7 @@ mod tests {
             assert_eq!(accumulated_debt_interest, 1903);
             assert_eq!(last_debt_adjustment, 65);
         }
+        // TODO: multi-adjust interest rate
     }
+    // TODO: add test to calculate_debt_with_interest
 }
