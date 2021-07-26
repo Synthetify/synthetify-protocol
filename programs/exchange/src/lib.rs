@@ -1127,6 +1127,25 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_collateral_ratio(
+        ctx: Context<SetCollateralRatio>,
+        collateral_ratio: u8,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET COLLATERAL RATIO");
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+        let collateral = match assets_list
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address == *ctx.accounts.collateral_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        collateral.collateral_ratio = collateral_ratio;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let asset_index = match assets_list
@@ -1265,6 +1284,16 @@ pub struct AddCollateral<'info> {
     pub liquidation_fund: AccountInfo<'info>,
     pub reserve_account: AccountInfo<'info>,
     pub feed_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetCollateralRatio<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub collateral_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct AddSynthetic<'info> {

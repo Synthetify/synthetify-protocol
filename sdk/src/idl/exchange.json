@@ -947,6 +947,37 @@
       ]
     },
     {
+      "name": "setCollateralRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "addSynthetic",
       "accounts": [
         {
@@ -1489,5 +1520,8 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "BxGihofUiW66f7RGuwohhCrttHG2sxNQZ5uzTChQnuYC"
+  }
 }
