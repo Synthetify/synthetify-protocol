@@ -1483,9 +1483,11 @@ mod tests {
 
     #[test]
     fn test_calculate_multi_compounded_interest() {
+        let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
+        let start_value = 200_000 * 10u64.pow(PRICE_OFFSET.into());
+        // irregular compound
+        // 100_000 -> 10_000 -> 5 -> 415_595
         {
-            let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
-            let start_value = 200_000 * 10u64.pow(PRICE_OFFSET.into());
             let compounded_value =
                 calculate_compounded_interest(start_value, period_interest_rate, 100_000);
 
@@ -1506,6 +1508,26 @@ mod tests {
             // real     2113.48... $
             // expected 2113.49... $
             assert_eq!(interest_diff, 2113497102);
+        }
+        // regular compound (every 3 minutes for the year)
+        {
+            let mut i: u128 = 0;
+            let interval: u128 = 3;
+            let mut base_value = start_value;
+            loop {
+                let compounded_value =
+                    calculate_compounded_interest(base_value, period_interest_rate, interval);
+                base_value = base_value.checked_add(compounded_value).unwrap();
+
+                i += interval;
+                if i >= 525600 {
+                    break;
+                }
+            }
+            let interest_diff = base_value.checked_sub(start_value).unwrap();
+            // real     2113.4... $
+            // expected 2113.5... $
+            assert_eq!(interest_diff, 2113577183);
         }
     }
 
