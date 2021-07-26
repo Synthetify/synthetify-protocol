@@ -1444,7 +1444,7 @@ mod tests {
         // periods_number = 0
         {
             // value = 100 000$
-            // period ratio = 0.0000015%
+            // period interest rate = 0.0000015%
             let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 0;
@@ -1456,7 +1456,7 @@ mod tests {
         // periods_number = 1
         {
             // value = 100 000$
-            // period ratio = 0.0000015%
+            // period interest rate = 0.0000015%
             let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 1;
@@ -1469,7 +1469,7 @@ mod tests {
         // periods_number = 525600 (every minute of the year )
         {
             // value = 300 000$
-            // period ratio = 0.000002%
+            // period interest rate = 0.000002%
             let base_value = 300_000 * 10u64.pow(PRICE_OFFSET.into());
             let period_interest_rate = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
             let periods_number: u128 = 525600;
@@ -1481,13 +1481,33 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_calculate_multi_compounded_interest() {
-    //     // 100 000
-    //     // 10 000
-    //     // 5
-    //     // 415595
-    // }
+    #[test]
+    fn test_calculate_multi_compounded_interest() {
+        {
+            let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
+            let start_value = 200_000 * 10u64.pow(PRICE_OFFSET.into());
+            let compounded_value =
+                calculate_compounded_interest(start_value, period_interest_rate, 100_000);
+
+            let base_value = start_value.checked_add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 10_000);
+
+            let base_value = base_value.checked_add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 5);
+
+            let base_value = base_value.checked_add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 415_595);
+
+            let final_value = base_value.checked_add(compounded_value).unwrap();
+            let interest_diff = final_value.checked_sub(start_value).unwrap();
+            // real     2113.48... $
+            // expected 2113.49... $
+            assert_eq!(interest_diff, 2113497102);
+        }
+    }
 
     #[test]
     fn test_calculate_debt_interest_rate() {
