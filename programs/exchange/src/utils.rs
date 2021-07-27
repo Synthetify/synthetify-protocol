@@ -180,7 +180,10 @@ pub fn adjust_interest_debt(
             calculate_compounded_interest(total_debt, minute_interest_rate, diff as u128);
 
         usd.supply = usd.supply.checked_add(compounded_interest).unwrap();
-        state.accumulated_debt_interest = compounded_interest;
+        state.accumulated_debt_interest = state
+            .accumulated_debt_interest
+            .checked_add(compounded_interest)
+            .unwrap();
         state.last_debt_adjustment = diff
             .checked_mul(ADJUSTMENT_PERIOD)
             .unwrap()
@@ -800,14 +803,26 @@ mod tests {
             let current_timestamp = 121;
             adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-            // real     0.0019025... $
-            // expected 0.001903     $
+            // real     0.0038051... $
+            // expected 0.003806     $
             let usd_supply = usd.supply;
             let accumulated_debt_interest = state.accumulated_debt_interest;
             let last_debt_adjustment = state.last_debt_adjustment;
-            // assert_eq!(usd_supply, 100_000_001_903);
-            // assert_eq!(accumulated_debt_interest, 1903);
+            assert_eq!(usd_supply, 100_000_003_806);
+            assert_eq!(accumulated_debt_interest, 3806);
             assert_eq!(last_debt_adjustment, 120);
+
+            let current_timestamp = 183;
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+
+            // real     0.005707... $
+            // expected 0.005709    $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, 100_000_005_709);
+            assert_eq!(accumulated_debt_interest, 5709);
+            assert_eq!(last_debt_adjustment, 180);
         }
     }
     // TODO: add test to calculate_debt_with_interest
