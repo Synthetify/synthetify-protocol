@@ -15,7 +15,7 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, usd_to_token_amount, PRICE_OFFSET,
+        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -355,24 +355,41 @@ pub mod exchange {
         };
 
         // Check if not overdrafing
-        let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
+        let max_withdrawable_in_usd = calculate_max_withdraw_in_usd(
             max_borrow as u64,
             user_debt,
             collateral.collateral_ratio,
             state.health_factor,
         );
         let collateral_asset = &assets[collateral.asset_index as usize];
-        let max_withdrawable =
-            usd_to_token_amount(collateral_asset, collateral, max_withdraw_in_usd);
 
-        if amount > max_withdrawable {
-            return Err(ErrorCode::WithdrawLimit.into());
+        let amount_to_withdraw: u64;
+        if amount == u64::MAX {
+            let max_withdrawable_in_token =
+                usd_to_token_amount(collateral_asset, collateral, max_withdrawable_in_usd);
+
+            if max_withdrawable_in_token > exchange_account_collateral.amount {
+                amount_to_withdraw = exchange_account_collateral.amount;
+            } else {
+                amount_to_withdraw = max_withdrawable_in_token;
+            }
+        } else {
+            amount_to_withdraw = amount;
+            let amount_to_withdraw_in_usd = calculate_value_in_usd(
+                collateral_asset.price,
+                amount_to_withdraw,
+                collateral.decimals,
+            );
+
+            if amount_to_withdraw_in_usd > max_withdrawable_in_usd {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
         }
 
         // Update balance on exchange account
         exchange_account_collateral.amount = exchange_account_collateral
             .amount
-            .checked_sub(amount)
+            .checked_sub(amount_to_withdraw)
             .unwrap();
 
         if exchange_account_collateral.amount == 0 {
@@ -380,13 +397,16 @@ pub mod exchange {
         }
 
         // Update reserve balance in AssetList
-        collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap(); // should never fail
+        collateral.reserve_balance = collateral
+            .reserve_balance
+            .checked_sub(amount_to_withdraw)
+            .unwrap(); // should never fail
 
         // Send withdrawn collateral to user
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::transfer(cpi_ctx, amount)?;
+        token::transfer(cpi_ctx, amount_to_withdraw)?;
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
@@ -1134,6 +1154,25 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_collateral_ratio(
+        ctx: Context<SetCollateralRatio>,
+        collateral_ratio: u8,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET COLLATERAL RATIO");
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+        let collateral = match assets_list
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address == *ctx.accounts.collateral_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        collateral.collateral_ratio = collateral_ratio;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let asset_index = match assets_list
@@ -1157,15 +1196,35 @@ pub mod exchange {
     }
 }
 #[account(zero_copy)]
-#[derive(Default)]
+// #[derive(Default)]
 pub struct AssetsList {
     pub initialized: bool,
     pub head_assets: u8,
     pub head_collaterals: u8,
     pub head_synthetics: u8,
-    pub assets: [Asset; 30],
-    pub collaterals: [Collateral; 30],
-    pub synthetics: [Synthetic; 30],
+    pub assets: [Asset; 256],
+    pub collaterals: [Collateral; 256],
+    pub synthetics: [Synthetic; 256],
+}
+impl Default for AssetsList {
+    #[inline]
+    fn default() -> AssetsList {
+        AssetsList {
+            initialized: false,
+            head_assets: 0,
+            head_collaterals: 0,
+            head_synthetics: 0,
+            assets: [Asset {
+                ..Default::default()
+            }; 256],
+            collaterals: [Collateral {
+                ..Default::default()
+            }; 256],
+            synthetics: [Synthetic {
+                ..Default::default()
+            }; 256],
+        }
+    }
 }
 impl AssetsList {
     fn append_asset(&mut self, new_asset: Asset) {
@@ -1183,9 +1242,9 @@ impl AssetsList {
     fn split_borrow(
         &mut self,
     ) -> (
-        &mut [Asset; 30],
-        &mut [Collateral; 30],
-        &mut [Synthetic; 30],
+        &mut [Asset; 256],
+        &mut [Collateral; 256],
+        &mut [Synthetic; 256],
     ) {
         (
             &mut self.assets,
@@ -1254,6 +1313,16 @@ pub struct AddCollateral<'info> {
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
+pub struct SetCollateralRatio<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub collateral_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
 pub struct AddSynthetic<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
@@ -1293,7 +1362,7 @@ pub struct ExchangeAccount {
     pub user_staking_data: UserStaking, // Staking information
     pub head: u8,
     pub bump: u8,
-    pub collaterals: [CollateralEntry; 10],
+    pub collaterals: [CollateralEntry; 32],
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]

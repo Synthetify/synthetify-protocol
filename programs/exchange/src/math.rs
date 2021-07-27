@@ -147,17 +147,27 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
 }
 pub fn amount_to_discount(amount: u64) -> u8 {
     // decimals of token = 6
-    // we want discounts start from 2000 -> 4000 ...
-    let units = amount / 10u64.pow(6 + 3);
-    if units == 0 {
-        return 0;
-    }
-    let discount = log2(units);
-    if discount > 20 {
-        return 20;
-    } else {
-        return discount as u8;
-    }
+    const ONE_SNY: u64 = 1_000_000u64;
+    match () {
+        () if amount < ONE_SNY * 100 => return 0,
+        () if amount < ONE_SNY * 200 => return 1,
+        () if amount < ONE_SNY * 500 => return 2,
+        () if amount < ONE_SNY * 1_000 => return 3,
+        () if amount < ONE_SNY * 2_000 => return 4,
+        () if amount < ONE_SNY * 5_000 => return 5,
+        () if amount < ONE_SNY * 10_000 => return 6,
+        () if amount < ONE_SNY * 25_000 => return 7,
+        () if amount < ONE_SNY * 50_000 => return 8,
+        () if amount < ONE_SNY * 100_000 => return 9,
+        () if amount < ONE_SNY * 250_000 => return 10,
+        () if amount < ONE_SNY * 250_000 => return 10,
+        () if amount < ONE_SNY * 500_000 => return 11,
+        () if amount < ONE_SNY * 1_000_000 => return 12,
+        () if amount < ONE_SNY * 2_000_000 => return 13,
+        () if amount < ONE_SNY * 5_000_000 => return 14,
+        () if amount < ONE_SNY * 10_000_000 => return 15,
+        () => return 15,
+    };
 }
 pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
     return (price as u128)
@@ -1037,44 +1047,39 @@ mod tests {
     #[test]
     fn test_amount_to_discount() {
         {
-            let amount = 0u64 * 10u64.pow(6);
+            let amount = 10u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
             assert_eq!(result, 0)
         }
         {
-            let amount = 12u64 * 10u64.pow(6);
-            let result = amount_to_discount(amount);
-            assert_eq!(result, 0)
-        }
-        {
-            let amount = 1_999u64 * 10u64.pow(6);
-            let result = amount_to_discount(amount);
-            assert_eq!(result, 0)
-        }
-        {
-            let amount = 2_000u64 * 10u64.pow(6);
+            let amount = 100u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
             assert_eq!(result, 1)
         }
         {
-            let amount = 4_900u64 * 10u64.pow(6);
+            let amount = 200u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
             assert_eq!(result, 2)
         }
         {
-            let amount = 1_024_000u64 * 10u64.pow(6);
+            let amount = 350u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
-            assert_eq!(result, 10)
+            assert_eq!(result, 2)
         }
         {
-            let amount = 1_048_576_000u64 * 10u64.pow(6);
+            let amount = 500u64 * 10u64.pow(6);
             let result = amount_to_discount(amount);
-            assert_eq!(result, 20);
+            assert_eq!(result, 3)
+        }
+        {
+            let amount = 1_000_000u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, 13);
             let result = amount_to_discount(amount - 1);
-            assert_eq!(result, 19);
+            assert_eq!(result, 12);
             // max discount 20%
             let result = amount_to_discount(amount * 2);
-            assert_eq!(result, 20);
+            assert_eq!(result, 14);
         }
     }
     #[test]

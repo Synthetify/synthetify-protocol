@@ -947,6 +947,37 @@
       ]
     },
     {
+      "name": "setCollateralRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "addSynthetic",
       "accounts": [
         {
@@ -1016,7 +1047,7 @@
                 {
                   "defined": "Asset"
                 },
-                30
+                256
               ]
             }
           },
@@ -1027,7 +1058,7 @@
                 {
                   "defined": "Collateral"
                 },
-                30
+                256
               ]
             }
           },
@@ -1038,7 +1069,7 @@
                 {
                   "defined": "Synthetic"
                 },
-                30
+                256
               ]
             }
           }
@@ -1087,7 +1118,7 @@
                 {
                   "defined": "CollateralEntry"
                 },
-                10
+                32
               ]
             }
           }
@@ -1501,5 +1532,8 @@
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "BxGihofUiW66f7RGuwohhCrttHG2sxNQZ5uzTChQnuYC"
+  }
 }
