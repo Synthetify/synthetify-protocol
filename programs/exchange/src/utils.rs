@@ -739,23 +739,51 @@ mod tests {
             supply: 100_000 * 10u64.pow(PRICE_OFFSET.into()),
             ..Default::default()
         };
+        // single period adjustment
         {
             let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
             let current_timestamp = 65;
-            let mut state = state.clone();
-            let mut usd = usd.clone();
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            let mut cloned_state = state.clone();
+            let mut cloned_usd = usd.clone();
+            adjust_interest_debt(
+                &mut cloned_state,
+                &mut cloned_usd,
+                total_debt,
+                current_timestamp,
+            );
 
             // real     0.0019025... $
             // expected 0.001903     $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
+            let usd_supply = cloned_usd.supply;
+            let accumulated_debt_interest = cloned_state.accumulated_debt_interest;
+            let last_debt_adjustment = cloned_state.last_debt_adjustment;
             assert_eq!(usd_supply, 100_000_001_903);
             assert_eq!(accumulated_debt_interest, 1903);
-            assert_eq!(last_debt_adjustment, 65);
+            assert_eq!(last_debt_adjustment, current_timestamp);
         }
-        // TODO: multi-adjust interest rate
+        // multiple period adjustment
+        {
+            let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let current_timestamp = 120;
+            let mut cloned_state = state.clone();
+            let mut cloned_usd = usd.clone();
+            adjust_interest_debt(
+                &mut cloned_state,
+                &mut cloned_usd,
+                total_debt,
+                current_timestamp,
+            );
+
+            // real     0.0038051... $
+            // expected 0.003806     $
+            let usd_supply = cloned_usd.supply;
+            let accumulated_debt_interest = cloned_state.accumulated_debt_interest;
+            let last_debt_adjustment = cloned_state.last_debt_adjustment;
+            assert_eq!(usd_supply, 100_000_003_806);
+            assert_eq!(accumulated_debt_interest, 3806);
+            assert_eq!(last_debt_adjustment, current_timestamp);
+        }
+        // TODO: multi-adjustment interest rate
     }
     // TODO: add test to calculate_debt_with_interest
 }
