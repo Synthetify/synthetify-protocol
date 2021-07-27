@@ -317,22 +317,16 @@ pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
         .unwrap();
 }
 pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
-    if exp == 0 {
-        return 1u128
-            .checked_mul(10u128.checked_pow(accuracy.into()).unwrap())
-            .unwrap();
-    }
+    let one = 1u128
+        .checked_mul(10u128.checked_pow(accuracy.into()).unwrap())
+        .unwrap();
 
-    let mut result: u128 = base;
+    if exp == 0 {
+        return one;
+    }
+    let mut result: u128 = one;
 
     while exp > 0 {
-        exp /= 2;
-        base = base
-            .checked_mul(base)
-            .unwrap()
-            .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
-            .unwrap();
-
         if exp % 2 != 0 {
             result = result
                 .checked_mul(base)
@@ -340,8 +334,13 @@ pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
                 .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
                 .unwrap();
         }
+        exp /= 2;
+        base = base
+            .checked_mul(base)
+            .unwrap()
+            .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
+            .unwrap();
     }
-
     return result;
 }
 pub fn calculate_compounded_interest(
@@ -1408,9 +1407,9 @@ mod tests {
             let base: u128 = 1_000_000_02;
             let exp: u128 = 525600;
             let result = pow_with_accuracy(base * offset, exp, decimal);
-            // expected 1.01056746...
-            // real     1.01056744...
-            assert_eq!(result, 1010567465286720267);
+            // expected 1.010567445075371...
+            // real     1.010567445075377...
+            assert_eq!(result, 1010567445075371366);
         }
         // 1.000000015^2, with interest decimal
         {
@@ -1419,9 +1418,9 @@ mod tests {
             let base: u128 = 1_000_000_015;
             let exp: u128 = 2;
             let result = pow_with_accuracy(base * offset, exp, decimal);
-            // expected 1.00000004...
-            // real     1.00000003...
-            assert_eq!(result, 1000000045000000675);
+            // expected 1.000000030000000225
+            // real     1.000000030000000225
+            assert_eq!(result, 1000000030000000225); // TODO: fix
         }
         // 1^525600, with interest decimal
         {
@@ -1461,6 +1460,19 @@ mod tests {
             // real     0.0015... $
             assert_eq!(compounded_value, 1_500);
         }
+        // period_number = 2
+        {
+            // value = 100 000$
+            // period interest rate = 0.000001902587519%
+            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let period_interest_rate = 19025875190;
+            let periods_number: u128 = 2;
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // expected 0.003806... $
+            // real     0.0038051... $
+            assert_eq!(compounded_value, 3_806);
+        }
         // periods_number = 525600 (every minute of the year )
         {
             // value = 300 000$
@@ -1470,9 +1482,9 @@ mod tests {
             let periods_number: u128 = 525600;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-            // expected 3170.23958... $
-            // real     3170.23352... $
-            assert_eq!(compounded_value, 3_170_239587);
+            // expected 3170.233523... $
+            // real     3170.233522... $
+            assert_eq!(compounded_value, 3_170_233523);
         }
     }
 
@@ -1500,9 +1512,9 @@ mod tests {
 
             let final_value = base_value.checked_add(compounded_value).unwrap();
             let interest_diff = final_value.checked_sub(start_value).unwrap();
-            // real     2113.48... $
-            // expected 2113.49... $
-            assert_eq!(interest_diff, 2113497102);
+            // real     2113.489015... $
+            // expected 2113.489017... $
+            assert_eq!(interest_diff, 2113489017);
         }
         // regular compound (every 3 minutes for the year)
         {
