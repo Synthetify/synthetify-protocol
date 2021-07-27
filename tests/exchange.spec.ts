@@ -28,7 +28,8 @@ import {
   createCollateralToken,
   calculateFee,
   calculateSwapTax,
-  calculateFee
+  calculateFee,
+  U64_MAX
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
@@ -484,7 +485,7 @@ describe('exchange', () => {
       // Withdraw
       await exchange.withdraw({
         reserveAccount: snyReserve,
-        amount: withdrawAmount,
+        amount: U64_MAX,
         exchangeAccount,
         owner: accountOwner.publicKey,
         userCollateralAccount: userCollateralTokenAccount,
