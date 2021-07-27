@@ -828,7 +828,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_debt_with_interest() {
+    fn test_calculate_debt_with_interest_multi_adjustment() {
         {
             let slot = 100;
             let mut assets_list = AssetsList {
@@ -841,14 +841,15 @@ mod tests {
                 ..Default::default()
             };
 
-            // xusd - debt 100000
+            // xusd - fixed price 1 USD
+            // debt 100000
             assets_list.append_asset(Asset {
-                price: 10 * 10u64.pow(PRICE_OFFSET.into()),
+                price: 10u64.pow(PRICE_OFFSET.into()),
                 last_update: slot,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
-                supply: 10_000 * 10u64.pow(6),
+                supply: 100_000 * 10u64.pow(6),
                 decimals: 6,
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
@@ -868,7 +869,7 @@ mod tests {
             });
             let timestamp: i64 = 120;
 
-            let mut assets_ref = RefCell::new(assets_list);
+            let assets_ref = RefCell::new(assets_list);
             // base debt 150000
             let total_debt = calculate_debt_with_interest(
                 &mut state,
@@ -887,9 +888,56 @@ mod tests {
             let usd_supply = usd.supply;
             let accumulated_debt_interest = state.accumulated_debt_interest;
             let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, 10_000_005_708);
+            assert_eq!(usd_supply, 100_000_005_708);
             assert_eq!(accumulated_debt_interest, 5708);
             assert_eq!(last_debt_adjustment, 120);
+
+            // timestamp that not trigger debt adjustment
+            let timestamp: i64 = 150;
+
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // debt should be the same
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, 150_000_005_708),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            // should be the same
+            assert_eq!(usd_supply, 100_000_005_708);
+            assert_eq!(accumulated_debt_interest, 5708);
+            assert_eq!(last_debt_adjustment, 120);
+
+            let timestamp: i64 = 185;
+
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // real     150_000.008_561... $
+            // expected 150_000.008_562    $
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, 150_000_008_562),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, 100_000_008_562);
+            assert_eq!(accumulated_debt_interest, 8562);
+            assert_eq!(last_debt_adjustment, 180);
         }
     }
 }
