@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
 use crate::math::{
@@ -151,14 +152,14 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
 
 pub fn calculate_debt_with_interest(
     state: &mut State,
-    assets_list: &RefMut<AssetsList>,
+    assets_list: &mut RefMut<AssetsList>,
     slot: u64,
     timestamp: i64,
 ) -> Result<u64> {
     let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
-    let mut usd = assets_list.synthetics[0];
-    let debt_with_interest = adjust_interest_debt(state, &mut usd, total_debt, timestamp);
-    Ok(debt_with_interest as u64)
+    let usd: &mut Synthetic = &mut assets_list.borrow_mut().synthetics[0];
+    let debt_with_interest = adjust_interest_debt(state, usd, total_debt, timestamp);
+    Ok(debt_with_interest)
 }
 
 pub fn adjust_interest_debt(
@@ -222,7 +223,7 @@ mod tests {
     use crate::math::PRICE_OFFSET;
 
     use super::*;
-    use std::u64;
+    use std::{cell::RefCell, u64};
 
     #[test]
     fn adjust_staking_account_test() {
@@ -825,5 +826,70 @@ mod tests {
             assert_eq!(last_debt_adjustment, 180);
         }
     }
-    // TODO: add test to calculate_debt_with_interest
+
+    #[test]
+    fn test_calculate_debt_with_interest() {
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            let mut state = State {
+                debt_interest_rate: 10,
+                accumulated_debt_interest: 0,
+                last_debt_adjustment: 0,
+                ..Default::default()
+            };
+
+            // xusd - debt 100000
+            assets_list.append_asset(Asset {
+                price: 10 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 10_000 * 10u64.pow(6),
+                decimals: 6,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+
+            // debt 50000
+            assets_list.append_asset(Asset {
+                price: 5 * 10u64.pow(PRICE_OFFSET.into()),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: 10_000 * 10u64.pow(6),
+                decimals: 6,
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+            let timestamp: i64 = 120;
+
+            let mut assets_ref = RefCell::new(assets_list);
+            // base debt 150000
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // real     150_000.005_707... $
+            // expected 150_000.005_708    $
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, 150_000_005_708),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, 10_000_005_708);
+            assert_eq!(accumulated_debt_interest, 5708);
+            assert_eq!(last_debt_adjustment, 120);
+        }
+    }
 }
