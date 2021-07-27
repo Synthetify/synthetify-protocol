@@ -564,6 +564,32 @@ describe('admin', () => {
       )
     })
   })
+  describe('#setCollateralRatio()', async () => {
+    it('Should set new collateral ratio for asset', async () => {
+      const newCollateralRatio = 99
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      assert.ok(collateralBefore.collateralRatio !== newCollateralRatio)
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.ok(collateralAfter.collateralRatio === newCollateralRatio)
+    })
+    it('Fail without admin signature', async () => {
+      const newCollateralRatio = 99
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+    })
+  })
   describe('#setAssetsPrices()', async () => {
     const newPrice = 6
     it('Should not change prices', async () => {
