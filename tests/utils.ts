@@ -435,11 +435,12 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 }
 
 export const skipTimestamps = async (timestampDiff: number, connection: Connection) => {
-  const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
-  const finishedTimestamp = currentTimestamp + timestampDiff
+  const startTimestamp = await connection.getBlockTime(await connection.getSlot())
+  const finishedTimestamp = startTimestamp + timestampDiff
   while (true) {
-    if(await connection.getBlockTime(await connection.getSlot()) >= finishedTimestamp) {
-      await sleep(400)
+    const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+    if (currentTimestamp >= finishedTimestamp) return
+    await sleep(400)
   }
 }
 
