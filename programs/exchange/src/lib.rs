@@ -16,7 +16,7 @@ pub mod exchange {
         calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
         calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
         calculate_swap_out_amount, calculate_swap_tax, calculate_user_debt_in_usd,
-        usd_to_token_amount, PRICE_OFFSET,
+        calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -351,24 +351,41 @@ pub mod exchange {
         };
 
         // Check if not overdrafing
-        let max_withdraw_in_usd = calculate_max_withdraw_in_usd(
+        let max_withdrawable_in_usd = calculate_max_withdraw_in_usd(
             max_borrow as u64,
             user_debt,
             collateral.collateral_ratio,
             state.health_factor,
         );
         let collateral_asset = &assets[collateral.asset_index as usize];
-        let max_withdrawable =
-            usd_to_token_amount(collateral_asset, collateral, max_withdraw_in_usd);
 
-        if amount > max_withdrawable {
-            return Err(ErrorCode::WithdrawLimit.into());
+        let amount_to_withdraw: u64;
+        if amount == u64::MAX {
+            let max_withdrawable_in_token =
+                usd_to_token_amount(collateral_asset, collateral, max_withdrawable_in_usd);
+
+            if max_withdrawable_in_token > exchange_account_collateral.amount {
+                amount_to_withdraw = exchange_account_collateral.amount;
+            } else {
+                amount_to_withdraw = max_withdrawable_in_token;
+            }
+        } else {
+            amount_to_withdraw = amount;
+            let amount_to_withdraw_in_usd = calculate_value_in_usd(
+                collateral_asset.price,
+                amount_to_withdraw,
+                collateral.decimals,
+            );
+
+            if amount_to_withdraw_in_usd > max_withdrawable_in_usd {
+                return Err(ErrorCode::WithdrawLimit.into());
+            }
         }
 
         // Update balance on exchange account
         exchange_account_collateral.amount = exchange_account_collateral
             .amount
-            .checked_sub(amount)
+            .checked_sub(amount_to_withdraw)
             .unwrap();
 
         if exchange_account_collateral.amount == 0 {
@@ -376,13 +393,16 @@ pub mod exchange {
         }
 
         // Update reserve balance in AssetList
-        collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap(); // should never fail
+        collateral.reserve_balance = collateral
+            .reserve_balance
+            .checked_sub(amount_to_withdraw)
+            .unwrap(); // should never fail
 
         // Send withdrawn collateral to user
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::transfer(cpi_ctx, amount)?;
+        token::transfer(cpi_ctx, amount_to_withdraw)?;
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
