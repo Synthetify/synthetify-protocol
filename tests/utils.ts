@@ -6,6 +6,7 @@ import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
 import assert from 'assert'
+import { timeStamp } from 'console'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
@@ -430,6 +431,15 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
     if ((await connection.getSlot()) >= slot) return
 
     await sleep(400)
+  }
+}
+
+export const skipTimestamps = async (timestampDiff: number, connection: Connection) => {
+  const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+  const finishedTimestamp = currentTimestamp + timestampDiff
+  while (true) {
+    if(await connection.getBlockTime(await connection.getSlot()) >= finishedTimestamp) {
+      await sleep(400)
   }
 }
 
