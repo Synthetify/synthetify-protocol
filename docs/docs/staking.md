@@ -138,6 +138,29 @@ If everything went smoothly, you should see that:
 
 ### Rewards
 
+On the platform we introduced Liquidity Mining meaning Stakers can receive rewards in SNY tokens for creating liquidity on the platform by participating in the debt pool.
+To participate in liquidity mining go to _Rewards_ tab.
+Liquidity mining process is a cycle consisting of three phases:
+
+1. **Subscription phase** - in this phase you can receive points for taking part in the debt pool by Minting xUSD. Your number of points will change during this phase proportionally to the size of your debt.
+2. **Staking phase** - in this phase you enter with a number of points you had at the end of the previous phase and you can retain them by keeping your debt. The number of points will decrease when you Burn your xUSD.
+3. **Claiming phase** - in this phase you can claim your reward - an amount of SNY proportional to the number of points you had at the end of the previous phase. If you don't claim your rewards before the end of the phase your points will be voided.
+
+![Rewards rounds diagram](https://i.imgur.com/T6uGYGC.png)
+
+The amount of SNY you can receive as a reward is dependent on the number of points you have. Each phase lasts about two weeks. At any given time, there are three parallel rounds, each at a different phase. You can see them listed in the _Rewards_ tab as follows:
+
+- _Next round_ - shows the round that is currently in the Subscription phase
+- _Current round_ - shows the round that is currently in the Staking phase
+- _Finished round_ - shows the round that is currently in the Claiming phase
+
+![Rewards tab](https://i.imgur.com/9EEwYcd.png)
+
+You can see the number of your points and SNY for each round next to the round in the table.
+You can check the time at which the phase will end when you hover over the question mark on the left of each phase. To claim your rewards from the finished round click on the _Claim_ button in the left bottom corner. You should see the amount of SNY you received in the top right corner of the table. To transfer this amount to your account click on the _Withdraw_ button in the left bottom corner. At each step you should approve the transaction in your Wallet extension. You should see that the number of SNY available in your account increased.
+
+![Time of rounds and claiming](https://i.imgur.com/c6p5LoN.png)
+
 ### Something failed
 
 If connection to wallet went wrong:
