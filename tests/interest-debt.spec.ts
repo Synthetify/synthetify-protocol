@@ -176,8 +176,9 @@ describe('Interest debt accumulation', () => {
   it('should increase interest debt', async () => {
     const assetsListBeforeAdjustment = await exchange.getAssetsList(assetsList)
     const debtBeforeAdjustment = calculateDebt(assetsListBeforeAdjustment)
+    const timestampBeforeAdjustment = await connection.getBlockTime(await connection.getSlot())
     // trigger debt adjustment without changing base debt and assets supply
-    await skipTimestamps(61, connection)
+    await skipTimestamps(60, connection)
 
     await exchange.checkAccount(exchangeAccount)
     const assetsListAfterAdjustment = await exchange.getAssetsList(assetsList)
@@ -197,7 +198,10 @@ describe('Interest debt accumulation', () => {
     )
     // accumulatedDebtInterest should be increased by debt interest
     assert.ok(stateAfterAdjustment.accumulatedDebtInterest.eq(expectedDebtInterest))
-    // lastDebtAdjustment should be 60 = 1 adjustment (lastDebtAdjustment should always be multiple of 60 sec)
-    assert.ok(stateAfterAdjustment.lastDebtAdjustment.eqn(60))
+    // lastDebtAdjustment should be increased 60 = 1 adjustment (lastDebtAdjustment should always be multiple of 60 sec)
+    assert.ok(stateAfterAdjustment.lastDebtAdjustment.gten(timestampBeforeAdjustment + 60))
+    assert.ok(
+      stateAfterAdjustment.lastDebtAdjustment.lt(new BN(timestampBeforeAdjustment).addn(120))
+    )
   })
 })
