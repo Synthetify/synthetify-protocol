@@ -1208,6 +1208,56 @@ describe('exchange', () => {
         ERRORS_EXCHANGE.WASH_TRADE
       )
     })
+    it.only('Swap below minimum trade value should fail', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateral({
+          reserveAddress: snyReserve,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount
+        })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // mint 10 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const btcSynthetic = assetsListData.synthetics.find((a) =>
+        a.assetAddress.equals(btcToken.publicKey)
+      )
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: new BN(50),
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: btcTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: btcSynthetic.assetAddress,
+          tokenIn: assetsListData.synthetics[0].assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.INSUFFICIENT_VALUE_TRADE
+      )
+    })
     it('Swap over max supply', async () => {
       const collateralAmount = new BN(10000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
