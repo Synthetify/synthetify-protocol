@@ -463,6 +463,13 @@ pub mod exchange {
         let sny_collateral = &mut collaterals[0];
 
         let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+        // Check min swap value
+        // let value_in = calculate_value_in_usd(
+        //     assets[synthetics[synthetic_in_index].asset_index as usize].price,
+        //     amount,
+        //     synthetics[synthetic_in_index].decimals,
+        // );
+
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
         let effective_fee = state
@@ -1740,6 +1747,8 @@ pub enum ErrorCode {
     InvalidSigner,
     #[msg("Wash trade")]
     WashTrade,
+    #[msg("Insufficient value trade")]
+    InsufficientValueTrade,
     #[msg("Invalid exchange liquidation account")]
     ExchangeLiquidationAccount,
     #[msg("Liquidation deadline not passed")]
