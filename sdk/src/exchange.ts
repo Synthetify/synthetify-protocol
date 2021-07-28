@@ -1033,6 +1033,9 @@ export interface ExchangeState {
   fee: number
   swapTax: number
   poolFee: BN
+  debtInterestRate: number
+  accumulatedDebtInterest: BN
+  lastDebtAdjustment: BN
   liquidationRate: number
   penaltyToLiquidator: number
   penaltyToExchange: number

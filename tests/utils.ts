@@ -5,7 +5,6 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from 
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
-import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
@@ -471,6 +470,19 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
   while (true) {
     if ((await connection.getSlot()) >= slot) return
 
+    await sleep(400)
+  }
+}
+
+export const skipTimestamps = async (
+  timestampDiff: number,
+  connection: Connection
+): Promise<null> => {
+  const startTimestamp = await connection.getBlockTime(await connection.getSlot())
+  const finishedTimestamp = startTimestamp + timestampDiff
+  while (true) {
+    const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+    if (currentTimestamp >= finishedTimestamp) return
     await sleep(400)
   }
 }
