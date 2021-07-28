@@ -1,32 +1,25 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { Account, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
+import { BN, Exchange, Network } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
-  assertThrowsAsync,
-  DEFAULT_PUBLIC_KEY,
-  U64_MAX,
-  tou64,
   createAccountWithCollateral,
   skipTimestamps
 } from './utils'
-import { createPriceFeed, setFeedPrice } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
-import { calculateDebt, ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { createPriceFeed } from './oracleUtils'
+import { calculateDebt } from '../sdk/lib/utils'
 
 describe('Interest debt accumulation', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
-  const managerProgram = anchor.workspace.Manager as Program
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -46,7 +39,6 @@ describe('Interest debt accumulation', () => {
   let exchangeAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
-  let startTimestamp: number // maybe BN?
 
   let initialCollateralPrice = 2
   before(async () => {
@@ -59,7 +51,6 @@ describe('Interest debt accumulation', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: 2
-      // expo: -6
     })
 
     collateralToken = await createToken({
@@ -165,7 +156,6 @@ describe('Interest debt accumulation', () => {
       to: usdTokenAccount,
       signers: [accountOwner]
     })
-    startTimestamp = await connection.getBlockTime(await connection.getSlot())
 
     // Increase user debt
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
@@ -186,6 +176,7 @@ describe('Interest debt accumulation', () => {
   it('should increase interest debt', async () => {
     const assetsListBeforeAdjustment = await exchange.getAssetsList(assetsList)
     const debtBeforeAdjustment = calculateDebt(assetsListBeforeAdjustment)
+    // trigger debt adjustment without changing base debt and assets supply
     await skipTimestamps(61, connection)
 
     await exchange.checkAccount(exchangeAccount)
