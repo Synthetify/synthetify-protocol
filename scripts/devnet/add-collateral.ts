@@ -5,6 +5,7 @@ import { sleep } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { MINTER } from '../../migrations/minter'
 import { createToken } from '../../tests/utils'
+import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
@@ -15,6 +16,8 @@ const COLLATERAL_RATIO = 30
 const DECIMALS = 6
 
 const main = async () => {
+  const ledgerWallet = await getLedgerWallet()
+
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
@@ -42,6 +45,6 @@ const main = async () => {
     reserveAccount,
     reserveBalance: new BN(0)
   })
-  await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()

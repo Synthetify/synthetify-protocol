@@ -1,6 +1,7 @@
 import { Provider } from '@project-serum/anchor'
-import { PublicKey, Transaction } from '@solana/web3.js'
+import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js'
 import { Exchange, Network, signAndSend } from '@synthetify/sdk'
+import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
@@ -9,6 +10,8 @@ const provider = Provider.local('https://api.devnet.solana.com', {
 })
 const FEED_ADDRESS = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
 const main = async () => {
+  const ledgerWallet = await getLedgerWallet()
+
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
@@ -18,6 +21,6 @@ const main = async () => {
     assetsList: state.assetsList,
     assetFeedAddress: FEED_ADDRESS
   })
-  await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()
