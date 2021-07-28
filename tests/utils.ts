@@ -99,18 +99,18 @@ export const calculateAmountAfterFee = (
   syntheticFor: Synthetic,
   effectiveFee: number,
   amount: BN
-) => {
+): BN => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  const decimal_change = 10 ** (syntheticFor.decimals - syntheticIn.decimals)
-  if (decimal_change < 1) {
-    return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
-      .div(new BN(1 / decimal_change))
+  let decimalDifference = syntheticFor.decimals - syntheticIn.decimals
+  let scaledAmountBeforeFee
+  if (decimalDifference < 0) {
+    const decimalChange = new BN(10).pow(new BN(-decimalDifference))
+    scaledAmountBeforeFee = amountOutBeforeFee.div(decimalChange)
   } else {
-    return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
-      .mul(new BN(decimal_change))
+    const decimalChange = new BN(10).pow(new BN(decimalDifference))
+    scaledAmountBeforeFee = amountOutBeforeFee.mul(decimalChange)
   }
+  return scaledAmountBeforeFee.sub(scaledAmountBeforeFee.muln(effectiveFee).div(new BN(100000)))
 }
 export const calculateFee = (
   assetFrom: Asset,
