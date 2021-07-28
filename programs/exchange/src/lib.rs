@@ -7,16 +7,15 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::convert::TryInto;
+    use std::{borrow::BorrowMut, convert::TryInto};
 
     use pyth::pc::Price;
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
-        calculate_debt, calculate_max_burned_in_xusd, calculate_max_debt_in_usd,
-        calculate_max_withdraw_in_usd, calculate_new_shares_by_rounding_up,
-        calculate_swap_out_amount, calculate_swap_tax, calculate_user_debt_in_usd,
-        calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
+        calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
+        calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
+        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -134,6 +133,7 @@ pub mod exchange {
         amount_per_round: u64,
     ) -> Result<()> {
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let mut state = ctx.accounts.state.load_init()?;
 
         state.bump = bump;
@@ -149,6 +149,8 @@ pub mod exchange {
         state.fee = 300;
         state.swap_tax = 20;
         state.pool_fee = 0;
+        state.debt_interest_rate = 10; // 1%
+        state.last_debt_adjustment = timestamp;
         state.penalty_to_liquidator = 5;
         state.penalty_to_exchange = 5;
         state.liquidation_rate = 20;
@@ -248,6 +250,7 @@ pub mod exchange {
         let mut state = &mut ctx.accounts.state.load_mut()?;
 
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
 
         // Adjust staking round
         adjust_staking_rounds(&mut state, slot);
@@ -258,7 +261,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let max_borrow = max_debt
@@ -306,6 +309,7 @@ pub mod exchange {
         let mut state = &mut ctx.accounts.state.load_mut()?;
 
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
 
         // Adjust staking round
         adjust_staking_rounds(&mut state, slot);
@@ -323,7 +327,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let max_borrow = max_debt
@@ -521,6 +525,7 @@ pub mod exchange {
     pub fn burn(ctx: Context<BurnToken>, amount: u64) -> Result<()> {
         msg!("Synthetify: BURN");
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let mut state = &mut ctx.accounts.state.load_mut()?;
 
         // Adjust staking round
@@ -531,7 +536,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
@@ -545,7 +550,7 @@ pub mod exchange {
         let burn_asset = &mut assets[0];
         let burn_synthetic = &mut synthetics[0];
 
-        let user_debt = calculate_user_debt_in_usd(exchange_account, debt, state.debt_shares);
+        let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
 
         // Rounding down - debt is burned in favor of the system
         let burned_shares = calculate_burned_shares(
@@ -647,6 +652,7 @@ pub mod exchange {
         msg!("Synthetify: LIQUIDATE");
 
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let mut state = &mut ctx.accounts.state.load_mut()?;
 
         // Adjust staking round
@@ -661,8 +667,6 @@ pub mod exchange {
         let reserve_account = &ctx.accounts.reserve_account;
         let liquidator_usd_account = &ctx.accounts.liquidator_usd_account;
 
-        let debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
-
         // Signer need to be owner of source amount
         if !signer.eq(&liquidator_usd_account.owner) {
             return Err(ErrorCode::InvalidSigner.into());
@@ -673,7 +677,7 @@ pub mod exchange {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
 
-        let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -720,7 +724,8 @@ pub mod exchange {
 
         // Rounding down - debt is burned in favor of the system
 
-        let burned_debt_shares = amount_to_shares_by_rounding_down(state.debt_shares, debt, amount);
+        let burned_debt_shares =
+            amount_to_shares_by_rounding_down(state.debt_shares, total_debt, amount);
         state.debt_shares = state.debt_shares.checked_sub(burned_debt_shares).unwrap();
 
         exchange_account.debt_shares = exchange_account
@@ -846,6 +851,7 @@ pub mod exchange {
         msg!("Synthetify: CHECK ACCOUNT COLLATERALIZATION");
 
         let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let mut state = &mut ctx.accounts.state.load_mut()?;
 
         // Adjust staking round
@@ -855,9 +861,10 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
-        let assets_list = &ctx.accounts.assets_list.load_mut()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+        let total_debt =
+            calculate_debt_with_interest(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -1676,22 +1683,25 @@ pub struct Synthetic {
 #[derive(PartialEq, Default, Debug)]
 pub struct State {
     //8 Account signature
-    pub admin: Pubkey,             //32
-    pub halted: bool,              //1
-    pub nonce: u8,                 //1
-    pub debt_shares: u64,          //8
-    pub assets_list: Pubkey,       //32
-    pub health_factor: u8,         //1   In % 1-100% modifier for debt
-    pub max_delay: u32,            //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: u32,                  //4   Default fee per swap 300 => 0.3%
-    pub swap_tax: u8,              //8   In % range 0-20%
-    pub pool_fee: u64,             //64  Amount on tax from swap
-    pub liquidation_rate: u8,      //1   Size of debt repay in liquidation
-    pub penalty_to_liquidator: u8, //1   In % range 0-25%
-    pub penalty_to_exchange: u8,   //1   In % range 0-25%
-    pub liquidation_buffer: u32,   //4   Time given user to fix collateralization ratio
-    pub account_version: u8,       //1 Version of account supported by program
-    pub staking: Staking,          //116
+    pub admin: Pubkey,                  //32
+    pub halted: bool,                   //1
+    pub nonce: u8,                      //1
+    pub debt_shares: u64,               //8
+    pub assets_list: Pubkey,            //32
+    pub health_factor: u8,              //1   In % 1-100% modifier for debt
+    pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
+    pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
+    pub swap_tax: u8,                   //8   In % range 0-20%
+    pub pool_fee: u64,                  //64  Amount on tax from swap
+    pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
+    pub penalty_to_liquidator: u8,      //1   In % range 0-25%
+    pub penalty_to_exchange: u8,        //1   In % range 0-25%
+    pub liquidation_buffer: u32,        //4   Time given user to fix collateralization ratio
+    pub account_version: u8,            //1   Version of account supported by program
+    pub debt_interest_rate: u8,         //8   In % range 0-20% [1 -> 0.1%]
+    pub accumulated_debt_interest: u64, //64  Accumulated debt interest
+    pub last_debt_adjustment: i64,      //64
+    pub staking: Staking,               //116
     pub bump: u8,
 }
 #[derive(Accounts)]
