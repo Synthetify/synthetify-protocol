@@ -15,7 +15,8 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
+        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount,
+        MIN_SWAP_USD_VALUE, PRICE_OFFSET,
     };
 
     use super::*;
@@ -463,12 +464,16 @@ pub mod exchange {
         let sny_collateral = &mut collaterals[0];
 
         let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+
         // Check min swap value
-        // let value_in = calculate_value_in_usd(
-        //     assets[synthetics[synthetic_in_index].asset_index as usize].price,
-        //     amount,
-        //     synthetics[synthetic_in_index].decimals,
-        // );
+        let value_in = calculate_value_in_usd(
+            assets[synthetics[synthetic_in_index].asset_index as usize].price,
+            amount,
+            synthetics[synthetic_in_index].decimals,
+        );
+        if value_in < MIN_SWAP_USD_VALUE {
+            return Err(ErrorCode::InsufficientValueTrade.into());
+        }
 
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);

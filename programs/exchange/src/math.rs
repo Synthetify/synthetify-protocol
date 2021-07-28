@@ -6,6 +6,7 @@ use crate::*;
 pub const ACCURACY: u8 = 6;
 pub const PRICE_OFFSET: u8 = 6;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
+pub const MIN_SWAP_USD_VALUE: u64 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
