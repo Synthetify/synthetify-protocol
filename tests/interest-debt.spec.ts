@@ -20,9 +20,9 @@ import {
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
-import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { calculateDebt, ERRORS_EXCHANGE } from '../sdk/lib/utils'
 
-describe('interest debt', () => {
+describe('Interest debt', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -39,29 +39,27 @@ describe('interest debt', () => {
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
   let collateralAccount: PublicKey
-  let liquidationAccount: PublicKey
+  let snyLiquidationFund: PublicKey
   let stakingFundAccount: PublicKey
-  let reserveAccount: PublicKey
+  let snyReserve: PublicKey
   let accountOwner: PublicKey
   let exchangeAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
-  let startTimestamp: BN
-  const stakingRoundLength = 10
-  const amountPerRound = new BN(100)
+  let startTimestamp: number // maybe BN?
 
   let initialCollateralPrice = 2
   before(async () => {
-    const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
+    const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
-    exchangeAuthority = _exchangeAuthority
+    exchangeAuthority = _mintAuthority
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
-      initPrice: initialCollateralPrice,
-      expo: -6
+      initPrice: 2
+      // expo: -6
     })
 
     collateralToken = await createToken({
@@ -70,9 +68,10 @@ describe('interest debt', () => {
       mintAuthority: CollateralTokenMinter.publicKey
     })
     collateralAccount = await collateralToken.createAccount(exchangeAuthority)
-    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
+    snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
-    reserveAccount = await collateralToken.createAccount(exchangeAuthority)
+    snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
+    snyReserve = await collateralToken.createAccount(exchangeAuthority)
 
     // @ts-expect-error
     exchange = new Exchange(
@@ -84,8 +83,8 @@ describe('interest debt', () => {
     )
 
     const data = await createAssetsList({
-      snyLiquidationFund: liquidationAccount,
-      snyReserve: reserveAccount,
+      snyLiquidationFund,
+      snyReserve,
       exchangeAuthority,
       collateralToken,
       collateralTokenFeed,
@@ -100,8 +99,8 @@ describe('interest debt', () => {
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
       nonce,
-      amountPerRound: amountPerRound,
-      stakingRoundLength: stakingRoundLength,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount
     })
     exchange = await Exchange.build(
@@ -181,7 +180,7 @@ describe('interest debt', () => {
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
-    const amount = new anchor.BN(300_000 * 1e6) // 300 000 SNY
+    const amount = new anchor.BN(500_000 * 1e6) // 500 000 SNY
     await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
     const userCollateralTokenAccountInfo = await collateralToken.getAccountInfo(
       userCollateralTokenAccount
@@ -189,7 +188,7 @@ describe('interest debt', () => {
 
     // Collateral amount
     assert.ok(userCollateralTokenAccountInfo.amount.eq(amount))
-    const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(reserveAccount)
+    const exchangeCollateralTokenAccountInfo = await collateralToken.getAccountInfo(snyReserve)
     // No previous deposits
     assert.ok(exchangeCollateralTokenAccountInfo.amount.eq(new BN(0)))
     const depositIx = await exchange.depositInstruction({
@@ -197,7 +196,7 @@ describe('interest debt', () => {
       exchangeAccount,
       userCollateralAccount: userCollateralTokenAccount,
       owner: accountOwner.publicKey,
-      reserveAddress: reserveAccount
+      reserveAddress: snyReserve
     })
     const approveIx = Token.createApproveInstruction(
       collateralToken.programId,
@@ -212,9 +211,7 @@ describe('interest debt', () => {
       [wallet, accountOwner],
       connection
     )
-    const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
-      reserveAccount
-    )
+    const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(snyReserve)
 
     // Increase by deposited amount
     assert.ok(exchangeCollateralTokenAccountInfoAfter.amount.eq(amount))
@@ -224,45 +221,65 @@ describe('interest debt', () => {
     const assetListData = await exchange.getAssetsList(assetsList)
     assert.ok(assetListData.collaterals[0].reserveBalance.eq(amount))
   })
-  it('Mint', async () => {
-    const collateralAmount = new anchor.BN(300_000 * 1e6)
-    const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
-      reserveAddress: reserveAccount,
-      collateralToken,
-      exchangeAuthority,
-      exchange,
-      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: collateralAmount
-    })
-    const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-
-    const usdMintAmount = new BN(10_000 * 1e6) // 10 000 USD
-    await exchange.mint({
-      amount: usdMintAmount,
-      exchangeAccount,
-      owner: accountOwner.publicKey,
-      to: usdTokenAccount,
-      signers: [accountOwner]
-    })
-    // Increase user debt
-    const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
-    assert.ok(exchangeAccountAfter.debtShares.eq(usdMintAmount))
-
-    // Increase exchange debt
-    const exchangeStateAfter = await exchange.getState()
-    assert.ok(exchangeStateAfter.debtShares.eq(usdMintAmount))
-
-    // Increase asset supply
-    const assetsListAfter = await exchange.getAssetsList(assetsList)
-    assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
-
-    // Increase user xusd balance
-    const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
-    assert.ok(userUsdAccountAfter.amount.eq(usdMintAmount))
-  })
-  describe('Debt compounding', async () => {
+  describe('Debt accumulation check', async () => {
     it('mint base debt', async () => {
-      skipTimestamps(60, connection)
+      const collateralAmount = new BN(500_000 * 1e6)
+      const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
+        reserveAddress: snyReserve,
+        collateralToken,
+        exchangeAuthority,
+        exchange,
+        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+        amount: collateralAmount
+      })
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      const usdMintAmount = new BN(50_000 * 1e6)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+      startTimestamp = await connection.getBlockTime(await connection.getSlot())
+
+      // Increase user debt
+      const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
+      assert.ok(exchangeAccountAfter.debtShares.eq(usdMintAmount))
+
+      // Increase exchange debt
+      const exchangeStateAfter = await exchange.getState()
+      assert.ok(exchangeStateAfter.debtShares.eq(usdMintAmount))
+
+      // Increase asset supply
+      const assetsListAfter = await exchange.getAssetsList(assetsList)
+      assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
+
+      // Increase user xusd balance
+      const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdAccountAfter.amount.eq(usdMintAmount))
+    })
+    it('should increase interest debt', async () => {
+      const assetsListBeforeAdjustment = await exchange.getAssetsList(assetsList)
+      const debtBeforeAdjustment = calculateDebt(assetsListBeforeAdjustment)
+      await skipTimestamps(61, connection)
+
+      await exchange.checkAccount(exchangeAccount)
+      const assetsListAfterAdjustment = await exchange.getAssetsList(assetsList)
+      const stateAfterAdjustment = await exchange.getState()
+      const debtAfterAdjustment = calculateDebt(assetsListAfterAdjustment)
+
+      // real debt      50000.000951...$
+      // expected debt  50000.000952   $
+      const expectedDebtInterest = new BN(952)
+      assert.ok(debtAfterAdjustment.eq(debtBeforeAdjustment.add(expectedDebtInterest)))
+      assert.ok(
+        assetsListAfterAdjustment.synthetics[0].supply.eq(
+          assetsListBeforeAdjustment.synthetics[0].supply.add(expectedDebtInterest)
+        )
+      )
+      assert.ok(stateAfterAdjustment.accumulatedDebtInterest.eq(expectedDebtInterest))
     })
   })
 })
