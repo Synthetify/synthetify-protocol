@@ -1752,8 +1752,6 @@ pub enum ErrorCode {
     InvalidSigner,
     #[msg("Wash trade")]
     WashTrade,
-    #[msg("Insufficient value trade")]
-    InsufficientValueTrade,
     #[msg("Invalid exchange liquidation account")]
     ExchangeLiquidationAccount,
     #[msg("Liquidation deadline not passed")]
@@ -1778,6 +1776,8 @@ pub enum ErrorCode {
     NotCollateral,
     #[msg("Asset is already a collateral")]
     AlreadyACollateral,
+    #[msg("Insufficient value trade")]
+    InsufficientValueTrade,
 }
 
 // Access control modifiers.

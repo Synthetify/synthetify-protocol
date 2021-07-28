@@ -42,7 +42,10 @@ export enum ERRORS_EXCHANGE {
   INITIALIZED = '0x13d',
   UNINITIALIZED = '0x13e',
   NO_ASSET_FOUND = '0x13f',
-  MAX_SUPPLY = '0x140'
+  MAX_SUPPLY = '0x140',
+  NOT_COLLATERAL = '0x141',
+  ALREADY_COLLATERAL = '0x142',
+  INSUFFICIENT_VALUE_TRADE = '0x143'
 }
 export const signAndSend = async (
   tx: Transaction,
