@@ -1208,7 +1208,7 @@ describe('exchange', () => {
         ERRORS_EXCHANGE.WASH_TRADE
       )
     })
-    it.only('Swap below minimum trade value should fail', async () => {
+    it('Swap below minimum trade value should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
