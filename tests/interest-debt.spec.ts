@@ -187,12 +187,17 @@ describe('Interest debt accumulation', () => {
     // real debt      50000.000951...$
     // expected debt  50000.000952   $
     const expectedDebtInterest = new BN(952)
+    // debt should be increased by debt interest
     assert.ok(debtAfterAdjustment.eq(debtBeforeAdjustment.add(expectedDebtInterest)))
+    // xUSD supply should be increased by debt interest
     assert.ok(
       assetsListAfterAdjustment.synthetics[0].supply.eq(
         assetsListBeforeAdjustment.synthetics[0].supply.add(expectedDebtInterest)
       )
     )
+    // accumulatedDebtInterest should be increased by debt interest
     assert.ok(stateAfterAdjustment.accumulatedDebtInterest.eq(expectedDebtInterest))
+    // lastDebtAdjustment should be 60 = 1 adjustment (lastDebtAdjustment should always be multiple of 60 sec)
+    assert.ok(stateAfterAdjustment.lastDebtAdjustment.eqn(60))
   })
 })

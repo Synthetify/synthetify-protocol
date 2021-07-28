@@ -5,8 +5,6 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from 
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
-import assert from 'assert'
-import { timeStamp } from 'console'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
