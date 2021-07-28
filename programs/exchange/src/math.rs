@@ -216,7 +216,6 @@ pub fn calculate_swap_out_amount(
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
         let scaled_amount_before_fee = amount_before_fee.checked_div(decimal_change).unwrap();
-
         let amount_after_fee = scaled_amount_before_fee
             .checked_sub(
                 scaled_amount_before_fee
@@ -237,7 +236,7 @@ pub fn calculate_swap_out_amount(
         return (amount_after_fee.try_into().unwrap(), fee_in_usd);
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
-        let scaled_amount_before_fee = amount_before_fee.checked_div(decimal_change).unwrap();
+        let scaled_amount_before_fee = amount_before_fee.checked_mul(decimal_change).unwrap();
         let amount_after_fee = scaled_amount_before_fee
             .checked_sub(
                 scaled_amount_before_fee
