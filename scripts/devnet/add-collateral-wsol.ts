@@ -5,6 +5,7 @@ import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { sleep } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { MINTER } from '../../migrations/minter'
+import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
@@ -14,16 +15,16 @@ const FEED_ADDRESS = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix
 const TOKEN_MINT = NATIVE_MINT
 const main = async () => {
   const connection = provider.connection
+  const ledgerWallet = await getLedgerWallet()
+
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
   const assetsList = await exchange.getAssetsList(state.assetsList)
-  console.log(assetsList.collaterals)
   const token = new Token(connection, TOKEN_MINT, TOKEN_PROGRAM_ID, DEVNET_ADMIN_ACCOUNT)
   const tokenInfo = await token.getMintInfo()
   const liquidationFund = await token.createAccount(exchange.exchangeAuthority)
   const reserveAccount = await token.createAccount(exchange.exchangeAuthority)
-  console.log(console.log(assetsList.assets))
 
   await sleep(1000)
   const ix = await exchange.addCollateralInstruction({
@@ -36,6 +37,6 @@ const main = async () => {
     reserveAccount,
     reserveBalance: new BN(0)
   })
-  await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()

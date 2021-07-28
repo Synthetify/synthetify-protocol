@@ -3,6 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { createToken } from '../../tests/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
+import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
@@ -12,6 +13,7 @@ const FEED_ADDRESS = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix
 const DECIMALS = 6
 const MAX_SUPPLY = new BN(1000000)
 const main = async () => {
+  const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
@@ -29,6 +31,6 @@ const main = async () => {
     priceFeed: FEED_ADDRESS,
     assetAddress: token.publicKey
   })
-  await signAndSend(new Transaction().add(ix), [DEVNET_ADMIN_ACCOUNT], connection)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()
