@@ -205,47 +205,57 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> (u64, u64) {
-    // maybe we should calculate decimal difference first not to lose precision
     let amount_before_fee = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap()
         .checked_div(asset_for.price as u128)
         .unwrap();
-    let amount_after_fee = amount_before_fee
-        .checked_sub(
-            amount_before_fee
-                .checked_mul(fee as u128)
-                .unwrap()
-                .checked_div(100000)
-                .unwrap(),
-        )
-        .unwrap();
     // If assets have different decimals we need to scale them.
     let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
+
     if decimal_difference < 0 {
         let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        let scaled_amount = amount_after_fee.checked_div(decimal_change).unwrap();
+        let scaled_amount_before_fee = amount_before_fee.checked_div(decimal_change).unwrap();
+
+        let amount_after_fee = scaled_amount_before_fee
+            .checked_sub(
+                scaled_amount_before_fee
+                    .checked_mul(fee as u128)
+                    .unwrap()
+                    .checked_div(100000)
+                    .unwrap(),
+            )
+            .unwrap();
         let fee_in_usd = calculate_value_difference_in_usd(
             asset_in.price,
             amount as u64,
             synthetic_in.decimals,
             asset_for.price,
-            scaled_amount as u64,
+            amount_after_fee as u64,
             synthetic_for.decimals,
         );
-        return (scaled_amount.try_into().unwrap(), fee_in_usd);
+        return (amount_after_fee.try_into().unwrap(), fee_in_usd);
     } else {
         let decimal_change = 10u128.pow(decimal_difference as u32);
-        let scaled_amount = amount_after_fee.checked_mul(decimal_change).unwrap();
+        let scaled_amount_before_fee = amount_before_fee.checked_div(decimal_change).unwrap();
+        let amount_after_fee = scaled_amount_before_fee
+            .checked_sub(
+                scaled_amount_before_fee
+                    .checked_mul(fee as u128)
+                    .unwrap()
+                    .checked_div(100000)
+                    .unwrap(),
+            )
+            .unwrap();
         let fee_in_usd = calculate_value_difference_in_usd(
             asset_in.price,
             amount as u64,
             synthetic_in.decimals,
             asset_for.price,
-            scaled_amount as u64,
+            amount_after_fee as u64,
             synthetic_for.decimals,
         );
-        return (scaled_amount.try_into().unwrap(), fee_in_usd);
+        return (amount_after_fee.try_into().unwrap(), fee_in_usd);
     }
 }
 pub fn calculate_burned_shares(
