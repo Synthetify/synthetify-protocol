@@ -1440,7 +1440,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 0;
             let compounded_value =
@@ -1452,7 +1452,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 1;
             let compounded_value =
@@ -1465,7 +1465,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.000001902587519%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 19025875190;
             let periods_number: u128 = 2;
             let compounded_value =
@@ -1478,7 +1478,7 @@ mod tests {
         {
             // value = 300 000$
             // period interest rate = 0.000002%
-            let base_value = 300_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 300_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
             let periods_number: u128 = 525600;
             let compounded_value =
@@ -1492,7 +1492,7 @@ mod tests {
     #[test]
     fn test_calculate_multi_compounded_interest() {
         let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
-        let start_value = 200_000 * 10u64.pow(PRICE_OFFSET.into());
+        let start_value = 200_000 * 10u64.pow(ACCURACY.into());
         // irregular compound
         // 100_000 -> 10_000 -> 5 -> 415_595
         {
