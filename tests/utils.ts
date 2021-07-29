@@ -10,7 +10,7 @@ import { createPriceFeed } from './oracleUtils'
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 6
+export const ORACLE_OFFSET = 8
 export const ACCURACY = 6
 export const U64_MAX = new BN('18446744073709551615')
 
@@ -19,7 +19,6 @@ export const tou64 = (amount) => {
   return new u64(amount.toString())
 }
 export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
-  console.log()
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -120,8 +119,12 @@ export const calculateFee = (
   synthetic: Synthetic,
   amount: BN
 ): BN => {
-  const valueFrom = assetFrom.price.mul(amountFrom).div(new BN(10 ** syntheticFrom.decimals))
-  const value = asset.price.mul(amount).div(new BN(10 ** synthetic.decimals))
+  const valueFrom = assetFrom.price
+    .mul(amountFrom)
+    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
+  const value = asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
   return valueFrom.sub(value)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {

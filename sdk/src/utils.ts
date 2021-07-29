@@ -11,7 +11,7 @@ import {
 import { Asset, AssetsList, Collateral, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 6
+export const ORACLE_OFFSET = 8
 export const ACCURACY = 6
 // hex code must be at the end of message
 export enum ERRORS {
