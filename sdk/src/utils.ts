@@ -138,6 +138,63 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
     )
   }, new BN(0))
 }
+export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
+  // decimals of token = 6
+  const ONE_SNY = new BN(1000000)
+  let discount = 0
+  switch (true) {
+    case userCollateralBalance.lt(ONE_SNY.muln(100)):
+      discount = 0
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(200)):
+      discount = 1
+      break
+
+    case userCollateralBalance.lt(ONE_SNY.muln(500)):
+      discount = 2
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(1000)):
+      discount = 3
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(2000)):
+      discount = 4
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(5000)):
+      discount = 5
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(10000)):
+      discount = 6
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(25000)):
+      discount = 7
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(50000)):
+      discount = 8
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(100000)):
+      discount = 9
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(250000)):
+      discount = 10
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(500000)):
+      discount = 11
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(1000000)):
+      discount = 12
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(2000000)):
+      discount = 13
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(5000000)):
+      discount = 14
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(10000000)):
+      discount = 15
+      break
+  }
+  return Math.ceil(fee - (fee * discount) / 100)
+}
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
