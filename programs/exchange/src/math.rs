@@ -1114,26 +1114,26 @@ mod tests {
                 &asset_btc,
                 &synthetic_usd,
                 &synthetic_btc,
-                50000 * 10u64.pow(6),
+                50000 * 10u64.pow(ACCURACY.into()),
                 fee,
             );
             // out amount should be 0.997 BTC
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
 
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
                 &synthetic_btc,
                 &synthetic_usd,
-                1 * 10u64.pow(8),
+                1 * 10u64.pow(synthetic_btc.decimals.into()),
                 fee,
             );
             // out amount should be 49850 USD
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
 
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
@@ -1245,8 +1245,8 @@ mod tests {
         let xusd_decimal = 6u8;
         // xUSD -> xBTC
         {
-            let xbtc_amount = 1 * 10u64.pow(8);
-            let xusd_amount = 28_999 * 10u64.pow(6);
+            let xbtc_amount = 1 * 10u64.pow(xbtc_decimal.into());
+            let xusd_amount = 28_999 * 10u64.pow(xusd_decimal.into());
 
             let value_difference_in_usd = calculate_value_difference_in_usd(
                 xbtc_price,
@@ -1257,15 +1257,12 @@ mod tests {
                 xusd_decimal,
             );
             // should be 1_001
-            assert_eq!(
-                value_difference_in_usd,
-                1_001 * 10u64.pow(PRICE_OFFSET as u32)
-            );
+            assert_eq!(value_difference_in_usd, 1_001 * 10u64.pow(ACCURACY.into()));
         }
         // xBTC -> xUSD
         {
-            let xbtc_amount = 89 * 10u64.pow(6);
-            let xusd_amount = 35_000 * 10u64.pow(6);
+            let xbtc_amount = 89 * 10u64.pow((xbtc_decimal - 2).into());
+            let xusd_amount = 35_000 * 10u64.pow(xusd_decimal.into());
             let value_difference_in_usd = calculate_value_difference_in_usd(
                 xusd_price,
                 xusd_amount,
@@ -1275,7 +1272,7 @@ mod tests {
                 xbtc_decimal,
             );
             // should be 8_300
-            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(6));
+            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(ACCURACY.into()));
         }
     }
 
