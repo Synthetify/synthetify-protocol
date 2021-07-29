@@ -17,7 +17,6 @@ import {
   sleep,
   EXCHANGE_ADMIN,
   tou64,
-  ORACLE_OFFSET,
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
@@ -28,6 +27,7 @@ import {
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 import { calculateUserCollateral, calculateUserMaxDebt } from '@synthetify/sdk/lib/utils'
+import { ACCURACY, ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
@@ -123,7 +123,7 @@ describe('liquidation', () => {
       exchange,
       reserveAddress: snyReserve,
       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: new BN(100000 * 1e6) // give enough for liquidations
+      amount: new BN(100000 * 10 ** ACCURACY) // give enough for liquidations
     })
 
     liquidator = liquidatorData.accountOwner
@@ -147,7 +147,7 @@ describe('liquidation', () => {
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.gt(new BN(0)))
   })
-  describe.only('#liquidate()', async () => {
+  describe('#liquidate()', async () => {
     afterEach(async () => {
       await setFeedPrice(oracleProgram, initialCollateralPrice, collateralTokenFeed)
     })
@@ -158,7 +158,7 @@ describe('liquidation', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
     it('should liquidate', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(1000 * 10 ** ACCURACY)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -169,7 +169,10 @@ describe('liquidation', () => {
         amount: collateralAmount
       })
       const assetsListData = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(new BN(initialCollateralPrice * 1e6)))
+
+      assert.ok(
+        assetsListData.assets[1].price.eq(new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice))
+      )
 
       const newCollateralPrice = initialCollateralPrice / 5
       await setFeedPrice(oracleProgram, newCollateralPrice, collateralTokenFeed)
@@ -179,7 +182,9 @@ describe('liquidation', () => {
       const state = await exchange.getState()
 
       const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListDataUpdated.assets[1].price.eq(new BN(newCollateralPrice * 1e6)))
+      assert.ok(
+        assetsListDataUpdated.assets[1].price.eq(new BN(newCollateralPrice * 10 ** ORACLE_OFFSET))
+      )
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(collateralAmount))
@@ -189,10 +194,11 @@ describe('liquidation', () => {
         assetsListDataUpdated.collaterals[0]
       )
 
+      // mul ORACLE_OFFSET and div ORACLE_OFFSET because of rounding
       assert.ok(
         collateralUsdValue.eq(
           userCollateralBalance
-            .mul(new BN(newCollateralPrice * 1e6))
+            .mul(new BN(newCollateralPrice * 10 ** ORACLE_OFFSET))
             .div(new BN(10 ** ORACLE_OFFSET))
         )
       )
@@ -205,20 +211,16 @@ describe('liquidation', () => {
       const collateral = assetsListDataUpdated.collaterals[0]
       const collateralAsset = assetsListDataUpdated.assets[collateral.assetIndex]
 
-      const {
-        collateralToExchange,
-        collateralToLiquidator,
-        maxAmount,
-        seizedInToken
-      } = calculateLiquidation(
-        userMaxDebt,
-        userDebtBalance,
-        state.penaltyToLiquidator,
-        state.penaltyToExchange,
-        state.liquidationRate,
-        collateralAsset,
-        collateral
-      )
+      const { collateralToExchange, collateralToLiquidator, maxAmount, seizedInToken } =
+        calculateLiquidation(
+          userMaxDebt,
+          userDebtBalance,
+          state.penaltyToLiquidator,
+          state.penaltyToExchange,
+          state.liquidationRate,
+          collateralAsset,
+          collateral
+        )
       // trigger liquidation without marking account
       await assertThrowsAsync(
         exchange.liquidate({
@@ -348,7 +350,7 @@ describe('liquidation', () => {
       )
     })
     it('check halted', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(1000 * 10 ** ACCURACY)
       const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -445,7 +447,7 @@ describe('liquidation', () => {
       })
     })
     it('fail without signer', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(1000 * 10 ** ACCURACY)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -498,7 +500,7 @@ describe('liquidation', () => {
       )
     })
     it('fail liquidate safe user', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(1000 * 10 ** ACCURACY)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -510,7 +512,9 @@ describe('liquidation', () => {
       })
 
       const assetsListData = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListData.assets[1].price.eq(new BN(initialCollateralPrice * 1e6)))
+      assert.ok(
+        assetsListData.assets[1].price.eq(new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice))
+      )
 
       await exchange.updatePrices(assetsList)
       const state = await exchange.getState()
@@ -535,7 +539,7 @@ describe('liquidation', () => {
       )
     })
     it('fail wrong asset list', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(1000 * 10 ** ACCURACY)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
