@@ -3,8 +3,8 @@ use std::{cell::RefMut, convert::TryInto};
 use crate::*;
 
 // Min decimals for asset = 6
-pub const ACCURACY: u8 = 6;
-pub const PRICE_OFFSET: u8 = 6;
+pub const ACCURACY: u8 = 6; // xUSD decimal
+pub const PRICE_OFFSET: u8 = 8;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
 pub const MIN_SWAP_USD_VALUE: u64 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
@@ -174,7 +174,11 @@ pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
     return (price as u128)
         .checked_mul(amount as u128)
         .unwrap()
-        .checked_div(10u128.checked_pow(decimal as u32).unwrap())
+        .checked_div(
+            10u128
+                .checked_pow((decimal + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
         .unwrap() as u64;
 }
 pub fn calculate_value_difference_in_usd(
@@ -1207,11 +1211,11 @@ mod tests {
         // decimal same as xUSD
         {
             let price = 3 * 10u64.pow(PRICE_OFFSET.into());
-            let amount = 2 * 10u64.pow(6);
-            let decimal = PRICE_OFFSET;
+            let amount = 2 * 10u64.pow(ACCURACY.into());
+            let decimal = ACCURACY;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 6 USD
-            assert_eq!(value_in_usd, 6 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 6 * 10u64.pow(ACCURACY.into()));
         }
         // decimal lower than xUSD
         {
@@ -1220,7 +1224,7 @@ mod tests {
             let decimal = 4;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 22400 USD
-            assert_eq!(value_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 22_400 * 10u64.pow(ACCURACY.into()));
         }
         // decimal bigger than xUSD
         {
@@ -1229,7 +1233,7 @@ mod tests {
             let decimal = 10;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 18200 USD
-            assert_eq!(value_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 18_200 * 10u64.pow(ACCURACY.into()));
         }
     }
     #[test]
