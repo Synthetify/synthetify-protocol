@@ -90,8 +90,7 @@ export const calculateLiquidation = (
   ).add(maxAmount)
 
   const seizedInToken = seizedCollateralInUsd
-    .muln(10 ** ORACLE_OFFSET)
-    .muln(10 ** (collateral.decimals - ACCURACY))
+    .mul(new BN(10).pow(new BN(collateral.decimals + ORACLE_OFFSET - ACCURACY)))
     .div(asset.price)
 
   const collateralToExchange = divUp(
