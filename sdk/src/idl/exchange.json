@@ -639,6 +639,47 @@
       ]
     },
     {
+      "name": "withdrawSwapTax",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "setLiquidationBuffer",
       "accounts": [
         {
@@ -1163,11 +1204,11 @@
             "type": "u32"
           },
           {
-            "name": "swapTax",
+            "name": "swapTaxRatio",
             "type": "u8"
           },
           {
-            "name": "poolFee",
+            "name": "swapTaxReserve",
             "type": "u64"
           },
           {
@@ -1537,8 +1578,5 @@
       "name": "InsufficientValueTrade",
       "msg": "Insufficient value trade"
     }
-  ],
-  "metadata": {
-    "address": "Aq9jAERmaZpTAYdGEuPmfwyuNVUMZogEBj2Rvh4H2qrp"
-  }
+  ]
 }

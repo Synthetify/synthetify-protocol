@@ -763,6 +763,9 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  // public async withdrawSwapTax({ amount }: WithdrawSwapTaxInstruction) {
+  //   return await this.program.instruction.withdrawSwapTax(amount)
+  // }
   public async addCollateralInstruction({
     assetsList,
     assetAddress,
@@ -876,6 +879,9 @@ export interface AddNewAssetInstruction {
   assetsList: PublicKey
   assetFeedAddress: PublicKey
 }
+// export interface WithdrawSwapTaxInstruction {
+//   amount: BN
+// }
 export interface SetPriceFeedInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
@@ -1031,8 +1037,8 @@ export interface ExchangeState {
   healthFactor: number
   maxDelay: number
   fee: number
-  swapTax: number
-  poolFee: BN
+  swapTaxRatio: number
+  swapTaxReserve: BN
   debtInterestRate: number
   accumulatedDebtInterest: BN
   lastDebtAdjustment: BN

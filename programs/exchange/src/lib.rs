@@ -148,8 +148,8 @@ pub mod exchange {
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
         state.fee = 300;
-        state.swap_tax = 20;
-        state.pool_fee = 0;
+        state.swap_tax_ratio = 20;
+        state.swap_tax_reserve = 0;
         state.debt_interest_rate = 10; // 1%
         state.last_debt_adjustment = timestamp;
         state.penalty_to_liquidator = 5;
@@ -502,8 +502,8 @@ pub mod exchange {
         let signer = &[&seeds[..]];
 
         // Update pool fee
-        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax);
-        state.pool_fee = state.pool_fee.checked_add(pool_fee).unwrap();
+        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax_ratio);
+        state.swap_tax_reserve = state.swap_tax_reserve.checked_add(pool_fee).unwrap();
 
         // Update xUSD supply based on tax
         let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();
@@ -1020,7 +1020,7 @@ pub mod exchange {
         let state = &mut ctx.accounts.state.load_mut()?;
 
         // check valid amount / max amount = u64::MAX
-        state.pool_fee = state.pool_fee.checked_sub(amount).unwrap();
+        state.swap_tax_reserve = state.swap_tax_reserve.checked_sub(amount).unwrap();
 
         // Mint xUSD to user
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -1744,8 +1744,8 @@ pub struct State {
     pub health_factor: u8,              //1   In % 1-100% modifier for debt
     pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
     pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
-    pub swap_tax: u8,                   //8   In % range 0-20%
-    pub pool_fee: u64,                  //64  Amount on tax from swap
+    pub swap_tax_ratio: u8,             //8   In % range 0-20%
+    pub swap_tax_reserve: u64,          //64  Amount on tax from swap
     pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
     pub penalty_to_liquidator: u8,      //1   In % range 0-25%
     pub penalty_to_exchange: u8,        //1   In % range 0-25%
