@@ -763,9 +763,16 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  // public async withdrawSwapTax({ amount }: WithdrawSwapTaxInstruction) {
-  //   return await this.program.instruction.withdrawSwapTax(amount)
-  // }
+  public async withdrawSwapTaxInstruction({ amount, admin, to }: WithdrawSwapTaxInstruction) {
+    return (await this.program.instruction.withdrawSwapTax(amount, {
+      state: this.stateAddress,
+      admin: admin,
+      exchangeAuthority: this.exchangeAuthority,
+      usdToken: this.assetsList.synthetics[0].assetAddress,
+      to: to,
+      tokenProgram: TOKEN_PROGRAM_ID
+    })) as TransactionInstruction
+  }
   public async addCollateralInstruction({
     assetsList,
     assetAddress,
@@ -879,9 +886,11 @@ export interface AddNewAssetInstruction {
   assetsList: PublicKey
   assetFeedAddress: PublicKey
 }
-// export interface WithdrawSwapTaxInstruction {
-//   amount: BN
-// }
+export interface WithdrawSwapTaxInstruction {
+  admin: PublicKey
+  to: PublicKey
+  amount: BN
+}
 export interface SetPriceFeedInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
