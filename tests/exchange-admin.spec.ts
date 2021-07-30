@@ -18,6 +18,7 @@ import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
   const provider = anchor.Provider.local()
@@ -145,7 +146,7 @@ describe('admin', () => {
 
     // USD token address
     const usdAsset = assetsListData.assets[0]
-    assert.ok(usdAsset.price.eq(new BN(1e6)))
+    assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
 
     // xUSD checks
     const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
@@ -635,7 +636,7 @@ describe('admin', () => {
       const collateralAsset = assetList.assets[1]
 
       // Check new price
-      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
+      assert.ok(collateralAsset.price.eq(new BN(newPrice).mul(new BN(10 ** ORACLE_OFFSET))))
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
