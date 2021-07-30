@@ -501,12 +501,15 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
-        // Update pool fee
-        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax_ratio);
-        state.swap_tax_reserve = state.swap_tax_reserve.checked_add(pool_fee).unwrap();
+        // Update swap_tax_reserve
+        let swap_tax_reserve = calculate_swap_tax(fee_usd, state.swap_tax_ratio);
+        state.swap_tax_reserve = state
+            .swap_tax_reserve
+            .checked_add(swap_tax_reserve)
+            .unwrap();
 
         // Update xUSD supply based on tax
-        let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();
+        let new_xusd_supply = synthetics[0].supply.checked_add(swap_tax_reserve).unwrap();
         set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
 
         // Set new supply output token
