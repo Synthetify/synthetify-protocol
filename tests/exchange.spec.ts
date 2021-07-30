@@ -21,7 +21,6 @@ import {
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
-  toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
@@ -32,7 +31,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
-import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, Synthetic } from '../sdk/lib/exchange'
 
 describe('exchange', () => {

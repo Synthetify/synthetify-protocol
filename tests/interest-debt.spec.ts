@@ -15,6 +15,7 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { calculateDebt } from '../sdk/lib/utils'
+import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 
 describe('Interest debt accumulation', () => {
   const provider = anchor.Provider.local()
@@ -128,7 +129,7 @@ describe('Interest debt accumulation', () => {
 
     // USD token address
     const usdAsset = assetsListData.assets[0]
-    assert.ok(usdAsset.price.eq(new BN(1e6)))
+    assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
 
     // xUSD checks
     const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
@@ -137,7 +138,7 @@ describe('Interest debt accumulation', () => {
     assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
   })
   it('should prepare base debt (mint debt)', async () => {
-    const collateralAmount = new BN(500_000 * 1e6)
+    const collateralAmount = new BN(500_000 * 10 ** ACCURACY)
     const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
       reserveAddress: snyReserve,
       collateralToken,
@@ -148,7 +149,7 @@ describe('Interest debt accumulation', () => {
     })
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
-    const usdMintAmount = new BN(50_000 * 1e6)
+    const usdMintAmount = new BN(50_000 * 10 ** ACCURACY)
     await exchange.mint({
       amount: usdMintAmount,
       exchangeAccount,

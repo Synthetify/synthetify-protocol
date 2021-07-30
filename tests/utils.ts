@@ -4,14 +4,13 @@ import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
+import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 6
-export const ACCURACY = 6
 export const U64_MAX = new BN('18446744073709551615')
 
 export const tou64 = (amount) => {
@@ -19,7 +18,6 @@ export const tou64 = (amount) => {
   return new u64(amount.toString())
 }
 export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
-  console.log()
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -34,63 +32,6 @@ export const calculateDebt = (assetsList: AssetsList) => {
         .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
-}
-export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
-  // decimals of token = 6
-  const ONE_SNY = new BN(1000000)
-  let discount = 0
-  switch (true) {
-    case userCollateralBalance.lt(ONE_SNY.muln(100)):
-      discount = 0
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(200)):
-      discount = 1
-      break
-
-    case userCollateralBalance.lt(ONE_SNY.muln(500)):
-      discount = 2
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(1000)):
-      discount = 3
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(2000)):
-      discount = 4
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(5000)):
-      discount = 5
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(10000)):
-      discount = 6
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(25000)):
-      discount = 7
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(50000)):
-      discount = 8
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(100000)):
-      discount = 9
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(250000)):
-      discount = 10
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(500000)):
-      discount = 11
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(1000000)):
-      discount = 12
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(2000000)):
-      discount = 13
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(5000000)):
-      discount = 14
-      break
-    case userCollateralBalance.lt(ONE_SNY.muln(10000000)):
-      discount = 15
-      break
-  }
-  return Math.ceil(fee - (fee * discount) / 100)
 }
 export const calculateAmountAfterFee = (
   assetIn: Asset,
@@ -120,8 +61,12 @@ export const calculateFee = (
   synthetic: Synthetic,
   amount: BN
 ): BN => {
-  const valueFrom = assetFrom.price.mul(amountFrom).div(new BN(10 ** syntheticFrom.decimals))
-  const value = asset.price.mul(amount).div(new BN(10 ** synthetic.decimals))
+  const valueFrom = assetFrom.price
+    .mul(amountFrom)
+    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
+  const value = asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
   return valueFrom.sub(value)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {

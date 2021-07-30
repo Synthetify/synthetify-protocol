@@ -215,7 +215,7 @@ pub fn get_user_sny_collateral_balance(
 #[cfg(test)]
 mod tests {
 
-    use crate::math::PRICE_OFFSET;
+    use crate::math::{ACCURACY, PRICE_OFFSET};
 
     use super::*;
     use std::{cell::RefCell, u64};
@@ -741,12 +741,12 @@ mod tests {
             ..Default::default()
         };
         let usd = Synthetic {
-            supply: 100_000 * 10u64.pow(PRICE_OFFSET.into()),
+            supply: 100_000 * 10u64.pow(ACCURACY.into()),
             ..Default::default()
         };
         // single period adjustment
         {
-            let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
             let current_timestamp = 65;
             let mut state = state.clone();
             let mut usd = usd.clone();
@@ -763,7 +763,7 @@ mod tests {
         }
         // multiple period adjustment
         {
-            let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
             let current_timestamp = 120;
             let mut state = state.clone();
             let mut usd = usd.clone();
@@ -781,7 +781,7 @@ mod tests {
         // multiple adjustment interest rate
         {
             // timestamp [90 -> 31 -> 62]
-            let total_debt = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
             let current_timestamp = 90;
             let mut state = state.clone();
             let mut usd = usd.clone();
