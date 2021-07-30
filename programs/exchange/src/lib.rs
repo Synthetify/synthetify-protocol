@@ -1318,9 +1318,9 @@ pub struct WithdrawSwapTax<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
     #[account(mut)]
-    pub to: AccountInfo<'info>,
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&WithdrawSwapTax<'info>>
