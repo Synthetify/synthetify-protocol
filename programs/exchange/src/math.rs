@@ -1261,6 +1261,7 @@ mod tests {
         }
         // xBTC -> xUSD
         {
+            // 0.89 BTC
             let xbtc_amount = 89 * 10u64.pow((xbtc_decimal - 2).into());
             let xusd_amount = 35_000 * 10u64.pow(xusd_decimal.into());
             let value_difference_in_usd = calculate_value_difference_in_usd(
