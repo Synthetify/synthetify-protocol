@@ -1014,7 +1014,21 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn withdraw_swap_tax(ctx: Context<WithdrawSwapTax>, amount: u64) -> Result<()> {
+        msg!("Synthetify: WITHDRAW SWAP TAX");
+        let state = &mut ctx.accounts.state.load_mut()?;
 
+        // check valid amount / max amount = u64::MAX
+        state.pool_fee = state.pool_fee.checked_sub(amount).unwrap();
+
+        // Mint xUSD to user
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, amount)?;
+        Ok(())
+    }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
@@ -1291,6 +1305,33 @@ pub struct AddNewAsset<'info> {
     pub signer: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
+}
+#[derive(Accounts)]
+pub struct WithdrawSwapTax<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub usd_token: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    #[account(mut)]
+    pub to: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&WithdrawSwapTax<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+{
+    fn from(accounts: &WithdrawSwapTax<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.usd_token.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
