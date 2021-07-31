@@ -12,10 +12,15 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
   DEFAULT_PUBLIC_KEY,
-  U64_MAX
+  U64_MAX,
+  createAccountWithCollateral,
+  mulByPercentage,
+  calculateAmountAfterFee,
+  calculateFee,
+  calculateSwapTax
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
-import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { ERRORS, ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Asset, AssetsList, Collateral, Synthetic } from '@synthetify/sdk/src/exchange'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
@@ -683,6 +688,76 @@ describe('admin', () => {
         [wallet, EXCHANGE_ADMIN],
         connection
       )
+      it('swap should increase swap tax reserves', async () => {
+        const collateralAmount = new BN(90 * 1e6)
+        const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+          await createAccountWithCollateral({
+            reserveAddress: reserveAccount,
+            collateralToken,
+            exchangeAuthority,
+            exchange,
+            collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+            amount: collateralAmount
+          })
+
+        // create usd account
+        const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+        const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+        // We can mint max 9 * 1e6
+        const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
+        await exchange.mint({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          to: usdTokenAccount,
+          signers: [accountOwner]
+        })
+        const userCollateralTokenAccountBeforeSwap = (
+          await collateralToken.getAccountInfo(userCollateralTokenAccount)
+        ).amount
+        const effectiveFee = toEffectiveFee(
+          exchange.state.fee,
+          userCollateralTokenAccountBeforeSwap
+        )
+
+        const assetsListData = await exchange.getAssetsList(assetsList)
+
+        await exchange.swap({
+          exchangeAccount,
+          amount: usdMintAmount,
+          owner: accountOwner.publicKey,
+          userTokenAccountIn: usdTokenAccount,
+          userTokenAccountFor: btcTokenAccount,
+          tokenFor: btcToken.publicKey,
+          tokenIn: assetsListData.synthetics[0].assetAddress,
+          signers: [accountOwner]
+        })
+        usdSynthetic = assetsListData.synthetics[0]
+        btcSynthetic = assetsListData.synthetics.find((a) =>
+          a.assetAddress.equals(btcToken.publicKey)
+        ) as Synthetic
+        usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
+        btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+
+        const btcAmountOut = calculateAmountAfterFee(
+          usdAsset,
+          btcAsset,
+          usdSynthetic,
+          btcSynthetic,
+          effectiveFee,
+          usdMintAmount
+        )
+        totalFee = calculateFee(
+          usdAsset,
+          usdSynthetic,
+          usdMintAmount,
+          btcAsset,
+          btcSynthetic,
+          btcAmountOut
+        )
+        swapTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
+      })
     })
   })
 })
