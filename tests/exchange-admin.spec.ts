@@ -15,9 +15,8 @@ import {
   U64_MAX
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
-import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { Asset, AssetsList, Collateral, Synthetic } from '@synthetify/sdk/src/exchange'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
@@ -353,7 +352,7 @@ describe('admin', () => {
       // Check new asset is included in asset list
       const addedNewAsset = afterAssetList.assets.find((a) =>
         a.feedAddress.equals(newAssetFeedPublicKey)
-      )
+      ) as Asset
       // Check new asset exist
       assert.ok(addedNewAsset)
 
@@ -397,7 +396,7 @@ describe('admin', () => {
 
       const addedSynthetic = afterAssetList.synthetics.find((a) =>
         a.assetAddress.equals(newSynthetic.publicKey)
-      )
+      ) as Synthetic
       // Length should be increased by 1
       assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
 
@@ -466,7 +465,7 @@ describe('admin', () => {
 
       const addedCollateral = afterAssetList.collaterals.find((a) =>
         a.collateralAddress.equals(newCollateral.publicKey)
-      )
+      ) as Collateral
       // Length should be increased by 1
       assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
 
@@ -640,6 +639,50 @@ describe('admin', () => {
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+  })
+  describe('#withdrawSwapTax()', async () => {
+    let healthFactor: BN
+    let usdAsset: Asset
+    let usdSynthetic: Synthetic
+    let btcAsset: Asset
+    let btcSynthetic: Synthetic
+    let btcToken: Token
+    let totalFee: BN
+    let swapTax: BN
+    let assetsListData: AssetsList
+    before(async () => {
+      healthFactor = new BN((await exchange.getState()).healthFactor)
+      btcToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const btcFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 50000,
+        expo: -9
+      })
+      const newAssetLimit = new BN(10).pow(new BN(18))
+
+      const addBtcIx = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: btcFeed
+      })
+      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      const addBtcSynthetic = await exchange.addSyntheticInstruction({
+        assetAddress: btcToken.publicKey,
+        assetsList,
+        decimals: 8,
+        maxSupply: newAssetLimit,
+        priceFeed: btcFeed
+      })
+      await signAndSend(
+        new Transaction().add(addBtcSynthetic),
+        [wallet, EXCHANGE_ADMIN],
+        connection
+      )
     })
   })
 })
