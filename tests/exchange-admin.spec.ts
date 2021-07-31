@@ -646,7 +646,7 @@ describe('admin', () => {
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
     })
   })
-  describe('#withdrawSwapTax()', async () => {
+  describe.only('#withdrawSwapTax()', async () => {
     let healthFactor: BN
     let usdAsset: Asset
     let usdSynthetic: Synthetic
@@ -688,76 +688,85 @@ describe('admin', () => {
         [wallet, EXCHANGE_ADMIN],
         connection
       )
-      it('swap should increase swap tax reserves', async () => {
-        const collateralAmount = new BN(90 * 1e6)
-        const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
-          await createAccountWithCollateral({
-            reserveAddress: reserveAccount,
-            collateralToken,
-            exchangeAuthority,
-            exchange,
-            collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-            amount: collateralAmount
-          })
-
-        // create usd account
-        const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-        const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
-
-        // We can mint max 9 * 1e6
-        const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
-        await exchange.mint({
-          amount: usdMintAmount,
-          exchangeAccount,
-          owner: accountOwner.publicKey,
-          to: usdTokenAccount,
-          signers: [accountOwner]
+    })
+    it('swap should increase swap tax reserves', async () => {
+      const collateralAmount = new BN(90 * 1e6)
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateral({
+          reserveAddress: reserveAccount,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount
         })
-        const userCollateralTokenAccountBeforeSwap = (
-          await collateralToken.getAccountInfo(userCollateralTokenAccount)
-        ).amount
-        const effectiveFee = toEffectiveFee(
-          exchange.state.fee,
-          userCollateralTokenAccountBeforeSwap
-        )
 
-        const assetsListData = await exchange.getAssetsList(assetsList)
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
-        await exchange.swap({
-          exchangeAccount,
-          amount: usdMintAmount,
-          owner: accountOwner.publicKey,
-          userTokenAccountIn: usdTokenAccount,
-          userTokenAccountFor: btcTokenAccount,
-          tokenFor: btcToken.publicKey,
-          tokenIn: assetsListData.synthetics[0].assetAddress,
-          signers: [accountOwner]
-        })
-        usdSynthetic = assetsListData.synthetics[0]
-        btcSynthetic = assetsListData.synthetics.find((a) =>
-          a.assetAddress.equals(btcToken.publicKey)
-        ) as Synthetic
-        usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
-        btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
-
-        const btcAmountOut = calculateAmountAfterFee(
-          usdAsset,
-          btcAsset,
-          usdSynthetic,
-          btcSynthetic,
-          effectiveFee,
-          usdMintAmount
-        )
-        totalFee = calculateFee(
-          usdAsset,
-          usdSynthetic,
-          usdMintAmount,
-          btcAsset,
-          btcSynthetic,
-          btcAmountOut
-        )
-        swapTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
+      // We can mint max 9 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
       })
+      const userCollateralTokenAccountBeforeSwap = (
+        await collateralToken.getAccountInfo(userCollateralTokenAccount)
+      ).amount
+      const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralTokenAccountBeforeSwap)
+
+      const assetsListData = await exchange.getAssetsList(assetsList)
+
+      await exchange.swap({
+        exchangeAccount,
+        amount: usdMintAmount,
+        owner: accountOwner.publicKey,
+        userTokenAccountIn: usdTokenAccount,
+        userTokenAccountFor: btcTokenAccount,
+        tokenFor: btcToken.publicKey,
+        tokenIn: assetsListData.synthetics[0].assetAddress,
+        signers: [accountOwner]
+      })
+      usdSynthetic = assetsListData.synthetics[0]
+      btcSynthetic = assetsListData.synthetics.find((a) =>
+        a.assetAddress.equals(btcToken.publicKey)
+      ) as Synthetic
+      usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
+      btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
+
+      const btcAmountOut = calculateAmountAfterFee(
+        usdAsset,
+        btcAsset,
+        usdSynthetic,
+        btcSynthetic,
+        effectiveFee,
+        usdMintAmount
+      )
+      totalFee = calculateFee(
+        usdAsset,
+        usdSynthetic,
+        usdMintAmount,
+        btcAsset,
+        btcSynthetic,
+        btcAmountOut
+      )
+      swapTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
+    })
+    it('should withdraw swap tax', async () => {
+      const accountOwner = new Account()
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: new BN(0),
+        to: usdTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const userUsdAccountAmount = await usdToken.getAccountInfo(usdTokenAccount)
     })
   })
 })
