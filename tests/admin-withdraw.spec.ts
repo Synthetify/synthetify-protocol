@@ -131,6 +131,7 @@ describe('admin', () => {
     let totalFee: BN
     let swapTax: BN
     let adminUsdTokenAccount: PublicKey
+    let firstWithdrawTaxAmount: BN
     before(async () => {
       healthFactor = new BN((await exchange.getState()).healthFactor)
       btcToken = await createToken({
@@ -261,20 +262,45 @@ describe('admin', () => {
       assert.ok(swapTaxReserveBeforeWithdraw.eq(swapTax))
 
       // withdraw 1/10 swap tax
-      const toWithdrawTax = swapTax.divn(10)
+      firstWithdrawTaxAmount = swapTax.divn(10)
       const ix = await exchange.withdrawSwapTaxInstruction({
-        amount: toWithdrawTax,
+        amount: firstWithdrawTaxAmount,
         to: adminUsdTokenAccount
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       // admin xUSD balance should be increased by swap tax
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
-      assert.ok(userUsdAccountAfterWithdraw.amount.eq(toWithdrawTax))
+      assert.ok(userUsdAccountAfterWithdraw.amount.eq(firstWithdrawTaxAmount))
 
       // swapTaxReserve should be decreased by toWithdrawTax
       const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveAfterWithdraw.eq(swapTax.sub(toWithdrawTax)))
+      assert.ok(swapTaxReserveAfterWithdraw.eq(swapTax.sub(firstWithdrawTaxAmount)))
+    })
+    it('should withdraw all swap tax', async () => {
+      // admin xUSD balance should be 0
+      const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      assert.ok(userUsdAccountBeforeWithdraw.amount.eq(firstWithdrawTaxAmount))
+
+      // swapTaxReserve should be equals swap tax
+      const swapTaxReserveBeforeWithdraw = (await exchange.getState()).swapTaxReserve
+      assert.ok(swapTaxReserveBeforeWithdraw.eq(swapTax.sub(firstWithdrawTaxAmount)))
+
+      // withdraw rest of swap tax
+      const toWithdrawTax = U64_MAX
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: toWithdrawTax,
+        to: adminUsdTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      // admin xUSD balance should be equals all swap tax
+      const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      assert.ok(userUsdAccountAfterWithdraw.amount.eq(swapTax))
+
+      // swapTaxReserve should be 0
+      const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
+      assert.ok(swapTaxReserveAfterWithdraw.eqn(0))
     })
   })
 })
