@@ -1577,6 +1577,11 @@
       "code": 323,
       "name": "InsufficientValueTrade",
       "msg": "Insufficient value trade"
+    },
+    {
+      "code": 324,
+      "name": "InsufficientAmountAdminWithdraw",
+      "msg": "Insufficient amount admin withdraw"
     }
   ]
 }

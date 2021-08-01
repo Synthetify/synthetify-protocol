@@ -1021,15 +1021,23 @@ pub mod exchange {
     pub fn withdraw_swap_tax(ctx: Context<WithdrawSwapTax>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW SWAP TAX");
         let state = &mut ctx.accounts.state.load_mut()?;
+        let mut actual_amount = amount;
 
-        // check valid amount / max amount = u64::MAX
-        state.swap_tax_reserve = state.swap_tax_reserve.checked_sub(amount).unwrap();
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount = state.swap_tax_reserve;
+        }
+        // check valid amount
+        if actual_amount > state.swap_tax_reserve {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+        state.swap_tax_reserve = state.swap_tax_reserve.checked_sub(actual_amount).unwrap();
 
-        // Mint xUSD to user
+        // Mint xUSD to admin
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, amount)?;
+        token::mint_to(mint_cpi_ctx, actual_amount)?;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
