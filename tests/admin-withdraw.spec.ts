@@ -19,7 +19,7 @@ import {
   U64_MAX
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { ERRORS, toEffectiveFee } from '@synthetify/sdk/src/utils'
+import { ERRORS, ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Asset, Synthetic } from '@synthetify/sdk/src/exchange'
 
 describe('admin', () => {
@@ -319,6 +319,16 @@ describe('admin', () => {
       // swapTaxReserve should be 0
       const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
       assert.ok(swapTaxReserveAfterWithdraw.eq(swapTaxReserveBeforeWithdraw))
+    })
+    it('withdraw too much from admin tax reserve should result failed', async () => {
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: swapTax.muln(2),
+        to: adminUsdTokenAccount
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
+      )
     })
   })
 })
