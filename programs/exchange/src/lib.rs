@@ -1822,6 +1822,8 @@ pub enum ErrorCode {
     AlreadyACollateral,
     #[msg("Insufficient value trade")]
     InsufficientValueTrade,
+    #[msg("Insufficient amount admin withdraw")]
+    InsufficientAmountAdminWithdraw,
 }
 
 // Access control modifiers.
