@@ -14,10 +14,11 @@ import {
   mulByPercentage,
   calculateAmountAfterFee,
   calculateFee,
-  calculateSwapTax
+  calculateSwapTax,
+  assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { toEffectiveFee } from '@synthetify/sdk/src/utils'
+import { ERRORS, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Asset, AssetsList, Synthetic } from '@synthetify/sdk/src/exchange'
 
 describe('admin', () => {
@@ -229,7 +230,20 @@ describe('admin', () => {
       )
       swapTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
     })
-    it('should withdraw swap tax', async () => {
+    it('withdraw swap tax should fail without admin signature', async () => {
+      const accountOwner = new Account()
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: new BN(0),
+        to: usdTokenAccount
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should withdraw some swap tax', async () => {
       const accountOwner = new Account()
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
@@ -237,15 +251,17 @@ describe('admin', () => {
       const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdAccountBeforeWithdraw.amount.eqn(0))
 
+      // withdraw 1/10 swap tax
+      const toWithdraw = swapTax.divn(10)
       const ix = await exchange.withdrawSwapTaxInstruction({
-        amount: swapTax,
+        amount: toWithdraw,
         to: usdTokenAccount
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       // admin xUSD balance should be increased by swap tax
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(usdTokenAccount)
-      assert.ok(userUsdAccountAfterWithdraw.amount.eq(swapTax))
+      assert.ok(userUsdAccountAfterWithdraw.amount.eq(toWithdraw))
     })
   })
 })
