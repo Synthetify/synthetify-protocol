@@ -192,6 +192,22 @@ describe('admin', () => {
       assert.ok(state.liquidationRate === newLiquidationRate)
     })
   })
+  describe('#setSwapTaxRatio', async () => {
+    it('should set swap tax ratio', async () => {
+      // TODO
+    })
+    it('set swap tax ratio should fail without admin signature', async () => {
+      // TODO
+    })
+  })
+  describe('#setDebtInterestRate', async () => {
+    it('should set debt interest rate', async () => {
+      // TODO
+    })
+    it('set debt interest rate should fail without admin signature', async () => {
+      // TODO
+    })
+  })
   describe('#setLiquidationPenalties()', async () => {
     it('Fail without admin signature', async () => {
       const penaltyToExchange = 10

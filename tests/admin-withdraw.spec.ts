@@ -166,12 +166,6 @@ describe('admin', () => {
       )
       adminUsdTokenAccount = await usdToken.createAccount(new Account().publicKey)
     })
-    it('should set swap tax ratio', async () => {
-      // TODO
-    })
-    it('set swap tax ratio should fail without admin signature', async () => {
-      // TODO
-    })
     it('swap should increase swap tax reserves', async () => {
       const collateralAmount = new BN(90 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
