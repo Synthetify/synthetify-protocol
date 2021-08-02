@@ -1214,9 +1214,9 @@ pub struct AssetsList {
     pub head_assets: u8,
     pub head_collaterals: u8,
     pub head_synthetics: u8,
-    pub assets: [Asset; 256],
-    pub collaterals: [Collateral; 256],
-    pub synthetics: [Synthetic; 256],
+    pub assets: [Asset; 255],
+    pub collaterals: [Collateral; 255],
+    pub synthetics: [Synthetic; 255],
 }
 impl Default for AssetsList {
     #[inline]
@@ -1228,13 +1228,13 @@ impl Default for AssetsList {
             head_synthetics: 0,
             assets: [Asset {
                 ..Default::default()
-            }; 256],
+            }; 255],
             collaterals: [Collateral {
                 ..Default::default()
-            }; 256],
+            }; 255],
             synthetics: [Synthetic {
                 ..Default::default()
-            }; 256],
+            }; 255],
         }
     }
 }
@@ -1254,9 +1254,9 @@ impl AssetsList {
     fn split_borrow(
         &mut self,
     ) -> (
-        &mut [Asset; 256],
-        &mut [Collateral; 256],
-        &mut [Synthetic; 256],
+        &mut [Asset; 255],
+        &mut [Collateral; 255],
+        &mut [Synthetic; 255],
     ) {
         (
             &mut self.assets,
