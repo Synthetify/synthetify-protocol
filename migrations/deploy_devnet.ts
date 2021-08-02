@@ -7,7 +7,7 @@ import {
   sleep,
   SYNTHETIFY_ECHANGE_SEED
 } from '../tests/utils'
-import { admin } from './testAdmin'
+import { MINTER } from './minter'
 import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
@@ -69,7 +69,7 @@ const main = async () => {
   const collateralToken = await createToken({
     connection,
     payer: wallet,
-    mintAuthority: admin.publicKey
+    mintAuthority: MINTER.publicKey
   })
   console.log('Create Accounts')
   await sleep(2000)

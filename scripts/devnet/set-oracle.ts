@@ -10,15 +10,21 @@ const provider = Provider.local('https://api.devnet.solana.com', {
 })
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
+
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
-
-  const ix = await exchange.setHealthFactorInstruction(new BN(90))
-
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
-
   const state = await exchange.getState()
-  console.log(state.healthFactor)
+  const assetsList = await exchange.getAssetsList(state.assetsList)
+
+  const oldPriceFeed = assetsList.assets[assetsList.collaterals[0].assetIndex].feedAddress
+  const newPriceFeed = new PublicKey('992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs')
+
+  const ix = await exchange.setPriceFeedInstruction({
+    assetsList: state.assetsList,
+    oldPriceFeed,
+    priceFeed: newPriceFeed
+  })
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()

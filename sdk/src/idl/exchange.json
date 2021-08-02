@@ -947,6 +947,37 @@
       ]
     },
     {
+      "name": "setCollateralRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "addSynthetic",
       "accounts": [
         {
@@ -1016,7 +1047,7 @@
                 {
                   "defined": "Asset"
                 },
-                30
+                256
               ]
             }
           },
@@ -1027,7 +1058,7 @@
                 {
                   "defined": "Collateral"
                 },
-                30
+                256
               ]
             }
           },
@@ -1038,7 +1069,7 @@
                 {
                   "defined": "Synthetic"
                 },
-                30
+                256
               ]
             }
           }
@@ -1087,7 +1118,7 @@
                 {
                   "defined": "CollateralEntry"
                 },
-                10
+                32
               ]
             }
           }
@@ -1158,6 +1189,18 @@
           {
             "name": "accountVersion",
             "type": "u8"
+          },
+          {
+            "name": "debtInterestRate",
+            "type": "u8"
+          },
+          {
+            "name": "accumulatedDebtInterest",
+            "type": "u64"
+          },
+          {
+            "name": "lastDebtAdjustment",
+            "type": "i64"
           },
           {
             "name": "staking",
@@ -1488,6 +1531,11 @@
       "code": 322,
       "name": "AlreadyACollateral",
       "msg": "Asset is already a collateral"
+    },
+    {
+      "code": 323,
+      "name": "InsufficientValueTrade",
+      "msg": "Insufficient value trade"
     }
   ]
 }

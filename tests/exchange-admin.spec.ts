@@ -18,6 +18,7 @@ import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral } from '../sdk/lib/exchange'
 import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
   const provider = anchor.Provider.local()
@@ -117,6 +118,10 @@ describe('admin', () => {
     assert.ok(state.healthFactor === 50)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
+    assert.ok(state.swapTax === 20)
+    assert.ok(state.poolFee.eq(new BN(0)))
+    assert.ok(state.debtInterestRate === 10)
+    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
     assert.ok(state.liquidationRate === 20)
     assert.ok(state.penaltyToLiquidator === 5)
     assert.ok(state.penaltyToExchange === 5)
@@ -141,7 +146,7 @@ describe('admin', () => {
 
     // USD token address
     const usdAsset = assetsListData.assets[0]
-    assert.ok(usdAsset.price.eq(new BN(1e6)))
+    assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
 
     // xUSD checks
     const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
@@ -564,6 +569,32 @@ describe('admin', () => {
       )
     })
   })
+  describe('#setCollateralRatio()', async () => {
+    it('Should set new collateral ratio for asset', async () => {
+      const newCollateralRatio = 99
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      assert.ok(collateralBefore.collateralRatio !== newCollateralRatio)
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.ok(collateralAfter.collateralRatio === newCollateralRatio)
+    })
+    it('Fail without admin signature', async () => {
+      const newCollateralRatio = 99
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+    })
+  })
   describe('#setAssetsPrices()', async () => {
     const newPrice = 6
     it('Should not change prices', async () => {
@@ -605,7 +636,7 @@ describe('admin', () => {
       const collateralAsset = assetList.assets[1]
 
       // Check new price
-      assert.ok(collateralAsset.price.eq(new BN(newPrice * 1e6)))
+      assert.ok(collateralAsset.price.eq(new BN(newPrice).mul(new BN(10 ** ORACLE_OFFSET))))
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)

@@ -8,17 +8,15 @@ const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
+const COLLATERAL_ADDRESS = new PublicKey('XYZ')
+const NEW_COLLATERAL_RATIO = 20
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
-
-  const ix = await exchange.setHealthFactorInstruction(new BN(90))
-
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
-
   const state = await exchange.getState()
-  console.log(state.healthFactor)
+  const ix = await exchange.setCollateralRatio(COLLATERAL_ADDRESS, NEW_COLLATERAL_RATIO)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()

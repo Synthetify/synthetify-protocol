@@ -11,8 +11,9 @@ import {
 import { Asset, AssetsList, Collateral, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 6
+export const ORACLE_OFFSET = 8
 export const ACCURACY = 6
+// hex code must be at the end of message
 export enum ERRORS {
   SIGNATURE = 'Error: Signature verification failed',
   SIGNER = 'Error: unknown signer',
@@ -42,7 +43,10 @@ export enum ERRORS_EXCHANGE {
   INITIALIZED = '0x13d',
   UNINITIALIZED = '0x13e',
   NO_ASSET_FOUND = '0x13f',
-  MAX_SUPPLY = '0x140'
+  MAX_SUPPLY = '0x140',
+  NOT_COLLATERAL = '0x141',
+  ALREADY_COLLATERAL = '0x142',
+  INSUFFICIENT_VALUE_TRADE = '0x143'
 }
 export const signAndSend = async (
   tx: Transaction,
@@ -86,8 +90,7 @@ export const calculateLiquidation = (
   ).add(maxAmount)
 
   const seizedInToken = seizedCollateralInUsd
-    .muln(10 ** ORACLE_OFFSET)
-    .muln(10 ** (collateral.decimals - ACCURACY))
+    .mul(new BN(10).pow(new BN(collateral.decimals + ORACLE_OFFSET - ACCURACY)))
     .div(asset.price)
 
   const collateralToExchange = divUp(
@@ -134,6 +137,63 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
         .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
+}
+export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
+  // decimals of token = 6
+  const ONE_SNY = new BN(1000000)
+  let discount = 0
+  switch (true) {
+    case userCollateralBalance.lt(ONE_SNY.muln(100)):
+      discount = 0
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(200)):
+      discount = 1
+      break
+
+    case userCollateralBalance.lt(ONE_SNY.muln(500)):
+      discount = 2
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(1000)):
+      discount = 3
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(2000)):
+      discount = 4
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(5000)):
+      discount = 5
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(10000)):
+      discount = 6
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(25000)):
+      discount = 7
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(50000)):
+      discount = 8
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(100000)):
+      discount = 9
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(250000)):
+      discount = 10
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(500000)):
+      discount = 11
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(1000000)):
+      discount = 12
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(2000000)):
+      discount = 13
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(5000000)):
+      discount = 14
+      break
+    case userCollateralBalance.lt(ONE_SNY.muln(10000000)):
+      discount = 15
+      break
+  }
+  return Math.ceil(fee - (fee * discount) / 100)
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))

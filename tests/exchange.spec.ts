@@ -21,18 +21,17 @@ import {
   calculateDebt,
   SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
-  toEffectiveFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
   mulByPercentage,
   createCollateralToken,
   calculateFee,
   calculateSwapTax,
-  calculateFee
+  U64_MAX
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
-import { ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
+import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, Synthetic } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
@@ -126,6 +125,10 @@ describe('exchange', () => {
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
+    assert.ok(state.swapTax === 20)
+    assert.ok(state.poolFee.eq(new BN(0)))
+    assert.ok(state.debtInterestRate === 10)
+    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.accountVersion === 0)
   })
@@ -484,7 +487,7 @@ describe('exchange', () => {
       // Withdraw
       await exchange.withdraw({
         reserveAccount: snyReserve,
-        amount: withdrawAmount,
+        amount: U64_MAX,
         exchangeAccount,
         owner: accountOwner.publicKey,
         userCollateralAccount: userCollateralTokenAccount,
@@ -700,7 +703,7 @@ describe('exchange', () => {
       )
     })
     it('Swap usd->btc->eth with 0% discount', async () => {
-      const collateralAmount = new BN(1000 * 1e6)
+      const collateralAmount = new BN(90 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
           reserveAddress: snyReserve,
@@ -715,8 +718,8 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
-      // We can mint max 200 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      // We can mint max 9 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1011,7 +1014,7 @@ describe('exchange', () => {
       )
     })
     it('Swap usd->btc->eth with 3% discount', async () => {
-      const collateralAmount = new BN(10000 * 1e6)
+      const collateralAmount = new BN(600 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
           reserveAddress: snyReserve,
@@ -1026,8 +1029,8 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
-      // We can mint max 2000 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      // We can mint max 60 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(60 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1201,6 +1204,56 @@ describe('exchange', () => {
           signers: [accountOwner]
         }),
         ERRORS_EXCHANGE.WASH_TRADE
+      )
+    })
+    it('Swap below minimum trade value should fail', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateral({
+          reserveAddress: snyReserve,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount
+        })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // mint 10 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const btcSynthetic = assetsListData.synthetics.find((a) =>
+        a.assetAddress.equals(btcToken.publicKey)
+      )
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: new BN(50),
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: btcTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: btcSynthetic.assetAddress,
+          tokenIn: assetsListData.synthetics[0].assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.INSUFFICIENT_VALUE_TRADE
       )
     })
     it('Swap over max supply', async () => {

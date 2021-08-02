@@ -424,6 +424,16 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setCollateralRatio(collateralAddress: PublicKey, newRatio: number) {
+    return await (this.program.instruction.setCollateralRatio(newRatio, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList: this.state.assetsList,
+        collateralAddress: collateralAddress
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -1023,6 +1033,9 @@ export interface ExchangeState {
   fee: number
   swapTax: number
   poolFee: BN
+  debtInterestRate: number
+  accumulatedDebtInterest: BN
+  lastDebtAdjustment: BN
   liquidationRate: number
   penaltyToLiquidator: number
   penaltyToExchange: number

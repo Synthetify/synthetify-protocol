@@ -4,15 +4,13 @@ import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
+import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
-import assert from 'assert'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
-export const ORACLE_OFFSET = 6
-export const ACCURACY = 6
 export const U64_MAX = new BN('18446744073709551615')
 
 export const tou64 = (amount) => {
@@ -20,7 +18,6 @@ export const tou64 = (amount) => {
   return new u64(amount.toString())
 }
 export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
-  console.log()
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -36,21 +33,6 @@ export const calculateDebt = (assetsList: AssetsList) => {
     )
   }, new BN(0))
 }
-export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
-  // decimals of token = 6
-  // we want discounts start from 2000 -> 4000 ...
-  const scaledBalance = userCollateralBalance.div(new BN(10 ** (6 + 3)))
-  if (scaledBalance.eq(new BN(0))) {
-    return fee
-  } else {
-    const discount = Math.log2(scaledBalance.toNumber())
-    if (discount > 20) {
-      return Math.ceil(fee - (fee * 20) / 100)
-    } else {
-      return Math.ceil(fee - (fee * discount) / 100)
-    }
-  }
-}
 export const calculateAmountAfterFee = (
   assetIn: Asset,
   assetFor: Asset,
@@ -58,18 +40,18 @@ export const calculateAmountAfterFee = (
   syntheticFor: Synthetic,
   effectiveFee: number,
   amount: BN
-) => {
+): BN => {
   const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  const decimal_change = 10 ** (syntheticFor.decimals - syntheticIn.decimals)
-  if (decimal_change < 1) {
-    return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
-      .div(new BN(1 / decimal_change))
+  let decimalDifference = syntheticFor.decimals - syntheticIn.decimals
+  let scaledAmountBeforeFee
+  if (decimalDifference < 0) {
+    const decimalChange = new BN(10).pow(new BN(-decimalDifference))
+    scaledAmountBeforeFee = amountOutBeforeFee.div(decimalChange)
   } else {
-    return amountOutBeforeFee
-      .sub(amountOutBeforeFee.mul(new BN(effectiveFee)).div(new BN(100000)))
-      .mul(new BN(decimal_change))
+    const decimalChange = new BN(10).pow(new BN(decimalDifference))
+    scaledAmountBeforeFee = amountOutBeforeFee.mul(decimalChange)
   }
+  return scaledAmountBeforeFee.sub(scaledAmountBeforeFee.muln(effectiveFee).div(new BN(100000)))
 }
 export const calculateFee = (
   assetFrom: Asset,
@@ -79,8 +61,12 @@ export const calculateFee = (
   synthetic: Synthetic,
   amount: BN
 ): BN => {
-  const valueFrom = assetFrom.price.mul(amountFrom).div(new BN(10 ** syntheticFrom.decimals))
-  const value = asset.price.mul(amount).div(new BN(10 ** synthetic.decimals))
+  const valueFrom = assetFrom.price
+    .mul(amountFrom)
+    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
+  const value = asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
   return valueFrom.sub(value)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
@@ -407,7 +393,8 @@ export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
       err = e.toString()
     }
     if (word) {
-      if (err.indexOf(word) === -1) {
+      const regex = new RegExp(`${word}$`)
+      if (!regex.test(err)) {
         console.log(err)
         throw new Error('Invalid Error message')
       }
@@ -429,6 +416,19 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
   while (true) {
     if ((await connection.getSlot()) >= slot) return
 
+    await sleep(400)
+  }
+}
+
+export const skipTimestamps = async (
+  timestampDiff: number,
+  connection: Connection
+): Promise<null> => {
+  const startTimestamp = await connection.getBlockTime(await connection.getSlot())
+  const finishedTimestamp = startTimestamp + timestampDiff
+  while (true) {
+    const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+    if (currentTimestamp >= finishedTimestamp) return
     await sleep(400)
   }
 }
