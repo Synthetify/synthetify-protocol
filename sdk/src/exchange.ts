@@ -776,7 +776,7 @@ export class Exchange {
     })) as TransactionInstruction
   }
   public async withdrawAccumulatedDebtInterestInstruction({ amount, to }: AdminWithdraw) {
-    return (await this.program.instruction.withdrawAccumulatedDebtInterestInstruction(amount, {
+    return (await this.program.instruction.withdrawAccumulatedDebtInterest(amount, {
       accounts: {
         state: this.stateAddress,
         admin: this.state.admin,
