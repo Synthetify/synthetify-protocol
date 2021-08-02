@@ -18,7 +18,10 @@ import {
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
-const ASSET_LIMIT = 256 // >=20 splits transaction
+// limited by MTU size
+const ASSET_LIMIT = 30 // >=20 splits transaction
+// limited by smart contract array size
+const HARD_LIMIT = 255
 
 describe('max collaterals', () => {
   const provider = anchor.Provider.local()
@@ -163,13 +166,15 @@ describe('max collaterals', () => {
       )
     assert.ok(sortedTokens.every((token) => token != undefined))
     assert.ok(
-      sortedTokens.every(({ token }, i) =>
-        assetsListAfter.collaterals[i + 2].collateralAddress.equals(token.publicKey)
+      sortedTokens.every((data, i) =>
+        assetsListAfter.collaterals[i + 2].collateralAddress.equals(
+          data?.token?.publicKey as PublicKey
+        )
       )
     )
 
-    tokens = tokens.concat(sortedTokens.map((i) => i.token))
-    reserves = reserves.concat(sortedTokens.map((i) => i.reserve))
+    tokens = tokens.concat(sortedTokens.map((i) => i?.token as Token))
+    reserves = reserves.concat(sortedTokens.map((i) => i?.reserve as PublicKey))
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -192,20 +197,6 @@ describe('max collaterals', () => {
     assert.equal(assetsListData.headAssets, ASSET_LIMIT)
     assert.equal(assetsListData.headCollaterals, ASSET_LIMIT - 1)
     assert.equal(assetsListData.headSynthetics, 2)
-  })
-  it('creating assets over limit', async () => {
-    await assertThrowsAsync(
-      createCollateralToken({
-        exchange,
-        exchangeAuthority,
-        oracleProgram,
-        connection,
-        wallet,
-        price: 1,
-        decimals: 6,
-        collateralRatio: 50
-      })
-    )
   })
   it('deposit', async () => {
     const accountOwner = new Account()
@@ -387,5 +378,36 @@ describe('max collaterals', () => {
     assert.ok((await usdToken.getAccountInfo(userTokenAccountIn)).amount.eq(new BN(0)))
     const { amount: amountFor } = await xbtcToken.getAccountInfo(userTokenAccountFor)
     assert.ok(!amountFor.eq(new BN(0)))
+  })
+  it('creating assets over limit', async () => {
+    HARD_LIMIT - ASSET_LIMIT
+
+    await Promise.all(
+      [...Array(HARD_LIMIT - ASSET_LIMIT).keys()].map(() =>
+        createCollateralToken({
+          exchange,
+          exchangeAuthority,
+          oracleProgram,
+          connection,
+          wallet,
+          price: 1,
+          decimals: 6,
+          collateralRatio: 50
+        })
+      )
+    )
+
+    await assertThrowsAsync(
+      createCollateralToken({
+        exchange,
+        exchangeAuthority,
+        oracleProgram,
+        connection,
+        wallet,
+        price: 1,
+        decimals: 6,
+        collateralRatio: 50
+      })
+    )
   })
 })
