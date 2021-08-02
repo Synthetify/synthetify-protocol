@@ -1776,7 +1776,7 @@ pub enum ErrorCode {
     NotCollateral,
     #[msg("Asset is already a collateral")]
     AlreadyACollateral,
-    #[msg("Swap amount is too small")]
+    #[msg("Insufficient value trade")]
     InsufficientValueTrade,
 }
 

@@ -1082,7 +1082,7 @@ mod tests {
         }
     }
     #[test]
-    fn test_calculate_swap_out_amount() -> Result<()> {
+    fn test_calculate_swap_out_amount() {
         {
             let asset_usd = Asset {
                 price: 1 * 10u64.pow(PRICE_OFFSET.into()),
@@ -1148,7 +1148,6 @@ mod tests {
             // fee should be 149,55 USD
             assert_eq!(swap_fee, 14955 * 10u64.pow(4));
         }
-        Ok(())
     }
     #[test]
     fn test_calculate_burned_shares() {
