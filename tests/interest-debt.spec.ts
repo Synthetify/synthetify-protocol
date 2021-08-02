@@ -11,12 +11,14 @@ import {
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateral,
-  skipTimestamps
+  skipTimestamps,
+  assertThrowsAsync
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { calculateDebt } from '../sdk/lib/utils'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { signAndSend } from '@synthetify/sdk'
+import { ERRORS } from '@synthetify/sdk/src/utils'
 
 describe('Interest debt accumulation', () => {
   const provider = anchor.Provider.local()
@@ -216,6 +218,19 @@ describe('Interest debt accumulation', () => {
     let firstWithdrawAmount: BN
     before(async () => {
       adminUsdTokenAccount = await usdToken.createAccount(new Account().publicKey)
+    })
+    it('withdraw accumulated interest debt should fail without admin signature', async () => {
+      const accountOwner = new Account()
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: new BN(0),
+        to: usdTokenAccount
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
     })
     it('admin should withdraw some accumulated interest debt', async () => {
       const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
