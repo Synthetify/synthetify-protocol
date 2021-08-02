@@ -17,7 +17,7 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Synthetic) => {
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {

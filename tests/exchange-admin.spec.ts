@@ -16,8 +16,8 @@ import {
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Collateral } from '../sdk/lib/exchange'
-import { ERRORS_EXCHANGE } from '../sdk/lib/utils'
+import { Asset, Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
+import { ERRORS_EXCHANGE } from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
@@ -118,8 +118,8 @@ describe('admin', () => {
     assert.ok(state.healthFactor === 50)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.swapTax === 20)
-    assert.ok(state.poolFee.eq(new BN(0)))
+    assert.ok(state.swapTaxRatio === 20)
+    assert.ok(state.swapTaxReserve.eq(new BN(0)))
     assert.ok(state.debtInterestRate === 10)
     assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
     assert.ok(state.liquidationRate === 20)
@@ -353,7 +353,7 @@ describe('admin', () => {
       // Check new asset is included in asset list
       const addedNewAsset = afterAssetList.assets.find((a) =>
         a.feedAddress.equals(newAssetFeedPublicKey)
-      )
+      ) as Asset
       // Check new asset exist
       assert.ok(addedNewAsset)
 
@@ -397,7 +397,7 @@ describe('admin', () => {
 
       const addedSynthetic = afterAssetList.synthetics.find((a) =>
         a.assetAddress.equals(newSynthetic.publicKey)
-      )
+      ) as Synthetic
       // Length should be increased by 1
       assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
 
@@ -466,7 +466,7 @@ describe('admin', () => {
 
       const addedCollateral = afterAssetList.collaterals.find((a) =>
         a.collateralAddress.equals(newCollateral.publicKey)
-      )
+      ) as Collateral
       // Length should be increased by 1
       assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
 
