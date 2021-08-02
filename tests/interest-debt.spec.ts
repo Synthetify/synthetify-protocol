@@ -12,7 +12,8 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateral,
   skipTimestamps,
-  assertThrowsAsync
+  assertThrowsAsync,
+  U64_MAX
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { calculateDebt } from '../sdk/lib/utils'
@@ -255,6 +256,30 @@ describe('Interest debt accumulation', () => {
       assert.ok(
         accumulatedDebtInterestAfterWithdraw.eq(expectedDebtInterest.sub(firstWithdrawAmount))
       )
+    })
+    it('should withdraw all swap tax', async () => {
+      const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      assert.ok(userUsdAccountBeforeWithdraw.amount.eq(firstWithdrawAmount))
+
+      const accumulatedDebtInterestBeforeWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+      assert.ok(
+        accumulatedDebtInterestBeforeWithdraw.eq(expectedDebtInterest.sub(firstWithdrawAmount))
+      )
+
+      const toWithdrawTax = U64_MAX
+      const ix = await exchange.withdrawAccumulatedDebtInterestInstruction({
+        amount: toWithdrawTax,
+        to: adminUsdTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      assert.ok(userUsdAccountAfterWithdraw.amount.eq(expectedDebtInterest))
+
+      const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+      assert.ok(accumulatedDebtInterestAfterWithdraw.eqn(0))
     })
   })
 })
