@@ -996,7 +996,7 @@ describe('exchange', () => {
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
 
       // 99.7$(IN value), 99.402$(OUT value)
-      // expected fee 0,3$ -> 3 * 10^5
+      // expected fee 0,298$ ->  298 * 10^3
       // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
       // 0,06$ -> 6 * 10^4
       const stateAfterSecondSwap = await exchange.getState()
@@ -1009,6 +1009,7 @@ describe('exchange', () => {
         ethSynthetic,
         ethAmountOut
       )
+      console.log(`totalFeeSecondSwap ${totalFeeSecondSwap}`)
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
