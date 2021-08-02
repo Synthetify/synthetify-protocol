@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey } from '@solana/web3.js'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network } from '@synthetify/sdk'
 
@@ -16,6 +16,7 @@ import {
 import { createPriceFeed } from './oracleUtils'
 import { calculateDebt } from '../sdk/lib/utils'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
+import { signAndSend } from '@synthetify/sdk'
 
 describe('Interest debt accumulation', () => {
   const provider = anchor.Provider.local()
@@ -204,5 +205,26 @@ describe('Interest debt accumulation', () => {
     assert.ok(
       stateAfterAdjustment.lastDebtAdjustment.lt(new BN(timestampBeforeAdjustment).addn(120))
     )
+  })
+  describe('withdraw accumulated interest debt', async () => {
+    let adminUsdTokenAccount: PublicKey
+    before(async () => {
+      adminUsdTokenAccount = await usdToken.createAccount(new Account().publicKey)
+    })
+    it('admin should withdraw some accumulated interest debt', async () => {
+      const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      const accumulatedDebtInterestBeforeWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+
+      const ix = await exchange.withdrawAccumulatedDebtInterestInstruction({
+        amount: new BN(0),
+        to: adminUsdTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+    })
   })
 })
