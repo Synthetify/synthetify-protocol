@@ -1783,55 +1783,55 @@ pub struct Init<'info> {
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
-    Unauthorized,
+    Unauthorized = 0,
     #[msg("Not synthetic USD asset")]
-    NotSyntheticUsd,
+    NotSyntheticUsd = 1,
     #[msg("Oracle price is outdated")]
-    OutdatedOracle,
+    OutdatedOracle = 2,
     #[msg("Mint limit")]
-    MintLimit,
+    MintLimit = 3,
     #[msg("Withdraw limit")]
-    WithdrawLimit,
+    WithdrawLimit = 4,
     #[msg("Invalid collateral_account")]
-    CollateralAccountError,
+    CollateralAccountError = 5,
     #[msg("Synthetic collateral is not supported")]
-    SyntheticCollateral,
+    SyntheticCollateral = 6,
     #[msg("Invalid Assets List")]
-    InvalidAssetsList,
+    InvalidAssetsList = 7,
     #[msg("Invalid Liquidation")]
-    InvalidLiquidation,
+    InvalidLiquidation = 8,
     #[msg("Invalid signer")]
-    InvalidSigner,
+    InvalidSigner = 9,
     #[msg("Wash trade")]
-    WashTrade,
+    WashTrade = 10,
     #[msg("Invalid exchange liquidation account")]
-    ExchangeLiquidationAccount,
+    ExchangeLiquidationAccount = 11,
     #[msg("Liquidation deadline not passed")]
-    LiquidationDeadline,
+    LiquidationDeadline = 12,
     #[msg("Program is currently Halted")]
-    Halted,
+    Halted = 13,
     #[msg("No rewards to claim")]
-    NoRewards,
+    NoRewards = 14,
     #[msg("Invalid fund_account")]
-    FundAccountError,
+    FundAccountError = 15,
     #[msg("Invalid version of user account")]
-    AccountVersion,
+    AccountVersion = 16,
     #[msg("Assets list already initialized")]
-    Initialized,
+    Initialized = 17,
     #[msg("Assets list is not initialized")]
-    Uninitialized,
+    Uninitialized = 18,
     #[msg("No asset with such address was found")]
-    NoAssetFound,
+    NoAssetFound = 19,
     #[msg("Asset max_supply crossed")]
-    MaxSupply,
+    MaxSupply = 20,
     #[msg("Asset is not collateral")]
-    NotCollateral,
+    NotCollateral = 21,
     #[msg("Asset is already a collateral")]
-    AlreadyACollateral,
+    AlreadyACollateral = 22,
     #[msg("Insufficient value trade")]
-    InsufficientValueTrade,
+    InsufficientValueTrade = 23,
     #[msg("Insufficient amount admin withdraw")]
-    InsufficientAmountAdminWithdraw,
+    InsufficientAmountAdminWithdraw = 24,
 }
 
 // Access control modifiers.
