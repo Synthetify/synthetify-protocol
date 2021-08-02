@@ -19,7 +19,7 @@ import { createPriceFeed } from './oracleUtils'
 import { calculateDebt } from '../sdk/lib/utils'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { signAndSend } from '@synthetify/sdk'
-import { ERRORS } from '@synthetify/sdk/src/utils'
+import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 
 describe('Interest debt accumulation', () => {
   const provider = anchor.Provider.local()
@@ -300,6 +300,16 @@ describe('Interest debt accumulation', () => {
 
       accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw)
       assert.ok(accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw))
+    })
+    it('withdraw too much from accumulated interest debt should result failed', async () => {
+      const ix = await exchange.withdrawSwapTaxInstruction({
+        amount: expectedDebtInterest.muln(2),
+        to: adminUsdTokenAccount
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
+      )
     })
   })
 })
