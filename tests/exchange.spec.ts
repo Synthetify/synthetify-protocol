@@ -1255,7 +1255,7 @@ describe('exchange', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const btcSynthetic = assetsListData.synthetics.find((a) =>
         a.assetAddress.equals(btcToken.publicKey)
-      )
+      ) as Synthetic
 
       await assertThrowsAsync(
         exchange.swap({
@@ -1357,7 +1357,7 @@ describe('exchange', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const btcSynthetic = assetsListData.synthetics.find((a) =>
         a.assetAddress.equals(btcToken.publicKey)
-      )
+      ) as Synthetic
 
       await assertThrowsAsync(
         exchange.swap({
