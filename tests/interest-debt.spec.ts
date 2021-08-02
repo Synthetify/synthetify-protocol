@@ -281,5 +281,25 @@ describe('Interest debt accumulation', () => {
         .accumulatedDebtInterest
       assert.ok(accumulatedDebtInterestAfterWithdraw.eqn(0))
     })
+    it('withdraw 0 accumulated interest debt should not have an effect', async () => {
+      const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      const accumulatedDebtInterestBeforeWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+
+      const ix = await exchange.withdrawAccumulatedDebtInterestInstruction({
+        amount: new BN(0),
+        to: adminUsdTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
+      assert.ok(userUsdAccountAfterWithdraw.amount.eq(userUsdAccountBeforeWithdraw.amount))
+
+      const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
+        .accumulatedDebtInterest
+
+      accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw)
+      assert.ok(accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw))
+    })
   })
 })
