@@ -3,18 +3,24 @@ module.exports = {
     'home',
     'whats-new',
     'faq',
-       {
+    {
       type: 'category',
       label: 'Protocol',
       collapsed: true,
-      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens', 'glossary'] 
+      items: ['overview', 'solana', 'synthetify-token', 'synthetic-tokens', 'glossary']
     },
     {
       type: 'category',
       label: 'User Guide',
       collapsed: true,
-      items: ['connect-to-wallet','faucet','staking', 'exchange']
+      items: ['connect-to-wallet', 'faucet', 'staking', 'exchange']
     },
-    'architecture-overview'
+    'architecture-overview',
+    {
+      type: 'category',
+      label: 'Technical side',
+      collapsed: true,
+      items: ['technical/introduction']
+    }
   ]
 }
