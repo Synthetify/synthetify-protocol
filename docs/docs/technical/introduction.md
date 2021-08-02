@@ -17,4 +17,3 @@ and running on [Solana](https://solana.com/) blockchain.
 ## SDK
 This part is written in **typescript** and is a wrapper for the smart contract.
 It takes care of most low-level aspects such as signing transaction and storing constant addresses making writing code easier.
-
