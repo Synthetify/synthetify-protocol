@@ -496,7 +496,7 @@ pub mod exchange {
             &synthetics[synthetic_for_index],
             amount,
             effective_fee,
-        )?;
+        );
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1776,8 +1776,8 @@ pub enum ErrorCode {
     NotCollateral,
     #[msg("Asset is already a collateral")]
     AlreadyACollateral,
-    #[msg("Swap amount is not big enough")]
-    AmountTooSmall,
+    #[msg("Swap amount is too small")]
+    InsufficientValueTrade,
 }
 
 // Access control modifiers.
