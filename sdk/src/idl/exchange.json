@@ -1070,6 +1070,37 @@
       ]
     },
     {
+      "name": "setSettlementSlot",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "syntheticAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "settlementSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "addSynthetic",
       "accounts": [
         {
@@ -1106,6 +1137,133 @@
         {
           "name": "decimals",
           "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "settleSynthetic",
+      "accounts": [
+        {
+          "name": "settlement",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenToSettle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "settlementReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "swapSettledSynthetic",
+      "accounts": [
+        {
+          "name": "settlement",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenToSettle",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userSettledTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userUsdAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settlementReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     }
@@ -1303,6 +1461,42 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settlement",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenInAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenOutAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "decimalsIn",
+            "type": "u8"
+          },
+          {
+            "name": "decimalsOut",
+            "type": "u8"
+          },
+          {
+            "name": "ratio",
+            "type": "u64"
           }
         ]
       }
@@ -1633,6 +1827,19 @@
       "code": 324,
       "name": "InsufficientAmountAdminWithdraw",
       "msg": "Insufficient amount admin withdraw"
+    },
+    {
+      "code": 325,
+      "name": "SettlementNotReached",
+      "msg": "Settlement slot not reached"
+    },
+    {
+      "code": 326,
+      "name": "UsdSettlement",
+      "msg": "Cannot settle xUSD"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "GjfFFZJx6rs6Ye5V33Veg7WGfwJ7tUgiix1xqnqPMrsv"
+  }
 }
