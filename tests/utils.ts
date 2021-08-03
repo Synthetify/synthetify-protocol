@@ -8,7 +8,7 @@ import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 
-export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
+export const SYNTHETIFY_EXCHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Keypair()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')

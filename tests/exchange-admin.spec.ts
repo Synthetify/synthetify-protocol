@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { Keypair, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   DEFAULT_PUBLIC_KEY,
   U64_MAX
@@ -30,7 +30,7 @@ describe('admin', () => {
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Account
+  const wallet = provider.wallet.payer as Keypair
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -40,7 +40,7 @@ describe('admin', () => {
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let reserveAccount: PublicKey
-  let CollateralTokenMinter: Account = wallet
+  let CollateralTokenMinter = wallet
   let nonce: number
   const stakingRoundLength = 10
   const amountPerRound = new BN(100)
@@ -48,7 +48,7 @@ describe('admin', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -339,7 +339,7 @@ describe('admin', () => {
   describe('#addNewAsset', async () => {
     it('Should add new asset ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const newAssetFeedPublicKey = new Account().publicKey
+      const newAssetFeedPublicKey = new Keypair().publicKey
       const ix = await exchange.addNewAssetInstruction({
         assetsList: assetsList,
         assetFeedAddress: newAssetFeedPublicKey
@@ -356,6 +356,7 @@ describe('admin', () => {
       )
       // Check new asset exist
       assert.ok(addedNewAsset)
+      addedNewAsset
 
       // Check new asset initial fields
       assert.ok(addedNewAsset.confidence === 0)
@@ -364,7 +365,7 @@ describe('admin', () => {
       assert.ok(addedNewAsset.price.eq(new BN(0)))
     }),
       it('Should fail without admin signature', async () => {
-        const newAssetFeedPublicKey = new Account().publicKey
+        const newAssetFeedPublicKey = new Keypair().publicKey
         const ix = await exchange.addNewAssetInstruction({
           assetsList: assetsList,
           assetFeedAddress: newAssetFeedPublicKey
@@ -482,8 +483,8 @@ describe('admin', () => {
       it('Should fail without admin signature', async () => {
         const beforeAssetList = await exchange.getAssetsList(assetsList)
         const assetForCollateral = beforeAssetList.assets[0]
-        const liquidationAccount = new Account()
-        const reserveAccount = new Account()
+        const liquidationAccount = new Keypair()
+        const reserveAccount = new Keypair()
         const collateralRatio = 150
         const reserveBalance = new BN(1000000)
         const decimals = 8
@@ -515,7 +516,7 @@ describe('admin', () => {
     it('Error should be thrown while setting new max supply', async () => {
       await assertThrowsAsync(
         exchange.setAssetMaxSupply({
-          assetAddress: new Account().publicKey,
+          assetAddress: new Keypair().publicKey,
           exchangeAdmin: EXCHANGE_ADMIN,
           assetsList,
           newMaxSupply: newAssetLimit
@@ -606,7 +607,7 @@ describe('admin', () => {
           return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
         })
 
-      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+      feedAddresses.push({ pubkey: new Keypair().publicKey, isWritable: false, isSigner: false })
       await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
       await assertThrowsAsync(

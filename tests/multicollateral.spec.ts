@@ -9,7 +9,7 @@ import {
   createAssetsList,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   mulByPercentage,
   createCollateralToken,
@@ -45,7 +45,7 @@ describe('max collaterals', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -199,7 +199,7 @@ describe('max collaterals', () => {
     assert.equal(assetsListData.headSynthetics, 2)
   })
   it('deposit', async () => {
-    const accountOwner = new Account()
+    const accountOwner = new Keypair()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     await waitForBeggingOfASlot(connection)
@@ -239,7 +239,7 @@ describe('max collaterals', () => {
     )
   })
   it('mint', async () => {
-    const accountOwner = new Account()
+    const accountOwner = new Keypair()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
     // Deposit collaterals
@@ -288,7 +288,7 @@ describe('max collaterals', () => {
     assert.ok(await (await usdToken.getAccountInfo(usdTokenAccount)).amount.eq(mintAmount))
   })
   it('withdraw', async () => {
-    const accountOwner = new Account()
+    const accountOwner = new Keypair()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
     const amount = new BN(10 * 1e6)
     const listOffset = 3
@@ -332,7 +332,7 @@ describe('max collaterals', () => {
     assert.equal((await exchange.getExchangeAccount(exchangeAccount)).head, 0)
   })
   it('swap', async () => {
-    const accountOwner = new Account()
+    const accountOwner = new Keypair()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
     const collateralAmount = new BN(1e13)
 

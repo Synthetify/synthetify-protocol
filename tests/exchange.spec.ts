@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
-  Account,
+  Keypair,
   PublicKey,
   sendAndConfirmRawTransaction,
   Transaction,
@@ -19,7 +19,7 @@ import {
   tou64,
   createAccountWithCollateral,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   calculateAmountAfterFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
@@ -56,7 +56,7 @@ describe('exchange', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -117,7 +117,7 @@ describe('exchange', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
@@ -133,7 +133,7 @@ describe('exchange', () => {
     assert.ok(state.accountVersion === 0)
   })
   it('Account Creation', async () => {
-    const accountOwner = new Account().publicKey
+    const accountOwner = new Keypair().publicKey
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner)
 
     const userExchangeAccount = await exchange.getExchangeAccount(exchangeAccount)
@@ -146,7 +146,7 @@ describe('exchange', () => {
   })
   describe('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
-      const accountOwner = new Account()
+      const accountOwner = new Keypair()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -193,7 +193,7 @@ describe('exchange', () => {
       assert.ok(assetListData.collaterals[0].reserveBalance.eq(amount))
     })
     it('Deposit collateral next', async () => {
-      const accountOwner = new Account()
+      const accountOwner = new Keypair()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -246,7 +246,7 @@ describe('exchange', () => {
       )
     })
     it('Deposit more than allowance', async () => {
-      const accountOwner = new Account()
+      const accountOwner = new Keypair()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -1591,7 +1591,7 @@ describe('exchange', () => {
   })
   describe('System Halted', async () => {
     it('#deposit()', async () => {
-      const accountOwner = new Account()
+      const accountOwner = new Keypair()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)

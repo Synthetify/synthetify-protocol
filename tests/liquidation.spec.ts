@@ -18,7 +18,7 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   tokenToUsdValue,
   assertThrowsAsync,
@@ -61,7 +61,7 @@ describe('liquidation', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce

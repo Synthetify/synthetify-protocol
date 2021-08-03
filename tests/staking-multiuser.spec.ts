@@ -10,7 +10,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   skipToSlot,
   mulByPercentage
@@ -49,7 +49,7 @@ describe('staking with multiple users', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
