@@ -1102,6 +1102,18 @@ mod tests {
             ..Default::default()
         };
         let fee = 300u32;
+        // should fail because swap value is too low
+        {
+            let result = calculate_swap_out_amount(
+                &asset_usd,
+                &asset_btc,
+                &synthetic_usd,
+                &synthetic_btc,
+                10,
+                fee,
+            );
+            assert!(result.is_err());
+        }
         {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_usd,
