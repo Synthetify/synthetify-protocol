@@ -1,7 +1,7 @@
 ---
-title: Introduction 
+title: Overview 
 
-slug: /technical/introduction
+slug: /technical/overview
 ---
 
 Synthetify consists of two main parts: [smart contract](#protocol-program) and [SDK](#sdk).
@@ -16,4 +16,4 @@ and running on [Solana](https://solana.com/) blockchain.
 
 ## SDK
 This part is written in **typescript** and is a wrapper for the smart contract.
-It takes care of most low-level aspects such as signing transaction and storing constant addresses making writing code easier.
+It takes care of most low-level aspects such as signing transaction and storing constant addresses making writing client code easier.

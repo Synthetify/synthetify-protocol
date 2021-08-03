@@ -20,7 +20,7 @@ module.exports = {
       type: 'category',
       label: 'Technical side',
       collapsed: true,
-      items: ['technical/introduction', 'technical/account-creation']
+      items: ['technical/overview', 'technical/account']
     }
   ]
 }

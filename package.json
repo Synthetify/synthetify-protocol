@@ -13,6 +13,7 @@
     "test:multi": "anchor test tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test tests/multicollateral.spec.ts",
     "build": "cd sdk && npm run build",
+    "docs": "cd docs && npm run start",
     "postinstall": "anchor build && cd sdk && npm install && npm run build"
   },
   "author": "Norbert Bodziony",
