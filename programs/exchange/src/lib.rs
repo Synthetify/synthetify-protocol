@@ -23,7 +23,7 @@ pub mod exchange {
 
     pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> ProgramResult {
         let exchange_account = &mut ctx.accounts.exchange_account.load_init()?;
-        exchange_account.owner = *ctx.accounts.admin.key;
+        exchange_account.owner = *ctx.accounts.owner.key;
         exchange_account.debt_shares = 0;
         exchange_account.version = 0;
         exchange_account.bump = bump;
@@ -1355,9 +1355,9 @@ pub struct New<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], payer=payer )]
+    #[account(init,seeds = [b"accountv1", owner.key.as_ref(), &[bump]], payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
-    pub admin: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,

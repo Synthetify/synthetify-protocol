@@ -167,7 +167,7 @@ export class Exchange {
       accounts: {
         exchangeAccount: account,
         rent: SYSVAR_RENT_PUBKEY,
-        admin: owner,
+        owner,
         payer: this.wallet.publicKey,
         systemProgram: SystemProgram.programId
       }

@@ -11,7 +11,7 @@
           "isSigner": false
         },
         {
-          "name": "admin",
+          "name": "owner",
           "isMut": false,
           "isSigner": false
         },
@@ -1537,8 +1537,5 @@
       "name": "InsufficientValueTrade",
       "msg": "Insufficient value trade"
     }
-  ],
-  "metadata": {
-    "address": "dPLuE2U5rLXnNqpxLidZaLSKPcstFQG1DxKrCnPm7F5"
-  }
+  ]
 }

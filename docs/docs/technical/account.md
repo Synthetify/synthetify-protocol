@@ -36,6 +36,29 @@ Which respectively are responsible for
 * **collaterals** - array of [collaterals](/docs/technical/collaterals) owned by account, up to 32 at the same time
 
 ### Account Creation
+
+Function creating Exchange Account is defined 
+[here](https://github.com/Synthetify/synthetify-protocol/blob/ef5e4a65e3009e8a957d3382fc67d3b721115af8/programs/exchange/src/lib.rs#L24-L33) 
+, it takes a single argument of bump (u8) and following _Context_
+
+    pub struct CreateExchangeAccount<'info> {
+        #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], payer=payer )]
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub admin: AccountInfo<'info>,
+        #[account(mut, signer)]
+        pub payer: AccountInfo<'info>,
+        pub rent: Sysvar<'info, Rent>,
+        pub system_program: AccountInfo<'info>,
+    }
+
+The __#[account(...)]__ parts is a [constraint](https://project-serum.github.io/anchor/tutorials/tutorial-2.html#defining-a-program) 
+implemented by [Anchor](https://project-serum.github.io/anchor/getting-started/introduction.html).
+
+
+* **exchange_account** - this is address of account, constrains make sure it is uninitialized, of the right version and correctness of _bump_
+* **admin** - 
+
+
 Using SDK you can simply use: 
      
     const exchangeAccount = await exchange.createExchangeAccount(ownersPublicKey)
