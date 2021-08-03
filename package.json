@@ -9,6 +9,7 @@
     "test:isolated-burn": " anchor test tests/isolated-burn.spec.ts",
     "test:liquidation": "anchor test tests/liquidation.spec.ts",
     "test:admin": "anchor test tests/exchange-admin.spec.ts",
+    "test:admin-withdraw": "anchor test tests/admin-withdraw.spec.ts",
     "test:staking": "anchor test tests/staking.spec.ts",
     "test:multi": "anchor test tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test tests/multicollateral.spec.ts",

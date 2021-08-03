@@ -3,8 +3,8 @@ use std::{cell::RefMut, convert::TryInto};
 use crate::*;
 
 // Min decimals for asset = 6
-pub const ACCURACY: u8 = 6;
-pub const PRICE_OFFSET: u8 = 6;
+pub const ACCURACY: u8 = 6; // xUSD decimal
+pub const PRICE_OFFSET: u8 = 8;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
 pub const MIN_SWAP_USD_VALUE: u64 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
@@ -174,7 +174,11 @@ pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
     return (price as u128)
         .checked_mul(amount as u128)
         .unwrap()
-        .checked_div(10u128.checked_pow(decimal as u32).unwrap())
+        .checked_div(
+            10u128
+                .checked_pow((decimal + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
         .unwrap() as u64;
 }
 pub fn calculate_value_difference_in_usd(
@@ -1110,26 +1114,26 @@ mod tests {
                 &asset_btc,
                 &synthetic_usd,
                 &synthetic_btc,
-                50000 * 10u64.pow(6),
+                50000 * 10u64.pow(ACCURACY.into()),
                 fee,
             );
             // out amount should be 0.997 BTC
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
 
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
                 &synthetic_btc,
                 &synthetic_usd,
-                1 * 10u64.pow(8),
+                1 * 10u64.pow(synthetic_btc.decimals.into()),
                 fee,
             );
             // out amount should be 49850 USD
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
-            assert_eq!(swap_fee, 150 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
 
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
@@ -1207,11 +1211,11 @@ mod tests {
         // decimal same as xUSD
         {
             let price = 3 * 10u64.pow(PRICE_OFFSET.into());
-            let amount = 2 * 10u64.pow(6);
-            let decimal = PRICE_OFFSET;
+            let amount = 2 * 10u64.pow(ACCURACY.into());
+            let decimal = ACCURACY;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 6 USD
-            assert_eq!(value_in_usd, 6 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 6 * 10u64.pow(ACCURACY.into()));
         }
         // decimal lower than xUSD
         {
@@ -1220,7 +1224,7 @@ mod tests {
             let decimal = 4;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 22400 USD
-            assert_eq!(value_in_usd, 22_400 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 22_400 * 10u64.pow(ACCURACY.into()));
         }
         // decimal bigger than xUSD
         {
@@ -1229,7 +1233,7 @@ mod tests {
             let decimal = 10;
             let value_in_usd = calculate_value_in_usd(price, amount, decimal);
             // should be 18200 USD
-            assert_eq!(value_in_usd, 18_200 * 10u64.pow(PRICE_OFFSET.into()));
+            assert_eq!(value_in_usd, 18_200 * 10u64.pow(ACCURACY.into()));
         }
     }
     #[test]
@@ -1241,8 +1245,8 @@ mod tests {
         let xusd_decimal = 6u8;
         // xUSD -> xBTC
         {
-            let xbtc_amount = 1 * 10u64.pow(8);
-            let xusd_amount = 28_999 * 10u64.pow(6);
+            let xbtc_amount = 1 * 10u64.pow(xbtc_decimal.into());
+            let xusd_amount = 28_999 * 10u64.pow(xusd_decimal.into());
 
             let value_difference_in_usd = calculate_value_difference_in_usd(
                 xbtc_price,
@@ -1253,15 +1257,13 @@ mod tests {
                 xusd_decimal,
             );
             // should be 1_001
-            assert_eq!(
-                value_difference_in_usd,
-                1_001 * 10u64.pow(PRICE_OFFSET as u32)
-            );
+            assert_eq!(value_difference_in_usd, 1_001 * 10u64.pow(ACCURACY.into()));
         }
         // xBTC -> xUSD
         {
-            let xbtc_amount = 89 * 10u64.pow(6);
-            let xusd_amount = 35_000 * 10u64.pow(6);
+            // 0.89 BTC
+            let xbtc_amount = 89 * 10u64.pow((xbtc_decimal - 2).into());
+            let xusd_amount = 35_000 * 10u64.pow(xusd_decimal.into());
             let value_difference_in_usd = calculate_value_difference_in_usd(
                 xusd_price,
                 xusd_amount,
@@ -1271,7 +1273,7 @@ mod tests {
                 xbtc_decimal,
             );
             // should be 8_300
-            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(6));
+            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(ACCURACY.into()));
         }
     }
 
@@ -1439,7 +1441,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 0;
             let compounded_value =
@@ -1451,7 +1453,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
             let periods_number: u128 = 1;
             let compounded_value =
@@ -1464,7 +1466,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.000001902587519%
-            let base_value = 100_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 100_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 19025875190;
             let periods_number: u128 = 2;
             let compounded_value =
@@ -1477,7 +1479,7 @@ mod tests {
         {
             // value = 300 000$
             // period interest rate = 0.000002%
-            let base_value = 300_000 * 10u64.pow(PRICE_OFFSET.into());
+            let base_value = 300_000 * 10u64.pow(ACCURACY.into());
             let period_interest_rate = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
             let periods_number: u128 = 525600;
             let compounded_value =
@@ -1491,7 +1493,7 @@ mod tests {
     #[test]
     fn test_calculate_multi_compounded_interest() {
         let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
-        let start_value = 200_000 * 10u64.pow(PRICE_OFFSET.into());
+        let start_value = 200_000 * 10u64.pow(ACCURACY.into());
         // irregular compound
         // 100_000 -> 10_000 -> 5 -> 415_595
         {

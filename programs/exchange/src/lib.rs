@@ -148,8 +148,8 @@ pub mod exchange {
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
         state.fee = 300;
-        state.swap_tax = 20;
-        state.pool_fee = 0;
+        state.swap_tax_ratio = 20;
+        state.swap_tax_reserve = 0;
         state.debt_interest_rate = 10; // 1%
         state.last_debt_adjustment = timestamp;
         state.penalty_to_liquidator = 5;
@@ -501,12 +501,15 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
-        // Update pool fee
-        let pool_fee = calculate_swap_tax(fee_usd, state.swap_tax);
-        state.pool_fee = state.pool_fee.checked_add(pool_fee).unwrap();
+        // Update swap_tax_reserve
+        let swap_tax_reserve = calculate_swap_tax(fee_usd, state.swap_tax_ratio);
+        state.swap_tax_reserve = state
+            .swap_tax_reserve
+            .checked_add(swap_tax_reserve)
+            .unwrap();
 
         // Update xUSD supply based on tax
-        let new_xusd_supply = synthetics[0].supply.checked_add(pool_fee).unwrap();
+        let new_xusd_supply = synthetics[0].supply.checked_add(swap_tax_reserve).unwrap();
         set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
 
         // Set new supply output token
@@ -1014,7 +1017,61 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    pub fn withdraw_swap_tax(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
+        msg!("Synthetify: WITHDRAW SWAP TAX");
+        let state = &mut ctx.accounts.state.load_mut()?;
+        let mut actual_amount = amount;
 
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount = state.swap_tax_reserve;
+        }
+        // check valid amount
+        if actual_amount > state.swap_tax_reserve {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+        state.swap_tax_reserve = state.swap_tax_reserve.checked_sub(actual_amount).unwrap();
+
+        // Mint xUSD to admin
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, actual_amount)?;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    pub fn withdraw_accumulated_debt_interest(
+        ctx: Context<AdminWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
+        msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
+        let state = &mut ctx.accounts.state.load_mut()?;
+        let mut actual_amount = amount;
+
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount = state.accumulated_debt_interest;
+        }
+        // check valid amount
+        if actual_amount > state.accumulated_debt_interest {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+        state.accumulated_debt_interest = state
+            .accumulated_debt_interest
+            .checked_sub(actual_amount)
+            .unwrap();
+
+        // Mint xUSD to admin
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, actual_amount)?;
+
+        Ok(())
+    }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
@@ -1325,9 +1382,9 @@ pub struct AssetsList {
     pub head_assets: u8,
     pub head_collaterals: u8,
     pub head_synthetics: u8,
-    pub assets: [Asset; 256],
-    pub collaterals: [Collateral; 256],
-    pub synthetics: [Synthetic; 256],
+    pub assets: [Asset; 255],
+    pub collaterals: [Collateral; 255],
+    pub synthetics: [Synthetic; 255],
 }
 impl Default for AssetsList {
     #[inline]
@@ -1339,13 +1396,13 @@ impl Default for AssetsList {
             head_synthetics: 0,
             assets: [Asset {
                 ..Default::default()
-            }; 256],
+            }; 255],
             collaterals: [Collateral {
                 ..Default::default()
-            }; 256],
+            }; 255],
             synthetics: [Synthetic {
                 ..Default::default()
-            }; 256],
+            }; 255],
         }
     }
 }
@@ -1374,9 +1431,9 @@ impl AssetsList {
     fn split_borrow(
         &mut self,
     ) -> (
-        &mut [Asset; 256],
-        &mut [Collateral; 256],
-        &mut [Synthetic; 256],
+        &mut [Asset; 255],
+        &mut [Collateral; 255],
+        &mut [Synthetic; 255],
     ) {
         (
             &mut self.assets,
@@ -1411,6 +1468,34 @@ pub struct AddNewAsset<'info> {
     pub signer: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
+}
+#[derive(Accounts)]
+pub struct AdminWithdraw<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut)]
+    pub usd_token: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+{
+    fn from(accounts: &AdminWithdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.usd_token.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
@@ -1833,8 +1918,8 @@ pub struct State {
     pub health_factor: u8,              //1   In % 1-100% modifier for debt
     pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
     pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
-    pub swap_tax: u8,                   //8   In % range 0-20%
-    pub pool_fee: u64,                  //64  Amount on tax from swap
+    pub swap_tax_ratio: u8,             //8   In % range 0-20%
+    pub swap_tax_reserve: u64,          //64  Amount on tax from swap
     pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
     pub penalty_to_liquidator: u8,      //1   In % range 0-25%
     pub penalty_to_exchange: u8,        //1   In % range 0-25%
@@ -1961,57 +2046,59 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
-    Unauthorized,
+    Unauthorized = 0,
     #[msg("Not synthetic USD asset")]
-    NotSyntheticUsd,
+    NotSyntheticUsd = 1,
     #[msg("Oracle price is outdated")]
-    OutdatedOracle,
+    OutdatedOracle = 2,
     #[msg("Mint limit")]
-    MintLimit,
+    MintLimit = 3,
     #[msg("Withdraw limit")]
-    WithdrawLimit,
+    WithdrawLimit = 4,
     #[msg("Invalid collateral_account")]
-    CollateralAccountError,
+    CollateralAccountError = 5,
     #[msg("Synthetic collateral is not supported")]
-    SyntheticCollateral,
+    SyntheticCollateral = 6,
     #[msg("Invalid Assets List")]
-    InvalidAssetsList,
+    InvalidAssetsList = 7,
     #[msg("Invalid Liquidation")]
-    InvalidLiquidation,
+    InvalidLiquidation = 8,
     #[msg("Invalid signer")]
-    InvalidSigner,
+    InvalidSigner = 9,
     #[msg("Wash trade")]
-    WashTrade,
+    WashTrade = 10,
     #[msg("Invalid exchange liquidation account")]
-    ExchangeLiquidationAccount,
+    ExchangeLiquidationAccount = 11,
     #[msg("Liquidation deadline not passed")]
-    LiquidationDeadline,
+    LiquidationDeadline = 12,
     #[msg("Program is currently Halted")]
-    Halted,
+    Halted = 13,
     #[msg("No rewards to claim")]
-    NoRewards,
+    NoRewards = 14,
     #[msg("Invalid fund_account")]
-    FundAccountError,
+    FundAccountError = 15,
     #[msg("Invalid version of user account")]
-    AccountVersion,
+    AccountVersion = 16,
     #[msg("Assets list already initialized")]
-    Initialized,
+    Initialized = 17,
     #[msg("Assets list is not initialized")]
-    Uninitialized,
+    Uninitialized = 18,
     #[msg("No asset with such address was found")]
-    NoAssetFound,
+    NoAssetFound = 19,
     #[msg("Asset max_supply crossed")]
-    MaxSupply,
+    MaxSupply = 20,
     #[msg("Asset is not collateral")]
-    NotCollateral,
+    NotCollateral = 21,
     #[msg("Asset is already a collateral")]
-    AlreadyACollateral,
+    AlreadyACollateral = 22,
     #[msg("Insufficient value trade")]
-    InsufficientValueTrade,
+    InsufficientValueTrade = 23,
+    #[msg("Insufficient amount admin withdraw")]
+    InsufficientAmountAdminWithdraw = 24,
     #[msg("Settlement slot not reached")]
-    SettlementNotReached,
+    SettlementNotReached = 25,
     #[msg("Cannot settle xUSD")]
-    UsdSettlement,
+    UsdSettlement = 26,
 }
 
 // Access control modifiers.
