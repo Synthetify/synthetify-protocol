@@ -195,7 +195,7 @@ describe('isolated exchange burn', () => {
       userTokenAccountBurn: usdTokenAccount,
       signers: [accountOwner]
     })
-    // We should end with transfered amount
+    // We should end with transferred amount
     const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
     assert.ok(userUsdTokenAccountAfter.amount.eq(transferAmount))
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)

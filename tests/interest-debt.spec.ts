@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network } from '@synthetify/sdk'
 
@@ -26,7 +26,7 @@ describe('Interest debt accumulation', () => {
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Account
+  const wallet = provider.wallet.payer as Keypair
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -38,7 +38,7 @@ describe('Interest debt accumulation', () => {
   let snyReserve: PublicKey
   let accountOwner: PublicKey
   let exchangeAccount: PublicKey
-  let CollateralTokenMinter: Account = wallet
+  let CollateralTokenMinter = wallet
   let nonce: number
 
   let initialCollateralPrice = 2

@@ -1458,7 +1458,7 @@ describe('exchange', () => {
         signers: [accountOwner]
       })
 
-      // We should end with transfered amount
+      // We should end with transferred amount
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       // amount should be close to transferAmount
       assert.ok(userUsdTokenAccountAfter.amount.lt(transferAmount.add(debtBurnAccuracy)))

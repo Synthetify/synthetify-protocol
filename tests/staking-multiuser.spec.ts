@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network } from '@synthetify/sdk'
 
@@ -27,7 +27,7 @@ describe('staking with multiple users', () => {
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Account
+  const wallet = provider.wallet.payer as Keypair
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -37,7 +37,7 @@ describe('staking with multiple users', () => {
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let reserveAccount: PublicKey
-  let CollateralTokenMinter: Account = wallet
+  let CollateralTokenMinter = wallet
   let nonce: number
 
   const amountPerRound = new BN(100)
@@ -94,9 +94,6 @@ describe('staking with multiple users', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
-      liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
@@ -114,53 +111,43 @@ describe('staking with multiple users', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
-    assert.ok(state.collateralToken.equals(collateralToken.publicKey))
-    assert.ok(state.liquidationAccount.equals(liquidationAccount))
-    assert.ok(state.collateralAccount.equals(collateralAccount))
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
-    assert.ok(state.liquidationPenalty === 15)
-    assert.ok(state.liquidationThreshold === 200)
-    assert.ok(state.collateralizationLevel === 1000)
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.collateralShares.eq(new BN(0)))
     assert.ok(state.staking.fundAccount.equals(stakingFundAccount))
     assert.ok(state.staking.amountPerRound.eq(amountPerRound))
     assert.ok(state.staking.roundLength === stakingRoundLength)
   })
-  describe.only('Multi user staking', async () => {
+  describe('Multi user staking', async () => {
     it('test flow', async () => {
       const slot = await connection.getSlot()
       assert.ok(nextRoundStart.gtn(slot))
 
       const collateralAmount = new BN(1000 * 1e6)
 
-      // Creates promises for users (for asynchronicity )
-      let usersAccountsPromises = []
-
-      for (let i = 0; i < amountOfAccounts; i++)
-        usersAccountsPromises.push(
-          (async () =>
-            await createAccountWithCollateralAndMaxMintUsd({
-              reserveAddress: reserveAccount,
-              collateralToken,
-              exchangeAuthority,
-              exchange,
-              collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-              amount: collateralAmount,
-              usdToken
-            }))()
+      // Creating accounts
+      const usersAccounts = await Promise.all(
+        [...Array(amountOfAccounts).keys()].map(() =>
+          createAccountWithCollateralAndMaxMintUsd({
+            reserveAddress: reserveAccount,
+            collateralToken,
+            exchangeAuthority,
+            exchange,
+            collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+            amount: collateralAmount,
+            usdToken
+          })
         )
+      )
 
-      //Resolving promises
-      const usersAccounts = await Promise.all(usersAccountsPromises)
+      // const usersAccounts = await Promise.all(usersAccountsPromises)
       const healthFactor = new BN((await exchange.getState()).healthFactor)
 
       // Checking points for each user after first round

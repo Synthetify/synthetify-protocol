@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor'
 import { Program, Provider } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
-  Account,
+  Keypair,
   PublicKey,
   sendAndConfirmRawTransaction,
   Transaction,
@@ -39,7 +39,7 @@ describe('liquidation', () => {
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Account
+  const wallet = provider.wallet.payer as Keypair
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -49,10 +49,10 @@ describe('liquidation', () => {
   let stakingFundAccount: PublicKey
   let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
-  let CollateralTokenMinter: Account = wallet
+  let CollateralTokenMinter = wallet
   let nonce: number
 
-  let liquidator: Account
+  let liquidator: Keypair
   let liquidatorUsdAccount: PublicKey
   let liquidatorCollateralAccount: PublicKey
 
@@ -137,7 +137,7 @@ describe('liquidation', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
@@ -156,7 +156,7 @@ describe('liquidation', () => {
       await setFeedPrice(oracleProgram, initialCollateralPrice, collateralTokenFeed)
     })
     beforeEach(async () => {
-      // change liquidation buffor for sake of tests
+      // change liquidation buffer for sake of tests
       const newLiquidationBuffer = 0
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
@@ -242,7 +242,7 @@ describe('liquidation', () => {
       const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
 
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
@@ -389,7 +389,7 @@ describe('liquidation', () => {
         collateralAsset,
         collateral
       )
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
@@ -452,7 +452,7 @@ describe('liquidation', () => {
     })
     it('fail without signer', async () => {
       const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
-      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
@@ -505,7 +505,7 @@ describe('liquidation', () => {
     })
     it('fail liquidate safe user', async () => {
       const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
-      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
@@ -523,9 +523,6 @@ describe('liquidation', () => {
       await exchange.updatePrices(assetsList)
       const state = await exchange.getState()
 
-      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
-      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListData)
       const collateral = assetsListData.collaterals[0]
 
       await assertThrowsAsync(
@@ -544,7 +541,7 @@ describe('liquidation', () => {
     })
     it('fail wrong asset list', async () => {
       const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
-      const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
+      const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
         exchangeAuthority,
