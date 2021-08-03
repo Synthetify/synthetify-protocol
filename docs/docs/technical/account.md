@@ -1,20 +1,46 @@
 ---
-title: Account 
+title: Exchange Account 
 
 slug: /technical/account
 ---
 
-### The Idea of Exchange
+### The Idea of Exchange Account
 To use the platform user has to have an account. Inside the project it is called an _Exchange Account_.
 It keeps user specific data such as deposited collaterals and staked amounts.
+
+
+### Structure of Account
+
+The structure is defined like this:
+
+    struct ExchangeAccount {
+        pub owner: Pubkey,
+        pub version: u8,
+        pub debt_shares: u64,
+        pub liquidation_deadline: u64,
+        pub user_staking_data: UserStaking,
+        pub bump: u8,
+        pub head: u8,
+        pub collaterals: [CollateralEntry; 32],
+    }
+
+Which respectively are responsible for
+* **owner** - public key belonging to owner of the account
+* **version** - version of the structure, when it changes old accounts will be migrated to the new one
+* **debt_shares** - amount of user debt shares, when divided by all shares allows to calculate debt. More on that [here](/docs/technical/minting#debt)
+* **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/liquidation)
+* **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
+* **bump** - this is used with 
+[generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
+* **head** - amount of deposited collaterals, used as length of array next field
+* **collaterals** - array of [collaterals](/docs/technical/collaterals) owned by account, up to 32 at the same time
 
 ### Account Creation
 Using SDK you can simply use: 
      
-    const accountOwner = new Keypair()
-    const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+    const exchangeAccount = await exchange.createExchangeAccount(ownersPublicKey)
 
-Where _exchange_ is an instance of Exchange singleton and _Keypair_ is part of [Solana's web3 package](https://solana-labs.github.io/solana-web3.js/).
+Where _exchange_ is an instance of Exchange singleton and _ownersPublicKey_ has type of _PublicKey_, which is part of [Solana's web3 package](https://solana-labs.github.io/solana-web3.js/).
 
 
 The _exchangeAccount_ has a type of _PublicKey_, which is used as an address to data structure.
@@ -26,21 +52,5 @@ Fetching an account is as simple as:
 
     const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
 
-This will asynchronously fetch data from blockchain and parse it to an object.
-
-The original _ExchangeAccount_ structure is written in Rust and looks like this
-[this](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/lib.rs#L1454-L1463), 
-but _exchangeAccountData_ will be an instance of:
-
-    interface ExchangeAccount {
-        owner: PublicKey
-        version: number
-        debtShares: BN
-        liquidationDeadline: BN
-        userStakingData: UserStaking
-        head: number
-        collaterals: Array<CollateralEntry>
-    }
-
-Most of fields here are method specific and will be explained closer in corresponding chapters.
-For now the only important field is _owner_ - which identifies user that is... well the owner of the account.
+This will asynchronously fetch data from blockchain and parse it to an 
+[object](https://github.com/Synthetify/synthetify-protocol/blob/ef5e4a65e3009e8a957d3382fc67d3b721115af8/sdk/src/exchange.ts#L1187-L1195).
