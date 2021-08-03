@@ -1825,11 +1825,16 @@
     },
     {
       "code": 324,
+      "name": "InsufficientAmountAdminWithdraw",
+      "msg": "Insufficient amount admin withdraw"
+    },
+    {
+      "code": 325,
       "name": "SettlementNotReached",
       "msg": "Settlement slot not reached"
     },
     {
-      "code": 325,
+      "code": 326,
       "name": "UsdSettlement",
       "msg": "Cannot settle xUSD"
     }

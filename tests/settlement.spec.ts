@@ -110,27 +110,6 @@ describe('admin', () => {
       exchangeProgram.programId
     )
   })
-  it('Initialize state', async () => {
-    const state = await exchange.getState()
-    // Check initialized addreses
-    assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
-    assert.ok(state.halted === false)
-    assert.ok(state.assetsList.equals(assetsList))
-    // Check initialized parameters
-    assert.ok(state.nonce === nonce)
-    assert.ok(state.healthFactor === 50)
-    assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
-    assert.ok(state.swapTax === 20)
-    assert.ok(state.poolFee.eq(new BN(0)))
-    assert.ok(state.debtInterestRate === 10)
-    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
-    assert.ok(state.liquidationRate === 20)
-    assert.ok(state.penaltyToLiquidator === 5)
-    assert.ok(state.penaltyToExchange === 5)
-    assert.ok(state.liquidationBuffer === 172800)
-    assert.ok(state.debtShares.eq(new BN(0)))
-  })
   describe('Settlement', async () => {
     const price = 7
     const decimals = 9
