@@ -12,6 +12,7 @@
     "test:staking": "anchor test tests/staking.spec.ts",
     "test:multi": "anchor test tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test tests/multicollateral.spec.ts",
+    "test:settlement": "anchor test tests/settlement.spec.ts",
     "build": "cd sdk && npm run build",
     "postinstall": "anchor build && cd sdk && npm install && npm run build"
   },
