@@ -20,7 +20,13 @@ module.exports = {
       type: 'category',
       label: 'Technical side',
       collapsed: true,
-      items: ['technical/overview', 'technical/account']
+      items: [
+        'technical/overview',
+        'technical/account',
+        'technical/collaterals',
+        'technical/minting',
+        'technical/liquidation'
+      ]
     }
   ]
 }
