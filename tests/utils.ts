@@ -385,7 +385,7 @@ export const createCollateralToken = async ({
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   try {
     await fn
-  } catch (e) {
+  } catch (e: any) {
     let err
     if (e.code) {
       err = '0x' + e.code.toString(16)
@@ -404,7 +404,7 @@ export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   throw new Error('Function did not throw error')
 }
 
-export const skipToSlot = async (slot: number, connection: Connection): Promise<null> => {
+export const skipToSlot = async (slot: number, connection: Connection): Promise<undefined> => {
   const startSlot = await connection.getSlot()
 
   // Checks if given slot hasn't already passed
@@ -423,11 +423,11 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 export const skipTimestamps = async (
   timestampDiff: number,
   connection: Connection
-): Promise<null> => {
-  const startTimestamp = await connection.getBlockTime(await connection.getSlot())
+): Promise<undefined> => {
+  const startTimestamp = (await connection.getBlockTime(await connection.getSlot())) as number
   const finishedTimestamp = startTimestamp + timestampDiff
   while (true) {
-    const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+    const currentTimestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     if (currentTimestamp >= finishedTimestamp) return
     await sleep(400)
   }

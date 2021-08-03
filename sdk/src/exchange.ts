@@ -763,12 +763,26 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async withdrawSwapTaxInstruction({ amount, to }: WithdrawSwapTaxInstruction) {
+  public async withdrawSwapTaxInstruction({ amount, to }: AdminWithdraw) {
     return (await this.program.instruction.withdrawSwapTax(amount, {
       accounts: {
         state: this.stateAddress,
         admin: this.state.admin,
         exchangeAuthority: this.exchangeAuthority,
+        assetsList: this.state.assetsList,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
+        to: to,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    })) as TransactionInstruction
+  }
+  public async withdrawAccumulatedDebtInterestInstruction({ amount, to }: AdminWithdraw) {
+    return (await this.program.instruction.withdrawAccumulatedDebtInterest(amount, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        exchangeAuthority: this.exchangeAuthority,
+        assetsList: this.state.assetsList,
         usdToken: this.assetsList.synthetics[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID
@@ -888,7 +902,7 @@ export interface AddNewAssetInstruction {
   assetsList: PublicKey
   assetFeedAddress: PublicKey
 }
-export interface WithdrawSwapTaxInstruction {
+export interface AdminWithdraw {
   amount: BN
   to: PublicKey
 }

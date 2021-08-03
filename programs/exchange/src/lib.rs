@@ -1017,8 +1017,9 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn withdraw_swap_tax(ctx: Context<WithdrawSwapTax>, amount: u64) -> Result<()> {
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    pub fn withdraw_swap_tax(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW SWAP TAX");
         let state = &mut ctx.accounts.state.load_mut()?;
         let mut actual_amount = amount;
@@ -1038,6 +1039,37 @@ pub mod exchange {
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::mint_to(mint_cpi_ctx, actual_amount)?;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    pub fn withdraw_accumulated_debt_interest(
+        ctx: Context<AdminWithdraw>,
+        amount: u64,
+    ) -> Result<()> {
+        msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
+        let state = &mut ctx.accounts.state.load_mut()?;
+        let mut actual_amount = amount;
+
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount = state.accumulated_debt_interest;
+        }
+        // check valid amount
+        if actual_amount > state.accumulated_debt_interest {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+        state.accumulated_debt_interest = state
+            .accumulated_debt_interest
+            .checked_sub(actual_amount)
+            .unwrap();
+
+        // Mint xUSD to admin
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, actual_amount)?;
+
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1318,12 +1350,13 @@ pub struct AddNewAsset<'info> {
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
-pub struct WithdrawSwapTax<'info> {
+pub struct AdminWithdraw<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
@@ -1331,10 +1364,10 @@ pub struct WithdrawSwapTax<'info> {
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
 }
-impl<'a, 'b, 'c, 'info> From<&WithdrawSwapTax<'info>>
+impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
     for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
 {
-    fn from(accounts: &WithdrawSwapTax<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &AdminWithdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
             mint: accounts.usd_token.to_account_info(),
             to: accounts.to.to_account_info(),
