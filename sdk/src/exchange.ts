@@ -8,12 +8,12 @@ import {
   Connection,
   PublicKey,
   ConfirmOptions,
-  Account,
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
   TransactionInstruction,
   Transaction,
-  sendAndConfirmRawTransaction
+  sendAndConfirmRawTransaction,
+  Keypair
 } from '@solana/web3.js'
 
 export const STATE_SEED = 'statev1'
@@ -662,7 +662,7 @@ export class Exchange {
       })
   }
   public async createAssetsList() {
-    const assetListAccount = new Account()
+    const assetListAccount = new Keypair()
     await this.program.rpc.createAssetsList({
       accounts: {
         assetsList: assetListAccount.publicKey,
@@ -869,7 +869,7 @@ export interface SetAssetSupply {
 export interface SetAssetMaxSupply {
   assetAddress: PublicKey
   assetsList: PublicKey
-  exchangeAdmin: Account
+  exchangeAdmin: Keypair
   newMaxSupply: BN
 }
 export interface AddNewAssetInstruction {
@@ -910,7 +910,7 @@ export interface Mint {
   owner: PublicKey
   to: PublicKey
   amount: BN
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 export interface Liquidate {
   exchangeAccount: PublicKey
@@ -921,7 +921,7 @@ export interface Liquidate {
   reserveAccount: PublicKey
   amount: BN
 
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 export interface Swap {
   exchangeAccount: PublicKey
@@ -931,14 +931,14 @@ export interface Swap {
   userTokenAccountIn: PublicKey
   userTokenAccountFor: PublicKey
   amount: BN
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 export interface Burn {
   exchangeAccount: PublicKey
   owner: PublicKey
   userTokenAccountBurn: PublicKey
   amount: BN
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 interface Deposit {
   amount: BN
@@ -948,7 +948,7 @@ interface Deposit {
   reserveAccount: PublicKey
   collateralToken: Token
   exchangeAuthority: PublicKey
-  signers: Array<Account>
+  signers: Array<Keypair>
 }
 export interface Withdraw {
   reserveAccount: PublicKey
@@ -956,13 +956,13 @@ export interface Withdraw {
   owner: PublicKey
   userCollateralAccount: PublicKey
   amount: BN
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 export interface WithdrawRewards {
   exchangeAccount: PublicKey
   owner: PublicKey
   userTokenAccount: PublicKey
-  signers?: Array<Account>
+  signers?: Array<Keypair>
 }
 export interface MintInstruction {
   exchangeAccount: PublicKey

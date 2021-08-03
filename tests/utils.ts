@@ -1,7 +1,7 @@
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
-import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
@@ -9,7 +9,7 @@ import { Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
-export const EXCHANGE_ADMIN = new Account()
+export const EXCHANGE_ADMIN = new Keypair()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
 
@@ -75,7 +75,7 @@ export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
 }
 interface ICreateToken {
   connection: Connection
-  payer: Account
+  payer: Keypair
   mintAuthority: PublicKey
   decimals?: number
 }
@@ -103,7 +103,7 @@ export interface ICreateAssetsList {
   snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
-  wallet: Account
+  wallet: Keypair
   assetsSize?: number
 }
 export type AddNewAssetResult = {
@@ -138,7 +138,7 @@ export const createAssetsList = async ({
 }
 
 export const newAccountWithLamports = async (connection, lamports = 1e10) => {
-  const account = new web3.Account()
+  const account = new Keypair()
 
   let retries = 30
   await connection.requestAirdrop(account.publicKey, lamports)
@@ -320,7 +320,7 @@ interface ICreateCollaterToken {
   exchangeAuthority: PublicKey
   oracleProgram: Program
   connection: Connection
-  wallet: Account
+  wallet: Keypair
   price: number
   decimals: number
   collateralRatio: number

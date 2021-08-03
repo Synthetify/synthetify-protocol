@@ -1535,7 +1535,7 @@
     {
       "code": 323,
       "name": "InsufficientValueTrade",
-      "msg": "Swap amount is too small"
+      "msg": "Insufficient value trade"
     }
   ]
 }
