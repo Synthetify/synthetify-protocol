@@ -1017,7 +1017,8 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn withdraw_swap_tax(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW SWAP TAX");
         let state = &mut ctx.accounts.state.load_mut()?;
@@ -1040,7 +1041,8 @@ pub mod exchange {
         token::mint_to(mint_cpi_ctx, actual_amount)?;
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn withdraw_accumulated_debt_interest(
         ctx: Context<AdminWithdraw>,
         amount: u64,
@@ -1354,6 +1356,7 @@ pub struct AdminWithdraw<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]

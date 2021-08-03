@@ -657,6 +657,11 @@
           "isSigner": false
         },
         {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "usdToken",
           "isMut": true,
           "isSigner": false
@@ -694,6 +699,11 @@
         },
         {
           "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
           "isMut": false,
           "isSigner": false
         },

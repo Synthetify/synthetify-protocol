@@ -769,6 +769,7 @@ export class Exchange {
         state: this.stateAddress,
         admin: this.state.admin,
         exchangeAuthority: this.exchangeAuthority,
+        assetsList: this.state.assetsList,
         usdToken: this.assetsList.synthetics[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID
@@ -781,6 +782,7 @@ export class Exchange {
         state: this.stateAddress,
         admin: this.state.admin,
         exchangeAuthority: this.exchangeAuthority,
+        assetsList: this.state.assetsList,
         usdToken: this.assetsList.synthetics[0].assetAddress,
         to: to,
         tokenProgram: TOKEN_PROGRAM_ID
