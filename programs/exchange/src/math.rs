@@ -1077,32 +1077,32 @@ mod tests {
     }
     #[test]
     fn test_calculate_swap_out_amount() {
+        let asset_usd = Asset {
+            price: 1 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_usd = Synthetic {
+            decimals: 6,
+            ..Default::default()
+        };
+        let asset_btc = Asset {
+            price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_btc = Synthetic {
+            decimals: 8,
+            ..Default::default()
+        };
+        let asset_eth = Asset {
+            price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_eth = Synthetic {
+            decimals: 7,
+            ..Default::default()
+        };
+        let fee = 300u32;
         {
-            let asset_usd = Asset {
-                price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_usd = Synthetic {
-                decimals: 6,
-                ..Default::default()
-            };
-            let asset_btc = Asset {
-                price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_btc = Synthetic {
-                decimals: 8,
-                ..Default::default()
-            };
-            let asset_eth = Asset {
-                price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_eth = Synthetic {
-                decimals: 7,
-                ..Default::default()
-            };
-            let fee = 300u32;
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_usd,
                 &asset_btc,
@@ -1116,7 +1116,8 @@ mod tests {
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
+        }
+        {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
@@ -1130,7 +1131,8 @@ mod tests {
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
+        }
+        {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_eth,
