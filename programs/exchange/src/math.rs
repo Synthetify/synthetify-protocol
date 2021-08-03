@@ -6,7 +6,7 @@ use crate::*;
 pub const ACCURACY: u8 = 6; // xUSD decimal
 pub const PRICE_OFFSET: u8 = 8;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
-pub const MIN_SWAP_USD_VALUE: u64 = 1000; // depends on ACCURACY
+pub const MIN_SWAP_USD_VALUE: u128 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
@@ -181,20 +181,6 @@ pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
         )
         .unwrap() as u64;
 }
-pub fn calculate_value_difference_in_usd(
-    price_in: u64,
-    amount_in: u64,
-    decimal_in: u8,
-    price_out: u64,
-    amount_out: u64,
-    decimal_out: u8,
-) -> u64 {
-    // price in should be always bigger than price out
-    let value_in = calculate_value_in_usd(price_in, amount_in, decimal_in);
-    let value_out = calculate_value_in_usd(price_out, amount_out, decimal_out);
-
-    return value_in.checked_sub(value_out).unwrap();
-}
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
     return (swap_tax as u128)
         .checked_mul(total_fee as u128)
@@ -209,12 +195,22 @@ pub fn calculate_swap_out_amount(
     synthetic_for: &Synthetic,
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-) -> (u64, u64) {
-    let amount_out_before_fee = (asset_in.price as u128)
+) -> Result<(u64, u64)> {
+    let value_in = (asset_in.price as u128)
         .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(asset_for.price as u128)
         .unwrap();
+    let value_in_usd = value_in
+        .checked_div(
+            10u128
+                .checked_pow((synthetic_in.decimals + PRICE_OFFSET - ACCURACY).into())
+                .unwrap(),
+        )
+        .unwrap();
+    // Check min swap value
+    if value_in_usd < MIN_SWAP_USD_VALUE {
+        return Err(ErrorCode::InsufficientValueTrade.into());
+    }
+    let amount_out_before_fee = value_in.checked_div(asset_for.price as u128).unwrap();
 
     // If assets have different decimals we need to scale them.
     let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
@@ -236,16 +232,14 @@ pub fn calculate_swap_out_amount(
         )
         .unwrap();
 
-    let fee_in_usd = calculate_value_difference_in_usd(
-        asset_in.price,
-        amount as u64,
-        synthetic_in.decimals,
+    let value_out = calculate_value_in_usd(
         asset_for.price,
         amount_out_after_fee as u64,
         synthetic_for.decimals,
     );
+    let fee_in_usd = value_in_usd.checked_sub(value_out as u128).unwrap() as u64;
 
-    return (amount_out_after_fee.try_into().unwrap(), fee_in_usd);
+    return Ok((amount_out_after_fee.try_into().unwrap(), fee_in_usd));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
@@ -1116,7 +1110,8 @@ mod tests {
                 &synthetic_btc,
                 50000 * 10u64.pow(ACCURACY.into()),
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 0.997 BTC
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
@@ -1129,7 +1124,8 @@ mod tests {
                 &synthetic_usd,
                 1 * 10u64.pow(synthetic_btc.decimals.into()),
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 49850 USD
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
@@ -1142,7 +1138,8 @@ mod tests {
                 &synthetic_eth,
                 99700000,
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 24.850225 ETH
             assert_eq!(out_amount, 24_850_2250);
             // fee should be 149,55 USD
@@ -1236,47 +1233,6 @@ mod tests {
             assert_eq!(value_in_usd, 18_200 * 10u64.pow(ACCURACY.into()));
         }
     }
-    #[test]
-    fn test_calculate_value_difference_in_usd() {
-        let xbtc_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
-        let xbtc_decimal = 8u8;
-
-        let xusd_price = 1 * 10u64.pow(PRICE_OFFSET as u32);
-        let xusd_decimal = 6u8;
-        // xUSD -> xBTC
-        {
-            let xbtc_amount = 1 * 10u64.pow(xbtc_decimal.into());
-            let xusd_amount = 28_999 * 10u64.pow(xusd_decimal.into());
-
-            let value_difference_in_usd = calculate_value_difference_in_usd(
-                xbtc_price,
-                xbtc_amount,
-                xbtc_decimal,
-                xusd_price,
-                xusd_amount,
-                xusd_decimal,
-            );
-            // should be 1_001
-            assert_eq!(value_difference_in_usd, 1_001 * 10u64.pow(ACCURACY.into()));
-        }
-        // xBTC -> xUSD
-        {
-            // 0.89 BTC
-            let xbtc_amount = 89 * 10u64.pow((xbtc_decimal - 2).into());
-            let xusd_amount = 35_000 * 10u64.pow(xusd_decimal.into());
-            let value_difference_in_usd = calculate_value_difference_in_usd(
-                xusd_price,
-                xusd_amount,
-                xusd_decimal,
-                xbtc_price,
-                xbtc_amount,
-                xbtc_decimal,
-            );
-            // should be 8_300
-            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(ACCURACY.into()));
-        }
-    }
-
     #[test]
     fn test_calculate_swap_tax() {
         // MIN - 0%
