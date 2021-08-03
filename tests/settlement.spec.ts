@@ -21,7 +21,7 @@ import {
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { ERRORS_EXCHANGE, ORACLE_OFFSET, sleep } from '@synthetify/sdk/lib/utils'
+import { ACCURACY, ERRORS_EXCHANGE, ORACLE_OFFSET, sleep } from '@synthetify/sdk/lib/utils'
 
 describe('admin', () => {
   const provider = anchor.Provider.local()
@@ -237,10 +237,9 @@ describe('admin', () => {
       const settlementData = await exchange.getSettlementAccountForSynthetic(
         syntheticToSettle.assetAddress
       )
-      const valueOfSetteledSynthetic = tokenToSettleAmount
+      const valueOfSetteledSynthetic = new BN(tokenToSettleAmount.toString())
         .mul(settlementData.ratio)
-        .div(new BN(10 ** settlementData.decimalsIn))
-
+        .div(new BN(10 ** (settlementData.decimalsIn + ORACLE_OFFSET - ACCURACY)))
       const delta = assetsListAfterSettlement.synthetics[0].supply.sub(
         assetsListBeforeSettlement.synthetics[0].supply
       )

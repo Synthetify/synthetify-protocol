@@ -1315,21 +1315,13 @@ pub mod exchange {
 
         // Init settlement struct
         {
-            let ratio: u64 = (usd_value as u128)
-                .checked_mul(10u128.checked_pow(synthetic.decimals.into()).unwrap())
-                .unwrap()
-                .checked_div(synthetic.supply as u128)
-                .unwrap()
-                .try_into()
-                .unwrap();
-
             settlement.bump = bump;
             settlement.decimals_in = synthetic.decimals;
             settlement.decimals_out = usd_synthetic.decimals;
             settlement.token_out_address = usd_synthetic.asset_address;
             settlement.token_in_address = synthetic.asset_address;
             settlement.reserve_address = *ctx.accounts.settlement_reserve.to_account_info().key;
-            settlement.ratio = ratio;
+            settlement.ratio = asset.price;
         }
 
         // Mint xUSD

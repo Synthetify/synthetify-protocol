@@ -1838,5 +1838,8 @@
       "name": "UsdSettlement",
       "msg": "Cannot settle xUSD"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "GjfFFZJx6rs6Ye5V33Veg7WGfwJ7tUgiix1xqnqPMrsv"
+  }
 }
