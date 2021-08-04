@@ -51,7 +51,7 @@ pub mod exchange {
         }
         let usd_asset = Asset {
             feed_address: Pubkey::default(), // unused
-            last_update: u64::MAX,           // we dont update usd price
+            last_update: u64::MAX,           // we don't update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
         };
@@ -355,7 +355,7 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        // Check if not overdrafing
+        // Check if not overdrafting
         let max_withdrawable_in_usd = calculate_max_withdraw_in_usd(
             max_borrow as u64,
             user_debt,
@@ -438,7 +438,7 @@ pub mod exchange {
         if !tx_signer.eq(&user_token_account_in.owner) {
             return Err(ErrorCode::InvalidSigner.into());
         }
-        // Swaping for same assets is forbidden
+        // Swapping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
         }

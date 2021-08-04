@@ -275,8 +275,8 @@ pub fn calculate_burned_shares(
     return burned_shares.try_into().unwrap();
 }
 
-// This should always retur user_debt if xusd === 1 USD
-// Should we remove this funtion ?
+// This should always return user_debt if xusd === 1 USD
+// Should we remove this function ?
 pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     // rounding up to be sure that burned amount is not less than user debt
     let burned_amount_token = div_up(
