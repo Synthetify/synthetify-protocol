@@ -5,8 +5,7 @@ slug: /technical/account
 ---
 
 ### The Idea of Exchange Account
-The platform has to have a place to keep user specific data. Inside the project it is called an _Exchange Account_.
-It stores data such as deposited collaterals and staked amounts.
+The platform has to have a place to keep user specific data. Inside the project it is called an _Exchange Account_. It stores data such as deposited collaterals and staked amounts.
 
 
 ### Structure of Account
@@ -25,7 +24,7 @@ The data structure is defined like this:
     }
 
 Which are responsible for:
-* **owner** - public key belonging to owner of the account
+* **owner** - public key belonging to owner of the account, one owner can have only one account
 * **version** - version of the structure, when it changes old accounts will be migrated to the new one
 * **debt_shares** - amount of user debt shares, when divided by all shares allows to calculate debt. More on that [here](/docs/technical/minting#debt)
 * **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/liquidation)
@@ -58,7 +57,8 @@ implemented by [Anchor](https://project-serum.github.io/anchor/getting-started/i
 * **exchange_account** - address of account, constrains make sure it is uninitialized, of the right version and correctness of _bump_
 * **owner** - public key belonging to owner of the account
 * **payer** - account that pays fee for the created account
-* **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), used by solana
+* **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), used by Solana
+* **system_program** - needed by Solana to create account
 
 
 ### Interacting using SDK
