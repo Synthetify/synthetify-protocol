@@ -50,10 +50,19 @@ export const calculateAmountAfterFee = (
   const amountOut = usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
   return amountOut
 }
-export const calculateFee = (assetFrom: Asset, amountFrom: BN, synthetic: Synthetic): BN => {
-  return assetFrom.price
+export const calculateFee = (
+  assetFrom: Asset,
+  amountFrom: BN,
+  synthetic: Synthetic,
+  effectiveFee: number
+): BN => {
+  const feeDecimal = 5
+  const valueInUsd = assetFrom.price
     .mul(amountFrom)
-    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+    .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+
+  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+  return fee
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
