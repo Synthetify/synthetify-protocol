@@ -39,22 +39,6 @@
       ]
     },
     {
-      "name": "createAssetsList",
-      "accounts": [
-        {
-          "name": "assetsList",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "createList",
       "accounts": [
         {
@@ -69,6 +53,11 @@
         },
         {
           "name": "snyLiquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -1275,10 +1264,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "initialized",
-            "type": "bool"
-          },
-          {
             "name": "headAssets",
             "type": "u8"
           },
@@ -1840,6 +1825,6 @@
     }
   ],
   "metadata": {
-    "address": "GjfFFZJx6rs6Ye5V33Veg7WGfwJ7tUgiix1xqnqPMrsv"
+    "address": "HTLZaAiNy9kNM4agNJnf5GzuJcGNFP95PPhatfGEQ1cM"
   }
 }

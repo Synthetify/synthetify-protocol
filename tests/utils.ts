@@ -128,9 +128,7 @@ export const createAssetsList = async ({
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await exchange.createAssetsList()
-  await exchange.initializeAssetsList({
-    assetsList,
+  const assetsList = await exchange.initializeAssetsList({
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,

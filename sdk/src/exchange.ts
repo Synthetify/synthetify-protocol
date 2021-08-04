@@ -13,7 +13,8 @@ import {
   SystemProgram,
   TransactionInstruction,
   Transaction,
-  sendAndConfirmRawTransaction
+  sendAndConfirmRawTransaction,
+  Keypair
 } from '@solana/web3.js'
 
 export const STATE_SEED = 'statev1'
@@ -747,18 +748,7 @@ export class Exchange {
         fn(list)
       })
   }
-  public async createAssetsList() {
-    const assetListAccount = new Account()
-    await this.program.rpc.createAssetsList({
-      accounts: {
-        assetsList: assetListAccount.publicKey,
-        rent: SYSVAR_RENT_PUBKEY
-      },
-      signers: [assetListAccount],
-      instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
-    })
-    return assetListAccount.publicKey
-  }
+
   public async setPriceFeedInstruction({
     assetsList,
     priceFeed,
@@ -809,20 +799,24 @@ export class Exchange {
   }
 
   public async initializeAssetsList({
-    assetsList,
     collateralToken,
     collateralTokenFeed,
     usdToken,
     snyLiquidationFund,
     snyReserve
   }: InitializeAssetList) {
-    return await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
+    const assetListAccount = Keypair.generate()
+    await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
-        assetsList: assetsList,
+        assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,
-        snyLiquidationFund: snyLiquidationFund
-      }
+        snyLiquidationFund: snyLiquidationFund,
+        rent: SYSVAR_RENT_PUBKEY
+      },
+      signers: [assetListAccount],
+      instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
     })
+    return assetListAccount.publicKey
   }
 
   public async setAssetMaxSupply({
@@ -936,7 +930,6 @@ export interface InitializeAssetList {
   collateralToken: PublicKey
   collateralTokenFeed: PublicKey
   usdToken: PublicKey
-  assetsList: PublicKey
   snyReserve: PublicKey
   snyLiquidationFund: PublicKey
 }
