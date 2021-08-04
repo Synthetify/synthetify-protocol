@@ -40,8 +40,8 @@ Next, your wallet wants you to confirm the transaction. Check whether all inform
 If everything went smoothly, you can see that:
 
 - Staked Value increased by the amount you deposited
-- Collaterial Ratio increased
-- On the right of _Deposit_ button, there is a green tick and an informaton _Successfully deposited_
+- Collateral Ratio increased
+- On the right of _Deposit_ button, there is a green tick and an information _Successfully deposited_
 - On the bottom left of the site, you can see a green field _Successfully deposited collateral_ (not shown here)
 - In section _Owned tokens_ amount of SNY tokens decreased by those you deposited.
 
@@ -129,8 +129,8 @@ Next, your wallet wants you to confirm the transaction. Check whether all inform
 If everything went smoothly, you should see that:
 
 - Current Debt decreased by amount you burned
-- Collaterial Ratio increased
-- On the right of _Burn_ button, there is a green tick and an informaton _Successfully burned_
+- Collateral Ratio increased
+- On the right of _Burn_ button, there is a green tick and an information _Successfully burned_
 - In section _Owned tokens_ amount of SNY tokens decreased by those you withdrew
 - On the bottom left of the site, you can see a green field _Successfully burned tokens_ (not shown here).
 
