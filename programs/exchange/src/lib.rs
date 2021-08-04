@@ -1073,6 +1073,16 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u8) -> Result<()> {
+        msg!("Synthetify:Admin: SWAP TAX RATIO");
+        let state = &mut ctx.accounts.state.load_mut()?;
+
+        require!(swap_tax_ratio <= 200, ParameterOutOfRange);
+
+        state.swap_tax_ratio = swap_tax_ratio;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
         liquidation_buffer: u32,
@@ -1865,6 +1875,8 @@ pub enum ErrorCode {
     InsufficientValueTrade = 23,
     #[msg("Insufficient amount admin withdraw")]
     InsufficientAmountAdminWithdraw = 24,
+    #[msg("Parameter out of range")]
+    ParameterOutOfRange = 25,
 }
 
 // Access control modifiers.

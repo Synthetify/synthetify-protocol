@@ -434,6 +434,14 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setSwapTaxRatioInstruction(swapTaxRatio: number) {
+    return await (this.program.instruction.setSwapTaxRatio(swapTaxRatio, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment

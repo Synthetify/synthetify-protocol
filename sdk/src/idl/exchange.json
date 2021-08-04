@@ -731,6 +731,27 @@
       ]
     },
     {
+      "name": "setSwapTaxRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "swapTaxRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "setLiquidationBuffer",
       "accounts": [
         {
@@ -1633,6 +1654,11 @@
       "code": 324,
       "name": "InsufficientAmountAdminWithdraw",
       "msg": "Insufficient amount admin withdraw"
+    },
+    {
+      "code": 325,
+      "name": "ParameterOutOfRange",
+      "msg": "Parameter out of range"
     }
   ]
 }
