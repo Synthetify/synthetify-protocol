@@ -1250,6 +1250,7 @@ pub mod exchange {
         synthetic.settlement_slot = settlement_slot;
         Ok(())
     }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
         msg!("Synthetify: ADD SYNTHETIC");
