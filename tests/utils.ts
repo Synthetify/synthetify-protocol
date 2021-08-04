@@ -35,16 +35,20 @@ export const calculateDebt = (assetsList: AssetsList) => {
 }
 export const calculateAmountAfterFee = (
   assetIn: Asset,
+  assetFor: Asset,
   syntheticIn: Synthetic,
-  amount: BN,
-  effectiveFee: number
+  syntheticFor: Synthetic,
+  effectiveFee: number,
+  amount: BN
 ): BN => {
   const feeDecimal = 5
   const valueInUsd = assetIn.price
     .mul(amount)
     .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+
   const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
-  return fee
+  const amountOut = usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
+  return amountOut
 }
 export const calculateFee = (assetFrom: Asset, amountFrom: BN, synthetic: Synthetic): BN => {
   return assetFrom.price
