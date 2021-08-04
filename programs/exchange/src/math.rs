@@ -196,7 +196,7 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(u64, u64)> {
-    const FEE_DECIMAL: u8 = 5;
+    const FEE_DECIMAL: u32 = 5;
     let value_in = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap();
@@ -214,7 +214,7 @@ pub fn calculate_swap_out_amount(
     let fee_in_usd = value_in_usd
         .checked_mul(fee as u128)
         .unwrap()
-        .checked_div(10u128.checked_pow((FEE_DECIMAL).into()).unwrap())
+        .checked_div(10u128.checked_pow(FEE_DECIMAL).unwrap())
         .unwrap();
     let value_out_usd = value_in_usd.checked_sub(fee_in_usd).unwrap();
     let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
