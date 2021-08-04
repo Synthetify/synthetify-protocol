@@ -365,8 +365,11 @@ pub mod exchange {
 
         let amount_to_withdraw: u64;
         if amount == u64::MAX {
-            let max_withdrawable_in_token =
-                usd_to_token_amount(collateral_asset, collateral, max_withdrawable_in_usd);
+            let max_withdrawable_in_token = usd_to_token_amount(
+                collateral_asset,
+                collateral.decimals,
+                max_withdrawable_in_usd,
+            );
 
             if max_withdrawable_in_token > exchange_account_collateral.amount {
                 amount_to_withdraw = exchange_account_collateral.amount;
@@ -739,7 +742,7 @@ pub mod exchange {
 
         let seized_collateral_in_token = usd_to_token_amount(
             liquidated_asset,
-            liquidated_collateral,
+            liquidated_collateral.decimals,
             seized_collateral_in_usd.try_into().unwrap(),
         );
 

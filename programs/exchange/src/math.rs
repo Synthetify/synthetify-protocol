@@ -196,6 +196,7 @@ pub fn calculate_swap_out_amount(
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(u64, u64)> {
+    const FEE_DECIMAL: u8 = 5;
     let value_in = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap();
@@ -210,36 +211,15 @@ pub fn calculate_swap_out_amount(
     if value_in_usd < MIN_SWAP_USD_VALUE {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
-    let amount_out_before_fee = value_in.checked_div(asset_for.price as u128).unwrap();
-
-    // If assets have different decimals we need to scale them.
-    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
-    let scaled_amount_out_before_fee = if decimal_difference < 0 {
-        let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        amount_out_before_fee.checked_div(decimal_change).unwrap()
-    } else {
-        let decimal_change = 10u128.pow(decimal_difference as u32);
-        amount_out_before_fee.checked_mul(decimal_change).unwrap()
-    };
-
-    let amount_out_after_fee = scaled_amount_out_before_fee
-        .checked_sub(
-            scaled_amount_out_before_fee
-                .checked_mul(fee as u128)
-                .unwrap()
-                .checked_div(100000)
-                .unwrap(),
-        )
+    let fee_in_usd = value_in_usd
+        .checked_mul(fee as u128)
+        .unwrap()
+        .checked_div(10u128.checked_pow((FEE_DECIMAL).into()).unwrap())
         .unwrap();
+    let value_out_usd = value_in_usd.checked_sub(fee_in_usd).unwrap();
+    let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
 
-    let value_out = calculate_value_in_usd(
-        asset_for.price,
-        amount_out_after_fee as u64,
-        synthetic_for.decimals,
-    );
-    let fee_in_usd = value_in_usd.checked_sub(value_out as u128).unwrap() as u64;
-
-    return Ok((amount_out_after_fee.try_into().unwrap(), fee_in_usd));
+    return Ok((amount_out, fee_in_usd as u64));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
@@ -281,10 +261,10 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     );
     return burned_amount_token.try_into().unwrap();
 }
-pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) -> u64 {
-    let decimal_difference = collateral.decimals as i32 - ACCURACY as i32;
+pub fn usd_to_token_amount(asset: &Asset, decimal: u8, value_in_usd: u64) -> u64 {
+    let decimal_difference = decimal as i32 - ACCURACY as i32;
     if decimal_difference < 0 {
-        let amount = (amount as u128)
+        let amount = (value_in_usd as u128)
             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
             .unwrap()
             .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
@@ -293,7 +273,7 @@ pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) 
             .unwrap();
         return amount.try_into().unwrap();
     } else {
-        let amount = (amount as u128)
+        let amount = (value_in_usd as u128)
             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
             .unwrap()
             .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
@@ -1283,13 +1263,9 @@ mod tests {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let collateral = Collateral {
-                decimals: 6,
-                ..Default::default()
-            };
-
+            let decimals = 6;
             let amount = 100;
-            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            let token_amount = usd_to_token_amount(&asset, decimals, amount);
             // 7,142...
             assert_eq!(token_amount, 7);
         }
@@ -1299,13 +1275,9 @@ mod tests {
                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let collateral = Collateral {
-                decimals: 10,
-                ..Default::default()
-            };
-
+            let decimals = 10;
             let amount = 1_003_900_802 * 10u64.pow(8);
-            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            let token_amount = usd_to_token_amount(&asset, decimals, amount);
             // 11031876945054945054
             assert_eq!(token_amount, 11031876945054945054)
         }
