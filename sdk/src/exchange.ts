@@ -13,7 +13,8 @@ import {
   SystemProgram,
   TransactionInstruction,
   Transaction,
-  sendAndConfirmRawTransaction
+  sendAndConfirmRawTransaction,
+  Keypair
 } from '@solana/web3.js'
 
 export const STATE_SEED = 'statev1'
@@ -132,6 +133,16 @@ export class Exchange {
     account.collaterals = account.collaterals.slice(0, account.head)
     return account
   }
+
+  public async getSettlementAccountForSynthetic(synthetic: PublicKey) {
+    const [settlement, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(utils.bytes.utf8.encode('settlement')), synthetic.toBuffer()],
+      this.program.programId
+    )
+    const account = (await this.program.account.settlement.fetch(settlement)) as Settlement
+    return account
+  }
+
   public async getUserCollateralBalance(exchangeAccount: PublicKey) {
     const userAccount = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
@@ -434,6 +445,82 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setSettlementSlotInstruction(syntheticAddress: PublicKey, newSettlementSlot: BN) {
+    return await (this.program.instruction.setSettlementSlot(newSettlementSlot, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList: this.state.assetsList,
+        syntheticAddress: syntheticAddress
+      }
+    }) as TransactionInstruction)
+  }
+  public async settleSynthetic({
+    payer,
+    settlementReserve,
+    tokenToSettle
+  }: SettleSyntheticInstruction) {
+    const assetsList = await this.getAssetsList(this.state.assetsList)
+    const synthetic = assetsList.synthetics.find((s) => s.assetAddress.equals(tokenToSettle))
+    const feedAddress = assetsList.assets[synthetic.assetIndex].feedAddress
+    const priceFeed = { pubkey: feedAddress, isWritable: false, isSigner: false }
+
+    const oracleUpdateIx = (await this.program.instruction.setAssetsPrices({
+      remainingAccounts: [priceFeed],
+      accounts: {
+        assetsList: this.state.assetsList
+      }
+    })) as TransactionInstruction
+
+    const [settlement, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(utils.bytes.utf8.encode('settlement')), tokenToSettle.toBuffer()],
+      this.program.programId
+    )
+    const settleIx = this.program.instruction.settleSynthetic(bump, {
+      accounts: {
+        settlement: settlement,
+        state: this.stateAddress,
+        assetsList: this.state.assetsList,
+        payer: payer,
+        tokenToSettle: tokenToSettle,
+        settlementReserve: settlementReserve,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
+        rent: SYSVAR_RENT_PUBKEY,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId
+      }
+    }) as TransactionInstruction
+    return { oracleUpdateIx, settleIx, settlement }
+  }
+  public async swapSettledSyntheticInstruction({
+    tokenToSettle,
+    userSettledTokenAccount,
+    userUsdAccount,
+    amount,
+    signer
+  }: SwapSettledSyntheticInstruction) {
+    const settlement = await this.getSettlementAccountForSynthetic(tokenToSettle)
+    const [settlementAddress, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(utils.bytes.utf8.encode('settlement')), tokenToSettle.toBuffer()],
+      this.program.programId
+    )
+    const ix = this.program.instruction.swapSettledSynthetic(amount, {
+      accounts: {
+        settlement: settlementAddress,
+        state: this.stateAddress,
+        tokenToSettle: tokenToSettle,
+        userSettledTokenAccount: userSettledTokenAccount,
+        userUsdAccount: userUsdAccount,
+        settlementReserve: settlement.reserveAddress,
+        usdToken: this.assetsList.synthetics[0].assetAddress,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        signer: signer
+      }
+    }) as TransactionInstruction
+    return ix
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -661,18 +748,7 @@ export class Exchange {
         fn(list)
       })
   }
-  public async createAssetsList() {
-    const assetListAccount = new Account()
-    await this.program.rpc.createAssetsList({
-      accounts: {
-        assetsList: assetListAccount.publicKey,
-        rent: SYSVAR_RENT_PUBKEY
-      },
-      signers: [assetListAccount],
-      instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
-    })
-    return assetListAccount.publicKey
-  }
+
   public async setPriceFeedInstruction({
     assetsList,
     priceFeed,
@@ -723,20 +799,24 @@ export class Exchange {
   }
 
   public async initializeAssetsList({
-    assetsList,
     collateralToken,
     collateralTokenFeed,
     usdToken,
     snyLiquidationFund,
     snyReserve
   }: InitializeAssetList) {
-    return await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
+    const assetListAccount = Keypair.generate()
+    await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
-        assetsList: assetsList,
+        assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,
-        snyLiquidationFund: snyLiquidationFund
-      }
+        snyLiquidationFund: snyLiquidationFund,
+        rent: SYSVAR_RENT_PUBKEY
+      },
+      signers: [assetListAccount],
+      instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
     })
+    return assetListAccount.publicKey
   }
 
   public async setAssetMaxSupply({
@@ -850,7 +930,6 @@ export interface InitializeAssetList {
   collateralToken: PublicKey
   collateralTokenFeed: PublicKey
   usdToken: PublicKey
-  assetsList: PublicKey
   snyReserve: PublicKey
   snyLiquidationFund: PublicKey
 }
@@ -1044,6 +1123,18 @@ export interface DepositInstruction {
   reserveAddress: PublicKey
   amount: BN
 }
+export interface SettleSyntheticInstruction {
+  payer: PublicKey
+  tokenToSettle: PublicKey
+  settlementReserve: PublicKey
+}
+export interface SwapSettledSyntheticInstruction {
+  tokenToSettle: PublicKey
+  userSettledTokenAccount: PublicKey
+  userUsdAccount: PublicKey
+  signer: PublicKey
+  amount: BN
+}
 export interface Init {
   admin: PublicKey
   nonce: number
@@ -1094,6 +1185,14 @@ export interface ExchangeAccount {
   userStakingData: UserStaking
   head: number
   collaterals: Array<CollateralEntry>
+}
+export interface Settlement {
+  reserveAddress: PublicKey
+  tokenInAddress: PublicKey
+  tokenOutAddress: PublicKey
+  decimalsIn: number
+  decimalsOut: number
+  ratio: BN
 }
 export interface CollateralEntry {
   amount: BN

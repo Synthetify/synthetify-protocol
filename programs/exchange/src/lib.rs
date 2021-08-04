@@ -30,24 +30,16 @@ pub mod exchange {
         exchange_account.user_staking_data = UserStaking::default();
         Ok(())
     }
-    pub fn create_assets_list(ctx: Context<CreateAssetsList>) -> ProgramResult {
-        let assets_list = &mut ctx.accounts.assets_list.load_init()?;
-        assets_list.initialized = false;
-        Ok(())
-    }
+
     // #[access_control(admin(&self, &ctx.accounts.signer))]
     pub fn create_list(
         ctx: Context<InitializeAssetsList>,
         collateral_token: Pubkey,
         collateral_token_feed: Pubkey,
-
         usd_token: Pubkey,
     ) -> Result<()> {
-        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_init()?;
 
-        if assets_list.initialized {
-            return Err(ErrorCode::Initialized.into());
-        }
         let usd_asset = Asset {
             feed_address: Pubkey::default(), // unused
             last_update: u64::MAX,           // we dont update usd price
@@ -82,7 +74,6 @@ pub mod exchange {
         assets_list.append_asset(sny_asset);
         assets_list.append_synthetic(usd_synthetic);
         assets_list.append_collateral(sny_collateral);
-        assets_list.initialized = true;
         Ok(())
     }
     pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> Result<()> {
@@ -959,7 +950,9 @@ pub mod exchange {
         exchange_account.user_staking_data.amount_to_claim = 0u64;
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state))]
+    #[access_control(halted(&ctx.accounts.state)
+    admin(&ctx.accounts.state, &ctx.accounts.admin)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn withdraw_liquidation_penalty(
         ctx: Context<WithdrawLiquidationPenalty>,
         amount: u64,
@@ -967,9 +960,6 @@ pub mod exchange {
         msg!("Synthetify: WITHDRAW LIQUIDATION PENALTY");
         let state = &ctx.accounts.state.load_mut()?;
 
-        if !ctx.accounts.admin.key.eq(&state.admin) {
-            return Err(ErrorCode::Unauthorized.into());
-        }
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let liquidation_fund = ctx.accounts.liquidation_fund.to_account_info().key;
         let collateral = assets_list
@@ -993,12 +983,11 @@ pub mod exchange {
         Ok(())
     }
     // admin methods
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn add_new_asset(ctx: Context<AddNewAsset>, new_asset_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
-        if !assets_list.initialized {
-            return Err(ErrorCode::Uninitialized.into());
-        }
+
         let new_asset = Asset {
             feed_address: new_asset_feed_address,
             last_update: 0,
@@ -1233,8 +1222,31 @@ pub mod exchange {
         collateral.collateral_ratio = collateral_ratio;
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    pub fn set_settlement_slot(
+        ctx: Context<SetSettlementSlot>,
+        settlement_slot: u64,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET SETTLEMENT SLOT");
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+        let synthetic = match assets_list
+            .synthetics
+            .iter_mut()
+            .find(|x| x.asset_address == *ctx.accounts.synthetic_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        synthetic.settlement_slot = settlement_slot;
+        Ok(())
+    }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
+        msg!("Synthetify: ADD SYNTHETIC");
+
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let asset_index = match assets_list
             .assets
@@ -1255,11 +1267,97 @@ pub mod exchange {
         assets_list.append_synthetic(new_synthetic);
         Ok(())
     }
+    #[access_control(usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    pub fn settle_synthetic(ctx: Context<SettleSynthetic>, bump: u8) -> Result<()> {
+        let slot = Clock::get()?.slot;
+
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+        let state = ctx.accounts.state.load()?;
+        let mut settlement = ctx.accounts.settlement.load_init()?;
+
+        let (assets, _, synthetics) = assets_list.split_borrow();
+
+        let synthetic_index = match synthetics
+            .iter_mut()
+            .position(|x| x.asset_address == *ctx.accounts.token_to_settle.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let synthetic = synthetics[synthetic_index];
+
+        let asset = assets[synthetic.asset_index as usize];
+        let usd_synthetic = &mut synthetics[0];
+
+        if asset.last_update < (slot - state.max_delay as u64) {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if synthetic.settlement_slot > slot {
+            return Err(ErrorCode::SettlementNotReached.into());
+        }
+
+        let usd_value = calculate_value_in_usd(asset.price, synthetic.supply, synthetic.decimals);
+
+        // Init settlement struct
+        {
+            settlement.bump = bump;
+            settlement.decimals_in = synthetic.decimals;
+            settlement.decimals_out = usd_synthetic.decimals;
+            settlement.token_out_address = usd_synthetic.asset_address;
+            settlement.token_in_address = synthetic.asset_address;
+            settlement.reserve_address = *ctx.accounts.settlement_reserve.to_account_info().key;
+            settlement.ratio = asset.price;
+        }
+
+        // Mint xUSD
+        let new_supply = usd_synthetic.supply.checked_add(usd_value).unwrap();
+        set_synthetic_supply(usd_synthetic, new_supply).unwrap();
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(cpi_ctx_mint, usd_value)?;
+
+        // Remove synthetic from list
+        assets_list.remove_synthetic(synthetic_index).unwrap();
+
+        Ok(())
+    }
+    pub fn swap_settled_synthetic(ctx: Context<SwapSettledSynthetic>, amount: u64) -> Result<()> {
+        msg!("Synthetify: SWAP SETTLED SYNTHETIC");
+
+        let state = ctx.accounts.state.load()?;
+        let settlement = ctx.accounts.settlement.load()?;
+
+        let amount_usd = (settlement.ratio as u128)
+            .checked_mul(amount as u128)
+            .unwrap()
+            .checked_div(
+                10u128
+                    .checked_pow(
+                        (settlement.decimals_in + PRICE_OFFSET - settlement.decimals_out).into(),
+                    )
+                    .unwrap(),
+            )
+            .unwrap() as u64;
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+
+        // Burn Synthetic
+        let cpi_ctx_mint: CpiContext<Burn> = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::burn(cpi_ctx_mint, amount)?;
+
+        // Transfer xUSD
+        let cpi_ctx_mint: CpiContext<Transfer> =
+            CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::transfer(cpi_ctx_mint, amount_usd)?;
+
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
 pub struct AssetsList {
-    pub initialized: bool,
     pub head_assets: u8,
     pub head_collaterals: u8,
     pub head_synthetics: u8,
@@ -1271,7 +1369,6 @@ impl Default for AssetsList {
     #[inline]
     fn default() -> AssetsList {
         AssetsList {
-            initialized: false,
             head_assets: 0,
             head_collaterals: 0,
             head_synthetics: 0,
@@ -1287,6 +1384,7 @@ impl Default for AssetsList {
         }
     }
 }
+
 impl AssetsList {
     fn append_asset(&mut self, new_asset: Asset) {
         self.assets[(self.head_assets) as usize] = new_asset;
@@ -1299,6 +1397,15 @@ impl AssetsList {
     fn append_synthetic(&mut self, new_synthetic: Synthetic) {
         self.synthetics[(self.head_synthetics) as usize] = new_synthetic;
         self.head_synthetics += 1;
+    }
+    fn remove_synthetic(&mut self, index: usize) -> Result<()> {
+        require!(index > 0, UsdSettlement);
+        self.synthetics[index] = self.synthetics[(self.head_synthetics - 1) as usize];
+        self.synthetics[(self.head_synthetics - 1) as usize] = Synthetic {
+            ..Default::default()
+        };
+        self.head_synthetics -= 1;
+        Ok(())
     }
     fn split_borrow(
         &mut self,
@@ -1315,17 +1422,12 @@ impl AssetsList {
     }
 }
 #[derive(Accounts)]
-pub struct CreateAssetsList<'info> {
-    #[account(init)]
-    pub assets_list: Loader<'info, AssetsList>,
-    pub rent: Sysvar<'info, Rent>,
-}
-#[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
-    #[account(mut)]
+    #[account(init)]
     pub assets_list: Loader<'info, AssetsList>,
     pub sny_reserve: AccountInfo<'info>,
     pub sny_liquidation_fund: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
@@ -1410,6 +1512,16 @@ pub struct SetCollateralRatio<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub collateral_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetSettlementSlot<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub synthetic_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct AddSynthetic<'info> {
@@ -1805,6 +1917,110 @@ pub struct Init<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
+
+#[account(zero_copy)]
+#[derive(PartialEq, Default, Debug)]
+pub struct Settlement {
+    //8 Account signature
+    pub bump: u8,                  //1
+    pub reserve_address: Pubkey,   //32
+    pub token_in_address: Pubkey,  //32
+    pub token_out_address: Pubkey, //32 xUSD
+    pub decimals_in: u8,           //1
+    pub decimals_out: u8,          //1
+    pub ratio: u64,                //8
+}
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct SettleSynthetic<'info> {
+    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], payer = payer)]
+    pub settlement: Loader<'info, Settlement>,
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub payer: AccountInfo<'info>,
+    pub token_to_settle: AccountInfo<'info>,
+    #[account(
+        mut,
+        "&settlement_reserve.owner == exchange_authority.key",
+        "&settlement_reserve.mint == usd_token.key"
+    )]
+    pub settlement_reserve: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub usd_token: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&SettleSynthetic<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+{
+    fn from(accounts: &SettleSynthetic<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.usd_token.to_account_info(),
+            to: accounts.settlement_reserve.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct SwapSettledSynthetic<'info> {
+    #[account(seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[settlement.load()?.bump]])]
+    pub settlement: Loader<'info, Settlement>,
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut, "token_to_settle.key == &settlement.load()?.token_in_address")]
+    pub token_to_settle: AccountInfo<'info>,
+    #[account(mut)]
+    pub user_settled_token_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_usd_account: CpiAccount<'info, TokenAccount>,
+    #[account(
+        mut,
+        "settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address"
+    )]
+    pub settlement_reserve: CpiAccount<'info, TokenAccount>,
+    #[account("usd_token.key == &settlement.load()?.token_out_address")]
+    pub usd_token: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(signer, "&user_settled_token_account.owner == signer.key")]
+    pub signer: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+{
+    fn from(
+        accounts: &SwapSettledSynthetic<'info>,
+    ) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.settlement_reserve.to_account_info(),
+            to: accounts.user_usd_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Burn<'info>>
+{
+    fn from(accounts: &SwapSettledSynthetic<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: accounts.token_to_settle.to_account_info(),
+            to: accounts.user_settled_token_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
@@ -1857,6 +2073,10 @@ pub enum ErrorCode {
     InsufficientValueTrade = 23,
     #[msg("Insufficient amount admin withdraw")]
     InsufficientAmountAdminWithdraw = 24,
+    #[msg("Settlement slot not reached")]
+    SettlementNotReached = 25,
+    #[msg("Cannot settle xUSD")]
+    UsdSettlement = 26,
 }
 
 // Access control modifiers.

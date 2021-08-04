@@ -13,11 +13,14 @@ export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
 
+export const almostEqual = (num1: BN, num2: BN) => {
+  return num1.sub(num2).abs().ltn(10)
+}
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Synthetic) => {
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral | Synthetic) => {
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -137,9 +140,7 @@ export const createAssetsList = async ({
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await exchange.createAssetsList()
-  await exchange.initializeAssetsList({
-    assetsList,
+  const assetsList = await exchange.initializeAssetsList({
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,
