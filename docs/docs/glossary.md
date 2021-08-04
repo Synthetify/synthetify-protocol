@@ -8,11 +8,15 @@ slug: /glossary
 
 Deposit takes tokens from user wallet and adds it to user's account as a [collateral](#collateral)
 
+### Dept
+
+Debt consists of all minted tokens. 
+
 ### Mint
 
 Synthetic assets can be created by Stakers of the platform and then exchanged on Synthetify exchange. Exchange of two different synthetic assets is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in lower exchange fees and no slippage.
 
-### Mint limit
+### Mint limit (Max borrow)
 
 To ensure safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created.
 
