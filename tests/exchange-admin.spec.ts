@@ -330,6 +330,65 @@ describe('admin', () => {
       assert.ok(state.healthFactor === healthFactor)
     })
   })
+  describe('#setSettlementSlot()', async () => {
+    let addedSynthetic: Synthetic | undefined
+    before(async () => {
+      const state = await exchange.getState()
+      const assetsList = await exchange.getAssetsList(state.assetsList)
+
+      const assetForSynthetic = assetsList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList: state.assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(state.assetsList)
+
+      addedSynthetic = afterAssetList.synthetics.find((a) =>
+        a.assetAddress.equals(newSynthetic.publicKey)
+      )
+      if (!addedSynthetic) {
+        assert.ok(false)
+        return
+      }
+      assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
+    })
+
+    it('Fail without admin signature', async () => {
+      const ix = await exchange.setSettlementSlotInstruction(
+        addedSynthetic.assetAddress,
+        new BN(100)
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('change value', async () => {
+      const newSettlementSlot = new BN(100)
+      const ix = await exchange.setSettlementSlotInstruction(
+        addedSynthetic.assetAddress,
+        new BN(100)
+      )
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      const changedAssetsList = await exchange.getAssetsList(state.assetsList)
+
+      const changedSynthetic = changedAssetsList.synthetics.find((a) =>
+        a.assetAddress.equals(addedSynthetic.assetAddress)
+      )
+      assert.ok(changedSynthetic?.settlementSlot.eq(newSettlementSlot))
+    })
+  })
   describe('#setStakingAmountPerRound()', async () => {
     it('Fail without admin signature', async () => {
       const amount = new BN(12399)
