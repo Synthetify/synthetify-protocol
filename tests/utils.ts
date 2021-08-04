@@ -35,39 +35,21 @@ export const calculateDebt = (assetsList: AssetsList) => {
 }
 export const calculateAmountAfterFee = (
   assetIn: Asset,
-  assetFor: Asset,
   syntheticIn: Synthetic,
-  syntheticFor: Synthetic,
-  effectiveFee: number,
-  amount: BN
+  amount: BN,
+  effectiveFee: number
 ): BN => {
-  const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  let decimalDifference = syntheticFor.decimals - syntheticIn.decimals
-  let scaledAmountBeforeFee
-  if (decimalDifference < 0) {
-    const decimalChange = new BN(10).pow(new BN(-decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.div(decimalChange)
-  } else {
-    const decimalChange = new BN(10).pow(new BN(decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.mul(decimalChange)
-  }
-  return scaledAmountBeforeFee.sub(scaledAmountBeforeFee.muln(effectiveFee).div(new BN(100000)))
-}
-export const calculateFee = (
-  assetFrom: Asset,
-  syntheticFrom: Synthetic,
-  amountFrom: BN,
-  asset: Asset,
-  synthetic: Synthetic,
-  amount: BN
-): BN => {
-  const valueFrom = assetFrom.price
-    .mul(amountFrom)
-    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
-  const value = asset.price
+  const feeDecimal = 5
+  const valueInUsd = assetIn.price
     .mul(amount)
+    .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+  return fee
+}
+export const calculateFee = (assetFrom: Asset, amountFrom: BN, synthetic: Synthetic): BN => {
+  return assetFrom.price
+    .mul(amountFrom)
     .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
-  return valueFrom.sub(value)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
