@@ -197,10 +197,9 @@ pub fn calculate_swap_out_amount(
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(u64, u64)> {
     const FEE_DECIMAL: u32 = 5;
-    let value_in = (asset_in.price as u128)
+    let value_in_usd = (asset_in.price as u128)
         .checked_mul(amount as u128)
-        .unwrap();
-    let value_in_usd = value_in
+        .unwrap()
         .checked_div(
             10u128
                 .checked_pow((synthetic_in.decimals + PRICE_OFFSET - ACCURACY).into())
