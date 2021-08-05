@@ -1072,6 +1072,17 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
+        msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
+        let state = &mut ctx.accounts.state.load_mut()?;
+
+        require!(debt_interest_rate <= 200, ParameterOutOfRange);
+
+        state.debt_interest_rate = debt_interest_rate;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
         liquidation_buffer: u32,
@@ -1910,7 +1921,7 @@ pub struct State {
     pub health_factor: u8,              //1   In % 1-100% modifier for debt
     pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
     pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
-    pub swap_tax_ratio: u8,             //8   In % range 0-20%
+    pub swap_tax_ratio: u8,             //8   In % range 0-20% [1 -> 0.1%]
     pub swap_tax_reserve: u64,          //64  Amount on tax from swap
     pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
     pub penalty_to_liquidator: u8,      //1   In % range 0-25%
