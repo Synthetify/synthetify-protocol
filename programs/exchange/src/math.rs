@@ -210,15 +210,14 @@ pub fn calculate_swap_out_amount(
     if value_in_usd < MIN_SWAP_USD_VALUE {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
-    let potential_fee = value_in_usd
+    let fee = value_in_usd
         .checked_mul(fee as u128)
         .unwrap()
         .checked_div(10u128.checked_pow(FEE_DECIMAL).unwrap())
         .unwrap();
-    let value_out_usd = value_in_usd.checked_sub(potential_fee).unwrap();
+    let value_out_usd = value_in_usd.checked_sub(fee).unwrap();
     let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
-    let actual_fee = value_in_usd.checked_sub(value_out_usd).unwrap();
-    return Ok((amount_out, actual_fee as u64));
+    return Ok((amount_out, fee as u64));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
@@ -1094,13 +1093,12 @@ mod tests {
             assert!(result.is_err());
         }
         {
-            let in_amount = 50000 * 10u64.pow(ACCURACY.into());
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_usd,
                 &asset_btc,
                 &synthetic_usd,
                 &synthetic_btc,
-                in_amount,
+                50000 * 10u64.pow(ACCURACY.into()),
                 fee,
             )
             .unwrap();
@@ -1108,23 +1106,14 @@ mod tests {
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
-            // out value + fee should be always equals in_value
-            let in_value =
-                calculate_value_in_usd(asset_usd.price, in_amount, synthetic_usd.decimals);
-            let out_value =
-                calculate_value_in_usd(asset_btc.price, out_amount, synthetic_btc.decimals);
-            let value_diff = in_value.checked_sub(out_value).unwrap();
-            assert_eq!(swap_fee, value_diff);
         }
         {
-            let in_amount = 1 * 10u64.pow(synthetic_btc.decimals.into());
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
                 &synthetic_btc,
                 &synthetic_usd,
-                in_amount,
+                1 * 10u64.pow(synthetic_btc.decimals.into()),
                 fee,
             )
             .unwrap();
@@ -1132,23 +1121,14 @@ mod tests {
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
-            // out value + fee should be always equals in_value
-            let in_value =
-                calculate_value_in_usd(asset_btc.price, in_amount, synthetic_btc.decimals);
-            let out_value =
-                calculate_value_in_usd(asset_usd.price, out_amount, synthetic_usd.decimals);
-            let value_diff = in_value.checked_sub(out_value).unwrap();
-            assert_eq!(swap_fee, value_diff);
         }
         {
-            let in_amount = 99700000;
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_eth,
                 &synthetic_btc,
                 &synthetic_eth,
-                in_amount,
+                99700000,
                 fee,
             )
             .unwrap();
@@ -1156,14 +1136,6 @@ mod tests {
             assert_eq!(out_amount, 24_850_2250);
             // fee should be 149,55 USD
             assert_eq!(swap_fee, 14955 * 10u64.pow(4));
-
-            // out value + fee should be always equals in_value
-            let in_value =
-                calculate_value_in_usd(asset_btc.price, in_amount, synthetic_btc.decimals);
-            let out_value =
-                calculate_value_in_usd(asset_eth.price, out_amount, synthetic_eth.decimals);
-            let value_diff = in_value.checked_sub(out_value).unwrap();
-            assert_eq!(swap_fee, value_diff);
         }
     }
     #[test]

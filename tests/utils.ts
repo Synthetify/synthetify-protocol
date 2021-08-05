@@ -52,16 +52,17 @@ export const calculateAmountAfterFee = (
   return usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
 }
 export const calculateFee = (
-  assetFrom: Asset,
-  amountFrom: BN,
-  synthetic: Synthetic,
+  assetIn: Asset,
+  syntheticIn: Synthetic,
+  amountIn: BN,
   effectiveFee: number
 ): BN => {
   const feeDecimal = 5
-  const valueInUsd = assetFrom.price
-    .mul(amountFrom)
-    .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
-  return valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+  const value = assetIn.price
+    .mul(amountIn)
+    .div(new BN(10).pow(new BN(syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+
+  return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
@@ -83,6 +84,11 @@ export const usdToTokenAmount = (
     amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price)
   }
   return amount
+}
+export const calculateValueInUsd = (asset: Asset, token: Synthetic | Collateral, amount: BN) => {
+  return asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(token.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 interface ICreateToken {
   connection: Connection
