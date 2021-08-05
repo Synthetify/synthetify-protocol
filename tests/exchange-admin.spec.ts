@@ -465,7 +465,6 @@ describe('admin', () => {
       assert.ok(addedNewAsset)
 
       // Check new asset initial fields
-      assert.ok(addedNewAsset.confidence === 0)
       assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
       assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
       assert.ok(addedNewAsset.price.eq(new BN(0)))
