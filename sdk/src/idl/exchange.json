@@ -1464,10 +1464,6 @@
             "type": "u32"
           },
           {
-            "name": "accountVersion",
-            "type": "u8"
-          },
-          {
             "name": "debtInterestRate",
             "type": "u8"
           },
@@ -1809,11 +1805,6 @@
       "code": 315,
       "name": "FundAccountError",
       "msg": "Invalid fund_account"
-    },
-    {
-      "code": 316,
-      "name": "AccountVersion",
-      "msg": "Invalid version of user account"
     },
     {
       "code": 317,

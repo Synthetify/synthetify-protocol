@@ -1177,7 +1177,6 @@ export interface ExchangeState {
   penaltyToLiquidator: number
   penaltyToExchange: number
   liquidationBuffer: number
-  accountVersion: number
   staking: Staking
 }
 export interface Staking {

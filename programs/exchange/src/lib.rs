@@ -149,7 +149,6 @@ pub mod exchange {
         // TODO decide about length of buffer
         // Maybe just couple of minutes will be enough ?
         state.liquidation_buffer = 172800; // about 24 Hours;
-        state.account_version = 0;
         state.staking = Staking {
             round_length: staking_round_length,
             amount_per_round: amount_per_round,
@@ -173,7 +172,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-        version(&ctx.accounts.state,&ctx.accounts.exchange_account)
         assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT");
@@ -234,7 +232,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn mint(ctx: Context<Mint>, amount: u64) -> Result<()> {
@@ -294,7 +291,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW");
@@ -402,7 +398,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-        version(&ctx.accounts.state,&ctx.accounts.exchange_account)
         assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn swap(ctx: Context<Swap>, amount: u64) -> Result<()> {
         msg!("Synthetify: SWAP");
@@ -525,7 +520,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list)
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn burn(ctx: Context<BurnToken>, amount: u64) -> Result<()> {
@@ -651,7 +645,6 @@ pub mod exchange {
         }
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list)
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn liquidate(ctx: Context<Liquidate>, amount: u64) -> Result<()> {
@@ -851,7 +844,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn check_account_collateralization(ctx: Context<CheckCollateralization>) -> Result<()> {
         msg!("Synthetify: CHECK ACCOUNT COLLATERALIZATION");
@@ -888,8 +880,7 @@ pub mod exchange {
         Ok(())
     }
 
-    #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
         msg!("Synthetify: CLAIM REWARDS");
 
@@ -924,7 +915,6 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    version(&ctx.accounts.state,&ctx.accounts.exchange_account)
     fund_account(&ctx.accounts.state,&ctx.accounts.staking_fund_account))]
     pub fn withdraw_rewards(ctx: Context<WithdrawRewards>) -> Result<()> {
         msg!("Synthetify: WITHDRAW REWARDS");
@@ -1927,7 +1917,6 @@ pub struct State {
     pub penalty_to_liquidator: u8,      //1   In % range 0-25%
     pub penalty_to_exchange: u8,        //1   In % range 0-25%
     pub liquidation_buffer: u32,        //4   Time given user to fix collateralization ratio
-    pub account_version: u8,            //1   Version of account supported by program
     pub debt_interest_rate: u8,         //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: u64, //64  Accumulated debt interest
     pub last_debt_adjustment: i64,      //64
@@ -2084,9 +2073,8 @@ pub enum ErrorCode {
     NoRewards = 14,
     #[msg("Invalid fund_account")]
     FundAccountError = 15,
-    #[msg("Invalid version of user account")]
-    AccountVersion = 16,
     #[msg("Assets list already initialized")]
+    // NEXT ERROR CODE = 16
     Initialized = 17,
     #[msg("Assets list is not initialized")]
     Uninitialized = 18,
@@ -2161,18 +2149,6 @@ fn fund_account<'info>(
             .key
             .eq(&state.staking.fund_account),
         FundAccountError
-    );
-    Ok(())
-}
-// Check is user account have correct version
-fn version<'info>(
-    state_loader: &Loader<State>,
-    exchange_account: &Loader<'info, ExchangeAccount>,
-) -> Result<()> {
-    let state = state_loader.load()?;
-    require!(
-        exchange_account.load()?.version == state.account_version,
-        AccountVersion
     );
     Ok(())
 }

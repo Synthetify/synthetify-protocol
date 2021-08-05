@@ -187,7 +187,6 @@ describe('max collaterals', () => {
     assert.ok(state.maxDelay === 0)
     assert.ok(state.fee === 300)
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.accountVersion === 0)
   })
   it('Initialize tokens', async () => {
     assert.equal(tokens.length, ASSET_LIMIT)
