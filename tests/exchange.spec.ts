@@ -130,7 +130,6 @@ describe('exchange', () => {
     assert.ok(state.debtInterestRate === 10)
     assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
     assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.accountVersion === 0)
   })
   it('Account Creation', async () => {
     const accountOwner = new Account().publicKey

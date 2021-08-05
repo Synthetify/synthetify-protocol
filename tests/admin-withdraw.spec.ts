@@ -223,14 +223,7 @@ describe('admin', () => {
         effectiveFee,
         usdMintAmount
       )
-      totalFee = calculateFee(
-        usdAsset,
-        usdSynthetic,
-        usdMintAmount,
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut
-      )
+      totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       swapTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
     })
     it('withdraw swap tax should fail without admin signature', async () => {
