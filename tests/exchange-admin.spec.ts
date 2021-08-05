@@ -218,10 +218,26 @@ describe('admin', () => {
   })
   describe('#setDebtInterestRate', async () => {
     it('should set debt interest rate', async () => {
-      // TODO
+      const newDebtInterestRate = 110
+      const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.debtInterestRate === newDebtInterestRate)
     })
     it('set debt interest rate should fail without admin signature', async () => {
-      // TODO
+      const ix = await exchange.setDebtInterestRateInstruction(50)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('set debt interest rate should fail because of paramter out of range', async () => {
+      const newDebtInterestRate = 230
+      const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
     })
   })
   describe('#setLiquidationPenalties()', async () => {
