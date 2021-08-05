@@ -9,13 +9,13 @@ pub struct AccKey {
     pub val: [u8; 32],
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
 pub enum PriceStatus {
-    Unknown,
-    Trading,
-    Halted,
-    Auction,
+    Unknown = 0,
+    Trading = 1,
+    Halted = 2,
+    Auction = 3,
 }
 
 impl Default for PriceStatus {
@@ -70,30 +70,36 @@ impl Default for PriceType {
 
 #[derive(Default, Copy, Clone)]
 #[repr(C)]
+pub struct Ema {
+    pub val: i64, // Current value of ema
+    numer: i64,   // Numerator state for next update
+    denom: i64,   // Denominator state for next update
+}
+#[derive(Default, Copy, Clone)]
+#[repr(C)]
 pub struct Price {
-    pub magic: u32,       // Pyth magic number.
-    pub ver: u32,         // Program version.
-    pub atype: u32,       // Account type.
-    pub size: u32,        // Price account size.
-    pub ptype: PriceType, // Price or calculation type.
-    pub expo: i32,        // Price exponent.
-    pub num: u32,         // Number of component prices.
-    pub unused: u32,
-    pub curr_slot: u64,        // Currently accumulating price slot.
-    pub valid_slot: u64,       // Valid slot-time of agg. price.
-    pub twap: i64,             // Time-weighted average price.
-    pub avol: u64,             // Annualized price volatility.
-    pub drv0: i64,             // Space for future derived values.
-    pub drv1: i64,             // Space for future derived values.
-    pub drv2: i64,             // Space for future derived values.
-    pub drv3: i64,             // Space for future derived values.
-    pub drv4: i64,             // Space for future derived values.
-    pub drv5: i64,             // Space for future derived values.
-    pub prod: AccKey,          // Product account key.
-    pub next: AccKey,          // Next Price account in linked list.
-    pub agg_pub: AccKey,       // Quoter who computed last aggregate price.
-    pub agg: PriceInfo,        // Aggregate price info.
-    pub comp: [PriceComp; 32], // Price components one per quoter.
+    pub magic: u32,            // Pyth magic number
+    pub ver: u32,              // Program version
+    pub atype: u32,            // Account type
+    pub size: u32,             // Price account size
+    pub ptype: PriceType,      // Price or calculation type
+    pub expo: i32,             // Price exponent
+    pub num: u32,              // Number of component prices
+    pub num_qt: u32,           // Number of quoters that make up aggregate
+    pub last_slot: u64,        // Slot of last valid (not unknown) aggregate price
+    pub valid_slot: u64,       // Valid slot-time of agg. price
+    pub twap: Ema,             // Time-weighted average price
+    pub twac: Ema,             // Time-weighted average confidence interval
+    pub drv1: i64,             // Space for future derived values
+    pub drv2: i64,             // Space for future derived values
+    pub prod: AccKey,          // Product account key
+    pub next: AccKey,          // Next Price account in linked list
+    pub prev_slot: u64,        // Valid slot of previous update
+    pub prev_price: i64,       // Aggregate price of previous update
+    pub prev_conf: u64,        // Confidence interval of previous update
+    pub drv3: i64,             // Space for future derived values
+    pub agg: PriceInfo,        // Aggregate price info
+    pub comp: [PriceComp; 32], // Price components one per quoter
 }
 
 impl Price {
