@@ -41,9 +41,94 @@
           "type": "i64"
         }
       ]
+    },
+    {
+      "name": "setTrading",
+      "accounts": [
+        {
+          "name": "price",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "status",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "setTwap",
+      "accounts": [
+        {
+          "name": "price",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "PriceStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Trading"
+          },
+          {
+            "name": "Halted"
+          },
+          {
+            "name": "Auction"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CorpAction",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NoCorpAct"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Price"
+          },
+          {
+            "name": "TWAP"
+          },
+          {
+            "name": "Volatility"
+          }
+        ]
+      }
     }
   ],
   "metadata": {
-    "address": "H3CNaXEFPp5TZ98udim8nXvPmziQBqcwxGVc7jBd6V7z"
+    "address": "9wuHhD2A2Qya3TV3Rtz7CvNFUBJMZDwkvtCoQ8x3YkX7"
   }
 }

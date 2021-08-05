@@ -933,11 +933,19 @@ export interface InitializeAssetList {
   snyReserve: PublicKey
   snyLiquidationFund: PublicKey
 }
+export enum PriceStatus {
+  Unknown = 0,
+  Trading = 1,
+  Halted = 2,
+  Auction = 3
+}
 export interface Asset {
   feedAddress: PublicKey
   price: BN
   lastUpdate: BN
   confidence: number
+  twap: BN
+  status: PriceStatus
 }
 export interface AssetsList {
   initialized: boolean

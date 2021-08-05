@@ -3,13 +3,13 @@ mod utils;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 // use manager::{AssetsList, SetAssetSupply};
+use pyth::pc::{Price, PriceStatus};
 use utils::*;
+
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
-
-    use pyth::pc::Price;
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
@@ -46,6 +46,8 @@ pub mod exchange {
             last_update: u64::MAX,           // we dont update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
+            twap: 0,
+            status: 1,
         };
         let usd_synthetic = Synthetic {
             decimals: 6,
@@ -60,6 +62,8 @@ pub mod exchange {
             last_update: 0,
             price: 0,
             confidence: 0,
+            twap: 0,
+            status: 0,
         };
         let sny_collateral = Collateral {
             asset_index: 1,
@@ -96,16 +100,32 @@ pub mod exchange {
                             .price
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
                             .unwrap();
-
+                        let scaled_twap = price_feed
+                            .twap
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap();
                         asset.price = scaled_price.try_into().unwrap();
+                        asset.twap = scaled_twap.try_into().unwrap();
                     } else {
                         let scaled_price = price_feed
                             .agg
                             .price
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
                             .unwrap();
-
+                        let scaled_twap = price_feed
+                            .twap
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
                         asset.price = scaled_price.try_into().unwrap();
+                        asset.twap = scaled_twap.try_into().unwrap();
+                    }
+                    match price_feed.agg.status {
+                        PriceStatus::Unknown => asset.status = 0,
+                        PriceStatus::Trading => asset.status = 1,
+                        PriceStatus::Halted => asset.status = 2,
+                        PriceStatus::Auction => asset.status = 3,
                     }
 
                     asset.confidence =
@@ -1001,6 +1021,8 @@ pub mod exchange {
             last_update: 0,
             price: 0,
             confidence: 0,
+            twap: 0,
+            status: 0,
         };
 
         assets_list.append_asset(new_asset);
@@ -1865,6 +1887,8 @@ pub struct Asset {
     pub feed_address: Pubkey, // 32 Pyth oracle account address
     pub price: u64,           // 8
     pub last_update: u64,     // 8
+    pub twap: u64,            // 8
+    pub status: u8,           // 1
     pub confidence: u32,      // 4 unused
 }
 #[zero_copy]
@@ -2029,6 +2053,7 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
+
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]

@@ -9,13 +9,13 @@ pub struct AccKey {
     pub val: [u8; 32],
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
 pub enum PriceStatus {
-    Unknown,
-    Trading,
-    Halted,
-    Auction,
+    Unknown = 0,
+    Trading = 1,
+    Halted = 2,
+    Auction = 3,
 }
 
 impl Default for PriceStatus {

@@ -1612,6 +1612,14 @@
             "type": "u64"
           },
           {
+            "name": "twap",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
             "name": "confidence",
             "type": "u32"
           }
@@ -1825,6 +1833,6 @@
     }
   ],
   "metadata": {
-    "address": "HTLZaAiNy9kNM4agNJnf5GzuJcGNFP95PPhatfGEQ1cM"
+    "address": "4xX2tAq7A3B3gQMtyj7wd5FAFvsSmrzLupdAyvdXEwmw"
   }
 }

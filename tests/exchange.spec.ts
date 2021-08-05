@@ -30,10 +30,10 @@ import {
   U64_MAX,
   tokenToUsdValue
 } from './utils'
-import { createPriceFeed } from './oracleUtils'
+import { createPriceFeed, getFeedData } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Collateral, Synthetic } from '../sdk/lib/exchange'
+import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -1009,7 +1009,6 @@ describe('exchange', () => {
         ethSynthetic,
         ethAmountOut
       )
-      console.log(`totalFeeSecondSwap ${totalFeeSecondSwap}`)
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
@@ -1809,6 +1808,7 @@ describe('exchange', () => {
         initPrice: 50000,
         expo: -9
       })
+
       const newAssetLimit = new BN(10).pow(new BN(18))
 
       const addBtcIx = await exchange.addNewAssetInstruction({
