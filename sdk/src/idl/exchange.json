@@ -1654,12 +1654,16 @@
             "type": "u64"
           },
           {
+            "name": "twac",
+            "type": "u64"
+          },
+          {
             "name": "status",
             "type": "u8"
           },
           {
             "name": "confidence",
-            "type": "u32"
+            "type": "u64"
           }
         ]
       }
@@ -1869,8 +1873,5 @@
       "name": "ParameterOutOfRange",
       "msg": "Parameter out of range"
     }
-  ],
-  "metadata": {
-    "address": "BVgYCGataWoFyJYposzJuqUTVRTszRJLxcb863BF1Txy"
-  }
+  ]
 }

@@ -12,6 +12,8 @@ pub mod pyth {
 
         price_oracle.agg.price = price;
         price_oracle.agg.conf = conf;
+        price_oracle.twap.val = price;
+        price_oracle.twac.val = conf as i64;
         price_oracle.expo = expo;
         price_oracle.ptype = pc::PriceType::Price;
         Ok(())

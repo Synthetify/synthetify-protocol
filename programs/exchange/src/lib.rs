@@ -47,6 +47,7 @@ pub mod exchange {
             confidence: 0,
             twap: 0,
             status: 1,
+            twac: 0,
         };
         let usd_synthetic = Synthetic {
             decimals: 6,
@@ -63,6 +64,7 @@ pub mod exchange {
             confidence: 0,
             twap: 0,
             status: 0,
+            twac: 0,
         };
         let sny_collateral = Collateral {
             asset_index: 1,
@@ -127,8 +129,8 @@ pub mod exchange {
                         PriceStatus::Auction => asset.status = 3,
                     }
 
-                    asset.confidence =
-                        math::calculate_confidence(price_feed.agg.conf, price_feed.agg.price);
+                    asset.confidence = price_feed.agg.conf;
+                    asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
@@ -1005,6 +1007,7 @@ pub mod exchange {
             confidence: 0,
             twap: 0,
             status: 0,
+            twac: 0,
         };
 
         assets_list.append_asset(new_asset);
@@ -1891,8 +1894,9 @@ pub struct Asset {
     pub price: u64,           // 8
     pub last_update: u64,     // 8
     pub twap: u64,            // 8
+    pub twac: u64,            // 8 unused
     pub status: u8,           // 1
-    pub confidence: u32,      // 4 unused
+    pub confidence: u64,      // 8 unused
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]

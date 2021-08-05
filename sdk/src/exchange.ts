@@ -959,8 +959,9 @@ export interface Asset {
   feedAddress: PublicKey
   price: BN
   lastUpdate: BN
-  confidence: number
+  confidence: BN
   twap: BN
+  twac: BN
   status: PriceStatus
 }
 export interface AssetsList {
