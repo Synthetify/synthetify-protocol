@@ -23,7 +23,7 @@ import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
 import { ACCURACY, ERRORS_EXCHANGE, ORACLE_OFFSET, sleep } from '@synthetify/sdk/lib/utils'
 
-describe('admin', () => {
+describe('settlement', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
