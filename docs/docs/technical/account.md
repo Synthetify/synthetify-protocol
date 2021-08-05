@@ -53,7 +53,6 @@ Function creating Exchange Account is defined
 The __#[account(...)]__ parts is a [constraint](https://project-serum.github.io/anchor/tutorials/tutorial-2.html#defining-a-program) 
 implemented by [Anchor](https://project-serum.github.io/anchor/getting-started/introduction.html).
 
-
 * **exchange_account** - address of account, constrains make sure it is uninitialized, of the right version and correctness of _bump_
 * **owner** - public key belonging to owner of the account
 * **payer** - account that pays fee for the created account

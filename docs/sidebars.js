@@ -23,6 +23,7 @@ module.exports = {
       items: [
         'technical/overview',
         'technical/account',
+        'technical/state',
         'technical/collateral',
         'technical/minting',
         'technical/liquidation'
