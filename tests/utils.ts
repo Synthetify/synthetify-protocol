@@ -44,37 +44,51 @@ export const calculateAmountAfterFee = (
   effectiveFee: number,
   amount: BN
 ): BN => {
-  const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  let decimalDifference = syntheticFor.decimals - syntheticIn.decimals
-  let scaledAmountBeforeFee
-  if (decimalDifference < 0) {
-    const decimalChange = new BN(10).pow(new BN(-decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.div(decimalChange)
-  } else {
-    const decimalChange = new BN(10).pow(new BN(decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.mul(decimalChange)
-  }
-  return scaledAmountBeforeFee.sub(scaledAmountBeforeFee.muln(effectiveFee).div(new BN(100000)))
+  const feeDecimal = 5
+  const valueInUsd = assetIn.price
+    .mul(amount)
+    .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+  return usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
 }
 export const calculateFee = (
-  assetFrom: Asset,
-  syntheticFrom: Synthetic,
-  amountFrom: BN,
-  asset: Asset,
-  synthetic: Synthetic,
-  amount: BN
+  assetIn: Asset,
+  syntheticIn: Synthetic,
+  amountIn: BN,
+  effectiveFee: number
 ): BN => {
-  const valueFrom = assetFrom.price
-    .mul(amountFrom)
-    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
-  const value = asset.price
-    .mul(amount)
-    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
-  return valueFrom.sub(value)
+  const feeDecimal = 5
+  const value = assetIn.price
+    .mul(amountIn)
+    .div(new BN(10).pow(new BN(syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+
+  return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
   return totalFee.muln(swapTax).divn(100)
+}
+export const usdToTokenAmount = (
+  asset: Asset,
+  token: Synthetic | Collateral,
+  valueInUsd: BN
+): BN => {
+  let decimalDifference = token.decimals - ACCURACY
+  let amount
+  if (decimalDifference < 0) {
+    amount = valueInUsd
+      .mul(new BN(10 ** ORACLE_OFFSET))
+      .div(new BN(10 ** decimalDifference))
+      .div(asset.price)
+  } else {
+    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price)
+  }
+  return amount
+}
+export const calculateValueInUsd = (asset: Asset, token: Synthetic | Collateral, amount: BN) => {
+  return asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(token.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 interface ICreateToken {
   connection: Connection
