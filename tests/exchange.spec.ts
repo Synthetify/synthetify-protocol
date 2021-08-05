@@ -27,8 +27,7 @@ import {
   createCollateralToken,
   calculateFee,
   calculateSwapTax,
-  U64_MAX,
-  tokenToUsdValue
+  U64_MAX
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
@@ -742,6 +741,9 @@ describe('exchange', () => {
       const stateBeforeSwap = await exchange.getState()
       assert.ok(stateBeforeSwap.swapTaxReserve.eq(new BN(0))) // pull fee should equals 0 before swaps
 
+      // 4.5$(IN value), 4.4865$(OUT value)
+      // expected fee 0.0135$ -> 135 * 10^2
+      // expected admin tax 0.0027$ -> 27 * 10^2
       await exchange.swap({
         exchangeAccount,
         amount: usdMintAmount,
@@ -774,17 +776,7 @@ describe('exchange', () => {
 
       const stateAfterSwap = await exchange.getState()
       const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
-      // 4.5$(IN value), 4.4865$(OUT value)
-      // expected fee 0.0135$ -> 135 * 10^2
-      // expected admin tax 0.0027$ -> 27 * 10^2
-      const totalFee = calculateFee(
-        usdAsset,
-        usdSynthetic,
-        usdMintAmount,
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut
-      )
+      const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(stateAfterSwap.swapTaxReserve.eq(adminTax))
@@ -802,6 +794,10 @@ describe('exchange', () => {
       const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
 
+      // 4.4865$(IN value), 4.472$(OUT value)
+      // expected fee 0,013459$ -> 13459
+      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
+      // 0,002691$ -> 2691
       await exchange.swap({
         exchangeAccount,
         amount: btcAmountOut,
@@ -826,21 +822,8 @@ describe('exchange', () => {
 
       const stateAfterSecondSwap = await exchange.getState()
       const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
-
-      // 4.4865$(IN value), 4.474$(OUT value)
-      // expected fee 0,0125$ -> 125 * 10^2
-      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
-      // 0,0025$ -> 25 * 10^2
-      const totalFeeSecondSwap = calculateFee(
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut,
-        ethAsset,
-        ethSynthetic,
-        ethAmountOut
-      )
+      const totalFeeSecondSwap = calculateFee(btcAsset, btcSynthetic, btcAmountOut, effectiveFee)
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
-
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
         stateAfterSecondSwap.swapTaxReserve.eq(
@@ -918,6 +901,9 @@ describe('exchange', () => {
       const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
       const stateBeforeSwap = await exchange.getState()
 
+      // 100$(IN value), 99.7$(OUT value)
+      // expected fee 0.3$ -> 3 * 10^5
+      // expected admin tax 0.06$ -> 6 * 10^4
       await exchange.swap({
         amount: usdMintAmount,
         exchangeAccount,
@@ -943,19 +929,9 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      // 100$(IN value), 99.7$(OUT value)
-      // expected fee 0.3$ -> 3 * 10^5
-      // expected admin tax 0.06$ -> 6 * 10^4
       const stateAfterSwap = await exchange.getState()
       const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
-      const totalFee = calculateFee(
-        usdAsset,
-        usdSynthetic,
-        usdMintAmount,
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut
-      )
+      const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(stateAfterSwap.swapTaxReserve.eq(stateBeforeSwap.swapTaxReserve.add(adminTax)))
@@ -973,6 +949,10 @@ describe('exchange', () => {
       const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
 
+      // 99.7$(IN value), 99.402$(OUT value)
+      // expected fee 0.2991$ ->  2991 * 10^2
+      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
+      // 0.05982$ -> 5982 * 10^1
       await exchange.swap({
         amount: btcAmountOut,
         exchangeAccount,
@@ -995,21 +975,9 @@ describe('exchange', () => {
       const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
 
-      // 99.7$(IN value), 99.402$(OUT value)
-      // expected fee 0,298$ ->  298 * 10^3
-      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
-      // 0,06$ -> 6 * 10^4
       const stateAfterSecondSwap = await exchange.getState()
       const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
-      const totalFeeSecondSwap = calculateFee(
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut,
-        ethAsset,
-        ethSynthetic,
-        ethAmountOut
-      )
-      console.log(`totalFeeSecondSwap ${totalFeeSecondSwap}`)
+      const totalFeeSecondSwap = calculateFee(btcAsset, btcSynthetic, btcAmountOut, effectiveFee)
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
@@ -1069,6 +1037,9 @@ describe('exchange', () => {
       const btcAsset = assetsListData.assets[btcSynthetic.assetIndex]
       const stateBeforeSwap = await exchange.getState()
 
+      // 300$(IN value), 299.125$(OUT value)
+      // expected fee 0.873$ -> 873 * 10^2
+      // expected admin tax 0.1746$ -> 1746 *10^1
       await exchange.swap({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1094,19 +1065,9 @@ describe('exchange', () => {
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       assert.ok(userUsdTokenAccountAfter.amount.eq(new BN(0)))
 
-      // 300$(IN value), 299.13$(OUT value)
-      // expected fee 0.87$ -> 87 * 10^3
-      // expected admin tax 0.174$ -> 174 *10^2
       const stateAfterSwap = await exchange.getState()
       const assetsListDataAfterSwap = await exchange.getAssetsList(assetsList)
-      const totalFee = calculateFee(
-        usdAsset,
-        usdSynthetic,
-        usdMintAmount,
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut
-      )
+      const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(stateAfterSwap.swapTaxReserve.eq(stateBeforeSwap.swapTaxReserve.add(adminTax)))
@@ -1125,6 +1086,10 @@ describe('exchange', () => {
       const userEthTokenAccountBefore = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountBefore.amount.eq(new BN(0)))
 
+      // 29.9125$(IN value), 29.824$(OUT value)
+      // expected fee 0.087045$ ->  87045
+      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
+      // 0.017409$ -> 17409
       await exchange.swap({
         amount: btcAmountOut,
         exchangeAccount,
@@ -1147,21 +1112,9 @@ describe('exchange', () => {
       const userEthTokenAccountAfter = await ethToken.getAccountInfo(ethTokenAccount)
       assert.ok(userEthTokenAccountAfter.amount.eq(ethAmountOut))
 
-      // 29.913$(IN value), 29.826$(OUT value)
-      // 29.913$(IN value), 29.826$(OUT value)
-      // expected fee 0,087$ ->  87 * 10^3
-      // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
-      // 0,0174$ -> 174 * 10^2
       const stateAfterSecondSwap = await exchange.getState()
       const assetsListDataAfterSecondSwap = await exchange.getAssetsList(assetsList)
-      const totalFeeSecondSwap = calculateFee(
-        btcAsset,
-        btcSynthetic,
-        btcAmountOut,
-        ethAsset,
-        ethSynthetic,
-        ethAmountOut
-      )
+      const totalFeeSecondSwap = calculateFee(btcAsset, btcSynthetic, btcAmountOut, effectiveFee)
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
