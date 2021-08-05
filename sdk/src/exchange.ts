@@ -521,6 +521,22 @@ export class Exchange {
     }) as TransactionInstruction
     return ix
   }
+  public async setSwapTaxRatioInstruction(swapTaxRatio: number) {
+    return await (this.program.instruction.setSwapTaxRatio(swapTaxRatio, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
+  public async setDebtInterestRateInstruction(debtInterestRate: number) {
+    return await (this.program.instruction.setDebtInterestRate(debtInterestRate, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin
+      }
+    }) as TransactionInstruction)
+  }
   private async processOperations(txs: Transaction[]) {
     const blockhash = await this.connection.getRecentBlockhash(
       this.opts?.commitment || Provider.defaultOptions().commitment
@@ -1161,7 +1177,6 @@ export interface ExchangeState {
   penaltyToLiquidator: number
   penaltyToExchange: number
   liquidationBuffer: number
-  accountVersion: number
   staking: Staking
 }
 export interface Staking {

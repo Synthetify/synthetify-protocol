@@ -720,6 +720,48 @@
       ]
     },
     {
+      "name": "setSwapTaxRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "swapTaxRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "setDebtInterestRate",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "debtInterestRate",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "setLiquidationBuffer",
       "accounts": [
         {
@@ -1422,10 +1464,6 @@
             "type": "u32"
           },
           {
-            "name": "accountVersion",
-            "type": "u8"
-          },
-          {
             "name": "debtInterestRate",
             "type": "u8"
           },
@@ -1769,11 +1807,6 @@
       "msg": "Invalid fund_account"
     },
     {
-      "code": 316,
-      "name": "AccountVersion",
-      "msg": "Invalid version of user account"
-    },
-    {
       "code": 317,
       "name": "Initialized",
       "msg": "Assets list already initialized"
@@ -1822,9 +1855,11 @@
       "code": 326,
       "name": "UsdSettlement",
       "msg": "Cannot settle xUSD"
+    },
+    {
+      "code": 327,
+      "name": "ParameterOutOfRange",
+      "msg": "Parameter out of range"
     }
-  ],
-  "metadata": {
-    "address": "6GiTUNvxyVg7RiUVb6aUNDf8U9DWQrK2vSVpbvwyiMRu"
-  }
+  ]
 }

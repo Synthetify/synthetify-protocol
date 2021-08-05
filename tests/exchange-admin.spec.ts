@@ -109,7 +109,7 @@ describe('admin', () => {
   })
   it('Initialize state', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
@@ -194,18 +194,50 @@ describe('admin', () => {
   })
   describe('#setSwapTaxRatio', async () => {
     it('should set swap tax ratio', async () => {
-      // TODO
+      const newSwapTaxRatio = 100
+      const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.swapTaxRatio === newSwapTaxRatio)
     })
     it('set swap tax ratio should fail without admin signature', async () => {
-      // TODO
+      const ix = await exchange.setSwapTaxRatioInstruction(50)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('set swap tax ratio should fail because of paramter out of range', async () => {
+      const outOfRange = 230
+      const ix = await exchange.setSwapTaxRatioInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
     })
   })
   describe('#setDebtInterestRate', async () => {
     it('should set debt interest rate', async () => {
-      // TODO
+      const newDebtInterestRate = 110
+      const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.debtInterestRate === newDebtInterestRate)
     })
     it('set debt interest rate should fail without admin signature', async () => {
-      // TODO
+      const ix = await exchange.setDebtInterestRateInstruction(50)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('set debt interest rate should fail because of paramter out of range', async () => {
+      const newDebtInterestRate = 230
+      const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
     })
   })
   describe('#setLiquidationPenalties()', async () => {
