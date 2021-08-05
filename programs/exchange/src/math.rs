@@ -210,15 +210,15 @@ pub fn calculate_swap_out_amount(
     if value_in_usd < MIN_SWAP_USD_VALUE {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
-    let fee_in_usd = value_in_usd
+    let potential_fee = value_in_usd
         .checked_mul(fee as u128)
         .unwrap()
         .checked_div(10u128.checked_pow(FEE_DECIMAL).unwrap())
         .unwrap();
-    let value_out_usd = value_in_usd.checked_sub(fee_in_usd).unwrap();
+    let value_out_usd = value_in_usd.checked_sub(potential_fee).unwrap();
     let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
-
-    return Ok((amount_out, fee_in_usd as u64));
+    let actual_fee = value_in_usd.checked_sub(value_out_usd).unwrap();
+    return Ok((amount_out, actual_fee as u64));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
