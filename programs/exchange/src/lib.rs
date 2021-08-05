@@ -15,8 +15,7 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount,
-        MIN_SWAP_USD_VALUE, PRICE_OFFSET,
+        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
     use super::*;
@@ -377,8 +376,11 @@ pub mod exchange {
 
         let amount_to_withdraw: u64;
         if amount == u64::MAX {
-            let max_withdrawable_in_token =
-                usd_to_token_amount(collateral_asset, collateral, max_withdrawable_in_usd);
+            let max_withdrawable_in_token = usd_to_token_amount(
+                collateral_asset,
+                collateral.decimals,
+                max_withdrawable_in_usd,
+            );
 
             if max_withdrawable_in_token > exchange_account_collateral.amount {
                 amount_to_withdraw = exchange_account_collateral.amount;
@@ -476,16 +478,6 @@ pub mod exchange {
 
         let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
 
-        // Check min swap value
-        let value_in = calculate_value_in_usd(
-            assets[synthetics[synthetic_in_index].asset_index as usize].price,
-            amount,
-            synthetics[synthetic_in_index].decimals,
-        );
-        if value_in < MIN_SWAP_USD_VALUE {
-            return Err(ErrorCode::InsufficientValueTrade.into());
-        }
-
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
         let effective_fee = state
@@ -507,7 +499,7 @@ pub mod exchange {
             &synthetics[synthetic_for_index],
             amount,
             effective_fee,
-        );
+        )?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -761,7 +753,7 @@ pub mod exchange {
 
         let seized_collateral_in_token = usd_to_token_amount(
             liquidated_asset,
-            liquidated_collateral,
+            liquidated_collateral.decimals,
             seized_collateral_in_usd.try_into().unwrap(),
         );
 
