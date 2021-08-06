@@ -29,7 +29,7 @@ import {
   calculateSwapTax,
   U64_MAX
 } from './utils'
-import { createPriceFeed, getFeedData } from './oracleUtils'
+import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
@@ -605,6 +605,7 @@ describe('exchange', () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
+    let btcFeed: PublicKey
     let healthFactor: BN
 
     before(async () => {
@@ -616,7 +617,7 @@ describe('exchange', () => {
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
-      const btcFeed = await createPriceFeed({
+      btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
         expo: -9
@@ -1324,6 +1325,59 @@ describe('exchange', () => {
           signers: [accountOwner]
         }),
         ERRORS.ALLOWANCE
+      )
+    })
+    it('swap on non tradable output asset should fail', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateral({
+          reserveAddress: snyReserve,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount
+        })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // We can mint max 2000 * 1e6
+      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const btcSynthetic = assetsListData.synthetics.find((a) =>
+        a.assetAddress.equals(btcToken.publicKey)
+      ) as Synthetic
+
+      // mark asset out status as Unknown
+      await setFeedTrading(oracleProgram, PriceStatus.Unknown, btcFeed)
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: btcTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: btcSynthetic.assetAddress,
+          tokenIn: assetsListData.synthetics[0].assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.SWAP_UNAVAILABLE
       )
     })
   })
