@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 pub mod pc;
-use pc::Price;
+use pc::{Price, PriceStatus};
 #[program]
 pub mod pyth {
 
@@ -12,6 +12,8 @@ pub mod pyth {
 
         price_oracle.agg.price = price;
         price_oracle.agg.conf = conf;
+        price_oracle.twap.val = price;
+        price_oracle.twac.val = conf as i64;
         price_oracle.expo = expo;
         price_oracle.ptype = pc::PriceType::Price;
         Ok(())
@@ -20,6 +22,28 @@ pub mod pyth {
         let oracle = &ctx.accounts.price;
         let mut price_oracle = Price::load(&oracle).unwrap();
         price_oracle.agg.price = price as i64;
+        Ok(())
+    }
+    pub fn set_trading(ctx: Context<SetPrice>, status: u8) -> ProgramResult {
+        let oracle = &ctx.accounts.price;
+        let mut price_oracle = Price::load(&oracle).unwrap();
+        match status {
+            0 => price_oracle.agg.status = PriceStatus::Unknown,
+            1 => price_oracle.agg.status = PriceStatus::Trading,
+            2 => price_oracle.agg.status = PriceStatus::Halted,
+            3 => price_oracle.agg.status = PriceStatus::Auction,
+            _ => {
+                msg!("Unknown status: {}", status);
+                return Err(ProgramError::Custom(1559));
+            }
+        }
+        Ok(())
+    }
+    pub fn set_twap(ctx: Context<SetPrice>, value: u64) -> ProgramResult {
+        let oracle = &ctx.accounts.price;
+        let mut price_oracle = Price::load(&oracle).unwrap();
+        price_oracle.twap.val = value as i64;
+
         Ok(())
     }
 }

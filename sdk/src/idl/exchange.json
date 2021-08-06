@@ -39,22 +39,6 @@
       ]
     },
     {
-      "name": "createAssetsList",
-      "accounts": [
-        {
-          "name": "assetsList",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "createList",
       "accounts": [
         {
@@ -69,6 +53,11 @@
         },
         {
           "name": "snyLiquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -639,6 +628,140 @@
       ]
     },
     {
+      "name": "withdrawSwapTax",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawAccumulatedDebtInterest",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setSwapTaxRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "swapTaxRatio",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "setDebtInterestRate",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "debtInterestRate",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "setLiquidationBuffer",
       "accounts": [
         {
@@ -978,6 +1101,37 @@
       ]
     },
     {
+      "name": "setSettlementSlot",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "syntheticAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "settlementSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "addSynthetic",
       "accounts": [
         {
@@ -1016,6 +1170,133 @@
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "settleSynthetic",
+      "accounts": [
+        {
+          "name": "settlement",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenToSettle",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "settlementReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "swapSettledSynthetic",
+      "accounts": [
+        {
+          "name": "settlement",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenToSettle",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userSettledTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userUsdAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settlementReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1024,10 +1305,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "initialized",
-            "type": "bool"
-          },
           {
             "name": "headAssets",
             "type": "u8"
@@ -1163,11 +1440,11 @@
             "type": "u32"
           },
           {
-            "name": "swapTax",
+            "name": "swapTaxRatio",
             "type": "u8"
           },
           {
-            "name": "poolFee",
+            "name": "swapTaxReserve",
             "type": "u64"
           },
           {
@@ -1185,10 +1462,6 @@
           {
             "name": "liquidationBuffer",
             "type": "u32"
-          },
-          {
-            "name": "accountVersion",
-            "type": "u8"
           },
           {
             "name": "debtInterestRate",
@@ -1211,6 +1484,42 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settlement",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenInAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenOutAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "decimalsIn",
+            "type": "u8"
+          },
+          {
+            "name": "decimalsOut",
+            "type": "u8"
+          },
+          {
+            "name": "ratio",
+            "type": "u64"
           }
         ]
       }
@@ -1341,8 +1650,20 @@
             "type": "u64"
           },
           {
+            "name": "twap",
+            "type": "u64"
+          },
+          {
+            "name": "twac",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
             "name": "confidence",
-            "type": "u32"
+            "type": "u64"
           }
         ]
       }
@@ -1498,11 +1819,6 @@
       "msg": "Invalid fund_account"
     },
     {
-      "code": 316,
-      "name": "AccountVersion",
-      "msg": "Invalid version of user account"
-    },
-    {
       "code": 317,
       "name": "Initialized",
       "msg": "Assets list already initialized"
@@ -1536,6 +1852,26 @@
       "code": 323,
       "name": "InsufficientValueTrade",
       "msg": "Insufficient value trade"
+    },
+    {
+      "code": 324,
+      "name": "InsufficientAmountAdminWithdraw",
+      "msg": "Insufficient amount admin withdraw"
+    },
+    {
+      "code": 325,
+      "name": "SettlementNotReached",
+      "msg": "Settlement slot not reached"
+    },
+    {
+      "code": 326,
+      "name": "UsdSettlement",
+      "msg": "Cannot settle xUSD"
+    },
+    {
+      "code": 327,
+      "name": "ParameterOutOfRange",
+      "msg": "Parameter out of range"
     }
   ]
 }

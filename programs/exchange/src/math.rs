@@ -6,7 +6,7 @@ use crate::*;
 pub const ACCURACY: u8 = 6; // xUSD decimal
 pub const PRICE_OFFSET: u8 = 8;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
-pub const MIN_SWAP_USD_VALUE: u64 = 1000; // depends on ACCURACY
+pub const MIN_SWAP_USD_VALUE: u128 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
 
 pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
@@ -181,20 +181,6 @@ pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
         )
         .unwrap() as u64;
 }
-pub fn calculate_value_difference_in_usd(
-    price_in: u64,
-    amount_in: u64,
-    decimal_in: u8,
-    price_out: u64,
-    amount_out: u64,
-    decimal_out: u8,
-) -> u64 {
-    // price in should be always bigger than price out
-    let value_in = calculate_value_in_usd(price_in, amount_in, decimal_in);
-    let value_out = calculate_value_in_usd(price_out, amount_out, decimal_out);
-
-    return value_in.checked_sub(value_out).unwrap();
-}
 pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
     return (swap_tax as u128)
         .checked_mul(total_fee as u128)
@@ -209,43 +195,29 @@ pub fn calculate_swap_out_amount(
     synthetic_for: &Synthetic,
     amount: u64,
     fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-) -> (u64, u64) {
-    let amount_out_before_fee = (asset_in.price as u128)
+) -> Result<(u64, u64)> {
+    const FEE_DECIMAL: u32 = 5;
+    let value_in_usd = (asset_in.price as u128)
         .checked_mul(amount as u128)
         .unwrap()
-        .checked_div(asset_for.price as u128)
-        .unwrap();
-
-    // If assets have different decimals we need to scale them.
-    let decimal_difference = synthetic_for.decimals as i32 - synthetic_in.decimals as i32;
-    let scaled_amount_out_before_fee = if decimal_difference < 0 {
-        let decimal_change = 10u128.pow((-decimal_difference) as u32);
-        amount_out_before_fee.checked_div(decimal_change).unwrap()
-    } else {
-        let decimal_change = 10u128.pow(decimal_difference as u32);
-        amount_out_before_fee.checked_mul(decimal_change).unwrap()
-    };
-
-    let amount_out_after_fee = scaled_amount_out_before_fee
-        .checked_sub(
-            scaled_amount_out_before_fee
-                .checked_mul(fee as u128)
-                .unwrap()
-                .checked_div(100000)
+        .checked_div(
+            10u128
+                .checked_pow((synthetic_in.decimals + PRICE_OFFSET - ACCURACY).into())
                 .unwrap(),
         )
         .unwrap();
-
-    let fee_in_usd = calculate_value_difference_in_usd(
-        asset_in.price,
-        amount as u64,
-        synthetic_in.decimals,
-        asset_for.price,
-        amount_out_after_fee as u64,
-        synthetic_for.decimals,
-    );
-
-    return (amount_out_after_fee.try_into().unwrap(), fee_in_usd);
+    // Check min swap value
+    if value_in_usd < MIN_SWAP_USD_VALUE {
+        return Err(ErrorCode::InsufficientValueTrade.into());
+    }
+    let fee = value_in_usd
+        .checked_mul(fee as u128)
+        .unwrap()
+        .checked_div(10u128.checked_pow(FEE_DECIMAL).unwrap())
+        .unwrap();
+    let value_out_usd = value_in_usd.checked_sub(fee).unwrap();
+    let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
+    return Ok((amount_out, fee as u64));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
@@ -287,10 +259,10 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     );
     return burned_amount_token.try_into().unwrap();
 }
-pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) -> u64 {
-    let decimal_difference = collateral.decimals as i32 - ACCURACY as i32;
+pub fn usd_to_token_amount(asset: &Asset, decimal: u8, value_in_usd: u64) -> u64 {
+    let decimal_difference = decimal as i32 - ACCURACY as i32;
     if decimal_difference < 0 {
-        let amount = (amount as u128)
+        let amount = (value_in_usd as u128)
             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
             .unwrap()
             .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
@@ -299,7 +271,7 @@ pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) 
             .unwrap();
         return amount.try_into().unwrap();
     } else {
-        let amount = (amount as u128)
+        let amount = (value_in_usd as u128)
             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
             .unwrap()
             .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
@@ -311,20 +283,6 @@ pub fn usd_to_token_amount(asset: &Asset, collateral: &Collateral, amount: u64) 
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
-// confidence is in range 0 - 1000000
-// 0 -> perfect price
-// 100 -> 0.01% accuracy
-// 1000 -> 0.1% accuracy
-// 10000 -> 1% accuracy
-pub fn calculate_confidence(conf: u64, price: i64) -> u32 {
-    return (conf as u128)
-        .checked_mul(10u128.pow(CONFIDENCE_OFFSET.into()))
-        .unwrap()
-        .checked_div(price.try_into().unwrap())
-        .unwrap()
-        .try_into()
-        .unwrap();
-}
 pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
     let one = 1u128
         .checked_mul(10u128.checked_pow(accuracy.into()).unwrap())
@@ -1083,32 +1041,44 @@ mod tests {
     }
     #[test]
     fn test_calculate_swap_out_amount() {
+        let asset_usd = Asset {
+            price: 1 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_usd = Synthetic {
+            decimals: 6,
+            ..Default::default()
+        };
+        let asset_btc = Asset {
+            price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_btc = Synthetic {
+            decimals: 8,
+            ..Default::default()
+        };
+        let asset_eth = Asset {
+            price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
+            ..Default::default()
+        };
+        let synthetic_eth = Synthetic {
+            decimals: 7,
+            ..Default::default()
+        };
+        let fee = 300u32;
+        // should fail because swap value is too low
         {
-            let asset_usd = Asset {
-                price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_usd = Synthetic {
-                decimals: 6,
-                ..Default::default()
-            };
-            let asset_btc = Asset {
-                price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_btc = Synthetic {
-                decimals: 8,
-                ..Default::default()
-            };
-            let asset_eth = Asset {
-                price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-                ..Default::default()
-            };
-            let synthetic_eth = Synthetic {
-                decimals: 7,
-                ..Default::default()
-            };
-            let fee = 300u32;
+            let result = calculate_swap_out_amount(
+                &asset_usd,
+                &asset_btc,
+                &synthetic_usd,
+                &synthetic_btc,
+                10,
+                fee,
+            );
+            assert!(result.is_err());
+        }
+        {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_usd,
                 &asset_btc,
@@ -1116,12 +1086,14 @@ mod tests {
                 &synthetic_btc,
                 50000 * 10u64.pow(ACCURACY.into()),
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 0.997 BTC
             assert_eq!(out_amount, 0_99700000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
+        }
+        {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
@@ -1129,12 +1101,14 @@ mod tests {
                 &synthetic_usd,
                 1 * 10u64.pow(synthetic_btc.decimals.into()),
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 49850 USD
             assert_eq!(out_amount, 49850_000_000);
             // fee should be 150 USD
             assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-
+        }
+        {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_eth,
@@ -1142,7 +1116,8 @@ mod tests {
                 &synthetic_eth,
                 99700000,
                 fee,
-            );
+            )
+            .unwrap();
             // out amount should be 24.850225 ETH
             assert_eq!(out_amount, 24_850_2250);
             // fee should be 149,55 USD
@@ -1237,47 +1212,6 @@ mod tests {
         }
     }
     #[test]
-    fn test_calculate_value_difference_in_usd() {
-        let xbtc_price = 30_000 * 10u64.pow(PRICE_OFFSET as u32);
-        let xbtc_decimal = 8u8;
-
-        let xusd_price = 1 * 10u64.pow(PRICE_OFFSET as u32);
-        let xusd_decimal = 6u8;
-        // xUSD -> xBTC
-        {
-            let xbtc_amount = 1 * 10u64.pow(xbtc_decimal.into());
-            let xusd_amount = 28_999 * 10u64.pow(xusd_decimal.into());
-
-            let value_difference_in_usd = calculate_value_difference_in_usd(
-                xbtc_price,
-                xbtc_amount,
-                xbtc_decimal,
-                xusd_price,
-                xusd_amount,
-                xusd_decimal,
-            );
-            // should be 1_001
-            assert_eq!(value_difference_in_usd, 1_001 * 10u64.pow(ACCURACY.into()));
-        }
-        // xBTC -> xUSD
-        {
-            // 0.89 BTC
-            let xbtc_amount = 89 * 10u64.pow((xbtc_decimal - 2).into());
-            let xusd_amount = 35_000 * 10u64.pow(xusd_decimal.into());
-            let value_difference_in_usd = calculate_value_difference_in_usd(
-                xusd_price,
-                xusd_amount,
-                xusd_decimal,
-                xbtc_price,
-                xbtc_amount,
-                xbtc_decimal,
-            );
-            // should be 8_300
-            assert_eq!(value_difference_in_usd, 8_300 * 10u64.pow(ACCURACY.into()));
-        }
-    }
-
-    #[test]
     fn test_calculate_swap_tax() {
         // MIN - 0%
         {
@@ -1313,13 +1247,9 @@ mod tests {
                 price: 14 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let collateral = Collateral {
-                decimals: 6,
-                ..Default::default()
-            };
-
+            let decimals = 6;
             let amount = 100;
-            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            let token_amount = usd_to_token_amount(&asset, decimals, amount);
             // 7,142...
             assert_eq!(token_amount, 7);
         }
@@ -1329,49 +1259,14 @@ mod tests {
                 price: 91 * 10u64.pow(PRICE_OFFSET.into()),
                 ..Default::default()
             };
-            let collateral = Collateral {
-                decimals: 10,
-                ..Default::default()
-            };
-
+            let decimals = 10;
             let amount = 1_003_900_802 * 10u64.pow(8);
-            let token_amount = usd_to_token_amount(&asset, &collateral, amount);
+            let token_amount = usd_to_token_amount(&asset, decimals, amount);
             // 11031876945054945054
             assert_eq!(token_amount, 11031876945054945054)
         }
     }
-    #[test]
-    fn test_calculate_confidence() {
-        let offset = 10u32.pow(CONFIDENCE_OFFSET.into());
-        // 100% -> 1 * 10 ** CONFIDENCE_OFFSET
-        {
-            let price = 100_000_000i64;
-            let conf = 100_000_000u64;
-            let confidence = calculate_confidence(conf, price);
-            assert_eq!(confidence, (1f64 * f64::from(offset)) as u32)
-        }
-        // 1% -> 0.01 * 10 ** CONFIDENCE_OFFSET
-        {
-            let price = 100_000_000i64;
-            let conf = 1_000_000u64;
-            let confidence = calculate_confidence(conf, price);
-            assert_eq!(confidence, (0.01 * f64::from(offset)) as u32)
-        }
-        // 0.1% -> 0.001 * 10 ** CONFIDENCE_OFFSET
-        {
-            let price = 100_000_000i64;
-            let conf = 100_000u64;
-            let confidence = calculate_confidence(conf, price);
-            assert_eq!(confidence, (0.001 * f64::from(offset)) as u32)
-        }
-        // 0.01% -> 0.0001 * 10 ** CONFIDENCE_OFFSET
-        {
-            let price = 100_000_000i64;
-            let conf = 10_000u64;
-            let confidence = calculate_confidence(conf, price);
-            assert_eq!(confidence, (0.0001 * f64::from(offset)) as u32)
-        }
-    }
+
     #[test]
     fn test_pow_with_accuracy() {
         // Zero base

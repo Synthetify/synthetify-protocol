@@ -13,11 +13,14 @@ export const EXCHANGE_ADMIN = new Keypair()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
 
+export const almostEqual = (num1: BN, num2: BN) => {
+  return num1.sub(num2).abs().ltn(10)
+}
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral | Synthetic) => {
   return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
@@ -41,37 +44,51 @@ export const calculateAmountAfterFee = (
   effectiveFee: number,
   amount: BN
 ): BN => {
-  const amountOutBeforeFee = assetIn.price.mul(amount).div(assetFor.price)
-  let decimalDifference = syntheticFor.decimals - syntheticIn.decimals
-  let scaledAmountBeforeFee
-  if (decimalDifference < 0) {
-    const decimalChange = new BN(10).pow(new BN(-decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.div(decimalChange)
-  } else {
-    const decimalChange = new BN(10).pow(new BN(decimalDifference))
-    scaledAmountBeforeFee = amountOutBeforeFee.mul(decimalChange)
-  }
-  return scaledAmountBeforeFee.sub(scaledAmountBeforeFee.muln(effectiveFee).div(new BN(100000)))
+  const feeDecimal = 5
+  const valueInUsd = assetIn.price
+    .mul(amount)
+    .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+  return usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
 }
 export const calculateFee = (
-  assetFrom: Asset,
-  syntheticFrom: Synthetic,
-  amountFrom: BN,
-  asset: Asset,
-  synthetic: Synthetic,
-  amount: BN
+  assetIn: Asset,
+  syntheticIn: Synthetic,
+  amountIn: BN,
+  effectiveFee: number
 ): BN => {
-  const valueFrom = assetFrom.price
-    .mul(amountFrom)
-    .div(new BN(10).pow(new BN(syntheticFrom.decimals + ORACLE_OFFSET - ACCURACY)))
-  const value = asset.price
-    .mul(amount)
-    .div(new BN(10).pow(new BN(synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
-  return valueFrom.sub(value)
+  const feeDecimal = 5
+  const value = assetIn.price
+    .mul(amountIn)
+    .div(new BN(10).pow(new BN(syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+
+  return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
   // swapTax 20 -> 20%
   return totalFee.muln(swapTax).divn(100)
+}
+export const usdToTokenAmount = (
+  asset: Asset,
+  token: Synthetic | Collateral,
+  valueInUsd: BN
+): BN => {
+  let decimalDifference = token.decimals - ACCURACY
+  let amount
+  if (decimalDifference < 0) {
+    amount = valueInUsd
+      .mul(new BN(10 ** ORACLE_OFFSET))
+      .div(new BN(10 ** decimalDifference))
+      .div(asset.price)
+  } else {
+    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price)
+  }
+  return amount
+}
+export const calculateValueInUsd = (asset: Asset, token: Synthetic | Collateral, amount: BN) => {
+  return asset.price
+    .mul(amount)
+    .div(new BN(10).pow(new BN(token.decimals + ORACLE_OFFSET - ACCURACY)))
 }
 interface ICreateToken {
   connection: Connection
@@ -125,9 +142,7 @@ export const createAssetsList = async ({
     payer: wallet,
     mintAuthority: exchangeAuthority
   })
-  const assetsList = await exchange.createAssetsList()
-  await exchange.initializeAssetsList({
-    assetsList,
+  const assetsList = await exchange.initializeAssetsList({
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,
@@ -385,7 +400,7 @@ export const createCollateralToken = async ({
 export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   try {
     await fn
-  } catch (e) {
+  } catch (e: any) {
     let err
     if (e.code) {
       err = '0x' + e.code.toString(16)
@@ -404,7 +419,7 @@ export async function assertThrowsAsync(fn: Promise<any>, word?: string) {
   throw new Error('Function did not throw error')
 }
 
-export const skipToSlot = async (slot: number, connection: Connection): Promise<null> => {
+export const skipToSlot = async (slot: number, connection: Connection): Promise<undefined> => {
   const startSlot = await connection.getSlot()
 
   // Checks if given slot hasn't already passed
@@ -423,11 +438,11 @@ export const skipToSlot = async (slot: number, connection: Connection): Promise<
 export const skipTimestamps = async (
   timestampDiff: number,
   connection: Connection
-): Promise<null> => {
-  const startTimestamp = await connection.getBlockTime(await connection.getSlot())
+): Promise<undefined> => {
+  const startTimestamp = (await connection.getBlockTime(await connection.getSlot())) as number
   const finishedTimestamp = startTimestamp + timestampDiff
   while (true) {
-    const currentTimestamp = await connection.getBlockTime(await connection.getSlot())
+    const currentTimestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     if (currentTimestamp >= finishedTimestamp) return
     await sleep(400)
   }
