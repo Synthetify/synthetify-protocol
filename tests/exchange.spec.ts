@@ -1327,7 +1327,7 @@ describe('exchange', () => {
         ERRORS.ALLOWANCE
       )
     })
-    it('swap on non tradable output asset should fail', async () => {
+    it('swap on non tradable asset should fail', async () => {
       const collateralAmount = new BN(10000 * 1e6)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
@@ -1379,6 +1379,39 @@ describe('exchange', () => {
         }),
         ERRORS_EXCHANGE.SWAP_UNAVAILABLE
       )
+
+      // clean up: return status to trading
+      await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
+      await exchange.swap({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor: btcTokenAccount,
+        userTokenAccountIn: usdTokenAccount,
+        tokenFor: btcSynthetic.assetAddress,
+        tokenIn: assetsListData.synthetics[0].assetAddress,
+        signers: [accountOwner]
+      })
+
+      // mark asset in status as Halted
+      await setFeedTrading(oracleProgram, PriceStatus.Halted, btcFeed)
+      const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: new BN(1),
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: ethTokenAccount,
+          userTokenAccountIn: btcTokenAccount,
+          tokenFor: ethToken.publicKey,
+          tokenIn: btcSynthetic.assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.SWAP_UNAVAILABLE
+      )
+      // clean up: return status to trading
+      await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
     })
   })
   describe('#burn()', async () => {
