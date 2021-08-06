@@ -29,8 +29,7 @@ Which are responsible for:
 * **debt_shares** - amount of user debt shares, when divided by all shares allows to calculate debt. More on that [here](/docs/technical/minting#debt)
 * **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/liquidation)
 * **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
-* **bump** - this is used with 
-[generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
+* **bump** - used with [generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
 * **head** - index pointing to last of used fields in collaterals array
 * **collaterals** - array of [collaterals](/docs/technical/collaterals) owned by account, up to 32 different at the same time
 
