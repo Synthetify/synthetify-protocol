@@ -1177,7 +1177,7 @@ export interface ExchangeState {
   healthFactor: number
   maxDelay: number
   fee: number
-  swapTaxRatio: number
+  swapTaxRatio: Decimal
   swapTaxReserve: BN
   debtInterestRate: number
   accumulatedDebtInterest: BN
@@ -1229,4 +1229,8 @@ export interface UserStaking {
   currentRoundPoints: BN
   nextRoundPoints: BN
   lastUpdate: BN
+}
+export interface Decimal {
+  val: BN
+  scale: number
 }

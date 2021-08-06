@@ -1,15 +1,17 @@
+pub mod decimal;
 pub mod math;
 mod utils;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 // use manager::{AssetsList, SetAssetSupply};
 use pyth::pc::{Price, PriceStatus};
+use uint::construct_uint;
 use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::{borrow::BorrowMut, convert::TryInto};
+    use std::{borrow::BorrowMut, convert::TryInto, fmt::DebugList};
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
@@ -155,17 +157,35 @@ pub mod exchange {
         state.nonce = nonce;
         state.debt_shares = 0u64;
         state.assets_list = *ctx.accounts.assets_list.key;
-        state.health_factor = 50;
+        state.health_factor = Decimal {
+            val: 50_000_000_000,
+            scale: 9,
+        };
         // once we will not be able to fit all data into one transaction we will
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
-        state.fee = 300;
-        state.swap_tax_ratio = 20;
+        state.fee = Decimal {
+            val: 300_000_000_000,
+            scale: 9,
+        };
+        state.swap_tax_ratio = Decimal {
+            val: 20_000_000_000,
+            scale: 9,
+        };
         state.swap_tax_reserve = 0;
-        state.debt_interest_rate = 10; // 1%
+        state.debt_interest_rate = Decimal {
+            val: 1_000_000_000,
+            scale: 9,
+        }; // 1%
         state.last_debt_adjustment = timestamp;
-        state.penalty_to_liquidator = 5;
-        state.penalty_to_exchange = 5;
+        state.penalty_to_liquidator = Decimal {
+            val: 5_000_000_000,
+            scale: 9,
+        };
+        state.penalty_to_exchange = Decimal {
+            val: 5_000_000_000,
+            scale: 9,
+        };
         state.liquidation_rate = 20;
         // TODO decide about length of buffer
         // Maybe just couple of minutes will be enough ?
@@ -274,11 +294,7 @@ pub mod exchange {
         let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
-        let max_borrow = max_debt
-            .checked_mul(state.health_factor.into())
-            .unwrap()
-            .checked_div(100)
-            .unwrap();
+        let max_borrow = state.health_factor.try_mul(max_debt).unwrap();
 
         let synthetics = &mut assets_list.synthetics;
 
@@ -339,11 +355,9 @@ pub mod exchange {
         let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
-        let max_borrow = max_debt
-            .checked_mul(state.health_factor.into())
-            .unwrap()
-            .checked_div(100)
-            .unwrap();
+
+        let max_borrow = state.health_factor.try_mul(max_debt).unwrap();
+
         let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
             .iter_mut()
@@ -1075,7 +1089,10 @@ pub mod exchange {
 
         require!(swap_tax_ratio <= 200, ParameterOutOfRange);
 
-        state.swap_tax_ratio = swap_tax_ratio;
+        state.swap_tax_ratio = Decimal {
+            val: swap_tax_ratio as u128,
+            scale: 9,
+        };
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1928,16 +1945,16 @@ pub struct State {
     pub nonce: u8,                      //1
     pub debt_shares: u64,               //8
     pub assets_list: Pubkey,            //32
-    pub health_factor: u8,              //1   In % 1-100% modifier for debt
+    pub health_factor: Decimal,         //1   In % 1-100% modifier for debt
     pub max_delay: u32,                 //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: u32,                       //4   Default fee per swap 300 => 0.3%
-    pub swap_tax_ratio: u8,             //8   In % range 0-20% [1 -> 0.1%]
+    pub fee: Decimal,                   //4   Default fee per swap 300 => 0.3%
+    pub swap_tax_ratio: Decimal,        //8   In % range 0-20% [1 -> 0.1%]
     pub swap_tax_reserve: u64,          //64  Amount on tax from swap
     pub liquidation_rate: u8,           //1   Size of debt repay in liquidation
-    pub penalty_to_liquidator: u8,      //1   In % range 0-25%
-    pub penalty_to_exchange: u8,        //1   In % range 0-25%
+    pub penalty_to_liquidator: Decimal, //1   In % range 0-25%
+    pub penalty_to_exchange: Decimal,   //1   In % range 0-25%
     pub liquidation_buffer: u32,        //4   Time given user to fix collateralization ratio
-    pub debt_interest_rate: u8,         //8   In % range 0-20% [1 -> 0.1%]
+    pub debt_interest_rate: Decimal,    //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: u64, //64  Accumulated debt interest
     pub last_debt_adjustment: i64,      //64
     pub staking: Staking,               //116
@@ -1967,6 +1984,7 @@ pub struct Settlement {
     pub decimals_in: u8,           //1
     pub decimals_out: u8,          //1
     pub ratio: u64,                //8
+    pub ratio1: Decimal2,          //8
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
@@ -2060,6 +2078,17 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
     }
 }
 
+#[zero_copy]
+#[derive(PartialEq, Default, Debug)]
+pub struct Decimal {
+    val: u128,
+    scale: u8,
+}
+#[derive(PartialEq, Default, Debug, Clone, Copy)]
+pub struct Decimal2(pub U192);
+construct_uint! {
+    pub struct U192(3);
+}
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
@@ -2117,6 +2146,8 @@ pub enum ErrorCode {
     UsdSettlement = 26,
     #[msg("Parameter out of range")]
     ParameterOutOfRange = 27,
+    #[msg("Overflow")]
+    Overflow = 28,
 }
 
 // Access control modifiers.

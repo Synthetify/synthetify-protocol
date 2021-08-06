@@ -1,5 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
+use crate::decimal::Mul;
 use crate::*;
 
 // Min decimals for asset = 6
@@ -110,18 +111,13 @@ pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
     user_debt_in_usd: u64,
     collateral_ratio: u8,
-    health_factor: u8,
+    health_factor: Decimal,
 ) -> u64 {
+    let collateral_ratio = Decimal::from_percent(collateral_ratio.into());
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
     }
-    return (max_user_debt_in_usd - user_debt_in_usd)
-        .checked_mul(10000)
-        .unwrap()
-        .checked_div(collateral_ratio as u64)
-        .unwrap()
-        .checked_div(health_factor.into())
-        .unwrap();
+    return collateral_ratio.mul(health_factor);
 }
 pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     // full_amount is always != 0 if all_shares > 0
@@ -146,29 +142,30 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
     );
     return shares.try_into().unwrap();
 }
-pub fn amount_to_discount(amount: u64) -> u8 {
+pub fn amount_to_discount(amount: u64) -> Decimal {
     // decimals of token = 6
     const ONE_SNY: u64 = 1_000_000u64;
-    match () {
-        () if amount < ONE_SNY * 100 => return 0,
-        () if amount < ONE_SNY * 200 => return 1,
-        () if amount < ONE_SNY * 500 => return 2,
-        () if amount < ONE_SNY * 1_000 => return 3,
-        () if amount < ONE_SNY * 2_000 => return 4,
-        () if amount < ONE_SNY * 5_000 => return 5,
-        () if amount < ONE_SNY * 10_000 => return 6,
-        () if amount < ONE_SNY * 25_000 => return 7,
-        () if amount < ONE_SNY * 50_000 => return 8,
-        () if amount < ONE_SNY * 100_000 => return 9,
-        () if amount < ONE_SNY * 250_000 => return 10,
-        () if amount < ONE_SNY * 250_000 => return 10,
-        () if amount < ONE_SNY * 500_000 => return 11,
-        () if amount < ONE_SNY * 1_000_000 => return 12,
-        () if amount < ONE_SNY * 2_000_000 => return 13,
-        () if amount < ONE_SNY * 5_000_000 => return 14,
-        () if amount < ONE_SNY * 10_000_000 => return 15,
-        () => return 15,
+    let v: u128 = match () {
+        () if amount < ONE_SNY * 100 => 0,
+        () if amount < ONE_SNY * 200 => 1,
+        () if amount < ONE_SNY * 500 => 2,
+        () if amount < ONE_SNY * 1_000 => 3,
+        () if amount < ONE_SNY * 2_000 => 4,
+        () if amount < ONE_SNY * 5_000 => 5,
+        () if amount < ONE_SNY * 10_000 => 6,
+        () if amount < ONE_SNY * 25_000 => 7,
+        () if amount < ONE_SNY * 50_000 => 8,
+        () if amount < ONE_SNY * 100_000 => 9,
+        () if amount < ONE_SNY * 250_000 => 10,
+        () if amount < ONE_SNY * 250_000 => 10,
+        () if amount < ONE_SNY * 500_000 => 11,
+        () if amount < ONE_SNY * 1_000_000 => 12,
+        () if amount < ONE_SNY * 2_000_000 => 13,
+        () if amount < ONE_SNY * 5_000_000 => 14,
+        () if amount < ONE_SNY * 10_000_000 => 15,
+        () => 15,
     };
+    return Decimal::from_percent(v);
 }
 pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
     return (price as u128)
@@ -181,12 +178,23 @@ pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
         )
         .unwrap() as u64;
 }
-pub fn calculate_swap_tax(total_fee: u64, swap_tax: u8) -> u64 {
-    return (swap_tax as u128)
-        .checked_mul(total_fee as u128)
-        .unwrap()
-        .checked_div(100)
-        .unwrap() as u64;
+pub fn calculate_value_difference_in_usd(
+    price_in: u64,
+    amount_in: u64,
+    decimal_in: u8,
+    price_out: u64,
+    amount_out: u64,
+    decimal_out: u8,
+) -> u64 {
+    // price in should be always bigger than price out
+    let value_in = calculate_value_in_usd(price_in, amount_in, decimal_in);
+    let value_out = calculate_value_in_usd(price_out, amount_out, decimal_out);
+
+    return value_in.checked_sub(value_out).unwrap();
+}
+
+pub fn calculate_swap_tax(total_fee: u64, swap_tax: Decimal) -> u64 {
+    return swap_tax.try_mul(total_fee as u128).unwrap() as u64;
 }
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
@@ -1216,7 +1224,7 @@ mod tests {
         // MIN - 0%
         {
             let total_fee: u64 = 1_227_775;
-            let swap_tax: u8 = 0;
+            let swap_tax: Decimal = Decimal { val: 0, scale: 9 };
             let swap_tax_in_usd = calculate_swap_tax(total_fee, swap_tax);
             // expect 0 tax
             assert_eq!(swap_tax_in_usd, 0);
@@ -1224,7 +1232,11 @@ mod tests {
         // MAX - 20%
         {
             let total_fee: u64 = 1_227_775;
-            let swap_tax: u8 = 20;
+            let swap_tax: Decimal = Decimal {
+                val: 20_000,
+                scale: 5,
+            };
+
             let swap_tax = calculate_swap_tax(total_fee, swap_tax);
             // 245555
             assert_eq!(swap_tax, 245555);
@@ -1232,7 +1244,10 @@ mod tests {
         // ~11% (valid rounding)
         {
             let total_fee: u64 = 1_227_775;
-            let swap_tax: u8 = 11;
+            let swap_tax: Decimal = Decimal {
+                val: 11_000,
+                scale: 5,
+            };
             // 135055,25
             let swap_tax = calculate_swap_tax(total_fee, swap_tax);
             assert_eq!(swap_tax, 135_055);

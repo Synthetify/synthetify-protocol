@@ -1441,7 +1441,9 @@
           },
           {
             "name": "swapTaxRatio",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "swapTaxReserve",
@@ -1735,6 +1737,22 @@
           }
         ]
       }
+    },
+    {
+      "name": "Decimal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "val",
+            "type": "u128"
+          },
+          {
+            "name": "scale",
+            "type": "u8"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -1872,6 +1890,11 @@
       "code": 327,
       "name": "ParameterOutOfRange",
       "msg": "Parameter out of range"
+    },
+    {
+      "code": 328,
+      "name": "Overflow",
+      "msg": "Overflow"
     }
   ]
 }

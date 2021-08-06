@@ -5,7 +5,7 @@ import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from 
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
-import { Synthetic } from '@synthetify/sdk/src/exchange'
+import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
@@ -64,9 +64,9 @@ export const calculateFee = (
 
   return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
 }
-export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
+export const calculateSwapTax = (totalFee: BN, swapTax: Decimal): BN => {
   // swapTax 20 -> 20%
-  return totalFee.muln(swapTax).divn(100)
+  return totalFee.mul(swapTax.val).div(new BN(10).pow(new BN(swapTax.scale)))
 }
 export const usdToTokenAmount = (
   asset: Asset,
