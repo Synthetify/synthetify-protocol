@@ -32,11 +32,11 @@ To have a collateral you have to deposit it. Method responsible for it takes _am
   * **reserve_address** - account belonging to exchange where deposited collaterals are kept
   * **user_collateral_account** - user account with deposited tokens
   * **token_program** - program of the deposited token
-  * **assets_list** - list of assets(needed for price and decimal places)
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
   * **owner** - owner of collateral, doesn't have be own the _Exchange Account_
   * **exchange_authority** - authority of the exchange
 
-Deposit instruction has to be preceded by an [approve](https://spl.solana.com/token#authority-delegation) allowing _exchange authority_ to transfer funds
+Deposit instruction has to be preceded by an [approve](https://spl.solana.com/token#authority-delegation) allowing _exchange authority_ to transfer funds.
 
 
 ### Collateral in account
@@ -49,6 +49,6 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
         index: u8,
     }
 
-  * **amount** - amount of tokens, with decimals as in _Collateral_ structure
+  * **amount** - amount of tokens, with decimals as in [_Collateral_](/docs/technical/state#collateral-asset) structure
   * **collateral_address** - address of deposited tokens
-  * **index** - corresponds to index of Collateral in [_AssetList_](/docs/technical/state#structure-of-assetslist)
+  * **index** - corresponds to index of Collateral in [_AssetList_](/docs/technical/state#assetslist-structure)
