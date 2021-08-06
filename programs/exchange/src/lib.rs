@@ -45,7 +45,7 @@ pub mod exchange {
             last_update: u64::MAX,           // we dont update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
-            twap: 0,
+            twap: 1 * 10u64.pow(PRICE_OFFSET.into()),
             status: 1,
             twac: 0,
         };
