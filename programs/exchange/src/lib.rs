@@ -462,6 +462,14 @@ pub mod exchange {
             .position(|x| x.asset_address == *token_address_for)
             .unwrap();
 
+        // Check assets status
+        let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
+        let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
+        // TODO: use enum PriceStatus::Trading
+        if asset_in.status != 1 || asset_for.status != 1 {
+            return Err(ErrorCode::SwapUnavailable.into());
+        }
+
         // Check is oracles have been updated
         check_feed_update(
             assets,
@@ -490,8 +498,8 @@ pub mod exchange {
             .unwrap();
         // Output amount ~ 100% - fee of input
         let (amount_for, fee_usd) = calculate_swap_out_amount(
-            &assets[synthetics[synthetic_in_index].asset_index as usize],
-            &assets[synthetics[synthetic_for_index].asset_index as usize],
+            &asset_in,
+            &asset_for,
             &synthetics[synthetic_in_index],
             &synthetics[synthetic_for_index],
             amount,
@@ -2095,8 +2103,9 @@ pub enum ErrorCode {
     #[msg("Invalid fund_account")]
     FundAccountError = 15,
     #[msg("Assets list already initialized")]
-    // NEXT ERROR CODE = 16
     Initialized = 17,
+    #[msg("Swap Unavailable")]
+    SwapUnavailable = 16,
     #[msg("Assets list is not initialized")]
     Uninitialized = 18,
     #[msg("No asset with such address was found")]
