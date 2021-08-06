@@ -151,12 +151,13 @@ pub fn calculate_debt_with_interest(
     slot: u64,
     timestamp: i64,
 ) -> Result<u64> {
-    let total_debt = calculate_debt(assets_list, slot, state.max_delay).unwrap();
+    let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
     let usd: &mut Synthetic = &mut assets_list.borrow_mut().synthetics[0];
-    let debt_with_interest = adjust_interest_debt(state, usd, total_debt, timestamp);
+    let debt_with_interest = adjust_interest_debt(state, usd, total_debt_twap, timestamp);
     Ok(debt_with_interest)
 }
 
+// Change total_twap_debt
 pub fn adjust_interest_debt(
     state: &mut State,
     usd: &mut Synthetic,
@@ -839,7 +840,7 @@ mod tests {
             // xusd - fixed price 1 USD
             // debt 100000
             assets_list.append_asset(Asset {
-                price: 10u64.pow(PRICE_OFFSET.into()),
+                twap: 10u64.pow(PRICE_OFFSET.into()),
                 last_update: slot,
                 ..Default::default()
             });
@@ -852,7 +853,7 @@ mod tests {
 
             // debt 50000
             assets_list.append_asset(Asset {
-                price: 5 * 10u64.pow(PRICE_OFFSET.into()),
+                twap: 5 * 10u64.pow(PRICE_OFFSET.into()),
                 last_update: slot,
                 ..Default::default()
             });
