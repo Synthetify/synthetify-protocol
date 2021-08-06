@@ -5,3 +5,5 @@ slug: /technical/minting
 ---
 
 ### Debt
+
+### Settlement

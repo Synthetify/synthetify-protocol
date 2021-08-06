@@ -89,7 +89,7 @@ Data related to assets is kept inside AssetsList:
 * **collaterals** - 
 * **synthetics** - 
 
-#### Asset
+### Asset
 
 Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of all assets. It keeps them in one place for ease of use. Data related to price is kept inside _Asset_ structure: 
 
@@ -108,6 +108,45 @@ Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of 
 Every collateral asset and every synthetic assets has to have corresponding _Asset_ but they can share it. For example BTC and xBTC will have common _Asset_ as they share a price.
 
 
-#### Collateral
+### Collateral asset
 
 Assets that can be used as a [collateral](/docs/technical/collateral) are stored a a _Collateral_:
+
+    pub struct Collateral {
+        pub asset_index: u8,
+        pub collateral_address: Pubkey, 
+        pub reserve_address: Pubkey,
+        pub liquidation_fund: Pubkey,
+        pub reserve_balance: u64,
+        pub decimals: u8,
+        pub collateral_ratio: u8,
+    }
+
+  * **asset_index** - index of corresponding [asset](#asset) used to get price
+  * **collateral_address** - address of token used as a collateral
+  * **reserve_address** - address of account where exchange keeps deposited tokens
+  * **liquidation_fund** - address of account where liquidation penalty is kept until it is withdrawn
+  * **reserve_balance** - amount of tokens in reserve account
+  * **decimals** - amount of decimal places in token, same as in original token
+  * **collateral_ratio** - coefficient of amount of collateral to amount of debt user can have on it
+
+
+### Synthetic asset
+
+Synthetic assets created by Synthetify
+
+    struct Synthetic {
+        pub asset_index: u8,
+        pub asset_address: Pubkey,
+        pub supply: u64,
+        pub decimals: u8,
+        pub max_supply: u64,
+        pub settlement_slot: u64,
+    }
+
+* **asset_index** - index of corresponding [asset](#asset)
+* **asset_address** - address of synthetic token
+* **supply** - total amount of minted tokens 
+* **decimals** - amount of decimal places
+* **max_supply** - limit of tokens that can be minted. It exists to increase safety of the platform (can be changed at any time by admin)
+* **settlement_slot** - slot when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
