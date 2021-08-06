@@ -224,6 +224,7 @@ describe('max collaterals', () => {
           signers: [wallet, accountOwner]
         })
 
+        await waitForBeggingOfASlot(connection)
         // Check saldos
         const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
           reserveAccount

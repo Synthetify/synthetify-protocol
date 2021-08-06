@@ -9,7 +9,12 @@ pub const INTEREST_RATE_DECIMAL: u8 = 18;
 pub const MIN_SWAP_USD_VALUE: u128 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
 
-pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u32) -> Result<u64> {
+pub fn calculate_debt(
+    assets_list: &RefMut<AssetsList>,
+    slot: u64,
+    max_delay: u32,
+    twap: bool,
+) -> Result<u64> {
     let mut debt = 0u128;
     let synthetics = &assets_list.synthetics;
     let head = assets_list.head_synthetics as usize;
@@ -18,10 +23,13 @@ pub fn calculate_debt(assets_list: &RefMut<AssetsList>, slot: u64, max_delay: u3
         if asset.last_update < (slot - max_delay as u64) {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-
+        let price = match twap {
+            true => asset.twap,
+            _ => asset.price,
+        };
         // rounding up to be sure that debt is not less than minted tokens
         debt += div_up(
-            (asset.price as u128)
+            (price as u128)
                 .checked_mul(synthetic.supply as u128)
                 .unwrap(),
             10u128
@@ -485,7 +493,7 @@ mod tests {
             let assets_ref = RefCell::new(assets_list);
             let assets_ref = assets_ref.borrow_mut();
 
-            let result = calculate_debt(&assets_ref, slot, 100);
+            let result = calculate_debt(&assets_ref, slot, 100, false);
             match result {
                 Ok(debt) => assert_eq!(debt, 0),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -540,7 +548,7 @@ mod tests {
             let assets_ref = RefCell::new(assets_list);
             let assets_ref = assets_ref.borrow_mut();
 
-            let result = calculate_debt(&assets_ref, slot, 100);
+            let result = calculate_debt(&assets_ref, slot, 100, false);
             match result {
                 Ok(debt) => assert_eq!(debt, 4400_000000),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -593,7 +601,7 @@ mod tests {
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
             match result {
                 Ok(debt) => assert_eq!(debt, 5201000000_000000),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -659,7 +667,7 @@ mod tests {
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
             match result {
                 Ok(debt) => assert_eq!(debt, 5200000000_152508),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -712,7 +720,7 @@ mod tests {
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100);
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
             match result {
                 Ok(debt) => assert_eq!(debt, 932210931_726364),
                 Err(_) => assert!(false, "Shouldn't check"),
@@ -755,7 +763,7 @@ mod tests {
         let assets_ref = RefCell::new(assets_list);
 
         // debt 2400
-        let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0);
+        let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0, false);
         assert!(result.is_err());
     }
     #[test]
