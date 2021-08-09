@@ -109,13 +109,20 @@ impl Div<Decimal> for Decimal {
 }
 impl DivUp<Decimal> for Decimal {
     fn div_up(self, other: Decimal) -> Self {
-        self.add(other.val.checked_sub(1).unwrap())
-            .unwrap()
-            .div(other)
+        let almost_other = Decimal {
+            val: other.val.checked_sub(1).unwrap(),
+            scale: other.scale,
+        };
+        self.add(almost_other).unwrap().div(other)
     }
 }
 impl Into<u64> for Decimal {
     fn into(self) -> u64 {
+        self.val.try_into().unwrap()
+    }
+}
+impl Into<u128> for Decimal {
+    fn into(self) -> u128 {
         self.val.try_into().unwrap()
     }
 }
