@@ -8,6 +8,7 @@ use pyth::pc::{Price, PriceStatus};
 use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
+const SNY_DECIMALS: u8 = 6;
 // #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto, fmt::DebugList};
@@ -20,7 +21,7 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, Lt, Mul, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE,
+        Add, Lt, Ltq, Mul, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE,
         LIQUIDATION_RATE_SCALE,
     };
 
@@ -102,7 +103,10 @@ pub mod exchange {
             asset_index: 1,
             collateral_ratio: Decimal::from_percent(10),
             collateral_address: collateral_token,
-            reserve_balance: Decimal { val: 0, scale: 6 },
+            reserve_balance: Decimal {
+                val: 0,
+                scale: SNY_DECIMALS,
+            },
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
         };
@@ -137,8 +141,32 @@ pub mod exchange {
                             .val
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
                             .unwrap();
-                        asset.price = scaled_price.try_into().unwrap();
-                        asset.twap = scaled_twap.try_into().unwrap();
+                        let scaled_confidence = price_feed
+                            .agg
+                            .conf
+                            .checked_mul(10u64.pow(offset.try_into().unwrap()))
+                            .unwrap();
+                        let scaled_twac = price_feed
+                            .twac
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap();
+                        asset.price = Decimal {
+                            val: scaled_price.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twap = Decimal {
+                            val: scaled_twap.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.confidence = Decimal {
+                            val: scaled_confidence.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twac = Decimal {
+                            val: scaled_twac.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
                     } else {
                         let scaled_price = price_feed
                             .agg
@@ -150,12 +178,34 @@ pub mod exchange {
                             .val
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
                             .unwrap();
-                        asset.price = scaled_price.try_into().unwrap();
-                        asset.twap = scaled_twap.try_into().unwrap();
+                        let scaled_confidence = price_feed
+                            .agg
+                            .conf
+                            .checked_div(10u64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
+                        let scaled_twac = price_feed
+                            .twac
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
+                        asset.price = Decimal {
+                            val: scaled_price.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twap = Decimal {
+                            val: scaled_twap.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.confidence = Decimal {
+                            val: scaled_confidence.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twac = Decimal {
+                            val: scaled_twac.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
                     }
                     asset.status = price_feed.agg.status.into();
-                    asset.confidence = price_feed.agg.conf;
-                    asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
@@ -181,55 +231,60 @@ pub mod exchange {
         state.debt_shares = 0u64;
         state.assets_list = *ctx.accounts.assets_list.key;
         state.health_factor = Decimal {
-            val: 50_000_000_000,
-            scale: 9,
+            // 50%
+            val: 5_000,
+            scale: 4,
         };
         // once we will not be able to fit all data into one transaction we will
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
-        state.fee = Decimal {
-            val: 300_000_000_000,
-            scale: 9,
-        };
+        state.fee = Decimal { val: 30, scale: 4 }; // 0.3%
         state.swap_tax_ratio = Decimal {
-            val: 20_000_000_000,
-            scale: 9,
+            // 20%
+            val: 2_000,
+            scale: 4,
         };
-        state.swap_tax_reserve = 0;
-        state.debt_interest_rate = Decimal {
-            val: 1_000_000_000,
-            scale: 9,
-        }; // 1%
+        state.swap_tax_reserve = Decimal { val: 0, scale: 6 };
+        state.debt_interest_rate = Decimal { val: 100, scale: 4 }; // 1%
         state.last_debt_adjustment = timestamp;
-        state.penalty_to_liquidator = Decimal {
-            val: 5_000_000_000,
-            scale: 9,
-        };
-        state.penalty_to_exchange = Decimal {
-            val: 5_000_000_000,
-            scale: 9,
-        };
-        state.liquidation_rate = 20;
-        // TODO decide about length of buffer
-        // Maybe just couple of minutes will be enough ?
+        state.penalty_to_liquidator = Decimal { val: 500, scale: 4 }; // 5%
+        state.penalty_to_exchange = Decimal { val: 500, scale: 4 }; // 5%
+        state.liquidation_rate = Decimal {
+            val: 2_000,
+            scale: 4,
+        }; // 20%
+           // TODO decide about length of buffer
+           // Maybe just couple of minutes will be enough ?
         state.liquidation_buffer = 172800; // about 24 Hours;
         state.staking = Staking {
             round_length: staking_round_length,
-            amount_per_round: amount_per_round,
+            amount_per_round: Decimal {
+                val: amount_per_round.into(),
+                scale: SNY_DECIMALS,
+            },
             fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
             finished_round: StakingRound {
                 all_points: 0,
-                amount: 0,
+                amount: Decimal {
+                    val: 0,
+                    scale: SNY_DECIMALS,
+                },
                 start: 0,
             },
             current_round: StakingRound {
                 all_points: 0,
-                amount: 0,
+                amount: Decimal {
+                    val: 0,
+                    scale: SNY_DECIMALS,
+                },
                 start: slot,
             },
             next_round: StakingRound {
                 all_points: 0,
-                amount: amount_per_round,
+                amount: Decimal {
+                    val: amount_per_round.into(),
+                    scale: SNY_DECIMALS,
+                },
                 start: slot.checked_add(staking_round_length.into()).unwrap(),
             },
         };
@@ -1126,34 +1181,33 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u8) -> Result<()> {
+    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u16) -> Result<()> {
         msg!("Synthetify:Admin: SWAP TAX RATIO");
         let state = &mut ctx.accounts.state.load_mut()?;
+        let decimal_swap_tax_ratio = Decimal::from_percent(swap_tax_ratio);
+        // max decimal_swap_tax_ratio must be less or equals 20%
+        require!(
+            decimal_swap_tax_ratio.ltq(Decimal::from_percent(2000))?,
+            ParameterOutOfRange
+        );
 
-        require!(swap_tax_ratio <= 200, ParameterOutOfRange);
-
-        state.swap_tax_ratio = Decimal {
-            val: swap_tax_ratio as u128,
-            scale: 9,
-        };
+        state.swap_tax_ratio = decimal_swap_tax_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
+    pub fn set_debt_interest_rate(
+        ctx: Context<AdminAction>,
+        debt_interest_rate: u16,
+    ) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 1.2% (120) -> 0.0120 = 120 * 10^-4
-        let decimal_debt_interest_rate = Decimal {
-            val: debt_interest_rate,
-            scale: DEBT_INTEREST_RATE_SCALE,
-        };
+        let decimal_debt_interest_rate = Decimal::from_percent(debt_interest_rate);
+        // max debt_interest_rate must be less or equals 20%
         require!(
-            decimal_debt_interest_rate.ltq(Decimal {
-                val: 200,
-                scale: DEBT_INTEREST_RATE_SCALE
-            }),
+            decimal_debt_interest_rate.ltq(Decimal::from_percent(2000))?,
             ParameterOutOfRange
         );
+
         state.debt_interest_rate = decimal_debt_interest_rate;
         Ok(())
     }
@@ -1170,29 +1224,20 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u8) -> Result<()> {
+    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 50% (50) -> 0.5 = 50 * 10^-2
-        let decimal_liquidation_rate = Decimal {
-            val: liquidation_rate,
-            scale: LIQUIDATION_RATE_SCALE,
-        };
 
-        state.liquidation_rate = decimal_liquidation_rate;
+        state.liquidation_rate = Decimal::from_percent(liquidation_rate);
         Ok(())
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_fee(ctx: Context<AdminAction>, fee: u32) -> Result<()> {
+    pub fn set_fee(ctx: Context<AdminAction>, fee: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 0.3% (300) -> 0.00300 = 300 * 10^-5
-        let decimal_fee = Decimal {
-            val: fee,
-            scale: FEE_SCALE,
-        };
-        state.fee = decimal_fee;
+
+        let decimal_fee = Decimal::from_percent(fee);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1212,15 +1257,11 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u8) -> Result<()> {
+    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        // 50 (50%) -> 0.50 = 50 * 10^(-2)
-        let decimal_factor = Decimal {
-            val: factor,
-            scale: HEALTH_FACTOR_SCALE,
-        };
+        let decimal_factor = Decimal::from_percent(factor);
         state.health_factor = decimal_factor;
         Ok(())
     }
@@ -1281,15 +1322,14 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_penalties(
         ctx: Context<AdminAction>,
-        penalty_to_exchange: Decimal,
-        penalty_to_liquidator: Decimal,
+        penalty_to_exchange: u16,
+        penalty_to_liquidator: u16,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.penalty_to_exchange = penalty_to_exchange;
-        state.penalty_to_liquidator = penalty_to_liquidator;
-
+        state.penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
+        state.penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -2011,7 +2051,7 @@ pub struct State {
     pub assets_list: Pubkey,                //32
     pub health_factor: Decimal,             //1   In % 1-100% modifier for debt
     pub max_delay: u32, //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: u32,       //4   Default fee per swap 300 => 0.3%
+    pub fee: Decimal,   //4   Default fee per swap 300 => 0.3%
     pub swap_tax_ratio: Decimal, //8   In % range 0-20% [1 -> 0.1%]
     pub swap_tax_reserve: Decimal, //64  Amount on tax from swap
     pub liquidation_rate: Decimal, //1   Size of debt repay in liquidation
