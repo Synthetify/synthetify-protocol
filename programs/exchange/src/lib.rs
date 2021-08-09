@@ -48,33 +48,60 @@ pub mod exchange {
         let usd_asset = Asset {
             feed_address: Pubkey::default(), // unused
             last_update: u64::MAX,           // we dont update usd price
-            price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-            confidence: 0,
-            twap: 1 * 10u64.pow(PRICE_OFFSET.into()),
+            price: Decimal {
+                val: 100_000_000,
+                scale: PRICE_OFFSET,
+            },
+            confidence: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
+            twap: Decimal {
+                val: 100_000_000,
+                scale: PRICE_OFFSET,
+            },
             status: PriceStatus::Trading.into(),
-            twac: 0,
+            twac: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
         };
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal { scale: 6, val: 0 },
-            max_supply: u64::MAX, // no limit for usd asset
+            max_supply: Decimal {
+                scale: 6,
+                val: u128::MAX,
+            }, // no limit for usd asset
             settlement_slot: u64::MAX,
             asset_index: 0,
         };
         let sny_asset = Asset {
             feed_address: collateral_token_feed,
             last_update: 0,
-            price: 0,
-            confidence: 0,
-            twap: 0,
+            price: Decimal {
+                val: 2_000_000,
+                scale: PRICE_OFFSET,
+            },
+            confidence: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
+            twap: Decimal {
+                val: 2_000_000,
+                scale: PRICE_OFFSET,
+            },
             status: PriceStatus::Unknown.into(),
-            twac: 0,
+            twac: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
         };
         let sny_collateral = Collateral {
             asset_index: 1,
-            collateral_ratio: 10,
+            collateral_ratio: Decimal::from_percent(10),
             collateral_address: collateral_token,
-            reserve_balance: 0,
+            reserve_balance: Decimal { val: 0, scale: 6 },
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
         };
