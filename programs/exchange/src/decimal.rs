@@ -138,6 +138,12 @@ impl Lt<Decimal> for Decimal {
         Ok(self.val < other.val)
     }
 }
+impl Gt<Decimal> for Decimal {
+    fn gt(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val > other.val)
+    }
+}
 pub trait Sub<T>: Sized {
     fn sub(self, rhs: T) -> Result<Self>;
 }
@@ -164,6 +170,9 @@ pub trait Ltq<T>: Sized {
 }
 pub trait Lt<T>: Sized {
     fn lt(self, rhs: T) -> Result<bool>;
+}
+pub trait Gt<T>: Sized {
+    fn gt(self, rhs: T) -> Result<bool>;
 }
 // #[cfg(test)]
 // mod test {
