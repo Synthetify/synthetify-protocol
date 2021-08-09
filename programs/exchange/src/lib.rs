@@ -382,12 +382,11 @@ pub mod exchange {
         // Both xUSD and collateral token have static index in assets array
         let mut xusd_synthetic = &mut synthetics[0];
 
-        let debt_after_mint = user_debt
-            .add(Decimal {
-                val: amount.into(),
-                scale: xusd_synthetic.supply.scale,
-            })
-            .unwrap();
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: xusd_synthetic.supply.scale,
+        };
+        let debt_after_mint = user_debt.add(amount_decimal).unwrap();
 
         if mint_limit.lt(debt_after_mint).unwrap() {
             return Err(ErrorCode::MintLimit.into());
@@ -395,7 +394,8 @@ pub mod exchange {
 
         // Adjust program and user debt_shares
         // Rounding up - debt is created in favor of the system
-        let new_shares = calculate_new_shares_by_rounding_up(state.debt_shares, total_debt, amount);
+        let new_shares =
+            calculate_new_shares_by_rounding_up(state.debt_shares, total_debt, amount_decimal);
         state.debt_shares = state.debt_shares.checked_add(new_shares).unwrap();
         exchange_account.debt_shares = exchange_account
             .debt_shares
