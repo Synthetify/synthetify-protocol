@@ -64,11 +64,21 @@ impl MulInverse<Decimal> for Decimal {
         };
     }
 }
+impl Add<Decimal> for Decimal {
+    fn add(self, value: Decimal) -> Result<Self> {
+        require!(self.scale == value.scale, DifferentScale);
+
+        Ok(Self {
+            val: self.val.checked_add(value.val).unwrap(),
+            scale: self.scale,
+        })
+    }
+}
 pub trait Sub: Sized {
     fn sub(self, rhs: Self) -> Self;
 }
-pub trait Add: Sized {
-    fn add(self, rhs: Self) -> Self;
+pub trait Add<T>: Sized {
+    fn add(self, rhs: T) -> Result<Self>;
 }
 pub trait Div<T>: Sized {
     fn div(self, rhs: T) -> Self;
