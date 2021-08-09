@@ -1014,7 +1014,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: 1,
             twac: 0,
         };
 
