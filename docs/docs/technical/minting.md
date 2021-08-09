@@ -59,7 +59,7 @@ Data needed for settlement is stored in this structure:
 
 Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/exchange/src/lib.rs#L1362-L1393). It gets specified amount and uses above structure to swap it for xUSD. It takes single number _amount_ (u64) and a following context:
 
-    pub struct SwapSettledSynthetic<'info> {
+    struct SwapSettledSynthetic<'info> {
         pub settlement: Loader<'info, Settlement>,
         pub state: Loader<'info, State>,
         pub token_to_settle: AccountInfo<'info>,
@@ -82,4 +82,66 @@ Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/
   * **exchange_authority** - pubkey belonging to program
   * **token_program** - address of program of settled token
   * **signer** - owner of account on settled token
+
+
+## Mint
+
+To get Synthetic tokens you have to mint them. Only xUSD can be minted. 
+
+It check if sum of debt and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
+
+
+
+### Mint method
+
+Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L258-L314) and takes _amount_ (u64) and following context
+
+    struct Mint<'info> {
+        pub state: Loader<'info, State>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub usd_token: AccountInfo<'info>,
+        pub to: AccountInfo<'info>,
+        pub token_program: AccountInfo<'info>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub owner: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **exchange_authority** - authority of the program
+  * **usd_token** - address of xUSD token
+  * **to** - account to which xUSD is minted
+  * **token_program** - program of xUSD
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+  * **owner** - owner of _exchange account_
+
+
+## Burn
+User can burn only xUSD.
+TODO: finish this
+
+### Burn method
+
+Method responsible for burning is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L539-L661). It takes _amount_ (u64) and this context:
+
+    struct BurnToken<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub token_program: AccountInfo<'info>,
+        pub usd_token: AccountInfo<'info>,
+        pub user_token_account_burn: CpiAccount<'info, TokenAccount>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub owner: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_authority** - authority of the program
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **token_program** - program of xUSD
+  * **usd_token** - address of xUSD token
+  * **user_token_account_burn** - account on token from which tokens will be burned
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+  * **owner** - owner of _exchange account_
 
