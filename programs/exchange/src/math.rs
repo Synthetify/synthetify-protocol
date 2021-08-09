@@ -42,24 +42,28 @@ pub fn calculate_debt(
     }
     Ok(debt)
 }
-pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
-    let mut max_debt = 0u128;
+pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> Decimal {
+    let mut max_debt = Decimal {
+        val: 10u128.pow(ACCURACY.into()),
+        scale: ACCURACY,
+    };
     let head = account.head as usize;
     for collateral_entry in account.collaterals[..head].iter() {
         let collateral = &assets_list.collaterals[collateral_entry.index as usize];
         let asset = &assets_list.assets[collateral.asset_index as usize];
         // rounding up to be sure that debt is not less than minted tokens
-        max_debt += (asset.price as u128)
-            .checked_mul(collateral_entry.amount as u128)
-            .unwrap()
-            .checked_mul(collateral.collateral_ratio.into())
-            .unwrap()
-            .checked_div(100)
-            .unwrap()
-            .checked_div(
-                10u128
-                    .checked_pow((collateral.decimals + PRICE_OFFSET - ACCURACY).into())
-                    .unwrap(),
+
+        let amount_of_collateral = Decimal {
+            val: collateral_entry.amount.into(),
+            scale: collateral.reserve_balance.scale,
+        };
+
+        max_debt = max_debt
+            .add(
+                asset
+                    .price
+                    .mul(amount_of_collateral)
+                    .mul(collateral.collateral_ratio),
             )
             .unwrap();
     }
