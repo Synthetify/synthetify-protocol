@@ -14,9 +14,9 @@ import {
   DEFAULT_PUBLIC_KEY,
   U64_MAX
 } from './utils'
-import { createPriceFeed, setFeedPrice } from './oracleUtils'
+import { createPriceFeed, setFeedPrice, setFeedTrading } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
+import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import { ERRORS_EXCHANGE } from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
@@ -24,7 +24,6 @@ describe('admin', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
-  const managerProgram = anchor.workspace.Manager as Program
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -673,6 +672,35 @@ describe('admin', () => {
       assert.ok(
         afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
       )
+    })
+  })
+  describe('#setFeedTrading', async () => {
+    let assetFeed: PublicKey
+    before(async () => {
+      // create and add new asset
+      assetFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1000000,
+        expo: -6
+      })
+    })
+    it('should add new asset with trading state', async () => {
+      const ix = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: assetFeed
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const assetListAfterAdded = await exchange.getAssetsList(assetsList)
+      const asset = assetListAfterAdded.assets.find((a) => {
+        return a.feedAddress.equals(assetFeed)
+      }) as Asset
+      assert.ok(asset)
+      // asset by default should have trading status
+      assert.ok(asset.status == PriceStatus.Trading)
+    })
+    it('Feed Trading should be set to Auction', async () => {
+      await setFeedTrading(oracleProgram, PriceStatus.Auction, assetFeed)
+      // asset status should change
     })
   })
   describe('#setCollateralRatio()', async () => {
