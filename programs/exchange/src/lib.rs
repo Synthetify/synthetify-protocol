@@ -1262,7 +1262,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_collateral_ratio(
         ctx: Context<SetCollateralRatio>,
-        collateral_ratio: u8,
+        collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET COLLATERAL RATIO");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1928,7 +1928,7 @@ pub struct Collateral {
     pub reserve_address: Pubkey,    // 32
     pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: Decimal,   // 8
-    pub collateral_ratio: u8,       // 1 in %
+    pub collateral_ratio: Decimal,  // 1 in %
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
