@@ -13,7 +13,7 @@ Terms and conditions for using, coping, modifying, creating derivative works, re
 Synthetify Labs sp. z o.o.
 
 ‘Licensed Work’:
-Synthetify Protocol
+Synthetify Protocol except SDK folder
 The Licensed Work is © 2021 Synthetify Labs sp. z o.o.
 
 ‘Synthetify’:
