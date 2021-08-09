@@ -10,6 +10,7 @@ pub mod pyth {
 
         let mut price_oracle = Price::load(&oracle).unwrap();
 
+        price_oracle.agg.status = PriceStatus::Trading;
         price_oracle.agg.price = price;
         price_oracle.agg.conf = conf;
         price_oracle.twap.val = price;

@@ -1,18 +1,13 @@
 import { Buffer } from 'buffer'
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { parsePriceData } from '@pythnetwork/client'
+import { PriceStatus } from '@synthetify/sdk/lib/exchange'
 
 interface ICreatePriceFeed {
   oracleProgram: Program
   initPrice: number
   confidence?: BN
   expo?: number
-}
-interface PriceStatus {
-  Unknown: 0
-  Trading: 1
-  Halted: 2
-  Auction: 3
 }
 export const createPriceFeed = async ({
   oracleProgram,
