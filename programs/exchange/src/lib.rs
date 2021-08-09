@@ -48,8 +48,8 @@ pub mod exchange {
             last_update: u64::MAX,           // we dont update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
-            twap: 0,
-            status: 1,
+            twap: 1 * 10u64.pow(PRICE_OFFSET.into()),
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
         let usd_synthetic = Synthetic {
@@ -65,7 +65,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: PriceStatus::Unknown.into(),
             twac: 0,
         };
         let sny_collateral = Collateral {
@@ -124,13 +124,7 @@ pub mod exchange {
                         asset.price = scaled_price.try_into().unwrap();
                         asset.twap = scaled_twap.try_into().unwrap();
                     }
-                    match price_feed.agg.status {
-                        PriceStatus::Unknown => asset.status = 0,
-                        PriceStatus::Trading => asset.status = 1,
-                        PriceStatus::Halted => asset.status = 2,
-                        PriceStatus::Auction => asset.status = 3,
-                    }
-
+                    asset.status = price_feed.agg.status.into();
                     asset.confidence = price_feed.agg.conf;
                     asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
@@ -475,6 +469,15 @@ pub mod exchange {
             .iter()
             .position(|x| x.asset_address == *token_address_for)
             .unwrap();
+        let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
+        let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
+
+        // Check assets status
+        if asset_in.status != PriceStatus::Trading.into()
+            || asset_for.status != PriceStatus::Trading.into()
+        {
+            return Err(ErrorCode::SwapUnavailable.into());
+        }
 
         // Check is oracles have been updated
         check_feed_update(
@@ -504,8 +507,8 @@ pub mod exchange {
             .unwrap();
         // Output amount ~ 100% - fee of input
         let (amount_for, fee_usd) = calculate_swap_out_amount(
-            &assets[synthetics[synthetic_in_index].asset_index as usize],
-            &assets[synthetics[synthetic_for_index].asset_index as usize],
+            &asset_in,
+            &asset_for,
             &synthetics[synthetic_in_index],
             &synthetics[synthetic_for_index],
             amount,
@@ -1020,7 +1023,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
 
@@ -2117,8 +2120,9 @@ pub enum ErrorCode {
     #[msg("Invalid fund_account")]
     FundAccountError = 15,
     #[msg("Assets list already initialized")]
-    // NEXT ERROR CODE = 16
     Initialized = 17,
+    #[msg("Swap Unavailable")]
+    SwapUnavailable = 16,
     #[msg("Assets list is not initialized")]
     Uninitialized = 18,
     #[msg("No asset with such address was found")]
