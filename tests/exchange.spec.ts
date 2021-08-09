@@ -1365,6 +1365,7 @@ describe('exchange', () => {
 
       // mark asset out status as Unknown
       await setFeedTrading(oracleProgram, PriceStatus.Unknown, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Unknown)
 
       await assertThrowsAsync(
         exchange.swap({
@@ -1382,6 +1383,8 @@ describe('exchange', () => {
 
       // clean up: return status to trading
       await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Trading)
+
       await exchange.swap({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1395,6 +1398,7 @@ describe('exchange', () => {
 
       // mark asset in status as Halted
       await setFeedTrading(oracleProgram, PriceStatus.Halted, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Halted)
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
       await assertThrowsAsync(
@@ -1412,6 +1416,7 @@ describe('exchange', () => {
       )
       // clean up: return status to trading
       await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Trading)
     })
   })
   describe('#burn()', async () => {
