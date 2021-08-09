@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Mul, MulUp};
+use crate::decimal::{Add, Div, DivUp, Mul, MulUp, Sub};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -304,49 +304,43 @@ pub fn usd_to_token_amount(asset: &Asset, decimal: u8, value_in_usd: u64) -> u64
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
-pub fn pow_with_accuracy(mut base: u128, mut exp: u128, accuracy: u8) -> u128 {
-    let one = 1u128
-        .checked_mul(10u128.checked_pow(accuracy.into()).unwrap())
-        .unwrap();
+pub fn pow_with_accuracy(mut base: Decimal, mut exp: u128) -> Decimal {
+    let one = Decimal {
+        val: 1 * base.denominator(),
+        scale: base.scale,
+    };
 
     if exp == 0 {
         return one;
     }
-    let mut result: u128 = one;
+    let mut result = one;
 
     while exp > 0 {
         if exp % 2 != 0 {
-            result = result
-                .checked_mul(base)
-                .unwrap()
-                .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
-                .unwrap();
+            result = result.mul(base);
         }
         exp /= 2;
-        base = base
-            .checked_mul(base)
-            .unwrap()
-            .checked_div(10u128.checked_pow(accuracy.into()).unwrap())
-            .unwrap();
+        base = base.mul(base);
     }
     return result;
 }
 pub fn calculate_compounded_interest(
-    base_value: u64,
-    periodic_interest_rate: u128,
+    base_value: Decimal,
+    periodic_interest_rate: Decimal,
     periods_number: u128,
-) -> u64 {
+) -> Decimal {
     // base_price * ((1 + periodic_interest_rate) ^ periods_number - 1)
-    let interest_offset = 10u128.pow(INTEREST_RATE_DECIMAL.into());
-    let interest = (periodic_interest_rate as u128)
-        .checked_add(interest_offset)
+    let one = Decimal {
+        val: periodic_interest_rate.denominator(),
+        scale: 0,
+    };
+    let interest = periodic_interest_rate.add(one).unwrap();
+    let compounded = pow_with_accuracy(interest, periods_number)
+        .sub(one)
         .unwrap();
-    let compounded = pow_with_accuracy(interest, periods_number, INTEREST_RATE_DECIMAL)
-        .checked_sub(interest_offset)
-        .unwrap();
-    let scaled_value = (base_value as u128).checked_mul(compounded).unwrap();
+    let scaled_value = base_value.mul(compounded);
 
-    return div_up(scaled_value, interest_offset).try_into().unwrap();
+    scaled_value.div_up(one)
 }
 pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
     // 1 -> 0.1%
@@ -356,8 +350,12 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
         .checked_div(1000)
         .unwrap();
 }
-pub fn calculate_minute_interest_rate(apr: u128) -> u128 {
-    return apr.checked_div(MINUTES_IN_YEAR.into()).unwrap();
+pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
+    // return apr.div(MINUTES_IN_YEAR.into()).unwrap();
+    apr.div(Decimal {
+        val: MINUTES_IN_YEAR.into(),
+        scale: 0,
+    })
 }
 
 #[cfg(test)]
