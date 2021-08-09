@@ -111,21 +111,21 @@ pub fn calculate_new_shares_by_rounding_down(
 }
 pub fn calculate_new_shares_by_rounding_up(
     all_shares: u64,
-    full_amount: u64,
-    new_amount: u64,
+    full_amount: Decimal,
+    new_amount: Decimal,
 ) -> u64 {
     //  full_amount is always != 0 if all_shares > 0
     if all_shares == 0u64 {
-        return new_amount;
+        return new_amount.val.try_into().unwrap();
     }
-    let new_shares = div_up(
-        (all_shares as u128)
-            .checked_mul(new_amount as u128)
-            .unwrap(),
-        full_amount as u128,
-    );
-
-    return new_shares.try_into().unwrap();
+    let all_shares_decimal = Decimal {
+        val: all_shares.into(),
+        scale: 0,
+    };
+    all_shares_decimal
+        .mul(new_amount)
+        .div_up(full_amount)
+        .into()
 }
 pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
