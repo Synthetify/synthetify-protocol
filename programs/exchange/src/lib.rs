@@ -1121,7 +1121,10 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u8) -> Result<()> {
+    pub fn set_liquidation_rate(
+        ctx: Context<AdminAction>,
+        liquidation_rate: Decimal,
+    ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
@@ -1130,7 +1133,7 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_fee(ctx: Context<AdminAction>, fee: u32) -> Result<()> {
+    pub fn set_fee(ctx: Context<AdminAction>, fee: Decimal) -> Result<()> {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
@@ -1154,7 +1157,7 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u8) -> Result<()> {
+    pub fn set_health_factor(ctx: Context<AdminAction>, factor: Decimal) -> Result<()> {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
@@ -1951,7 +1954,7 @@ pub struct State {
     pub fee: Decimal,   //4   Default fee per swap 300 => 0.3%
     pub swap_tax_ratio: Decimal, //8   In % range 0-20% [1 -> 0.1%]
     pub swap_tax_reserve: Decimal, //64  Amount on tax from swap
-    pub liquidation_rate: u8, //1   Size of debt repay in liquidation
+    pub liquidation_rate: Decimal, //1   Size of debt repay in liquidation
     pub penalty_to_liquidator: Decimal, //1   In % range 0-25%
     pub penalty_to_exchange: Decimal, //1   In % range 0-25%
     pub liquidation_buffer: u32, //4   Time given user to fix collateralization ratio
