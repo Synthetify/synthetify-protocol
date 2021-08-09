@@ -1233,7 +1233,6 @@ pub mod exchange {
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
         reserve_balance: u64,
-        decimals: u8,
         collateral_ratio: u8,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
@@ -1252,9 +1251,8 @@ pub mod exchange {
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
-            reserve_balance: reserve_balance,
-            decimals: decimals,
-            collateral_ratio: collateral_ratio,
+            reserve_balance,
+            collateral_ratio,
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
