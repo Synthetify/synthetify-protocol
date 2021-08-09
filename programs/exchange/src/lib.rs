@@ -19,7 +19,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{Add, U8_PERCENT_SCALE};
+    use crate::decimal::{Add, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, LIQUIDATION_RATE_SCALE};
 
     use super::*;
 
@@ -1101,16 +1101,18 @@ pub mod exchange {
     pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-
+        // 1.2% (120) -> 0.0120 = 120 * 10^-4
         let decimal_debt_interest_rate = Decimal {
             val: debt_interest_rate,
-            scale: U8_PERCENT_SCALE,
+            scale: DEBT_INTEREST_RATE_SCALE,
         };
         require!(
-            decimal_debt_interest_rate.ltq(Decimal { val: 200, scale: 4 }),
+            decimal_debt_interest_rate.ltq(Decimal {
+                val: 200,
+                scale: DEBT_INTEREST_RATE_SCALE
+            }),
             ParameterOutOfRange
         );
-
         state.debt_interest_rate = decimal_debt_interest_rate;
         Ok(())
     }
@@ -1130,10 +1132,10 @@ pub mod exchange {
     pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u8) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-
+        // 50% (50) -> 0.5 = 50 * 10^-2
         let decimal_liquidation_rate = Decimal {
             val: liquidation_rate,
-            scale: U8_PERCENT_SCALE,
+            scale: LIQUIDATION_RATE_SCALE,
         };
 
         state.liquidation_rate = decimal_liquidation_rate;
@@ -1141,11 +1143,15 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_fee(ctx: Context<AdminAction>, fee: Decimal) -> Result<()> {
+    pub fn set_fee(ctx: Context<AdminAction>, fee: u32) -> Result<()> {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
-
-        state.fee = fee;
+        // 0.3% (300) -> 0.00300 = 300 * 10^-5
+        let decimal_fee = Decimal {
+            val: fee,
+            scale: FEE_SCALE,
+        };
+        state.fee = decimal_fee;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1959,7 +1965,7 @@ pub struct State {
     pub assets_list: Pubkey,                //32
     pub health_factor: Decimal,             //1   In % 1-100% modifier for debt
     pub max_delay: u32, //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: Decimal,   //4   Default fee per swap 300 => 0.3%
+    pub fee: u32,       //4   Default fee per swap 300 => 0.3%
     pub swap_tax_ratio: Decimal, //8   In % range 0-20% [1 -> 0.1%]
     pub swap_tax_reserve: Decimal, //64  Amount on tax from swap
     pub liquidation_rate: Decimal, //1   Size of debt repay in liquidation
