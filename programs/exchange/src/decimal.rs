@@ -29,9 +29,6 @@ impl Decimal {
         }
     }
 
-    pub fn to_u64(self) -> u64 {
-        self.val.try_into().unwrap()
-    }
     // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
     //     return Ok(self
     //         .val
@@ -51,14 +48,6 @@ impl Mul<Decimal> for Decimal {
                 .unwrap()
                 .checked_div(value.denominator())
                 .unwrap(),
-            scale: self.scale,
-        };
-    }
-}
-impl Mul<u128> for Decimal {
-    fn mul(self, value: u128) -> Self {
-        return Self {
-            val: self.val.checked_mul(value).unwrap(),
             scale: self.scale,
         };
     }
@@ -86,27 +75,11 @@ impl Add<Decimal> for Decimal {
         })
     }
 }
-impl Add<u64> for Decimal {
-    fn add(self, value: u64) -> Result<Self> {
-        Ok(Self {
-            val: self.val.checked_add(value.into()).unwrap(),
-            scale: self.scale,
-        })
-    }
-}
 impl Sub<Decimal> for Decimal {
     fn sub(self, value: Decimal) -> Result<Self> {
         require!(self.scale == value.scale, DifferentScale);
         Ok(Self {
             val: self.val.checked_sub(value.val).unwrap(),
-            scale: self.scale,
-        })
-    }
-}
-impl Sub<u64> for Decimal {
-    fn sub(self, value: u64) -> Result<Self> {
-        Ok(Self {
-            val: self.val.checked_sub(value.into()).unwrap(),
             scale: self.scale,
         })
     }
@@ -126,7 +99,9 @@ impl Div<Decimal> for Decimal {
 }
 impl DivUp<Decimal> for Decimal {
     fn div_up(self, other: Decimal) -> Self {
-        self.add(other.sub(1).unwrap()).unwrap().div(other)
+        self.add(other.val.checked_sub(1).unwrap())
+            .unwrap()
+            .div(other)
     }
 }
 impl Into<u64> for Decimal {
