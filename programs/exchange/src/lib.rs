@@ -19,7 +19,9 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{Add, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, LIQUIDATION_RATE_SCALE};
+    use crate::decimal::{
+        Add, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE, LIQUIDATION_RATE_SCALE,
+    };
 
     use super::*;
 
@@ -1172,11 +1174,16 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_health_factor(ctx: Context<AdminAction>, factor: Decimal) -> Result<()> {
+    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u8) -> Result<()> {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.health_factor = factor;
+        // 50 (50%) -> 0.50 = 50 * 10^(-2)
+        let decimal_factor = Decimal {
+            val: factor,
+            scale: HEALTH_FACTOR_SCALE,
+        };
+        state.health_factor = decimal_factor;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]

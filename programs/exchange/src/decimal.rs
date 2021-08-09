@@ -3,8 +3,9 @@ use std::convert::TryInto;
 use crate::math::ACCURACY;
 use crate::*;
 
-pub const DEBT_INTEREST_RATE_SCALE: u8 = 4;
 pub const LIQUIDATION_RATE_SCALE: u8 = 2;
+pub const HEALTH_FACTOR_SCALE: u8 = 2;
+pub const DEBT_INTEREST_RATE_SCALE: u8 = 4;
 pub const FEE_SCALE: u8 = 5;
 
 impl Decimal {
