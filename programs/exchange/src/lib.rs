@@ -1099,16 +1099,21 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_debt_interest_rate(
-        ctx: Context<AdminAction>,
-        debt_interest_rate: Decimal,
-    ) -> Result<()> {
+    pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        require!(debt_interest_rate <= 200, ParameterOutOfRange);
+        let decimal_debt_interest_rate = Decimal {
+            val: debt_interest_rate,
+            scale: 4,
+        };
 
-        state.debt_interest_rate = debt_interest_rate;
+        require!(
+            decimal_debt_interest_rate.ltq(Decimal { val: 200, scale: 4 }),
+            ParameterOutOfRange
+        );
+
+        state.debt_interest_rate = decimal_debt_interest_rate;
         Ok(())
     }
 
