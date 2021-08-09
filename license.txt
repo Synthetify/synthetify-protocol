@@ -29,14 +29,23 @@ Each use of Synthetify where the monthly number of active users, across all vers
 
 Terms and conditions
 
-Subject to the License below, You may not (and you may not permit anyone else to) distribute, publish, copy, modify, merge, combine with another program, create derivative works of, reverse engineer, decompile or otherwise attempt to extract the source code of, the Licensed Work or any part thereof, except that you may contribute to this repository. All copies of the original and modified Licensed Work, and derivative works of the Licensed Work, including translating the code to different programming language, are subject to the License.
+Subject to the License below, You may not (and you may not permit anyone else to) distribute, publish, copy, modify, merge, combine with another program, 
+create derivative works of, reverse engineer, decompile or otherwise attempt to extract the source code of, the Licensed Work or any part thereof, except
+that you may contribute to this repository. All copies of the original and modified Licensed Work, and derivative works of the Licensed Work, including 
+translating the code to different programming language, are subject to the License.
 
-The Licensor hereby grants You the right to copy, modify, create derivative works, redistribute only as a Non-commercial user of the Licensed Work in support of Synthetify development.
+The Licensor hereby grants You the right to copy, modify, create derivative works, redistribute only as a Non-commercial user of the Licensed Work 
+in support of Synthetify development.
 
-You are obligated to display this Licence in a prominent position on each original or modified copy of the Licensed Work. The terms and conditions set in the License shall also apply to the Licensed Work You received in the original or modified form from a third party.
+You are obligated to display this Licence in a prominent position on each original or modified copy of the Licensed Work. The terms and conditions set 
+in the License shall also apply to the Licensed Work You received in the original or modified form from a third party.
 
-Any use of the Licensed Work against the requirements currently in effect as described in the License, has an effect of obligatory purchase of a commercial license from the Licensor or paying a fine. The choice of compensation belongs to the Licensor and is dependent on the scale of breach of the License.
+Any use of the Licensed Work against the requirements currently in effect as described in the License, has an effect of obligatory purchase of a commercial 
+license from the Licensor or paying a fine. The choice of compensation belongs to the Licensor and is dependent on the scale of breach of the License.
 
-The License does not grant permission to use the trade name, trademark, service mark, logo, product name of the Licensor or its affiliates, except as required by the License.
+The License does not grant permission to use the trade name, trademark, service mark, logo, product name of the Licensor or its affiliates, except as 
+required by the License.
 
-Unless required by applicable law or agreed to in writing, Licensor provides the Licensed Work on an “AS IS” BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied, including, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE.
+Unless required by applicable law or agreed to in writing, Licensor provides the Licensed Work on an “AS IS” BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES 
+OR CONDITIONS OF ANY KIND, either expressed or implied, including, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, 
+or FITNESS FOR A PARTICULAR PURPOSE.
