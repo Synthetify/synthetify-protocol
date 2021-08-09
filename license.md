@@ -4,28 +4,30 @@ License text copyright © 2021 Synthetify Labs Sp. z o.o.
 
 ---
 
-Definitions:
+**Definitions:**
 
-‘Licence’: Terms and conditions for using, coping, modifying, creating
-derivative works, redistributing as defined in this document
+**‘Licence’:**
+Terms and conditions for using, coping, modifying, creating derivative works, redistributing as defined in this document
 
-‘Licensor’: Synthetify Labs sp. z o.o.
+**‘Licensor’:**
+Synthetify Labs sp. z o.o.
 
-‘Licensed Work’: Synthetify Protocol
+**‘Licensed Work’:**
+Synthetify Protocol
 The Licensed Work is © 2021 Synthetify Labs sp. z o.o.
 
-‘Synthetify’ Decentralized exchange created by Licensor, hosted on
-https://synthetify.io/
+**‘Synthetify’:**
+Decentralized exchange created by Licensor, hosted on https://synthetify.io/
 
-‘You’ (or ‘Your’): An individual or Legal Entity exercising permissions granted by
-this Licence
+**‘You’ (or ‘Your’):**
+An individual or Legal Entity exercising permissions granted by this Licence
 
-‘Non-commercial’ Each use of Synthetify where the monthly number of active
-users, across all versions, do not exceed 100 at any time
+**‘Non-commercial’:**
+Each use of Synthetify where the monthly number of active users, across all versions, does not exceed 100 at any time
 
 ---
 
-Terms and conditions
+**Terms and conditions**
 
 Subject to the License below, You may not (and you may not permit anyone else to) distribute, publish, copy, modify, merge, combine with another program, create derivative works of, reverse engineer, decompile or otherwise attempt to extract the source code of, the Licensed Work or any part thereof, except that you may contribute to this repository. All copies of the original and modified Licensed Work, and derivative works of the Licensed Work, including translating the code to different programming language, are subject to the License.
 
