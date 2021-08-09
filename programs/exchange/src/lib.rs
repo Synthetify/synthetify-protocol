@@ -136,8 +136,32 @@ pub mod exchange {
                             .val
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
                             .unwrap();
-                        asset.price = scaled_price.try_into().unwrap();
-                        asset.twap = scaled_twap.try_into().unwrap();
+                        let scaled_confidence = price_feed
+                            .agg
+                            .conf
+                            .checked_mul(10u64.pow(offset.try_into().unwrap()))
+                            .unwrap();
+                        let scaled_twac = price_feed
+                            .twac
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap();
+                        asset.price = Decimal {
+                            val: scaled_price.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twap = Decimal {
+                            val: scaled_twap.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.confidence = Decimal {
+                            val: scaled_confidence.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twac = Decimal {
+                            val: scaled_twac.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
                     } else {
                         let scaled_price = price_feed
                             .agg
@@ -149,12 +173,34 @@ pub mod exchange {
                             .val
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
                             .unwrap();
-                        asset.price = scaled_price.try_into().unwrap();
-                        asset.twap = scaled_twap.try_into().unwrap();
+                        let scaled_confidence = price_feed
+                            .agg
+                            .conf
+                            .checked_div(10u64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
+                        let scaled_twac = price_feed
+                            .twac
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap();
+                        asset.price = Decimal {
+                            val: scaled_price.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twap = Decimal {
+                            val: scaled_twap.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.confidence = Decimal {
+                            val: scaled_confidence.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
+                        asset.twac = Decimal {
+                            val: scaled_twac.try_into().unwrap(),
+                            scale: PRICE_OFFSET,
+                        };
                     }
                     asset.status = price_feed.agg.status.into();
-                    asset.confidence = price_feed.agg.conf;
-                    asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
                 }
                 None => return Err(ErrorCode::NoAssetFound.into()),
