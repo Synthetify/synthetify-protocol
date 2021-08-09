@@ -117,6 +117,12 @@ impl Into<u64> for Decimal {
         self.val.try_into().unwrap()
     }
 }
+impl Ltq<Decimal> for Decimal {
+    fn ltq(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val <= other.val)
+    }
+}
 pub trait Sub<T>: Sized {
     fn sub(self, rhs: T) -> Result<Self>;
 }
@@ -137,6 +143,9 @@ pub trait MulUp<T>: Sized {
 }
 pub trait MulInverse<T>: Sized {
     fn mul_inverse(self, rhs: T) -> Self;
+}
+pub trait Ltq<T>: Sized {
+    fn ltq(self, rhs: T) -> Result<bool>;
 }
 // #[cfg(test)]
 // mod test {
