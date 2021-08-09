@@ -1099,7 +1099,10 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
+    pub fn set_debt_interest_rate(
+        ctx: Context<AdminAction>,
+        debt_interest_rate: Decimal,
+    ) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
@@ -1112,7 +1115,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
-        liquidation_buffer: u32,
+        liquidation_buffer: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION BUFFER");
         let state = &mut ctx.accounts.state.load_mut()?;
