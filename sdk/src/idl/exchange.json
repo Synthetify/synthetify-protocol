@@ -1842,6 +1842,11 @@
       "msg": "Assets list already initialized"
     },
     {
+      "code": 316,
+      "name": "SwapUnavailable",
+      "msg": "Swap Unavailable"
+    },
+    {
       "code": 318,
       "name": "Uninitialized",
       "msg": "Assets list is not initialized"
@@ -1896,5 +1901,8 @@
       "name": "Overflow",
       "msg": "Overflow"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "UQRAVeiAXepTJyDyk7JQFKXTspwap4DJ9FgBFid88oC"
+  }
 }

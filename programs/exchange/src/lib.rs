@@ -48,8 +48,8 @@ pub mod exchange {
             last_update: u64::MAX,           // we dont update usd price
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
-            twap: 0,
-            status: 1,
+            twap: 1 * 10u64.pow(PRICE_OFFSET.into()),
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
         let usd_synthetic = Synthetic {
@@ -65,7 +65,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: PriceStatus::Unknown.into(),
             twac: 0,
         };
         let sny_collateral = Collateral {
@@ -124,13 +124,7 @@ pub mod exchange {
                         asset.price = scaled_price.try_into().unwrap();
                         asset.twap = scaled_twap.try_into().unwrap();
                     }
-                    match price_feed.agg.status {
-                        PriceStatus::Unknown => asset.status = 0,
-                        PriceStatus::Trading => asset.status = 1,
-                        PriceStatus::Halted => asset.status = 2,
-                        PriceStatus::Auction => asset.status = 3,
-                    }
-
+                    asset.status = price_feed.agg.status.into();
                     asset.confidence = price_feed.agg.conf;
                     asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
@@ -475,6 +469,15 @@ pub mod exchange {
             .iter()
             .position(|x| x.asset_address == *token_address_for)
             .unwrap();
+        let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
+        let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
+
+        // Check assets status
+        if asset_in.status != PriceStatus::Trading.into()
+            || asset_for.status != PriceStatus::Trading.into()
+        {
+            return Err(ErrorCode::SwapUnavailable.into());
+        }
 
         // Check is oracles have been updated
         check_feed_update(
@@ -504,8 +507,8 @@ pub mod exchange {
             .unwrap();
         // Output amount ~ 100% - fee of input
         let (amount_for, fee_usd) = calculate_swap_out_amount(
-            &assets[synthetics[synthetic_in_index].asset_index as usize],
-            &assets[synthetics[synthetic_for_index].asset_index as usize],
+            &asset_in,
+            &asset_for,
             &synthetics[synthetic_in_index],
             &synthetics[synthetic_for_index],
             amount,
@@ -1020,7 +1023,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
 
@@ -1182,7 +1185,7 @@ pub mod exchange {
     pub fn set_max_supply(
         ctx: Context<SetMaxSupply>,
         asset_address: Pubkey,
-        new_max_supply: u64,
+        new_max_supply: Decimal,
     ) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
@@ -1215,8 +1218,8 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_penalties(
         ctx: Context<AdminAction>,
-        penalty_to_exchange: u8,
-        penalty_to_liquidator: u8,
+        penalty_to_exchange: Decimal,
+        penalty_to_liquidator: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
@@ -1230,7 +1233,6 @@ pub mod exchange {
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
         reserve_balance: u64,
-        decimals: u8,
         collateral_ratio: u8,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
@@ -1249,9 +1251,8 @@ pub mod exchange {
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
-            reserve_balance: reserve_balance,
-            decimals: decimals,
-            collateral_ratio: collateral_ratio,
+            reserve_balance,
+            collateral_ratio,
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
@@ -1259,7 +1260,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_collateral_ratio(
         ctx: Context<SetCollateralRatio>,
-        collateral_ratio: u8,
+        collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET COLLATERAL RATIO");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1297,7 +1298,7 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: Decimal) -> Result<()> {
         msg!("Synthetify: ADD SYNTHETIC");
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1311,11 +1312,13 @@ pub mod exchange {
         };
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
-            decimals: decimals,
             asset_address: *ctx.accounts.asset_address.key,
             max_supply: max_supply,
             settlement_slot: u64::MAX,
-            supply: 0,
+            supply: Decimal {
+                val: 0,
+                scale: max_supply.scale,
+            },
         };
         assets_list.append_synthetic(new_synthetic);
         Ok(())
@@ -1923,7 +1926,7 @@ pub struct Collateral {
     pub reserve_address: Pubkey,    // 32
     pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: Decimal,   // 8
-    pub collateral_ratio: u8,       // 1 in %
+    pub collateral_ratio: Decimal,  // 1 in %
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
@@ -1931,7 +1934,7 @@ pub struct Synthetic {
     pub asset_index: u8,       // 1
     pub asset_address: Pubkey, // 32
     pub supply: Decimal,       // 8
-    pub max_supply: u64,       // 8
+    pub max_supply: Decimal,   // 8
     pub settlement_slot: u64,  // 8 unused
 }
 #[account(zero_copy)]
@@ -2117,8 +2120,9 @@ pub enum ErrorCode {
     #[msg("Invalid fund_account")]
     FundAccountError = 15,
     #[msg("Assets list already initialized")]
-    // NEXT ERROR CODE = 16
     Initialized = 17,
+    #[msg("Swap Unavailable")]
+    SwapUnavailable = 16,
     #[msg("Assets list is not initialized")]
     Uninitialized = 18,
     #[msg("No asset with such address was found")]
