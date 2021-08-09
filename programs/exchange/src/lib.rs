@@ -19,7 +19,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::Add;
+    use crate::decimal::{Add, U8_PERCENT_SCALE};
 
     use super::*;
 
@@ -1105,9 +1105,8 @@ pub mod exchange {
 
         let decimal_debt_interest_rate = Decimal {
             val: debt_interest_rate,
-            scale: 4,
+            scale: U8_PERCENT_SCALE,
         };
-
         require!(
             decimal_debt_interest_rate.ltq(Decimal { val: 200, scale: 4 }),
             ParameterOutOfRange
@@ -1120,7 +1119,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_buffer(
         ctx: Context<AdminAction>,
-        liquidation_buffer: Decimal,
+        liquidation_buffer: u32,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION BUFFER");
         let state = &mut ctx.accounts.state.load_mut()?;
@@ -1129,14 +1128,16 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_liquidation_rate(
-        ctx: Context<AdminAction>,
-        liquidation_rate: Decimal,
-    ) -> Result<()> {
+    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u8) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.liquidation_rate = liquidation_rate;
+        let decimal_liquidation_rate = Decimal {
+            val: liquidation_rate,
+            scale: U8_PERCENT_SCALE,
+        };
+
+        state.liquidation_rate = decimal_liquidation_rate;
         Ok(())
     }
 
