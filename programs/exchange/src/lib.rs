@@ -122,13 +122,7 @@ pub mod exchange {
                         asset.price = scaled_price.try_into().unwrap();
                         asset.twap = scaled_twap.try_into().unwrap();
                     }
-                    match price_feed.agg.status {
-                        PriceStatus::Unknown => asset.status = 0,
-                        PriceStatus::Trading => asset.status = 1,
-                        PriceStatus::Halted => asset.status = 2,
-                        PriceStatus::Auction => asset.status = 3,
-                    }
-
+                    asset.status = price_feed.agg.status.into();
                     asset.confidence = price_feed.agg.conf;
                     asset.twac = price_feed.twac.val.try_into().unwrap();
                     asset.last_update = Clock::get()?.slot;
@@ -466,7 +460,9 @@ pub mod exchange {
         let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
         let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
         // TODO: use enum PriceStatus::Trading
-        if asset_in.status != 1 || asset_for.status != 1 {
+        if asset_in.status != PriceStatus::Trading.into()
+            || asset_for.status != PriceStatus::Trading.into()
+        {
             return Err(ErrorCode::SwapUnavailable.into());
         }
 
