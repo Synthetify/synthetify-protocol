@@ -46,7 +46,7 @@ pub mod exchange {
             price: 1 * 10u64.pow(PRICE_OFFSET.into()),
             confidence: 0,
             twap: 1 * 10u64.pow(PRICE_OFFSET.into()),
-            status: 1,
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
         let usd_synthetic = Synthetic {
@@ -63,7 +63,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 0,
+            status: PriceStatus::Unknown.into(),
             twac: 0,
         };
         let sny_collateral = Collateral {
@@ -455,11 +455,10 @@ pub mod exchange {
             .iter()
             .position(|x| x.asset_address == *token_address_for)
             .unwrap();
-
-        // Check assets status
         let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
         let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
-        // TODO: use enum PriceStatus::Trading
+
+        // Check assets status
         if asset_in.status != PriceStatus::Trading.into()
             || asset_for.status != PriceStatus::Trading.into()
         {
@@ -1010,7 +1009,7 @@ pub mod exchange {
             price: 0,
             confidence: 0,
             twap: 0,
-            status: 1,
+            status: PriceStatus::Trading.into(),
             twac: 0,
         };
 
