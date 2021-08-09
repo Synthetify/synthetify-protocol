@@ -20,7 +20,7 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE, LIQUIDATION_RATE_SCALE,
+        Add, Ltq, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE, LIQUIDATION_RATE_SCALE,
     };
 
     use super::*;
@@ -1087,34 +1087,33 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u8) -> Result<()> {
+    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u16) -> Result<()> {
         msg!("Synthetify:Admin: SWAP TAX RATIO");
         let state = &mut ctx.accounts.state.load_mut()?;
+        let decimal_swap_tax_ratio = Decimal::from_percent(swap_tax_ratio);
+        // max decimal_swap_tax_ratio must be less or equals 20%
+        require!(
+            decimal_swap_tax_ratio.ltq(Decimal::from_percent(2000))?,
+            ParameterOutOfRange
+        );
 
-        require!(swap_tax_ratio <= 200, ParameterOutOfRange);
-
-        state.swap_tax_ratio = Decimal {
-            val: swap_tax_ratio as u128,
-            scale: 9,
-        };
+        state.swap_tax_ratio = decimal_swap_tax_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_debt_interest_rate(ctx: Context<AdminAction>, debt_interest_rate: u8) -> Result<()> {
+    pub fn set_debt_interest_rate(
+        ctx: Context<AdminAction>,
+        debt_interest_rate: u16,
+    ) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 1.2% (120) -> 0.0120 = 120 * 10^-4
-        let decimal_debt_interest_rate = Decimal {
-            val: debt_interest_rate,
-            scale: DEBT_INTEREST_RATE_SCALE,
-        };
+        let decimal_debt_interest_rate = Decimal::from_percent(debt_interest_rate);
+        // max debt_interest_rate must be less or equals 20%
         require!(
-            decimal_debt_interest_rate.ltq(Decimal {
-                val: 200,
-                scale: DEBT_INTEREST_RATE_SCALE
-            }),
+            decimal_debt_interest_rate.ltq(Decimal::from_percent(2000))?,
             ParameterOutOfRange
         );
+
         state.debt_interest_rate = decimal_debt_interest_rate;
         Ok(())
     }
@@ -1131,29 +1130,20 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u8) -> Result<()> {
+    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 50% (50) -> 0.5 = 50 * 10^-2
-        let decimal_liquidation_rate = Decimal {
-            val: liquidation_rate,
-            scale: LIQUIDATION_RATE_SCALE,
-        };
 
-        state.liquidation_rate = decimal_liquidation_rate;
+        state.liquidation_rate = Decimal::from_percent(liquidation_rate);
         Ok(())
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_fee(ctx: Context<AdminAction>, fee: u32) -> Result<()> {
+    pub fn set_fee(ctx: Context<AdminAction>, fee: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        // 0.3% (300) -> 0.00300 = 300 * 10^-5
-        let decimal_fee = Decimal {
-            val: fee,
-            scale: FEE_SCALE,
-        };
-        state.fee = decimal_fee;
+
+        let decimal_fee = Decimal::from_percent(fee);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1173,15 +1163,11 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u8) -> Result<()> {
+    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u16) -> Result<()> {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        // 50 (50%) -> 0.50 = 50 * 10^(-2)
-        let decimal_factor = Decimal {
-            val: factor,
-            scale: HEALTH_FACTOR_SCALE,
-        };
+        let decimal_factor = Decimal::from_percent(factor);
         state.health_factor = decimal_factor;
         Ok(())
     }
@@ -1242,15 +1228,14 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_penalties(
         ctx: Context<AdminAction>,
-        penalty_to_exchange: Decimal,
-        penalty_to_liquidator: Decimal,
+        penalty_to_exchange: u16,
+        penalty_to_liquidator: u16,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.penalty_to_exchange = penalty_to_exchange;
-        state.penalty_to_liquidator = penalty_to_liquidator;
-
+        state.penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
+        state.penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
