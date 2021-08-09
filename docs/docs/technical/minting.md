@@ -57,4 +57,29 @@ Data needed for settlement is stored in this structure:
 
 ### Swapping settled synthetic
 
-[here](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/exchange/src/lib.rs#L1362-L1393)
+Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/exchange/src/lib.rs#L1362-L1393). It gets specified amount and uses above structure to swap it for xUSD. It takes single number _amount_ (u64) and a following context:
+
+    pub struct SwapSettledSynthetic<'info> {
+        pub settlement: Loader<'info, Settlement>,
+        pub state: Loader<'info, State>,
+        pub token_to_settle: AccountInfo<'info>,
+        pub user_settled_token_account: CpiAccount<'info, TokenAccount>,
+        pub user_usd_account: CpiAccount<'info, TokenAccount>,
+        pub settlement_reserve: CpiAccount<'info, TokenAccount>,
+        pub usd_token: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub token_program: AccountInfo<'info>,
+        pub signer: AccountInfo<'info>,
+    }
+
+  * **settlement** - _Settlement_ structure with data needed for settlement (see [above](#settlement-data))
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **token_to_settle** - address of settled token
+  * **user_settled_token_account** - account on settled token belonging to user
+  * **user_usd_account** - account on xUSD
+  * **settlement_reserve** - account from which xUSD is transferred (specified in _Settlement_ structure)
+  * **usd_token** - address of xUSD token
+  * **exchange_authority** - pubkey belonging to program
+  * **token_program** - address of program of settled token
+  * **signer** - owner of account on settled token
+
