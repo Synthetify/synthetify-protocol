@@ -1218,8 +1218,8 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_penalties(
         ctx: Context<AdminAction>,
-        penalty_to_exchange: u8,
-        penalty_to_liquidator: u8,
+        penalty_to_exchange: Decimal,
+        penalty_to_liquidator: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
