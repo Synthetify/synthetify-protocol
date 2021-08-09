@@ -1185,7 +1185,7 @@ pub mod exchange {
     pub fn set_max_supply(
         ctx: Context<SetMaxSupply>,
         asset_address: Pubkey,
-        new_max_supply: u64,
+        new_max_supply: Decimal,
     ) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
