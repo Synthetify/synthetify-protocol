@@ -94,8 +94,8 @@ export const calculateLiquidation = (
   ).add(maxAmount)
 
   const seizedInToken = seizedCollateralInUsd
-    .mul(new BN(10).pow(new BN(collateral.decimals + ORACLE_OFFSET - ACCURACY)))
-    .div(asset.price)
+    .mul(new BN(10).pow(new BN(collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
+    .div(asset.price.val)
 
   const collateralToExchange = divUp(
     seizedInToken.muln(penaltyToExchange),
@@ -109,9 +109,9 @@ export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.synthetics.reduce(
     (acc, synthetic) =>
       acc.add(
-        synthetic.supply
-          .mul(assetsList.assets[synthetic.assetIndex].price)
-          .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+        synthetic.supply.val
+          .mul(assetsList.assets[synthetic.assetIndex].price.val)
+          .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
       ),
     new BN(0)
   )
@@ -124,8 +124,8 @@ export const calculateUserCollateral = (
     const collateral = assetsList.collaterals[entry.index]
     return acc.add(
       entry.amount
-        .mul(assetsList.assets[collateral.assetIndex].price)
-        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
+        .mul(assetsList.assets[collateral.assetIndex].price.val)
+        .div(new BN(10 ** (collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -135,10 +135,10 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
     const asset = assetsList.assets[collateral.assetIndex]
     return acc.add(
       entry.amount
-        .mul(asset.price)
-        .muln(collateral.collateralRatio)
-        .divn(100)
-        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
+        .mul(asset.price.val)
+        .mul(collateral.collateralRatio.val)
+        .divn(collateral.collateralRatio.scale)
+        .div(new BN(10 ** (collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }

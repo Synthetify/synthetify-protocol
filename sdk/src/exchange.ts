@@ -957,11 +957,11 @@ export enum PriceStatus {
 }
 export interface Asset {
   feedAddress: PublicKey
-  price: BN
+  price: Decimal
   lastUpdate: BN
-  confidence: BN
-  twap: BN
-  twac: BN
+  confidence: Decimal
+  twap: Decimal
+  twac: Decimal
   status: PriceStatus
 }
 export interface AssetsList {
@@ -978,17 +978,15 @@ export interface Collateral {
   collateralAddress: PublicKey
   reserveAddress: PublicKey
   liquidationFund: PublicKey
-  reserveBalance: BN
-  collateralRatio: number
-  decimals: number
+  reserveBalance: Decimal
+  collateralRatio: Decimal
 }
 export interface Synthetic {
   assetIndex: number
   assetAddress: PublicKey
-  supply: BN
-  maxSupply: BN
+  supply: Decimal
+  maxSupply: Decimal
   settlementSlot: BN
-  decimals: number
 }
 
 export interface SetAssetSupply {
@@ -1174,24 +1172,24 @@ export interface ExchangeState {
   nonce: number
   debtShares: BN
   assetsList: PublicKey
-  healthFactor: number
+  healthFactor: Decimal
   maxDelay: number
-  fee: number
+  fee: Decimal
   swapTaxRatio: Decimal
   swapTaxReserve: BN
-  debtInterestRate: number
+  debtInterestRate: Decimal
   accumulatedDebtInterest: BN
   lastDebtAdjustment: BN
-  liquidationRate: number
-  penaltyToLiquidator: number
-  penaltyToExchange: number
+  liquidationRate: Decimal
+  penaltyToLiquidator: Decimal
+  penaltyToExchange: Decimal
   liquidationBuffer: number
   staking: Staking
 }
 export interface Staking {
   fundAccount: PublicKey
   roundLength: number
-  amountPerRound: BN
+  amountPerRound: Decimal
   finishedRound: StakingRound
   currentRound: StakingRound
   nextRound: StakingRound
