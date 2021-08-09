@@ -33,10 +33,12 @@ pub fn calculate_debt(
         };
         // rounding up to be sure that debt is not less than minted tokens
 
-        debt = debt.add(Decimal {
-            val: price.mul_up(synthetic.supply),
-            scale: ACCURACY,
-        })
+        debt = debt
+            .add(Decimal {
+                val: price.mul_up(synthetic.supply).into(),
+                scale: ACCURACY,
+            })
+            .unwrap();
     }
     Ok(debt)
 }
