@@ -52,6 +52,14 @@ impl Mul<Decimal> for Decimal {
         };
     }
 }
+impl MulUp<Decimal> for Decimal {
+    fn mul_up(self, value: Decimal) -> Self {
+        return Self {
+            val: self.mul(value.val).div_up(value.denominator()),
+            scale: self.scale,
+        };
+    }
+}
 impl MulInverse<Decimal> for Decimal {
     fn mul_inverse(self, value: Decimal) -> Self {
         return Self {
@@ -89,7 +97,7 @@ impl Div<Decimal> for Decimal {
         Self {
             val: self
                 .val
-                .checked_mul(10u128.pow(self.scale.into()))
+                .checked_mul(other.denominator())
                 .unwrap()
                 .checked_div(other.val)
                 .unwrap(),
@@ -123,6 +131,9 @@ pub trait DivUp<T>: Sized {
 }
 pub trait Mul<T>: Sized {
     fn mul(self, rhs: T) -> Self;
+}
+pub trait MulUp<T>: Sized {
+    fn mul_up(self, rhs: T) -> Self;
 }
 pub trait MulInverse<T>: Sized {
     fn mul_inverse(self, rhs: T) -> Self;
