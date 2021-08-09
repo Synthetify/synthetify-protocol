@@ -9,9 +9,10 @@ use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 const SNY_DECIMALS: u8 = 6;
+const XUSD_DECIMALS: u8 = 6;
 // #[program]
 pub mod exchange {
-    use std::{borrow::BorrowMut, convert::TryInto, fmt::DebugList};
+    use std::{borrow::BorrowMut, convert::TryInto};
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
@@ -20,10 +21,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{
-        Add, Lt, Ltq, Mul, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE,
-        LIQUIDATION_RATE_SCALE,
-    };
+    use crate::decimal::{Add, Gt, Lt, Ltq, Mul, Sub};
 
     use super::*;
 
@@ -1157,26 +1155,30 @@ pub mod exchange {
     ) -> Result<()> {
         msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let mut actual_amount = amount;
 
+        let mut actual_amount = Decimal {
+            val: amount.into(),
+            scale: state.accumulated_debt_interest.scale,
+        };
+        let max_withdrawable = Decimal {
+            val: state.accumulated_debt_interest.into(),
+            scale: state.accumulated_debt_interest.scale,
+        };
         // u64::MAX mean all available
         if amount == u64::MAX {
-            actual_amount = state.accumulated_debt_interest;
+            actual_amount = max_withdrawable;
         }
         // check valid amount
-        if actual_amount > state.accumulated_debt_interest {
+        if actual_amount.gt(max_withdrawable)? {
             return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
         }
-        state.accumulated_debt_interest = state
-            .accumulated_debt_interest
-            .checked_sub(actual_amount)
-            .unwrap();
+        state.accumulated_debt_interest = state.accumulated_debt_interest.sub(actual_amount)?;
 
         // Mint xUSD to admin
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount)?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd())?;
 
         Ok(())
     }
@@ -1996,7 +1998,7 @@ pub struct StakingRound {
 pub struct Staking {
     pub fund_account: Pubkey,         //32 Source account of SNY tokens
     pub round_length: u32,            //4 Length of round in slots
-    pub amount_per_round: Decimal,    //8 Amount of SNY distributed per round
+    pub amount_per_round: u64,        //8 Amount of SNY distributed per round
     pub finished_round: StakingRound, //24
     pub current_round: StakingRound,  //24
     pub next_round: StakingRound,     //24
