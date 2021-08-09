@@ -3,6 +3,8 @@ use std::convert::TryInto;
 use crate::math::ACCURACY;
 use crate::*;
 
+pub const U8_PERCENT_SCALE: u8 = 4;
+
 impl Decimal {
     pub fn denominator(self) -> u128 {
         return 10u128.pow(self.scale.into());
