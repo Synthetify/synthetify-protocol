@@ -111,13 +111,18 @@ pub fn calculate_max_withdraw_in_usd(
     max_user_debt_in_usd: u64,
     user_debt_in_usd: u64,
     collateral_ratio: u8,
-    health_factor: Decimal,
+    health_factor: u8,
 ) -> u64 {
-    let collateral_ratio = Decimal::from_percent(collateral_ratio.into());
     if max_user_debt_in_usd < user_debt_in_usd {
         return 0;
     }
-    return collateral_ratio.mul(health_factor);
+    return (max_user_debt_in_usd - user_debt_in_usd)
+        .checked_mul(10000)
+        .unwrap()
+        .checked_div(collateral_ratio as u64)
+        .unwrap()
+        .checked_div(health_factor.into())
+        .unwrap();
 }
 pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     // full_amount is always != 0 if all_shares > 0

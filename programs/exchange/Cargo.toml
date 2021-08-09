@@ -21,4 +21,3 @@ anchor-spl = "0.11.1"
 thincollections = "0.5"
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
 pyth = { path = "../pyth", features = ["cpi"] }
-uint = "0.8"

@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
+use crate::math::ACCURACY;
 use crate::*;
-use crate::{self::*, math::ACCURACY};
 
 impl Decimal {
     pub fn denominator(self) -> u128 {
