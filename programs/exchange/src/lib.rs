@@ -1323,8 +1323,8 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
-        reserve_balance: u64,
-        collateral_ratio: u8,
+        reserve_balance: Decimal,
+        collateral_ratio: u16,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1342,8 +1342,8 @@ pub mod exchange {
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
+            collateral_ratio: Decimal::from_percent(collateral_ratio),
             reserve_balance,
-            collateral_ratio,
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
@@ -1351,7 +1351,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_collateral_ratio(
         ctx: Context<SetCollateralRatio>,
-        collateral_ratio: Decimal,
+        collateral_ratio: u16,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET COLLATERAL RATIO");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1364,7 +1364,7 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        collateral.collateral_ratio = collateral_ratio;
+        collateral.collateral_ratio = Decimal::from_percent(collateral_ratio);
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
@@ -1404,7 +1404,7 @@ pub mod exchange {
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
             asset_address: *ctx.accounts.asset_address.key,
-            max_supply: max_supply,
+            max_supply,
             settlement_slot: u64::MAX,
             supply: Decimal {
                 val: 0,
