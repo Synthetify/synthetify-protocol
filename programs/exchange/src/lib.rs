@@ -1300,7 +1300,7 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64, decimals: u8) -> Result<()> {
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: Decimal) -> Result<()> {
         msg!("Synthetify: ADD SYNTHETIC");
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1314,11 +1314,13 @@ pub mod exchange {
         };
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
-            decimals: decimals,
             asset_address: *ctx.accounts.asset_address.key,
             max_supply: max_supply,
             settlement_slot: u64::MAX,
-            supply: 0,
+            supply: Decimal {
+                val: 0,
+                scale: max_supply.scale,
+            },
         };
         assets_list.append_synthetic(new_synthetic);
         Ok(())
@@ -1934,7 +1936,7 @@ pub struct Synthetic {
     pub asset_index: u8,       // 1
     pub asset_address: Pubkey, // 32
     pub supply: Decimal,       // 8
-    pub max_supply: u64,       // 8
+    pub max_supply: Decimal,   // 8
     pub settlement_slot: u64,  // 8 unused
 }
 #[account(zero_copy)]
