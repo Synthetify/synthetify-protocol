@@ -19,6 +19,8 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
+    use crate::decimal::Add;
+
     use super::*;
 
     pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> ProgramResult {
@@ -245,7 +247,7 @@ pub mod exchange {
             .unwrap();
         let collateral = &mut assets_list.collaterals[collateral_index];
 
-        collateral.reserve_balance = collateral.reserve_balance.checked_add(amount).unwrap();
+        collateral.reserve_balance = collateral.reserve_balance.add(amount).unwrap();
 
         let exchange_account_collateral = exchange_account
             .collaterals
@@ -2076,8 +2078,8 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct Decimal {
-    val: u128,
-    scale: u8,
+    pub val: u128,
+    pub scale: u8,
 }
 
 #[error]
@@ -2139,6 +2141,8 @@ pub enum ErrorCode {
     ParameterOutOfRange = 27,
     #[msg("Overflow")]
     Overflow = 28,
+    #[msg("Scale is different")]
+    DifferentScale = 29,
 }
 
 // Access control modifiers.

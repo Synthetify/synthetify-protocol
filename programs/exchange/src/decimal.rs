@@ -28,6 +28,10 @@ impl Decimal {
             return amount.try_into().unwrap();
         }
     }
+
+    pub fn to_u64(self) -> u64 {
+        self.val.try_into().unwrap()
+    }
     // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
     //     return Ok(self
     //         .val
@@ -72,6 +76,19 @@ impl Add<Decimal> for Decimal {
             val: self.val.checked_add(value.val).unwrap(),
             scale: self.scale,
         })
+    }
+}
+impl Add<u64> for Decimal {
+    fn add(self, value: u64) -> Result<Self> {
+        Ok(Self {
+            val: self.val.checked_add(value.into()).unwrap(),
+            scale: self.scale,
+        })
+    }
+}
+impl Into<u64> for Decimal {
+    fn into(self) -> u64 {
+        self.val.try_into().unwrap()
     }
 }
 pub trait Sub: Sized {
