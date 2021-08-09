@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::Mul;
+use crate::decimal::{Add, Mul, MulUp};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -15,8 +15,11 @@ pub fn calculate_debt(
     slot: u64,
     max_delay: u32,
     twap: bool,
-) -> Result<u64> {
-    let mut debt = 0u128;
+) -> Result<Decimal> {
+    let mut debt = Decimal {
+        val: 0,
+        scale: ACCURACY,
+    };
     let synthetics = &assets_list.synthetics;
     let head = assets_list.head_synthetics as usize;
     for synthetic in synthetics[..head].iter() {
@@ -29,16 +32,13 @@ pub fn calculate_debt(
             _ => asset.price,
         };
         // rounding up to be sure that debt is not less than minted tokens
-        debt += div_up(
-            (price as u128)
-                .checked_mul(synthetic.supply as u128)
-                .unwrap(),
-            10u128
-                .checked_pow((synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        );
+
+        debt = debt.add(Decimal {
+            val: price.mul_up(synthetic.supply),
+            scale: ACCURACY,
+        })
     }
-    Ok(debt as u64)
+    Ok(debt)
 }
 pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> u128 {
     let mut max_debt = 0u128;
