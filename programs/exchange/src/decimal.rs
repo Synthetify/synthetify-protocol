@@ -3,19 +3,16 @@ use std::convert::TryInto;
 use crate::math::ACCURACY;
 use crate::*;
 
-pub const LIQUIDATION_RATE_SCALE: u8 = 2;
-pub const HEALTH_FACTOR_SCALE: u8 = 2;
-pub const DEBT_INTEREST_RATE_SCALE: u8 = 4;
-pub const FEE_SCALE: u8 = 5;
+const UNIFIED_PERCENT_SCALE: u8 = 4;
 
 impl Decimal {
     pub fn denominator(self) -> u128 {
         return 10u128.pow(self.scale.into());
     }
-    pub fn from_percent(percent: u128) -> Self {
+    pub fn from_percent(percent: u16) -> Self {
         return Decimal {
-            val: percent.checked_mul(10u128.pow(9)).unwrap(),
-            scale: 9,
+            val: percent.into(),
+            scale: UNIFIED_PERCENT_SCALE,
         };
     }
 
