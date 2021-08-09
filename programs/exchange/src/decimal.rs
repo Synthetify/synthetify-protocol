@@ -135,6 +135,12 @@ impl Ltq<Decimal> for Decimal {
         Ok(self.val <= other.val)
     }
 }
+impl Lt<Decimal> for Decimal {
+    fn lt(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val < other.val)
+    }
+}
 pub trait Sub<T>: Sized {
     fn sub(self, rhs: T) -> Result<Self>;
 }
@@ -158,6 +164,9 @@ pub trait MulInverse<T>: Sized {
 }
 pub trait Ltq<T>: Sized {
     fn ltq(self, rhs: T) -> Result<bool>;
+}
+pub trait Lt<T>: Sized {
+    fn lt(self, rhs: T) -> Result<bool>;
 }
 // #[cfg(test)]
 // mod test {

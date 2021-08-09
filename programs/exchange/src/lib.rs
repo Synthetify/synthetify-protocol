@@ -20,7 +20,8 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE, LIQUIDATION_RATE_SCALE,
+        Add, Lt, Mul, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE,
+        LIQUIDATION_RATE_SCALE,
     };
 
     use super::*;
@@ -269,7 +270,11 @@ pub mod exchange {
             .unwrap();
         let collateral = &mut assets_list.collaterals[collateral_index];
 
-        collateral.reserve_balance = collateral.reserve_balance.add(amount).unwrap();
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: collateral.reserve_balance.scale,
+        };
+        collateral.reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
 
         let exchange_account_collateral = exchange_account
             .collaterals
@@ -316,7 +321,7 @@ pub mod exchange {
         let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
-        let max_borrow = state.health_factor.try_mul(max_debt).unwrap();
+        let mint_limit = state.health_factor.mul(max_debt);
 
         let synthetics = &mut assets_list.synthetics;
 
@@ -324,7 +329,14 @@ pub mod exchange {
         // Both xUSD and collateral token have static index in assets array
         let mut xusd_synthetic = &mut synthetics[0];
 
-        if max_borrow < amount.checked_add(user_debt).unwrap().into() {
+        let debt_after_mint = user_debt
+            .add(Decimal {
+                val: amount.into(),
+                scale: xusd_synthetic.supply.scale,
+            })
+            .unwrap();
+
+        if mint_limit.lt(debt_after_mint).unwrap() {
             return Err(ErrorCode::MintLimit.into());
         }
 
