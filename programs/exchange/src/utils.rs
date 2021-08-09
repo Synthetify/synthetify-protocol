@@ -150,9 +150,9 @@ pub fn calculate_debt_with_interest(
     assets_list: &mut RefMut<AssetsList>,
     slot: u64,
     timestamp: i64,
-) -> Result<u64> {
+) -> Result<Decimal> {
     let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
-    let usd: &mut Synthetic = &mut assets_list.borrow_mut().synthetics[0];
+    let usd = &mut assets_list.borrow_mut().synthetics[0];
     let debt_with_interest = adjust_interest_debt(state, usd, total_debt_twap, timestamp);
     Ok(debt_with_interest)
 }
@@ -161,9 +161,9 @@ pub fn calculate_debt_with_interest(
 pub fn adjust_interest_debt(
     state: &mut State,
     usd: &mut Synthetic,
-    total_debt: u64,
+    total_debt: Decimal,
     timestamp: i64,
-) -> u64 {
+) -> Decimal {
     const ADJUSTMENT_PERIOD: i64 = 60;
     let diff = timestamp
         .checked_sub(state.last_debt_adjustment)
@@ -171,8 +171,10 @@ pub fn adjust_interest_debt(
         .checked_div(ADJUSTMENT_PERIOD)
         .unwrap();
     if diff >= 1 {
-        let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
-        let minute_interest_rate = calculate_minute_interest_rate(debt_interest_rate);
+        // let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
+        // let minute_interest_rate = calculate_minute_interest_rate(debt_interest_rate);
+        let minute_interest_rate = calculate_minute_interest_rate(state.debt_interest_rate);
+
         let compounded_interest =
             calculate_compounded_interest(total_debt, minute_interest_rate, diff as u128);
 
