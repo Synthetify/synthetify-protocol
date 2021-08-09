@@ -8,7 +8,7 @@ use pyth::pc::{Price, PriceStatus};
 use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
-#[program]
+// #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto, fmt::DebugList};
 
@@ -73,7 +73,6 @@ pub mod exchange {
             collateral_ratio: 10,
             collateral_address: collateral_token,
             reserve_balance: 0,
-            decimals: 6,
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
         };

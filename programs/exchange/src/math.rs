@@ -65,20 +65,26 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
 }
 pub fn calculate_user_debt_in_usd(
     user_account: &ExchangeAccount,
-    debt: u64,
+    debt: Decimal,
     debt_shares: u64,
-) -> u64 {
+) -> Decimal {
     if debt_shares == 0 {
-        return 0;
+        return Decimal {
+            val: 0,
+            scale: ACCURACY,
+        };
     }
-    // rounding up to be sure that user debt is not less than user minted tokens
-    let user_debt = div_up(
-        (debt as u128)
-            .checked_mul(user_account.debt_shares as u128)
-            .unwrap(),
-        debt_shares as u128,
-    );
-    return user_debt as u64;
+
+    let debt_shares = Decimal {
+        val: debt_shares.into(),
+        scale: 0,
+    };
+    let user_shares = Decimal {
+        val: user_account.debt_shares.into(),
+        scale: 0,
+    };
+
+    debt.mul(user_shares).div_up(debt_shares)
 }
 pub fn calculate_new_shares_by_rounding_down(
     all_shares: u64,
