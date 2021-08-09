@@ -14,10 +14,10 @@ import {
   DEFAULT_PUBLIC_KEY,
   U64_MAX
 } from './utils'
-import { createPriceFeed, setFeedPrice, setFeedTrading } from './oracleUtils'
+import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import { ERRORS } from '@synthetify/sdk/src/utils'
 import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { ERRORS_EXCHANGE } from '@synthetify/sdk/lib/utils'
+import { ERRORS_EXCHANGE, sleep } from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
@@ -699,8 +699,10 @@ describe('admin', () => {
       assert.ok(asset.status == PriceStatus.Trading)
     })
     it('Feed Trading should be set to Auction', async () => {
-      await setFeedTrading(oracleProgram, PriceStatus.Auction, assetFeed)
-      // asset status should change
+      await setFeedTrading(oracleProgram, 3, assetFeed)
+      const feed = await getFeedData(oracleProgram, assetFeed)
+      // asset status should change to Auction
+      assert.ok(feed.status == PriceStatus.Auction)
     })
   })
   describe('#setCollateralRatio()', async () => {
