@@ -53,6 +53,9 @@ impl Decimal {
     pub fn to_usd(self) -> Decimal {
         self.to_scale(ACCURACY)
     }
+    pub fn to_price(self) -> Decimal {
+        self.to_scale(PRICE_OFFSET)
+    }
     pub fn to_u64(self) -> u64 {
         self.val.try_into().unwrap()
     }
@@ -164,14 +167,18 @@ impl Div<Decimal> for Decimal {
 }
 impl DivUp<Decimal> for Decimal {
     fn div_up(self, other: Decimal) -> Self {
-        let almost_other = Decimal {
-            val: other.val.checked_sub(1).unwrap(),
-            scale: other.scale,
-        };
+        //  return a
+        // .checked_add(b.checked_sub(1).unwrap())
+        // .unwrap()
+        // .checked_div(b)
+        // .unwrap();
 
-        self.add(almost_other.to_scale(self.scale))
-            .unwrap()
-            .div(other)
+        let almost_other = other
+            .to_scale(self.scale)
+            .sub(Decimal::new(1, self.scale))
+            .unwrap();
+
+        self.add(almost_other).unwrap().div(other)
     }
 }
 impl DivScale<Decimal> for Decimal {
@@ -300,7 +307,6 @@ pub trait Eq<T>: Sized {
 
 #[cfg(test)]
 mod test {
-    use std::result;
 
     use super::*;
 
@@ -392,5 +398,18 @@ mod test {
             let expected = Decimal::new(1, 0).to_scale(decimal);
             assert_eq!(result, expected);
         }
+    }
+    #[test]
+    fn test_mul_up() {
+        let a = Decimal::new(1000, 3);
+        let b = Decimal::new(300, 3);
+        assert_eq!(a.mul_up(b), Decimal::new(334, 3));
+    }
+
+    #[test]
+    fn test_div_up() {
+        let a = Decimal::new(3000, 3);
+        let b = Decimal::new(1000, 3);
+        assert_eq!(a.div_up(b), Decimal::new(333, 3));
     }
 }
