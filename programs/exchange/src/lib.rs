@@ -673,12 +673,16 @@ pub mod exchange {
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
 
         // Rounding down - debt is burned in favor of the system
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: burn_synthetic.supply.scale,
+        };
         let burned_shares = calculate_burned_shares(
             &burn_asset,
             &burn_synthetic,
             user_debt,
             exchange_account.debt_shares,
-            amount,
+            amount_decimal,
         );
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];

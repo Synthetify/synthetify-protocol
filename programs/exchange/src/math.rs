@@ -204,7 +204,7 @@ pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
     //     )
     //     .unwrap() as u64;
 
-    price.mul(amount).to_scale(ACCURACY)
+    price.mul(amount).to_usd()
 }
 pub fn calculate_value_difference_in_usd(
     price_in: u64,
@@ -246,33 +246,26 @@ pub fn calculate_swap_out_amount(
 pub fn calculate_burned_shares(
     asset: &Asset,
     synthetic: &Synthetic,
-    all_debt: u64,
+    all_debt: Decimal,
     all_shares: u64,
-    amount: u64,
+    amount: Decimal,
 ) -> u64 {
-    if all_debt == 0 {
+    if all_debt.val == 0 {
         return 0u64;
     }
 
-    let burn_amount_in_usd = (asset.price as u128)
-        .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(
-            10u128
-                .checked_pow((synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        )
-        .unwrap();
-    let burned_shares = burn_amount_in_usd
-        .checked_mul(all_shares as u128)
-        .unwrap()
-        .checked_div(all_debt as u128)
-        .unwrap();
-    return burned_shares.try_into().unwrap();
+    calculate_value_in_usd(asset.price, amount)
+        .mul(Decimal {
+            val: all_shares.into(),
+            scale: 0,
+        })
+        .div(all_debt)
+        .to_scale(0)
+        .into()
 }
 
-// This should always retur user_debt if xusd === 1 USD
-// Should we remove this funtion ?
+// This should always return user_debt if xusd === 1 USD
+// Should we remove this function ?
 pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     // rounding up to be sure that burned amount is not less than user debt
     let burned_amount_token = div_up(
