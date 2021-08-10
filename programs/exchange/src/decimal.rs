@@ -55,11 +55,15 @@ impl Mul<Decimal> for Decimal {
     }
 }
 impl MulUp<Decimal> for Decimal {
-    fn mul_up(self, value: Decimal) -> Self {
-        return Self {
-            val: self.mul(value.val).div_up(value.denominator()),
-            scale: self.scale,
+    fn mul_up(self, other: Decimal) -> Self {
+        let denominator = Decimal {
+            val: other.denominator(),
+            scale: 0,
         };
+        Self {
+            val: self.mul(other).div_up(denominator).val,
+            scale: self.scale,
+        }
     }
 }
 impl MulInverse<Decimal> for Decimal {
