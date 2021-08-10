@@ -204,14 +204,15 @@ impl PowAccuracy<u128> for Decimal {
         if exp == 0 {
             return one;
         }
+        let mut current_exp = exp;
         let mut base = self;
         let mut result = one;
 
-        while exp > 0 {
-            if exp % 2 != 0 {
+        while current_exp > 0 {
+            if current_exp % 2 != 0 {
                 result = result.mul(base);
             }
-            exp /= 2;
+            current_exp /= 2;
             base = base.mul(base);
         }
         return result;
