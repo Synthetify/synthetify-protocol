@@ -597,14 +597,8 @@ pub mod exchange {
             val: amount.into(),
             scale: synthetics[synthetic_in_index].supply.scale,
         };
-        let (amount_for, fee_usd) = calculate_swap_out_amount(
-            &asset_in,
-            &asset_for,
-            &synthetics[synthetic_in_index],
-            &synthetics[synthetic_for_index],
-            amount_decimal,
-            effective_fee,
-        )?;
+        let (amount_for, fee_usd) =
+            calculate_swap_out_amount(&asset_in, &asset_for, amount_decimal, effective_fee)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];

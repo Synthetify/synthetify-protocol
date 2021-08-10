@@ -207,13 +207,10 @@ pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
-    synthetic_in: &Synthetic,
-    synthetic_for: &Synthetic,
     amount: Decimal,
     fee: Decimal, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(Decimal, Decimal)> {
-    const FEE_DECIMAL: u32 = 5;
-    let value_in_usd = (asset_in.price).mul(amount).to_scale(ACCURACY);
+    let value_in_usd = (asset_in.price).mul(amount).to_usd();
     // Check min swap value
     if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
         return Err(ErrorCode::InsufficientValueTrade.into());
@@ -295,13 +292,9 @@ pub fn calculate_compounded_interest(
 
     scaled_value.div_up(one)
 }
-pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
-    // 1 -> 0.1%
-    return (debt_interest_rate as u128)
-        .checked_mul(10u128.checked_pow(INTEREST_RATE_DECIMAL.into()).unwrap())
-        .unwrap()
-        .checked_div(1000)
-        .unwrap();
+pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
+    // 1 -> 0.01%
+    return Decimal::from_percent(debt_interest_rate).to_interest_rate();
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     // return apr.div(MINUTES_IN_YEAR.into()).unwrap();
