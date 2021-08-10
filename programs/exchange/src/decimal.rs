@@ -5,6 +5,7 @@ use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
 
 const UNIFIED_PERCENT_SCALE: u8 = 4;
+const SNY_DECIMAL:u8 = 6;
 
 impl Decimal {
     pub fn denominator(self) -> u128 {
@@ -27,6 +28,9 @@ impl Decimal {
             val: value.into(),
             scale: ACCURACY,
         };
+    }
+    pub fn from_sny(value: u128) -> Self {
+        Decimal { val: value, scale: SNY_DECIMAL }
     }
     pub fn to_usd(self) -> Decimal {
         self.to_scale(ACCURACY)
@@ -70,6 +74,15 @@ impl Mul<Decimal> for Decimal {
                 .unwrap(),
             scale: self.scale,
         };
+    }
+}
+impl Mul<u128> for Decimal {
+    fn mul(self, value: u128) -> Self {
+        val: self
+            .val
+            .checked_mul(value)
+            .unwrap()
+            .checked_
     }
 }
 impl MulUp<Decimal> for Decimal {

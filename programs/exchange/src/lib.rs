@@ -993,7 +993,7 @@ pub mod exchange {
 
         // If account is undercollaterized set liquidation_deadline
         // After liquidation_deadline slot account can be liquidated
-        if max_debt.gt(&(user_debt as u128)) {
+        if max_debt.gt(user_debt)? {
             exchange_account.liquidation_deadline = u64::MAX;
         } else {
             if exchange_account.liquidation_deadline == u64::MAX {
@@ -1019,21 +1019,32 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
-        if state.staking.finished_round.amount > 0 {
-            let reward_amount = state
+        if state
+            .staking
+            .finished_round
+            .amount
+            .gt(Decimal::from_sny(0))?
+        {
+            let reward_amount: u64 = state
                 .staking
                 .finished_round
                 .amount
-                .checked_mul(exchange_account.user_staking_data.finished_round_points)
+                .val
+                .checked_mul(
+                    exchange_account
+                        .user_staking_data
+                        .finished_round_points
+                        .into(),
+                )
                 .unwrap()
-                .checked_div(state.staking.finished_round.all_points)
-                .unwrap();
+                .checked_div(state.staking.finished_round.all_points.into())
+                .unwrap() as u64;
 
             exchange_account.user_staking_data.amount_to_claim = exchange_account
                 .user_staking_data
                 .amount_to_claim
-                .checked_add(reward_amount)
-                .unwrap();
+                .add(Decimal::from_sny(reward_amount.into()))?;
+
             exchange_account.user_staking_data.finished_round_points = 0;
         }
 
@@ -1516,13 +1527,13 @@ pub mod exchange {
             return Err(ErrorCode::SettlementNotReached.into());
         }
 
-        let usd_value = calculate_value_in_usd(asset.price, synthetic.supply, synthetic.decimals);
+        let usd_value = calculate_value_in_usd(asset.price, synthetic.supply);
 
         // Init settlement struct
         {
             settlement.bump = bump;
-            settlement.decimals_in = synthetic.decimals;
-            settlement.decimals_out = usd_synthetic.decimals;
+            settlement.decimals_in = synthetic.supply.scale;
+            settlement.decimals_out = usd_synthetic.supply.scale;
             settlement.token_out_address = usd_synthetic.asset_address;
             settlement.token_in_address = synthetic.asset_address;
             settlement.reserve_address = *ctx.accounts.settlement_reserve.to_account_info().key;
@@ -1530,12 +1541,12 @@ pub mod exchange {
         }
 
         // Mint xUSD
-        let new_supply = usd_synthetic.supply.checked_add(usd_value).unwrap();
+        let new_supply = usd_synthetic.supply.add(usd_value).unwrap();
         set_synthetic_supply(usd_synthetic, new_supply).unwrap();
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(cpi_ctx_mint, usd_value)?;
+        token::mint_to(cpi_ctx_mint, usd_value.to_u64())?;
 
         // Remove synthetic from list
         assets_list.remove_synthetic(synthetic_index).unwrap();
@@ -1547,18 +1558,12 @@ pub mod exchange {
 
         let state = ctx.accounts.state.load()?;
         let settlement = ctx.accounts.settlement.load()?;
+        let swap_amount = Decimal {
+            val: amount.into(),
+            scale: settlement.decimals_in,
+        };
+        let amount_usd = swap_amount.mul(settlement.ratio).to_usd().to_u64();
 
-        let amount_usd = (settlement.ratio as u128)
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_div(
-                10u128
-                    .checked_pow(
-                        (settlement.decimals_in + PRICE_OFFSET - settlement.decimals_out).into(),
-                    )
-                    .unwrap(),
-            )
-            .unwrap() as u64;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
@@ -2064,7 +2069,7 @@ pub struct Staking {
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct UserStaking {
-    pub amount_to_claim: u64,       //8 Amount of SNY accumulated by account
+    pub amount_to_claim: Decimal,   //8 Amount of SNY accumulated by account
     pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
     pub current_round_points: u64,  //8
     pub next_round_points: u64,     //8
@@ -2147,7 +2152,7 @@ pub struct Settlement {
     pub token_out_address: Pubkey, //32 xUSD
     pub decimals_in: u8,           //1
     pub decimals_out: u8,          //1
-    pub ratio: u64,                //8
+    pub ratio: Decimal,            //8
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
