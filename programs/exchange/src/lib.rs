@@ -16,7 +16,7 @@ pub mod exchange {
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
-        calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
+        calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
@@ -1058,7 +1058,11 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
-        if exchange_account.user_staking_data.amount_to_claim == 0u64 {
+        if exchange_account
+            .user_staking_data
+            .amount_to_claim
+            .eq(&(Decimal::from_sny(0)))
+        {
             return Err(ErrorCode::NoRewards.into());
         }
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -1072,9 +1076,12 @@ pub mod exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim)?;
+        token::transfer(
+            cpi_ctx,
+            exchange_account.user_staking_data.amount_to_claim.to_u64(),
+        )?;
         // Reset rewards amount
-        exchange_account.user_staking_data.amount_to_claim = 0u64;
+        exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
