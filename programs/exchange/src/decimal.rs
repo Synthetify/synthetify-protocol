@@ -168,7 +168,10 @@ impl DivUp<Decimal> for Decimal {
             val: other.val.checked_sub(1).unwrap(),
             scale: other.scale,
         };
-        self.add(almost_other).unwrap().div(other)
+
+        self.add(almost_other.to_scale(self.scale))
+            .unwrap()
+            .div(other)
     }
 }
 impl DivScale<Decimal> for Decimal {

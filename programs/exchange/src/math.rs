@@ -316,7 +316,7 @@ mod tests {
         {
             let collateral_shares = 0u64;
             let collateral_amount = Decimal::from_usd(0);
-            let to_deposit_amount = Decimal::from_usd(10);
+            let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -328,11 +328,8 @@ mod tests {
                 to_deposit_amount,
             );
             // Initial shares = deposited amount
-            assert_eq!(
-                new_shares_rounding_down,
-                to_deposit_amount.to_scale(0).into()
-            );
-            assert_eq!(new_shares_rounding_up, to_deposit_amount.to_scale(0).into());
+            assert_eq!(new_shares_rounding_down, to_deposit_amount.into());
+            assert_eq!(new_shares_rounding_up, to_deposit_amount.into());
         }
         // With existing shares
         {
