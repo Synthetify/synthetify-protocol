@@ -206,21 +206,6 @@ pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
 
     price.mul(amount).to_usd()
 }
-pub fn calculate_value_difference_in_usd(
-    price_in: u64,
-    amount_in: u64,
-    decimal_in: u8,
-    price_out: u64,
-    amount_out: u64,
-    decimal_out: u8,
-) -> u64 {
-    // price in should be always bigger than price out
-    let value_in = calculate_value_in_usd(price_in, amount_in, decimal_in);
-    let value_out = calculate_value_in_usd(price_out, amount_out, decimal_out);
-
-    return value_in.checked_sub(value_out).unwrap();
-}
-
 pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
     return swap_tax.mul(total_fee);
 }
@@ -245,25 +230,16 @@ pub fn calculate_swap_out_amount(
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
-    synthetic: &Synthetic,
     all_debt: u64,
     all_shares: u64,
-    amount: u64,
+    amount: Decimal,
 ) -> u64 {
     if all_debt == 0 {
         return 0u64;
     }
-
-    let burn_amount_in_usd = (asset.price as u128)
-        .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(
-            10u128
-                .checked_pow((synthetic.decimals + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        )
-        .unwrap();
+    let burn_amount_in_usd = asset.price.mul(amount).to_usd();
     let burned_shares = burn_amount_in_usd
+        .val
         .checked_mul(all_shares as u128)
         .unwrap()
         .checked_div(all_debt as u128)
