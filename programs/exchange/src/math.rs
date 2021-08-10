@@ -1,12 +1,11 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub};
 use crate::*;
 
 // Min decimals for asset = 6
 pub const ACCURACY: u8 = 6; // xUSD decimal
 pub const PRICE_OFFSET: u8 = 8;
-pub const INTEREST_RATE_DECIMAL: u8 = 18;
 pub const MINUTES_IN_YEAR: u32 = 525600;
 pub const MIN_SWAP_USD_VALUE: Decimal = Decimal {
     val: 1000u128,
@@ -288,12 +287,10 @@ pub fn calculate_compounded_interest(
     // base_price * ((1 + periodic_interest_rate) ^ periods_number - 1)
     let one = Decimal {
         val: periodic_interest_rate.denominator(),
-        scale: 0,
+        scale: periodic_interest_rate.scale,
     };
     let interest = periodic_interest_rate.add(one).unwrap();
-    let compounded = pow_with_accuracy(interest, periods_number)
-        .sub(one)
-        .unwrap();
+    let compounded = interest.pow_with_accuracy(periods_number).sub(one).unwrap();
     let scaled_value = base_value.mul(compounded);
 
     scaled_value.div_up(one)
