@@ -1073,7 +1073,7 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn withdraw_liquidation_penalty(
         ctx: Context<WithdrawLiquidationPenalty>,
-        amount: u64,
+        amount: Decimal,
     ) -> Result<()> {
         msg!("Synthetify: WITHDRAW LIQUIDATION PENALTY");
         let state = &ctx.accounts.state.load_mut()?;
@@ -1085,7 +1085,7 @@ pub mod exchange {
             .iter_mut()
             .find(|x| x.liquidation_fund.eq(liquidation_fund))
             .unwrap();
-        collateral.reserve_balance = collateral.reserve_balance.checked_sub(amount).unwrap();
+        collateral.reserve_balance = collateral.reserve_balance.sub(amount)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer_seeds = &[&seeds[..]];
 
@@ -1097,7 +1097,7 @@ pub mod exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        token::transfer(cpi_ctx, amount)?;
+        token::transfer(cpi_ctx, amount.val as u64)?;
         Ok(())
     }
     // admin methods
@@ -1109,11 +1109,23 @@ pub mod exchange {
         let new_asset = Asset {
             feed_address: new_asset_feed_address,
             last_update: 0,
-            price: 0,
-            confidence: 0,
-            twap: 0,
+            price: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
+            confidence: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
+            twap: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
             status: PriceStatus::Trading.into(),
-            twac: 0,
+            twac: Decimal {
+                val: 0,
+                scale: PRICE_OFFSET,
+            },
         };
 
         assets_list.append_asset(new_asset);
@@ -1233,7 +1245,13 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.liquidation_rate = Decimal::from_percent(liquidation_rate);
+        let decimal_liquidation_rate = Decimal::from_percent(liquidation_rate);
+        // liquidation_rate should be less or equals 100%
+        require!(
+            decimal_liquidation_rate.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        state.liquidation_rate = decimal_liquidation_rate;
         Ok(())
     }
 
