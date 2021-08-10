@@ -93,24 +93,22 @@ pub fn calculate_user_debt_in_usd(
         scale: 0,
     };
 
-    debt.mul(user_shares).div_up(debt_shares)
+    debt.mul(user_shares).div_up(debt_shares).to_usd()
 }
 pub fn calculate_new_shares_by_rounding_down(
     all_shares: u64,
-    full_amount: u64,
-    new_amount: u64,
+    full_amount: Decimal,
+    new_amount: Decimal,
 ) -> u64 {
     //  full_amount is always != 0 if all_shares > 0
     if all_shares == 0u64 {
-        return new_amount;
+        return new_amount.val.try_into().unwrap();
     }
-    let new_shares = (all_shares as u128)
-        .checked_mul(new_amount as u128)
-        .unwrap()
-        .checked_div(full_amount as u128)
-        .unwrap();
-
-    return new_shares.try_into().unwrap();
+    Decimal::from_integer(all_shares)
+        .mul(new_amount)
+        .div(full_amount)
+        .to_scale(0)
+        .into()
 }
 pub fn calculate_new_shares_by_rounding_up(
     all_shares: u64,
@@ -121,13 +119,11 @@ pub fn calculate_new_shares_by_rounding_up(
     if all_shares == 0u64 {
         return new_amount.val.try_into().unwrap();
     }
-    let all_shares_decimal = Decimal {
-        val: all_shares.into(),
-        scale: 0,
-    };
+    let all_shares_decimal = Decimal::from_integer(all_shares);
     all_shares_decimal
         .mul(new_amount)
         .div_up(full_amount)
+        .to_scale(0)
         .into()
 }
 pub fn calculate_max_withdraw_in_usd(
@@ -230,25 +226,25 @@ pub fn calculate_swap_out_amount(
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
-    all_debt: u64,
+    all_debt: Decimal,
     all_shares: u64,
     amount: Decimal,
 ) -> u64 {
-    if all_debt == 0 {
+    if all_debt.val == 0 {
         return 0u64;
     }
-    let burn_amount_in_usd = asset.price.mul(amount).to_usd();
-    let burned_shares = burn_amount_in_usd
-        .val
-        .checked_mul(all_shares as u128)
-        .unwrap()
-        .checked_div(all_debt as u128)
-        .unwrap();
-    return burned_shares.try_into().unwrap();
+    calculate_value_in_usd(asset.price, amount)
+        .mul(Decimal {
+            val: all_shares.into(),
+            scale: 0,
+        })
+        .div(all_debt)
+        .to_scale(0)
+        .into()
 }
 
-// This should always retur user_debt if xusd === 1 USD
-// Should we remove this funtion ?
+// This should always return user_debt if xusd === 1 USD
+// Should we remove this function ?
 pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     // rounding up to be sure that burned amount is not less than user debt
     let burned_amount_token = div_up(

@@ -1,5 +1,4 @@
 use std::convert::TryInto;
-use std::ops::{Div, Mul};
 
 use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
@@ -15,6 +14,12 @@ impl Decimal {
         return Decimal {
             val: percent.into(),
             scale: UNIFIED_PERCENT_SCALE,
+        };
+    }
+    pub fn from_integer(integer: u64) -> Self {
+        return Decimal {
+            val: integer.into(),
+            scale: 0,
         };
     }
     pub fn from_price(price: u128) -> Self {
