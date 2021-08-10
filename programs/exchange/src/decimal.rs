@@ -32,19 +32,11 @@ impl Decimal {
     pub fn from_sny(value: u128) -> Self {
         Decimal { val: value, scale: SNY_DECIMAL }
     }
-    pub fn to_usd(self) -> u64 {
-        let decimal_difference = self.scale as i32 - ACCURACY as i32;
-        if decimal_difference < 0 {
-            let amount = (self.val)
-                .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
-                .unwrap();
-            return amount.try_into().unwrap();
-        } else {
-            let amount = (self.val)
-                .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
-                .unwrap();
-            return amount.try_into().unwrap();
-        }
+    pub fn to_usd(self) -> Decimal {
+        self.to_scale(ACCURACY)
+    }
+    pub fn to_u64(self) -> u64 {
+        self.val.try_into().unwrap()
     }
     pub fn to_scale(self, scale: u8) -> Self {
         let mut scaled = self.val;
@@ -175,7 +167,7 @@ impl DivScale<Decimal> for Decimal {
             self.val
                 .checked_mul(other.denominator())
                 .unwrap()
-                .checked_mul(10u128.pow(decimal_difference..try_into().unwrap()))
+                .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
                 .checked_div(other.val)
                 .unwrap()
