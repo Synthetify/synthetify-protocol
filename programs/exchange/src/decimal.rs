@@ -8,6 +8,9 @@ pub const INTEREST_RATE_SCALE: u8 = 18;
 pub const SNY_DECIMAL: u8 = 6;
 
 impl Decimal {
+    pub fn new(value: u128, scale: u8) -> Self {
+        Self { val: value, scale }
+    }
     pub fn denominator(self) -> u128 {
         return 10u128.pow(self.scale.into());
     }
