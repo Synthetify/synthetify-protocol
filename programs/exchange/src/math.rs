@@ -245,16 +245,16 @@ pub fn calculate_burned_shares(
 
 // This should always return user_debt if xusd === 1 USD
 // Should we remove this function ?
-pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
-    // rounding up to be sure that burned amount is not less than user debt
-    let burned_amount_token = div_up(
-        (user_debt as u128)
-            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-            .unwrap(),
-        asset.price as u128,
-    );
-    return burned_amount_token.try_into().unwrap();
-}
+// pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
+//     // rounding up to be sure that burned amount is not less than user debt
+//     let burned_amount_token = div_up(
+//         (user_debt as u128)
+//             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
+//             .unwrap(),
+//         asset.price as u128,
+//     );
+//     return burned_amount_token.try_into().unwrap();
+// }
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal) -> Decimal {
     return value_in_usd.div_to_scale(asset.price, asset.price.scale);
 }
@@ -324,8 +324,8 @@ mod tests {
         // Initialize shares
         {
             let collateral_shares = 0u64;
-            let collateral_amount = 0u64;
-            let to_deposit_amount = 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(0);
+            let to_deposit_amount = Decimal::from_usd(10);
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -337,14 +337,17 @@ mod tests {
                 to_deposit_amount,
             );
             // Initial shares = deposited amount
-            assert_eq!(new_shares_rounding_down, to_deposit_amount);
-            assert_eq!(new_shares_rounding_up, to_deposit_amount);
+            assert_eq!(
+                new_shares_rounding_down,
+                to_deposit_amount.to_scale(0).into()
+            );
+            assert_eq!(new_shares_rounding_up, to_deposit_amount.to_scale(0).into());
         }
         // With existing shares
         {
             let collateral_shares = 10u64.pow(6);
-            let collateral_amount = 10u64.pow(6);
-            let to_deposit_amount = 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -362,8 +365,8 @@ mod tests {
         // Zero new shares
         {
             let collateral_shares = 10u64.pow(6);
-            let collateral_amount = 10u64.pow(6);
-            let to_deposit_amount = 0u64;
+            let collateral_amount = Decimal::from_usd(10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(0);
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -381,8 +384,8 @@ mod tests {
         // Valid rounding
         {
             let collateral_shares = 10_001 * 10u64.pow(6);
-            let collateral_amount = 988_409 * 10u64.pow(6);
-            let to_deposit_amount = 579_112;
+            let collateral_amount = Decimal::from_usd(988_409 * 10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(579_112);
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -400,8 +403,8 @@ mod tests {
         // Test on big numbers
         {
             let collateral_shares = 100_000_000 * 10u64.pow(6);
-            let collateral_amount = 100_000_000 * 10u64.pow(6);
-            let to_deposit_amount = 10_000_000 * 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(100_000_000 * 10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(10_000_000 * 10u128.pow(6));
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
