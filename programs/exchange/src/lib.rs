@@ -679,7 +679,6 @@ pub mod exchange {
         };
         let burned_shares = calculate_burned_shares(
             &burn_asset,
-            &burn_synthetic,
             user_debt,
             exchange_account.debt_shares,
             amount_decimal,
@@ -2373,6 +2372,8 @@ fn fund_account<'info>(
 
 #[cfg(test)]
 mod tests {
+    use crate::math::PRICE_OFFSET;
+
     use super::*;
 
     #[test]
@@ -2455,20 +2456,27 @@ mod tests {
             let mut assets_list = AssetsList {
                 ..Default::default()
             };
+            let price = Decimal {
+                val: 2,
+                scale: PRICE_OFFSET,
+            };
             assets_list.append_asset(Asset {
-                price: 2,
+                price: price,
                 ..Default::default()
             });
-            assert_eq!({ assets_list.assets[0].price }, 2);
+            assert_eq!({ assets_list.assets[0].price }, price);
             assert_eq!(assets_list.head_assets, 1);
             assert_eq!(assets_list.head_collaterals, 0);
             assert_eq!(assets_list.head_synthetics, 0);
-
+            let price2 = Decimal {
+                val: 3,
+                scale: PRICE_OFFSET,
+            };
             assets_list.append_asset(Asset {
-                price: 3,
+                price: price2,
                 ..Default::default()
             });
-            assert_eq!({ assets_list.assets[1].price }, 3);
+            assert_eq!({ assets_list.assets[1].price }, price2);
             assert_eq!(assets_list.head_assets, 2);
         }
         // Append collaterals
@@ -2520,8 +2528,12 @@ mod tests {
         let mut assets_list = AssetsList {
             ..Default::default()
         };
+        let price = Decimal {
+            val: 2,
+            scale: PRICE_OFFSET,
+        };
         assets_list.append_asset(Asset {
-            price: 2,
+            price: price,
             ..Default::default()
         });
         assets_list.append_collateral(Collateral {
@@ -2534,7 +2546,7 @@ mod tests {
         });
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        assert_eq!({ assets[0].price }, 2);
+        assert_eq!({ assets[0].price }, price);
         assert_eq!(collaterals[0].asset_index, 0);
         assert_eq!(synthetics[0].asset_index, 0);
     }
