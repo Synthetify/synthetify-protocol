@@ -167,18 +167,22 @@ impl Div<Decimal> for Decimal {
 }
 impl DivUp<Decimal> for Decimal {
     fn div_up(self, other: Decimal) -> Self {
-        //  return a
-        // .checked_add(b.checked_sub(1).unwrap())
-        // .unwrap()
-        // .checked_div(b)
-        // .unwrap();
-
         let almost_other = other
             .to_scale(self.scale)
             .sub(Decimal::new(1, self.scale))
             .unwrap();
 
-        self.add(almost_other).unwrap().div(other)
+        Self {
+            val: self
+                .val
+                .checked_mul(other.denominator())
+                .unwrap()
+                .checked_add(almost_other.val)
+                .unwrap()
+                .checked_div(other.val)
+                .unwrap(),
+            scale: self.scale,
+        }
     }
 }
 impl DivScale<Decimal> for Decimal {
@@ -408,8 +412,20 @@ mod test {
 
     #[test]
     fn test_div_up() {
-        let a = Decimal::new(3000, 3);
-        let b = Decimal::new(1000, 3);
-        assert_eq!(a.div_up(b), Decimal::new(333, 3));
+        {
+            let a = Decimal::new(0, 0);
+            let b = Decimal::new(1, 0);
+            assert_eq!(a.div_up(b), Decimal::new(0, 0));
+        }
+        {
+            let a = Decimal::new(1, 0);
+            let b = Decimal::new(2, 0);
+            assert_eq!(a.div_up(b), Decimal::new(1, 0));
+        }
+        {
+            let a = Decimal::new(200_000_000_001, 6);
+            let b = Decimal::new(2, 0);
+            assert!(!a.div_up(b).lt(Decimal::new(100_000_000_001, 6)).unwrap());
+        }
     }
 }
