@@ -679,7 +679,6 @@ pub mod exchange {
         };
         let burned_shares = calculate_burned_shares(
             &burn_asset,
-            &burn_synthetic,
             user_debt,
             exchange_account.debt_shares,
             amount_decimal,

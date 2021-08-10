@@ -167,7 +167,7 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
 pub fn amount_to_discount(amount: u64) -> Decimal {
     // decimals of token = 6
     const ONE_SNY: u64 = 1_000_000u64;
-    let v: u128 = match () {
+    let v: u16 = match () {
         () if amount < ONE_SNY * 100 => 0,
         () if amount < ONE_SNY * 200 => 1,
         () if amount < ONE_SNY * 500 => 2,
