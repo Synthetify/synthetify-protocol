@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use crate::math::ACCURACY;
+use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
 
 const UNIFIED_PERCENT_SCALE: u8 = 4;
@@ -15,7 +15,18 @@ impl Decimal {
             scale: UNIFIED_PERCENT_SCALE,
         };
     }
-
+    pub fn from_price(price: u64) -> Self {
+        return Decimal {
+            val: price.into(),
+            scale: PRICE_OFFSET,
+        };
+    }
+    pub fn from_usd(value: u64) -> Self {
+        return Decimal {
+            val: value.into(),
+            scale: ACCURACY,
+        };
+    }
     pub fn to_usd(self) -> u64 {
         let decimal_difference = self.scale as i32 - ACCURACY as i32;
         if decimal_difference < 0 {
