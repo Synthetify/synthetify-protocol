@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivUp, Mul, MulUp, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Mul, MulUp, Sub};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -292,27 +292,8 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     );
     return burned_amount_token.try_into().unwrap();
 }
-pub fn usd_to_token_amount(asset: &Asset, decimal: u8, value_in_usd: u64) -> u64 {
-    let decimal_difference = decimal as i32 - ACCURACY as i32;
-    if decimal_difference < 0 {
-        let amount = (value_in_usd as u128)
-            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-            .unwrap()
-            .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
-            .unwrap()
-            .checked_div(asset.price as u128)
-            .unwrap();
-        return amount.try_into().unwrap();
-    } else {
-        let amount = (value_in_usd as u128)
-            .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-            .unwrap()
-            .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
-            .unwrap()
-            .checked_div(asset.price as u128)
-            .unwrap();
-        return amount.try_into().unwrap();
-    }
+pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal) -> Decimal {
+    return value_in_usd.div_to_scale(asset.price, asset.price.scale);
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
@@ -1282,26 +1263,32 @@ mod tests {
         // round down
         {
             let asset = Asset {
-                price: 14 * 10u64.pow(PRICE_OFFSET.into()),
+                price: Decimal::from_price(14 * 10u128.pow(PRICE_OFFSET.into())),
                 ..Default::default()
             };
-            let decimals = 6;
-            let amount = 100;
-            let token_amount = usd_to_token_amount(&asset, decimals, amount);
+            let value = Decimal::from_usd(100);
+            let token_amount = usd_to_token_amount(&asset, value);
             // 7,142...
-            assert_eq!(token_amount, 7);
+            let expected = Decimal {
+                val: 7,
+                scale: asset.price.scale,
+            };
+            assert!(token_amount.eq(&expected));
         }
         // large amount
         {
             let asset = Asset {
-                price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+                price: Decimal::from_price(91 * 10u128.pow(PRICE_OFFSET.into())),
                 ..Default::default()
             };
-            let decimals = 10;
-            let amount = 1_003_900_802 * 10u64.pow(8);
-            let token_amount = usd_to_token_amount(&asset, decimals, amount);
+            let value = Decimal::from_usd(100_003_900_802 * 10u128.pow(ACCURACY));
+            let token_amount = usd_to_token_amount(&asset, value);
             // 11031876945054945054
-            assert_eq!(token_amount, 11031876945054945054)
+            let expected = Decimal {
+                val: 11031876945054945054,
+                scale: asset.price.scale,
+            };
+            assert!(token_amount.eq(&expected));
         }
     }
 

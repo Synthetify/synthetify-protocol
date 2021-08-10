@@ -9,9 +9,10 @@ use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 const SNY_DECIMALS: u8 = 6;
+const XUSD_DECIMALS: u8 = 6;
 // #[program]
 pub mod exchange {
-    use std::{borrow::BorrowMut, convert::TryInto, fmt::DebugList};
+    use std::{borrow::BorrowMut, convert::TryInto};
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
@@ -20,10 +21,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{
-        Add, Lt, Ltq, Mul, DEBT_INTEREST_RATE_SCALE, FEE_SCALE, HEALTH_FACTOR_SCALE,
-        LIQUIDATION_RATE_SCALE,
-    };
+    use crate::decimal::{Add, Gt, Lt, Ltq, Mul, Sub};
 
     use super::*;
 
@@ -407,7 +405,7 @@ pub mod exchange {
         exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
         state.staking.next_round.all_points = state.debt_shares;
 
-        let new_supply = xusd_synthetic.supply.checked_add(amount).unwrap();
+        let new_supply = xusd_synthetic.supply.add(amount_decimal).unwrap();
         set_synthetic_supply(&mut xusd_synthetic, new_supply)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1130,23 +1128,30 @@ pub mod exchange {
     pub fn withdraw_swap_tax(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW SWAP TAX");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let mut actual_amount = amount;
+        let mut actual_amount = Decimal {
+            val: amount.into(),
+            scale: state.swap_tax_reserve.scale,
+        };
+        let max_withdrawable = Decimal {
+            val: state.swap_tax_reserve.into(),
+            scale: state.swap_tax_reserve.scale,
+        };
 
         // u64::MAX mean all available
         if amount == u64::MAX {
-            actual_amount = state.swap_tax_reserve;
+            actual_amount = max_withdrawable;
         }
         // check valid amount
-        if actual_amount > state.swap_tax_reserve {
+        if actual_amount.gt(state.swap_tax_reserve)? {
             return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
         }
-        state.swap_tax_reserve = state.swap_tax_reserve.checked_sub(actual_amount).unwrap();
+        state.swap_tax_reserve = state.swap_tax_reserve.sub(actual_amount)?;
 
         // Mint xUSD to admin
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount)?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd())?;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
@@ -1157,26 +1162,30 @@ pub mod exchange {
     ) -> Result<()> {
         msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let mut actual_amount = amount;
 
+        let mut actual_amount = Decimal {
+            val: amount.into(),
+            scale: state.accumulated_debt_interest.scale,
+        };
+        let max_withdrawable = Decimal {
+            val: state.accumulated_debt_interest.into(),
+            scale: state.accumulated_debt_interest.scale,
+        };
         // u64::MAX mean all available
         if amount == u64::MAX {
-            actual_amount = state.accumulated_debt_interest;
+            actual_amount = max_withdrawable;
         }
         // check valid amount
-        if actual_amount > state.accumulated_debt_interest {
+        if actual_amount.gt(max_withdrawable)? {
             return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
         }
-        state.accumulated_debt_interest = state
-            .accumulated_debt_interest
-            .checked_sub(actual_amount)
-            .unwrap();
+        state.accumulated_debt_interest = state.accumulated_debt_interest.sub(actual_amount)?;
 
         // Mint xUSD to admin
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount)?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd())?;
 
         Ok(())
     }

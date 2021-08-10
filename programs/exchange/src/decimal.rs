@@ -1,6 +1,7 @@
 use std::convert::TryInto;
+use std::ops::{Div, Mul};
 
-use crate::math::ACCURACY;
+use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
 
 const UNIFIED_PERCENT_SCALE: u8 = 4;
@@ -15,7 +16,18 @@ impl Decimal {
             scale: UNIFIED_PERCENT_SCALE,
         };
     }
-
+    pub fn from_price(price: u128) -> Self {
+        return Decimal {
+            val: price,
+            scale: PRICE_OFFSET,
+        };
+    }
+    pub fn from_usd(value: u128) -> Self {
+        return Decimal {
+            val: value.into(),
+            scale: ACCURACY,
+        };
+    }
     pub fn to_usd(self) -> u64 {
         let decimal_difference = self.scale as i32 - ACCURACY as i32;
         if decimal_difference < 0 {
@@ -120,6 +132,33 @@ impl DivUp<Decimal> for Decimal {
         self.add(almost_other).unwrap().div(other)
     }
 }
+impl DivScale<Decimal> for Decimal {
+    fn div_to_scale(self, other: Decimal, to_scale: u8) -> Self {
+        let decimal_difference = to_scale - self.scale;
+
+        let val = if decimal_difference < 0 {
+            self.val
+                .checked_mul(other.denominator())
+                .unwrap()
+                .checked_div(other.val)
+                .unwrap()
+                .checked_div(10u128.pow(decimal_difference.into()))
+                .unwrap()
+        } else {
+            self.val
+                .checked_mul(other.denominator())
+                .unwrap()
+                .checked_mul(10u128.pow(decimal_difference.into()))
+                .unwrap()
+                .checked_div(other.val)
+                .unwrap()
+        };
+        Self {
+            val,
+            scale: to_scale,
+        }
+    }
+}
 impl Into<u64> for Decimal {
     fn into(self) -> u64 {
         self.val.try_into().unwrap()
@@ -142,6 +181,18 @@ impl Lt<Decimal> for Decimal {
         Ok(self.val < other.val)
     }
 }
+impl Gt<Decimal> for Decimal {
+    fn gt(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val > other.val)
+    }
+}
+impl Eq<Decimal> for Decimal {
+    fn eq(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val == other.val)
+    }
+}
 pub trait Sub<T>: Sized {
     fn sub(self, rhs: T) -> Result<Self>;
 }
@@ -150,6 +201,9 @@ pub trait Add<T>: Sized {
 }
 pub trait Div<T>: Sized {
     fn div(self, rhs: T) -> Self;
+}
+pub trait DivScale<T> {
+    fn div_to_scale(self, rhs: T, to_scale: u8) -> Self;
 }
 pub trait DivUp<T>: Sized {
     fn div_up(self, rhs: T) -> Self;
@@ -168,6 +222,12 @@ pub trait Ltq<T>: Sized {
 }
 pub trait Lt<T>: Sized {
     fn lt(self, rhs: T) -> Result<bool>;
+}
+pub trait Gt<T>: Sized {
+    fn gt(self, rhs: T) -> Result<bool>;
+}
+pub trait Eq<T>: Sized {
+    fn eq(self, rhs: T) -> Result<bool>;
 }
 // #[cfg(test)]
 // mod test {
