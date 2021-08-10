@@ -57,17 +57,18 @@ impl Decimal {
         self.to_scale(INTEREST_RATE_SCALE)
     }
     pub fn to_scale(self, scale: u8) -> Self {
-        let scaled = if self.scale > scale {
-            self.val
-                .checked_div(10u128.pow((self.scale - scale).into()))
-                .unwrap()
-        } else {
-            self.val
-                .checked_mul(10u128.pow((scale - self.scale).into()))
-                .unwrap()
-        };
-
-        Self { val: scaled, scale }
+        Self {
+            val: if self.scale > scale {
+                self.val
+                    .checked_div(10u128.pow((self.scale - scale).into()))
+                    .unwrap()
+            } else {
+                self.val
+                    .checked_mul(10u128.pow((scale - self.scale).into()))
+                    .unwrap()
+            },
+            scale,
+        }
     }
 
     // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
