@@ -1247,6 +1247,11 @@ pub mod exchange {
         let state = &mut ctx.accounts.state.load_mut()?;
 
         let decimal_fee = Decimal::from_percent(fee);
+        require!(
+            decimal_fee.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        state.fee = decimal_fee;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1271,6 +1276,10 @@ pub mod exchange {
         let state = &mut ctx.accounts.state.load_mut()?;
 
         let decimal_factor = Decimal::from_percent(factor);
+        require!(
+            decimal_factor.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
         state.health_factor = decimal_factor;
         Ok(())
     }
@@ -1337,8 +1346,19 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
-        state.penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
+        let decimal_penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
+        let decimal_penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
+        require!(
+            decimal_penalty_to_exchange.ltq(Decimal::from_percent(2500))?,
+            ParameterOutOfRange
+        );
+        require!(
+            decimal_penalty_to_liquidator.ltq(Decimal::from_percent(2500))?,
+            ParameterOutOfRange
+        );
+
+        state.penalty_to_exchange = decimal_penalty_to_exchange;
+        state.penalty_to_liquidator = decimal_penalty_to_liquidator;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1358,12 +1378,18 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
+        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        // collateral_ratio should be less or equals 100%
+        require!(
+            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
-            collateral_ratio: Decimal::from_percent(collateral_ratio),
+            collateral_ratio: decimal_collateral_ratio,
             reserve_balance,
         };
         assets_list.append_collateral(new_collateral);
@@ -1385,7 +1411,13 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        collateral.collateral_ratio = Decimal::from_percent(collateral_ratio);
+        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        // collateral_ratio should be less or equals 100%
+        require!(
+            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        collateral.collateral_ratio = decimal_collateral_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
