@@ -54,18 +54,18 @@ impl Decimal {
         self.val.try_into().unwrap()
     }
     pub fn to_scale(self, scale: u8) -> Self {
-        let mut scaled = self.val;
-        if self.scale > scale {
-            let scaled = scaled
-                .checked_div(10u128.pow((self.scale - scale).into()))
-                .unwrap();
-        } else {
-            let scaled = scaled
-                .checked_mul(10u128.pow((scale - self.scale).into()))
-                .unwrap();
+        Self {
+            val: if self.scale > scale {
+                self.val
+                    .checked_div(10u128.pow((self.scale - scale).into()))
+                    .unwrap()
+            } else {
+                self.val
+                    .checked_mul(10u128.pow((scale - self.scale).into()))
+                    .unwrap()
+            },
+            scale,
         }
-
-        Self { val: scaled, scale }
     }
 
     // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
