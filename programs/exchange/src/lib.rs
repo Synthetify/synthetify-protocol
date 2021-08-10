@@ -1369,12 +1369,18 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
+        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        // collateral_ratio should be less or equals 100%
+        require!(
+            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
-            collateral_ratio: Decimal::from_percent(collateral_ratio),
+            collateral_ratio: decimal_collateral_ratio,
             reserve_balance,
         };
         assets_list.append_collateral(new_collateral);
@@ -1396,7 +1402,13 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        collateral.collateral_ratio = Decimal::from_percent(collateral_ratio);
+        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        // collateral_ratio should be less or equals 100%
+        require!(
+            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        collateral.collateral_ratio = decimal_collateral_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
