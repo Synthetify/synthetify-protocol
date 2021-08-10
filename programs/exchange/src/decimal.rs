@@ -110,10 +110,7 @@ impl Mul<u128> for Decimal {
 }
 impl MulUp<Decimal> for Decimal {
     fn mul_up(self, other: Decimal) -> Self {
-        let denominator = Decimal {
-            val: other.denominator(),
-            scale: 0,
-        };
+        let denominator = Decimal::new(other.denominator(), 0);
         Self {
             val: self.mul(other).div_up(denominator).val,
             scale: self.scale,
@@ -405,9 +402,16 @@ mod test {
     }
     #[test]
     fn test_mul_up() {
-        let a = Decimal::new(1000, 3);
-        let b = Decimal::new(300, 3);
-        assert_eq!(a.mul_up(b), Decimal::new(334, 3));
+        {
+            let a = Decimal::new(1, 10);
+            let b = Decimal::new(1, 10);
+            assert_eq!(a.mul_up(b), Decimal::new(1, 10));
+        }
+        {
+            let a = Decimal::new(1000, 3);
+            let b = Decimal::new(300, 3);
+            assert_eq!(a.mul_up(b), Decimal::new(334, 3));
+        }
     }
 
     #[test]
