@@ -405,7 +405,7 @@ pub mod exchange {
         exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
         state.staking.next_round.all_points = state.debt_shares;
 
-        let new_supply = xusd_synthetic.supply.checked_add(amount).unwrap();
+        let new_supply = xusd_synthetic.supply.add(amount_decimal).unwrap();
         set_synthetic_supply(&mut xusd_synthetic, new_supply)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -2005,7 +2005,7 @@ pub struct StakingRound {
 pub struct Staking {
     pub fund_account: Pubkey,         //32 Source account of SNY tokens
     pub round_length: u32,            //4 Length of round in slots
-    pub amount_per_round: u64,        //8 Amount of SNY distributed per round
+    pub amount_per_round: Decimal,    //8 Amount of SNY distributed per round
     pub finished_round: StakingRound, //24
     pub current_round: StakingRound,  //24
     pub next_round: StakingRound,     //24

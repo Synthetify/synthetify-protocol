@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
+use crate::decimal::Gt;
 use crate::math::{
     calculate_compounded_interest, calculate_debt, calculate_debt_interest_rate,
     calculate_minute_interest_rate,
@@ -194,8 +195,8 @@ pub fn adjust_interest_debt(
     return total_debt;
 }
 
-pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: u64) -> ProgramResult {
-    if new_supply > synthetic.max_supply {
+pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
+    if new_supply.gt(synthetic.max_supply).unwrap() {
         return Err(ErrorCode::MaxSupply.into());
     }
     synthetic.supply = new_supply;
