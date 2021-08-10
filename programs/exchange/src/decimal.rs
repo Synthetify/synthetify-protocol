@@ -294,12 +294,38 @@ pub trait Gt<T>: Sized {
 pub trait Eq<T>: Sized {
     fn eq(self, rhs: T) -> Result<bool>;
 }
-// #[cfg(test)]
-// mod test {
-//     use super::*;
 
-//     #[test]
-//     fn test_scaler() {
-//         assert_eq!(U192::exp10(SCALE), Decimal::wad());
-//     }
-// }
+#[cfg(test)]
+mod test {
+    use std::result;
+
+    use super::*;
+
+    #[test]
+    fn test_to_scale() {
+        // Increasing precision
+        {
+            let decimal = Decimal { val: 42, scale: 2 };
+            let result = decimal.to_scale(3);
+
+            assert_eq!(result.scale, 3);
+            assert_eq!({ result.val }, 420);
+        }
+        // Decreasing precision
+        {
+            let decimal = Decimal { val: 42, scale: 2 };
+            let result = decimal.to_scale(1);
+
+            assert_eq!(result.scale, 1);
+            assert_eq!({ result.val }, 4);
+        }
+        // Decreasing precision over value
+        {
+            let decimal = Decimal { val: 123, scale: 4 };
+            let result = decimal.to_scale(0);
+
+            assert_eq!(result.scale, 0);
+            assert_eq!({ result.val }, 0);
+        }
+    }
+}
