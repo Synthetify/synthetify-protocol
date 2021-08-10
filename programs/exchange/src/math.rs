@@ -207,13 +207,10 @@ pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
-    synthetic_in: &Synthetic,
-    synthetic_for: &Synthetic,
     amount: Decimal,
     fee: Decimal, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(Decimal, Decimal)> {
-    const FEE_DECIMAL: u32 = 5;
-    let value_in_usd = (asset_in.price).mul(amount).to_scale(ACCURACY);
+    let value_in_usd = (asset_in.price).mul(amount).to_usd();
     // Check min swap value
     if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
         return Err(ErrorCode::InsufficientValueTrade.into());
