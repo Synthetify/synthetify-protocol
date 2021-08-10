@@ -204,7 +204,7 @@ pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
     //     )
     //     .unwrap() as u64;
 
-    price.mul(amount).to_scale(ACCURACY)
+    price.mul(amount).to_usd()
 }
 pub fn calculate_value_difference_in_usd(
     price_in: u64,

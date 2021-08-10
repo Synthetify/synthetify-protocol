@@ -1511,13 +1511,13 @@ pub mod exchange {
             return Err(ErrorCode::SettlementNotReached.into());
         }
 
-        let usd_value = calculate_value_in_usd(asset.price, synthetic.supply, synthetic.decimals);
+        let usd_value = calculate_value_in_usd(asset.price, synthetic.supply);
 
         // Init settlement struct
         {
             settlement.bump = bump;
-            settlement.decimals_in = synthetic.decimals;
-            settlement.decimals_out = usd_synthetic.decimals;
+            settlement.decimals_in = synthetic.supply.scale;
+            settlement.decimals_out = usd_synthetic.supply.scale;
             settlement.token_out_address = usd_synthetic.asset_address;
             settlement.token_in_address = synthetic.asset_address;
             settlement.reserve_address = *ctx.accounts.settlement_reserve.to_account_info().key;
@@ -1525,12 +1525,12 @@ pub mod exchange {
         }
 
         // Mint xUSD
-        let new_supply = usd_synthetic.supply.checked_add(usd_value).unwrap();
+        let new_supply = usd_synthetic.supply.add(usd_value).unwrap();
         set_synthetic_supply(usd_synthetic, new_supply).unwrap();
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(cpi_ctx_mint, usd_value)?;
+        token::mint_to(cpi_ctx_mint, usd_value.to_u64())?;
 
         // Remove synthetic from list
         assets_list.remove_synthetic(synthetic_index).unwrap();
@@ -1542,18 +1542,12 @@ pub mod exchange {
 
         let state = ctx.accounts.state.load()?;
         let settlement = ctx.accounts.settlement.load()?;
+        let swap_amount = Decimal {
+            val: amount.into(),
+            scale: settlement.decimals_in,
+        };
+        let amount_usd = swap_amount.mul(settlement.ratio).to_usd().to_u64();
 
-        let amount_usd = (settlement.ratio as u128)
-            .checked_mul(amount as u128)
-            .unwrap()
-            .checked_div(
-                10u128
-                    .checked_pow(
-                        (settlement.decimals_in + PRICE_OFFSET - settlement.decimals_out).into(),
-                    )
-                    .unwrap(),
-            )
-            .unwrap() as u64;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
@@ -2142,7 +2136,7 @@ pub struct Settlement {
     pub token_out_address: Pubkey, //32 xUSD
     pub decimals_in: u8,           //1
     pub decimals_out: u8,          //1
-    pub ratio: u64,                //8
+    pub ratio: Decimal,            //8
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
