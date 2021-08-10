@@ -183,6 +183,28 @@ impl DivScale<Decimal> for Decimal {
         }
     }
 }
+impl PowAccuracy<u128> for Decimal {
+    fn pow_with_accuracy(self, exp: u128) -> Self {
+        let one = Decimal {
+            val: 1 * self.denominator(),
+            scale: self.scale,
+        };
+        if exp == 0 {
+            return one;
+        }
+        let mut base = self;
+        let mut result = one;
+    
+        while exp > 0 {
+            if exp % 2 != 0 {
+                result = result.mul(base);
+            }
+            exp /= 2;
+            base = base.mul(base);
+        }
+        return result;
+    }
+}
 impl Into<u64> for Decimal {
     fn into(self) -> u64 {
         self.val.try_into().unwrap()
@@ -240,6 +262,9 @@ pub trait MulUp<T>: Sized {
 }
 pub trait MulInverse<T>: Sized {
     fn mul_inverse(self, rhs: T) -> Self;
+}
+pub trait PowAccuracy<T>: Sized {
+    fn pow_with_accuracy(self, rhs: T) -> Self;
 }
 pub trait Ltq<T>: Sized {
     fn ltq(self, rhs: T) -> Result<bool>;
