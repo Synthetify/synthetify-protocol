@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
-use crate::decimal::Gt;
+use crate::decimal::{Add, Gt};
 use crate::math::{
     calculate_compounded_interest, calculate_debt, calculate_debt_interest_rate,
     calculate_minute_interest_rate,
@@ -179,10 +179,10 @@ pub fn adjust_interest_debt(
         let compounded_interest =
             calculate_compounded_interest(total_debt, minute_interest_rate, diff as u128);
 
-        usd.supply = usd.supply.checked_add(compounded_interest).unwrap();
+        usd.supply = usd.supply.add(compounded_interest).unwrap();
         state.accumulated_debt_interest = state
             .accumulated_debt_interest
-            .checked_add(compounded_interest)
+            .add(compounded_interest)
             .unwrap();
         state.last_debt_adjustment = diff
             .checked_mul(ADJUSTMENT_PERIOD)
@@ -190,7 +190,7 @@ pub fn adjust_interest_debt(
             .checked_add(state.last_debt_adjustment)
             .unwrap();
 
-        return total_debt.checked_add(compounded_interest).unwrap();
+        return total_debt.add(compounded_interest).unwrap();
     }
     return total_debt;
 }
