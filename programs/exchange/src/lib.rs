@@ -1337,8 +1337,19 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
-        state.penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
+        let decimal_penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
+        let decimal_penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
+        require!(
+            decimal_penalty_to_exchange.ltq(Decimal::from_percent(2500))?,
+            ParameterOutOfRange
+        );
+        require!(
+            decimal_penalty_to_liquidator.ltq(Decimal::from_percent(2500))?,
+            ParameterOutOfRange
+        );
+
+        state.penalty_to_exchange = decimal_penalty_to_exchange;
+        state.penalty_to_liquidator = decimal_penalty_to_liquidator;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
