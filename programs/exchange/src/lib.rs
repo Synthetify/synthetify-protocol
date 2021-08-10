@@ -454,20 +454,19 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let (entry_index, &mut exchange_account_amount) = match exchange_account
+        let (entry_index, mut exchange_account_collateral) = match exchange_account
             .collaterals
             .iter_mut()
             .enumerate()
             .find(|(_, x)| x.collateral_address.eq(&collateral.collateral_address))
         {
-            Some((index, entry)) => (
-                index,
-                Decimal {
-                    val: entry.amount.into(),
-                    scale: collateral.reserve_balance.scale,
-                },
-            ),
+            Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        let amount_collateral = Decimal {
+            val: exchange_account_collateral.amount.into(),
+            scale: collateral.reserve_balance.scale,
         };
 
         // Check if not overdrafting
@@ -484,11 +483,8 @@ pub mod exchange {
             let max_withdrawable_in_token =
                 usd_to_token_amount(collateral_asset, max_withdrawable_in_usd);
 
-            if max_withdrawable_in_token
-                .lt(exchange_account_amount)
-                .unwrap()
-            {
-                amount_to_withdraw = exchange_account_amount;
+            if max_withdrawable_in_token.lt(amount_collateral).unwrap() {
+                amount_to_withdraw = amount_collateral;
             } else {
                 amount_to_withdraw = max_withdrawable_in_token;
             }
@@ -506,9 +502,14 @@ pub mod exchange {
         }
 
         // Update balance on exchange account
-        exchange_account_amount = exchange_account_amount.sub(amount_to_withdraw).unwrap();
+        exchange_account_collateral.amount = amount_collateral
+            .sub(amount_to_withdraw)
+            .unwrap()
+            .val
+            .try_into()
+            .unwrap();
 
-        if exchange_account_amount.val == 0 {
+        if amount_collateral.val == 0 {
             exchange_account.remove(entry_index);
         }
 
