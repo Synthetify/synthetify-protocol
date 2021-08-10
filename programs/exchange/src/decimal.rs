@@ -196,7 +196,7 @@ impl PowAccuracy<u128> for Decimal {
         }
         let mut base = self;
         let mut result = one;
-    
+
         while exp > 0 {
             if exp % 2 != 0 {
                 result = result.mul(base);

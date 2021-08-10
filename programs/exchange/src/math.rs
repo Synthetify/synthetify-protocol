@@ -319,139 +319,155 @@ mod tests {
     use std::{cell::RefCell, ops::Div};
 
     use super::*;
-    // #[test]
-    // fn test_calculate_new_shares() {
-    //     // Initialize shares
-    //     {
-    //         let collateral_shares = 0u64;
-    //         let collateral_amount = Decimal::from_usd(0);
-    //         let to_deposit_amount = Decimal::from_usd(10);
-    //         let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         // Initial shares = deposited amount
-    //         assert_eq!(
-    //             new_shares_rounding_down,
-    //             to_deposit_amount.to_scale(0).into()
-    //         );
-    //         assert_eq!(new_shares_rounding_up, to_deposit_amount.to_scale(0).into());
-    //     }
-    //     // With existing shares
-    //     {
-    //         let collateral_shares = 10u64.pow(6);
-    //         let collateral_amount = Decimal::from_usd(10u128.pow(6));
-    //         let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
-    //         let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         // Deposit same amount so new shares should eq existing
-    //         assert_eq!(new_shares_rounding_down, collateral_shares);
-    //         assert_eq!(new_shares_rounding_up, collateral_shares);
-    //     }
-    //     // Zero new shares
-    //     {
-    //         let collateral_shares = 10u64.pow(6);
-    //         let collateral_amount = Decimal::from_usd(10u128.pow(6));
-    //         let to_deposit_amount = Decimal::from_usd(0);
-    //         let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         // deposit 0
-    //         assert_eq!(new_shares_rounding_down, 0u64);
-    //         assert_eq!(new_shares_rounding_up, 0u64);
-    //     }
-    //     // Valid rounding
-    //     {
-    //         let collateral_shares = 10_001 * 10u64.pow(6);
-    //         let collateral_amount = Decimal::from_usd(988_409 * 10u128.pow(6));
-    //         let to_deposit_amount = Decimal::from_usd(579_112);
-    //         let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         // 5859,617...
-    //         assert_eq!(new_shares_rounding_down, 5859);
-    //         assert_eq!(new_shares_rounding_up, 5860);
-    //     }
-    //     // Test on big numbers
-    //     {
-    //         let collateral_shares = 100_000_000 * 10u64.pow(6);
-    //         let collateral_amount = Decimal::from_usd(100_000_000 * 10u128.pow(6));
-    //         let to_deposit_amount = Decimal::from_usd(10_000_000 * 10u128.pow(6));
-    //         let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
-    //             collateral_shares,
-    //             collateral_amount,
-    //             to_deposit_amount,
-    //         );
-    //         // Deposit  1/10 of existing balance
-    //         assert_eq!(new_shares_rounding_down, collateral_shares.div(10));
-    //         assert_eq!(new_shares_rounding_up, collateral_shares.div(10));
-    //     }
-    // }
-    // #[test]
-    // fn test_calculate_max_withdraw_in_usd() {
-    //     // user_debt == max_user_debt
-    //     {
-    //         let debt = 999_999_999;
-    //         let max_debt = 999_999_999;
-    //         let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 100);
-    //         assert_eq!(max_withdraw, 0);
-    //     }
-    //     // user_debt > max_user_debt
-    //     {
-    //         let debt = 1_000_000_000;
-    //         let max_debt = 900_000_000;
-    //         let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 100);
-    //         assert_eq!(max_withdraw, 0);
-    //     }
-    //     // user_debt < max_user_debt
-    //     {
-    //         let debt = 900_000_123;
-    //         let max_debt = 1_000_000_000;
-    //         let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 80, 100);
-    //         // 124999846,25
-    //         assert_eq!(max_withdraw, 124999846);
-    //     }
-    //     // other health factor
-    //     {
-    //         let debt = 900_000_000;
-    //         let max_debt = 1_000_000_000;
-    //         let max_withdraw = calculate_max_withdraw_in_usd(max_debt, debt, 10, 40);
-    //         assert_eq!(max_withdraw, 2_500_000_000);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_new_shares() {
+        // Initialize shares
+        {
+            let collateral_shares = 0u64;
+            let collateral_amount = Decimal::from_usd(0);
+            let to_deposit_amount = Decimal::from_usd(10);
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // Initial shares = deposited amount
+            assert_eq!(
+                new_shares_rounding_down,
+                to_deposit_amount.to_scale(0).into()
+            );
+            assert_eq!(new_shares_rounding_up, to_deposit_amount.to_scale(0).into());
+        }
+        // With existing shares
+        {
+            let collateral_shares = 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // Deposit same amount so new shares should eq existing
+            assert_eq!(new_shares_rounding_down, collateral_shares);
+            assert_eq!(new_shares_rounding_up, collateral_shares);
+        }
+        // Zero new shares
+        {
+            let collateral_shares = 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(0);
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // deposit 0
+            assert_eq!(new_shares_rounding_down, 0u64);
+            assert_eq!(new_shares_rounding_up, 0u64);
+        }
+        // Valid rounding
+        {
+            let collateral_shares = 10_001 * 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(988_409 * 10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(579_112);
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // 5859,617...
+            assert_eq!(new_shares_rounding_down, 5859);
+            assert_eq!(new_shares_rounding_up, 5860);
+        }
+        // Test on big numbers
+        {
+            let collateral_shares = 100_000_000 * 10u64.pow(6);
+            let collateral_amount = Decimal::from_usd(100_000_000 * 10u128.pow(6));
+            let to_deposit_amount = Decimal::from_usd(10_000_000 * 10u128.pow(6));
+            let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            let new_shares_rounding_up = calculate_new_shares_by_rounding_up(
+                collateral_shares,
+                collateral_amount,
+                to_deposit_amount,
+            );
+            // Deposit  1/10 of existing balance
+            assert_eq!(new_shares_rounding_down, collateral_shares.div(10));
+            assert_eq!(new_shares_rounding_up, collateral_shares.div(10));
+        }
+    }
+    #[test]
+    fn test_calculate_max_withdraw_in_usd() {
+        // user_debt == max_user_debt
+        {
+            let debt = Decimal::from_usd(999_999_999);
+            let max_debt = Decimal::from_usd(999_999_999);
+            let collateral_ratio = Decimal::from_percent(1000);
+            let health_factor = Decimal::from_percent(10000);
+
+            let max_withdraw =
+                calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
+            assert_eq!(max_withdraw, Decimal::from_integer(0));
+        }
+        // user_debt > max_user_debt
+        {
+            let debt = Decimal::from_usd(1_000_000_000);
+            let max_debt = Decimal::from_usd(900_000_000);
+            let collateral_ratio = Decimal::from_percent(1000);
+            let health_factor = Decimal::from_percent(10000);
+
+            let max_withdraw =
+                calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
+            assert_eq!(max_withdraw, Decimal::from_integer(0));
+        }
+        // user_debt < max_user_debt
+        {
+            let debt = Decimal::from_usd(900_000_123);
+            let max_debt = Decimal::from_usd(1_000_000_000);
+            let collateral_ratio = Decimal::from_percent(8000);
+            let health_factor = Decimal::from_percent(10000);
+
+            let max_withdraw =
+                calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
+            // 124999846,25
+            assert_eq!(max_withdraw, Decimal::from_usd(124999846));
+        }
+        // other health factor
+        {
+            let debt = Decimal::from_usd(900_000_000);
+            let max_debt = Decimal::from_usd(1_000_000_000);
+            let collateral_ratio = Decimal::from_percent(1000);
+            let health_factor = Decimal::from_percent(4000);
+
+            let max_withdraw =
+                calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
+            assert_eq!(max_withdraw, Decimal::from_usd(2_500_000_000));
+        }
+    }
     // #[test]
     // fn test_calculate_debt() {
     //     {
