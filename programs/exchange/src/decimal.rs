@@ -3,8 +3,9 @@ use std::convert::TryInto;
 use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
 
-const UNIFIED_PERCENT_SCALE: u8 = 4;
-const SNY_DECIMAL: u8 = 6;
+pub const UNIFIED_PERCENT_SCALE: u8 = 4;
+pub const INTEREST_RATE_SCALE: u8 = 18;
+pub const SNY_DECIMAL: u8 = 6;
 
 impl Decimal {
     pub fn denominator(self) -> u128 {
@@ -38,6 +39,12 @@ impl Decimal {
         Decimal {
             val: value,
             scale: SNY_DECIMAL,
+        }
+    }
+    pub fn from_interest_rate(value: u128) -> Self {
+        Decimal {
+            val: value,
+            scale: INTEREST_RATE_SCALE,
         }
     }
     pub fn to_usd(self) -> Decimal {
