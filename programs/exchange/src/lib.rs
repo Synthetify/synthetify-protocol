@@ -21,7 +21,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{Add, Gt, Lt, Ltq, Mul, Sub};
+    use crate::decimal::{Add, DivUp, Gt, Lt, Ltq, Mul, Sub};
 
     use super::*;
 
@@ -806,15 +806,11 @@ pub mod exchange {
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
         // Check collateral ratio
-        if max_debt.gt(&(user_debt as u128)) {
+        if max_debt.gt(user_debt).unwrap() {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
         // Cannot payback more than liquidation_rate of user debt
-        let max_repay = user_debt
-            .checked_mul(state.liquidation_rate.into())
-            .unwrap()
-            .checked_div(100)
-            .unwrap();
+        let max_repay = user_debt.mul(state.liquidation_rate).to_usd().to_u64();
 
         if amount.gt(&max_repay) {
             return Err(ErrorCode::InvalidLiquidation.into());
@@ -830,26 +826,24 @@ pub mod exchange {
         };
 
         let liquidated_asset = &assets[liquidated_collateral.asset_index as usize];
-        let seized_collateral_in_usd = div_up(
-            amount
-                .checked_mul(
-                    state
-                        .penalty_to_liquidator
-                        .checked_add(state.penalty_to_exchange)
-                        .unwrap()
-                        .into(),
-                )
-                .unwrap()
-                .into(),
-            100,
-        )
-        .checked_add(amount.into())
-        .unwrap();
+        let liquidation_amount = Decimal {
+            val: amount.into(),
+            scale: XUSD_DECIMALS,
+        };
+        let seized_collateral_in_usd = liquidation_amount
+            .div_up(
+                state
+                    .penalty_to_liquidator
+                    .add(state.penalty_to_exchange)
+                    .unwrap(),
+            )
+            .add(liquidation_amount)
+            .unwrap();
 
         // Rounding down - debt is burned in favor of the system
 
         let burned_debt_shares =
-            amount_to_shares_by_rounding_down(state.debt_shares, total_debt, amount);
+            amount_to_shares_by_rounding_down(state.debt_shares, total_debt.to_u64(), amount);
         state.debt_shares = state.debt_shares.checked_sub(burned_debt_shares).unwrap();
 
         exchange_account.debt_shares = exchange_account
@@ -857,11 +851,8 @@ pub mod exchange {
             .checked_sub(burned_debt_shares)
             .unwrap();
 
-        let seized_collateral_in_token = usd_to_token_amount(
-            liquidated_asset,
-            liquidated_collateral.decimals,
-            seized_collateral_in_usd.try_into().unwrap(),
-        );
+        let seized_collateral_in_token =
+            usd_to_token_amount(liquidated_asset, seized_collateral_in_usd);
 
         let mut exchange_account_collateral =
             match exchange_account.collaterals.iter_mut().find(|x| {
@@ -873,26 +864,28 @@ pub mod exchange {
             };
         exchange_account_collateral.amount = exchange_account_collateral
             .amount
-            .checked_sub(seized_collateral_in_token)
+            .checked_sub(seized_collateral_in_token.to_u64())
             .unwrap();
         liquidated_collateral.reserve_balance = liquidated_collateral
             .reserve_balance
-            .checked_sub(seized_collateral_in_token)
+            .sub(seized_collateral_in_token)
             .unwrap();
 
-        let collateral_to_exchange = div_up(
-            seized_collateral_in_token
-                .checked_mul(state.penalty_to_exchange.into())
+        let collateral_to_exchange = seized_collateral_in_token
+            .mul(state.penalty_to_exchange)
+            .div_up(
+                Decimal {
+                    val: 10000,
+                    scale: 4,
+                }
+                .add(state.penalty_to_liquidator)
                 .unwrap()
-                .into(),
-            100u128
-                .checked_add(state.penalty_to_liquidator.into())
-                .unwrap()
-                .checked_add(state.penalty_to_exchange.into())
+                .add(state.penalty_to_exchange)
                 .unwrap(),
-        );
+            );
+
         let collateral_to_liquidator = seized_collateral_in_token
-            .checked_sub(collateral_to_exchange.try_into().unwrap())
+            .sub(collateral_to_exchange)
             .unwrap();
 
         // Remove staking for liquidation
@@ -926,7 +919,7 @@ pub mod exchange {
             let token_program = ctx.accounts.token_program.to_account_info();
             let transfer =
                 CpiContext::new(token_program, liquidator_accounts).with_signer(signer_seeds);
-            token::transfer(transfer, collateral_to_liquidator)?;
+            token::transfer(transfer, collateral_to_liquidator.to_u64())?;
         }
         {
             if !ctx
@@ -953,7 +946,7 @@ pub mod exchange {
             // burn xUSD
             let new_supply = assets_list.synthetics[0]
                 .supply
-                .checked_sub(amount)
+                .sub(liquidation_amount)
                 .unwrap();
             set_synthetic_supply(&mut assets_list.synthetics[0], new_supply)?;
             let burn_accounts = Burn {
@@ -963,7 +956,7 @@ pub mod exchange {
             };
             let token_program = ctx.accounts.token_program.to_account_info();
             let burn = CpiContext::new(token_program, burn_accounts).with_signer(signer_seeds);
-            token::burn(burn, amount)?;
+            token::burn(burn, liquidation_amount.to_u64())?;
         }
 
         Ok(())
