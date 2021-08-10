@@ -16,7 +16,7 @@ pub mod exchange {
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
-        calculate_max_burned_in_xusd, calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
+        calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
@@ -1077,10 +1077,7 @@ pub mod exchange {
             exchange_account.user_staking_data.amount_to_claim.to_u64(),
         )?;
         // Reset rewards amount
-        exchange_account.user_staking_data.amount_to_claim = Decimal {
-            val: 0,
-            scale: SNY_DECIMALS,
-        };
+        exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
