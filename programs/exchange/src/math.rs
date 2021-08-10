@@ -306,9 +306,10 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::RefCell, ops::Div};
 
     use super::*;
+    use std::{cell::RefCell, ops::Div};
+
     #[test]
     fn test_calculate_new_shares() {
         // Initialize shares
