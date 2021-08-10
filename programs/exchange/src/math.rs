@@ -132,7 +132,7 @@ pub fn calculate_max_withdraw_in_usd(
     health_factor: Decimal,
 ) -> Decimal {
     if max_user_debt_in_usd.lt(user_debt_in_usd).unwrap() {
-        return Decimal { val: 0, scale: 0 };
+        return Decimal::from_usd(0);
     }
 
     (max_user_debt_in_usd.sub(user_debt_in_usd))
@@ -419,7 +419,7 @@ mod tests {
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
-            assert_eq!(max_withdraw, Decimal::from_integer(0));
+            assert_eq!(max_withdraw, Decimal::from_usd(0));
         }
         // user_debt > max_user_debt
         {
@@ -430,7 +430,7 @@ mod tests {
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
-            assert_eq!(max_withdraw, Decimal::from_integer(0));
+            assert_eq!(max_withdraw, Decimal::from_usd(0));
         }
         // user_debt < max_user_debt
         {
@@ -458,7 +458,6 @@ mod tests {
     }
     #[test]
     fn test_calculate_debt() {
-        let price_one = 10u128.pow(PRICE_OFFSET.into());
         {
             let slot = 100;
             // debt 0 - no assets
@@ -470,7 +469,7 @@ mod tests {
 
             let result = calculate_debt(&assets_ref, slot, 100, false);
             match result {
-                Ok(debt) => assert_eq!(debt, Decimal::from_integer(0)),
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(0)),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
