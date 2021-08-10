@@ -5,7 +5,7 @@ use crate::*;
 
 pub const UNIFIED_PERCENT_SCALE: u8 = 4;
 pub const INTEREST_RATE_SCALE: u8 = 18;
-pub const SNY_DECIMAL: u8 = 6;
+pub const SNY_SCALE: u8 = 6;
 
 impl Decimal {
     pub fn denominator(self) -> u128 {
@@ -38,7 +38,7 @@ impl Decimal {
     pub fn from_sny(value: u128) -> Self {
         Decimal {
             val: value,
-            scale: SNY_DECIMAL,
+            scale: SNY_SCALE,
         }
     }
     pub fn from_interest_rate(value: u128) -> Self {
@@ -52,6 +52,9 @@ impl Decimal {
     }
     pub fn to_u64(self) -> u64 {
         self.val.try_into().unwrap()
+    }
+    pub fn to_interest_rate(self) -> Self {
+        self.to_scale(INTEREST_RATE_SCALE)
     }
     pub fn to_scale(self, scale: u8) -> Self {
         let mut scaled = self.val;

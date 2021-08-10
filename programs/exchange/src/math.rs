@@ -295,13 +295,9 @@ pub fn calculate_compounded_interest(
 
     scaled_value.div_up(one)
 }
-pub fn calculate_debt_interest_rate(debt_interest_rate: u8) -> u128 {
-    // 1 -> 0.1%
-    return (debt_interest_rate as u128)
-        .checked_mul(10u128.checked_pow(INTEREST_RATE_DECIMAL.into()).unwrap())
-        .unwrap()
-        .checked_div(1000)
-        .unwrap();
+pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
+    // 1 -> 0.01%
+    return Decimal::from_percent(debt_interest_rate).to_interest_rate();
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     // return apr.div(MINUTES_IN_YEAR.into()).unwrap();
