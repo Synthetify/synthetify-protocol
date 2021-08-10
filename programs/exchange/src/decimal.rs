@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use std::ops::{Div, Mul};
 
 use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
@@ -155,6 +156,33 @@ impl Gt<Decimal> for Decimal {
         Ok(self.val > other.val)
     }
 }
+impl DivScale<Decimal> for Decimal {
+    fn div_with_scale(self, other: Decimal, to_scale: u8) -> Self {
+        let decimal_difference = to_scale - self.scale;
+
+        let val = if decimal_difference < 0 {
+            self.val
+                .checked_mul(other.denominator())
+                .unwrap()
+                .checked_div(other.val)
+                .unwrap()
+                .checked_div(10u128.pow(decimal_difference.into()))
+                .unwrap()
+        } else {
+            self.val
+                .checked_mul(other.denominator())
+                .unwrap()
+                .checked_mul(10u128.pow(decimal_difference.into()))
+                .unwrap()
+                .checked_div(other.val)
+                .unwrap()
+        };
+        Self {
+            val,
+            scale: to_scale,
+        }
+    }
+}
 pub trait Sub<T>: Sized {
     fn sub(self, rhs: T) -> Result<Self>;
 }
@@ -163,6 +191,9 @@ pub trait Add<T>: Sized {
 }
 pub trait Div<T>: Sized {
     fn div(self, rhs: T) -> Self;
+}
+pub trait DivScale<T> {
+    fn div_with_scale(self, rhs: T, to_scale: u8) -> Self;
 }
 pub trait DivUp<T>: Sized {
     fn div_up(self, rhs: T) -> Self;
