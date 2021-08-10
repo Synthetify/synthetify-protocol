@@ -1250,7 +1250,13 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.liquidation_rate = Decimal::from_percent(liquidation_rate);
+        let decimal_liquidation_rate = Decimal::from_percent(liquidation_rate);
+        // liquidation_rate should be less or equals 100%
+        require!(
+            decimal_liquidation_rate.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        state.liquidation_rate = decimal_liquidation_rate;
         Ok(())
     }
 
