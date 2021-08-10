@@ -190,16 +190,18 @@ pub fn amount_to_discount(amount: u64) -> Decimal {
     };
     return Decimal::from_percent(v);
 }
-pub fn calculate_value_in_usd(price: u64, amount: u64, decimal: u8) -> u64 {
-    return (price as u128)
-        .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(
-            10u128
-                .checked_pow((decimal + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        )
-        .unwrap() as u64;
+pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
+    // return (price as u128)
+    //     .checked_mul(amount as u128)
+    //     .unwrap()
+    //     .checked_div(
+    //         10u128
+    //             .checked_pow((decimal + PRICE_OFFSET - ACCURACY).into())
+    //             .unwrap(),
+    //     )
+    //     .unwrap() as u64;
+
+    price.mul(amount).to_scale(ACCURACY)
 }
 pub fn calculate_value_difference_in_usd(
     price_in: u64,
