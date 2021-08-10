@@ -93,7 +93,7 @@ pub fn calculate_user_debt_in_usd(
         scale: 0,
     };
 
-    debt.mul(user_shares).div_up(debt_shares)
+    debt.mul(user_shares).div_up(debt_shares).to_usd()
 }
 pub fn calculate_new_shares_by_rounding_down(
     all_shares: u64,

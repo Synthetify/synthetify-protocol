@@ -690,12 +690,13 @@ pub mod exchange {
 
         // Check if user burned more than debt
         if burned_shares >= exchange_account.debt_shares {
+            // This should be removed if passes tests
             // Burn adjusted amount
-            let burned_amount = calculate_max_burned_in_xusd(&burn_asset, user_debt);
-            state.debt_shares = state
-                .debt_shares
-                .checked_sub(exchange_account.debt_shares)
-                .unwrap();
+            // let burned_amount = calculate_max_burned_in_xusd(&burn_asset, user_debt);
+            // state.debt_shares = state
+            //     .debt_shares
+            //     .checked_sub(exchange_account.debt_shares)
+            //     .unwrap();
 
             state.staking.next_round.all_points = state.debt_shares;
             // Should be fine used checked math just in case
@@ -715,13 +716,13 @@ pub mod exchange {
             // Change supply
             set_synthetic_supply(
                 burn_synthetic,
-                burn_synthetic.supply.checked_sub(burned_amount).unwrap(),
+                burn_synthetic.supply.sub(user_debt).unwrap(),
             )?;
             // Burn token
             // We do not use full allowance maybe its better to burn full allowance
             // and mint matching amount
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-            token::burn(cpi_ctx, burned_amount)?;
+            token::burn(cpi_ctx, user_debt.to_u64())?;
             Ok(())
         } else {
             // Burn intended amount
@@ -760,7 +761,7 @@ pub mod exchange {
             // Change supply
             set_synthetic_supply(
                 burn_synthetic,
-                burn_synthetic.supply.checked_sub(amount).unwrap(),
+                burn_synthetic.supply.sub(amount_decimal).unwrap(),
             )?;
             // Burn token
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
