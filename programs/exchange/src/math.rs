@@ -293,7 +293,7 @@ pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
     return burned_amount_token.try_into().unwrap();
 }
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal) -> Decimal {
-    return value_in_usd.div_with_scale(asset.price, asset.price.scale);
+    return value_in_usd.div_to_scale(asset.price, asset.price.scale);
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
@@ -1263,36 +1263,32 @@ mod tests {
         // round down
         {
             let asset = Asset {
-                price: Decimal {
-                    val: 14 * 10u128.pow(PRICE_OFFSET.into()),
-                    scale: PRICE_OFFSET,
-                },
+                price: Decimal::from_price(14 * 10u128.pow(PRICE_OFFSET.into())),
                 ..Default::default()
             };
-            let value_in_usd = Decimal {
-                val: 100,
-                scale: ACCURACY,
-            };
-            let token_amount = usd_to_token_amount(&asset, value_in_usd);
+            let value = Decimal::from_usd(100);
+            let token_amount = usd_to_token_amount(&asset, value);
             // 7,142...
-            assert_eq!(token_amount, 7);
+            let expected = Decimal {
+                val: 7,
+                scale: asset.price.scale,
+            };
+            assert!(token_amount.eq(&expected));
         }
         // large amount
         {
             let asset = Asset {
-                price: Decimal {
-                    val: 91 * 10u128.pow(PRICE_OFFSET.into()),
-                    scale: 10,
-                },
+                price: Decimal::from_price(91 * 10u128.pow(PRICE_OFFSET.into())),
                 ..Default::default()
             };
-            let value = Decimal {
-                val: 100_003_900_802 * 10u64.pow(ACCURACY),
-                scale: ACCURACY,
-            };
+            let value = Decimal::from_usd(100_003_900_802 * 10u128.pow(ACCURACY));
             let token_amount = usd_to_token_amount(&asset, value);
             // 11031876945054945054
-            assert_eq!(token_amount, 11031876945054945054)
+            let expected = Decimal {
+                val: 11031876945054945054,
+                scale: asset.price.scale,
+            };
+            assert!(token_amount.eq(&expected));
         }
     }
 

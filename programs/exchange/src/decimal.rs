@@ -16,13 +16,13 @@ impl Decimal {
             scale: UNIFIED_PERCENT_SCALE,
         };
     }
-    pub fn from_price(price: u64) -> Self {
+    pub fn from_price(price: u128) -> Self {
         return Decimal {
-            val: price.into(),
+            val: price,
             scale: PRICE_OFFSET,
         };
     }
-    pub fn from_usd(value: u64) -> Self {
+    pub fn from_usd(value: u128) -> Self {
         return Decimal {
             val: value.into(),
             scale: ACCURACY,
