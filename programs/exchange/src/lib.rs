@@ -1014,14 +1014,25 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
-        if state.staking.finished_round.amount > 0 {
+        if state
+            .staking
+            .finished_round
+            .amount
+            .gt(Decimal::from_sny(0))?
+        {
             let reward_amount = state
                 .staking
                 .finished_round
                 .amount
-                .checked_mul(exchange_account.user_staking_data.finished_round_points)
+                .val
+                .checked_mul(
+                    exchange_account
+                        .user_staking_data
+                        .finished_round_points
+                        .into(),
+                )
                 .unwrap()
-                .checked_div(state.staking.finished_round.all_points)
+                .checked_div(state.staking.finished_round.all_points.into())
                 .unwrap();
 
             exchange_account.user_staking_data.amount_to_claim = exchange_account
@@ -2053,7 +2064,7 @@ pub struct Staking {
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
 pub struct UserStaking {
-    pub amount_to_claim: u64,       //8 Amount of SNY accumulated by account
+    pub amount_to_claim: Decimal,   //8 Amount of SNY accumulated by account
     pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
     pub current_round_points: u64,  //8
     pub next_round_points: u64,     //8
