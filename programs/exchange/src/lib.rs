@@ -988,7 +988,7 @@ pub mod exchange {
 
         // If account is undercollaterized set liquidation_deadline
         // After liquidation_deadline slot account can be liquidated
-        if max_debt.gt(&(user_debt as u128)) {
+        if max_debt.gt(user_debt).unwrap() {
             exchange_account.liquidation_deadline = u64::MAX;
         } else {
             if exchange_account.liquidation_deadline == u64::MAX {
