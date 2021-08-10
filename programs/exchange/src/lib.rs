@@ -1020,7 +1020,7 @@ pub mod exchange {
             .amount
             .gt(Decimal::from_sny(0))?
         {
-            let reward_amount = state
+            let reward_amount: u64 = state
                 .staking
                 .finished_round
                 .amount
@@ -1033,13 +1033,13 @@ pub mod exchange {
                 )
                 .unwrap()
                 .checked_div(state.staking.finished_round.all_points.into())
-                .unwrap();
+                .unwrap() as u64;
 
             exchange_account.user_staking_data.amount_to_claim = exchange_account
                 .user_staking_data
                 .amount_to_claim
-                .checked_add(reward_amount)
-                .unwrap();
+                .add(Decimal::from_sny(reward_amount.into()))?;
+
             exchange_account.user_staking_data.finished_round_points = 0;
         }
 
