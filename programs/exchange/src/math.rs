@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Mul, MulUp, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, Sub};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -128,21 +128,19 @@ pub fn calculate_new_shares_by_rounding_up(
         .into()
 }
 pub fn calculate_max_withdraw_in_usd(
-    max_user_debt_in_usd: u64,
-    user_debt_in_usd: u64,
-    collateral_ratio: u8,
-    health_factor: u8,
-) -> u64 {
-    if max_user_debt_in_usd < user_debt_in_usd {
-        return 0;
+    max_user_debt_in_usd: Decimal,
+    user_debt_in_usd: Decimal,
+    collateral_ratio: Decimal,
+    health_factor: Decimal,
+) -> Decimal {
+    if max_user_debt_in_usd.lt(user_debt_in_usd).unwrap() {
+        return Decimal { val: 0, scale: 0 };
     }
-    return (max_user_debt_in_usd - user_debt_in_usd)
-        .checked_mul(10000)
+
+    (max_user_debt_in_usd.sub(user_debt_in_usd))
         .unwrap()
-        .checked_div(collateral_ratio as u64)
-        .unwrap()
-        .checked_div(health_factor.into())
-        .unwrap();
+        .div(collateral_ratio)
+        .div(health_factor)
 }
 pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amount: u64) -> u64 {
     // full_amount is always != 0 if all_shares > 0

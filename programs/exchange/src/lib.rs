@@ -443,7 +443,7 @@ pub mod exchange {
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
-        let max_borrow = state.health_factor.try_mul(max_debt).unwrap();
+        let max_borrow = state.health_factor.mul(max_debt);
 
         let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
@@ -464,9 +464,9 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        // Check if not overdrafing
+        // Check if not overdrafting
         let max_withdrawable_in_usd = calculate_max_withdraw_in_usd(
-            max_borrow as u64,
+            max_borrow,
             user_debt,
             collateral.collateral_ratio,
             state.health_factor,
