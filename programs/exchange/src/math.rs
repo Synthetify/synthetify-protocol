@@ -1263,28 +1263,37 @@ mod tests {
         // round down
         {
             let asset = Asset {
-                price: Decimal::from_price(14 * 10u64.pow(PRICE_OFFSET.into())),
+                price: Decimal {
+                    val: 14 * 10u128.pow(PRICE_OFFSET.into()),
+                    scale: PRICE_OFFSET,
+                },
                 ..Default::default()
             };
-            // let decimals = 6;
-            let value_in_usd = 100;
+            let value_in_usd = Decimal {
+                val: 100,
+                scale: ACCURACY,
+            };
             let token_amount = usd_to_token_amount(&asset, value_in_usd);
             // 7,142...
-            println!("{:?}", token_amount);
-            // assert_eq!(token_amount, 7);
+            assert_eq!(token_amount, 7);
         }
         // large amount
-        /*         {
+        {
             let asset = Asset {
-                price: 91 * 10u64.pow(PRICE_OFFSET.into()),
+                price: Decimal {
+                    val: 91 * 10u128.pow(PRICE_OFFSET.into()),
+                    scale: 10,
+                },
                 ..Default::default()
             };
-            let decimals = 10;
-            let amount = 1_003_900_802 * 10u64.pow(8);
-            let token_amount = usd_to_token_amount(&asset, decimals, amount);
+            let value = Decimal {
+                val: 100_003_900_802 * 10u64.pow(ACCURACY),
+                scale: ACCURACY,
+            };
+            let token_amount = usd_to_token_amount(&asset, value);
             // 11031876945054945054
             assert_eq!(token_amount, 11031876945054945054)
-        } */
+        }
     }
 
     #[test]
