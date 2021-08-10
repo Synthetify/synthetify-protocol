@@ -307,7 +307,7 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 #[cfg(test)]
 mod tests {
     use crate::decimal::INTEREST_RATE_SCALE;
-    use std::ops::Div;
+    use std::{cell::RefCell, ops::Div};
 
     use super::*;
     #[test]
@@ -1269,81 +1269,60 @@ mod tests {
         // Zero base
         {
             let decimal: u8 = PRICE_OFFSET;
-            let base = Decimal { val: 0, scale: 0 }.to_scale(decimal);
+            let base = Decimal::new(0, 0).to_scale(decimal);
             let exp: u128 = 100;
             let result = base.pow_with_accuracy(exp);
-            let expected = Decimal {
-                val: 0,
-                scale: decimal,
-            };
+            let expected = Decimal::new(0, decimal);
             assert_eq!(result, expected);
         }
         // Zero exponent
         {
             let decimal: u8 = PRICE_OFFSET;
-            let base = Decimal { val: 10, scale: 0 }.to_scale(decimal);
+            let base = Decimal::new(10, 0).to_scale(decimal);
             let exp: u128 = 0;
             let result = base.pow_with_accuracy(exp);
-            let expected = Decimal { val: 1, scale: 0 }.to_scale(decimal);
+            let expected = Decimal::new(1, 0).to_scale(decimal);
             assert_eq!(result, expected);
             // 2^17, with price decimal
             {
                 let decimal: u8 = PRICE_OFFSET;
-                let base = Decimal { val: 2, scale: 0 }.to_scale(decimal);
+                let base = Decimal::new(2, 0).to_scale(decimal);
                 let exp: u128 = 17;
                 let result = base.pow_with_accuracy(exp);
                 // should be 131072
-                let expected = Decimal {
-                    val: 131072,
-                    scale: 0,
-                }
-                .to_scale(decimal);
+                let expected = Decimal::new(131072, 0).to_scale(decimal);
                 assert_eq!(result, expected);
             }
             // 1.00000002^525600, with interest decimal
             {
                 let decimal: u8 = INTEREST_RATE_SCALE;
-                let base = Decimal {
-                    val: 1_000_000_02,
-                    scale: 8,
-                }
-                .to_scale(decimal);
+                let base = Decimal::new(1_000_000_02, 8).to_scale(decimal);
                 let exp: u128 = 525600;
                 let result = base.pow_with_accuracy(exp);
                 // expected 1.010567445075371...
                 // real     1.010567445075377...
-                let expected = Decimal {
-                    val: 1010567445075371366,
-                    scale: decimal,
-                };
+                let expected = Decimal::new(1010567445075371366, decimal);
                 assert_eq!(result, expected);
             }
             // 1.000000015^2, with interest decimal
             {
                 let decimal: u8 = INTEREST_RATE_SCALE;
-                let base = Decimal {
-                    val: 1_000_000_015,
-                    scale: 9,
-                }
-                .to_scale(decimal);
+                let base = Decimal::new(1_000_000_015, 9).to_scale(decimal);
                 let exp: u128 = 2;
                 let result = base.pow_with_accuracy(exp);
                 // expected 1.000000030000000225
                 // real     1.000000030000000225.
-                let expected = Decimal {
-                    val: 1000000030000000225,
-                    scale: decimal,
-                };
+                let expected = Decimal::new(1000000030000000225, decimal);
                 assert_eq!(result, expected);
             }
             // 1^525600, with interest decimal
             {
                 let decimal: u8 = INTEREST_RATE_SCALE;
-                let base = Decimal { val: 1, scale: 0 }.to_scale(decimal);
+                let base = Decimal::new(1, 0).to_scale(decimal);
                 let exp: u128 = 525600;
                 let result = base.pow_with_accuracy(exp);
                 // expected not change value
-                let expected = Decimal { val: 1, scale: 0 }.to_scale(decimal);
+                let expected = Decimal::new(1, 0).to_scale(decimal);
                 assert_eq!(result, expected);
             }
         }
