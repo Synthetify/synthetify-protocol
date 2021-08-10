@@ -1247,6 +1247,11 @@ pub mod exchange {
         let state = &mut ctx.accounts.state.load_mut()?;
 
         let decimal_fee = Decimal::from_percent(fee);
+        require!(
+            decimal_fee.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
+        state.fee = decimal_fee;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1271,6 +1276,10 @@ pub mod exchange {
         let state = &mut ctx.accounts.state.load_mut()?;
 
         let decimal_factor = Decimal::from_percent(factor);
+        require!(
+            decimal_factor.ltq(Decimal::from_percent(10000))?,
+            ParameterOutOfRange
+        );
         state.health_factor = decimal_factor;
         Ok(())
     }
