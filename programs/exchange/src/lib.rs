@@ -496,7 +496,10 @@ pub mod exchange {
             let amount_to_withdraw_in_usd =
                 calculate_value_in_usd(collateral_asset.price, amount_to_withdraw);
 
-            if amount_to_withdraw_in_usd > max_withdrawable_in_usd {
+            if max_withdrawable_in_usd
+                .lt(amount_to_withdraw_in_usd)
+                .unwrap()
+            {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
         }
@@ -550,7 +553,7 @@ pub mod exchange {
         if !tx_signer.eq(&user_token_account_in.owner) {
             return Err(ErrorCode::InvalidSigner.into());
         }
-        // Swaping for same assets is forbidden
+        // Swapping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
         }
@@ -588,24 +591,18 @@ pub mod exchange {
 
         // Get effective_fee base on user collateral balance
         let discount = amount_to_discount(collateral_amount);
-        let effective_fee = state
-            .fee
-            .checked_sub(
-                (state
-                    .fee
-                    .checked_mul(discount as u32)
-                    .unwrap()
-                    .checked_div(100))
-                .unwrap(),
-            )
-            .unwrap();
+        let effective_fee = state.fee.sub(state.fee.mul(discount)).unwrap();
         // Output amount ~ 100% - fee of input
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: synthetics[synthetic_in_index].supply.scale,
+        };
         let (amount_for, fee_usd) = calculate_swap_out_amount(
             &asset_in,
             &asset_for,
             &synthetics[synthetic_in_index],
             &synthetics[synthetic_for_index],
-            amount,
+            amount_decimal,
             effective_fee,
         )?;
 
@@ -614,25 +611,23 @@ pub mod exchange {
 
         // Update swap_tax_reserve
         let swap_tax_reserve = calculate_swap_tax(fee_usd, state.swap_tax_ratio);
-        state.swap_tax_reserve = state
-            .swap_tax_reserve
-            .checked_add(swap_tax_reserve)
-            .unwrap();
+        state.swap_tax_reserve = state.swap_tax_reserve.add(swap_tax_reserve).unwrap();
 
         // Update xUSD supply based on tax
-        let new_xusd_supply = synthetics[0].supply.checked_add(swap_tax_reserve).unwrap();
+        let new_xusd_supply = synthetics[0].supply.add(swap_tax_reserve).unwrap();
         set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
 
         // Set new supply output token
         let new_supply_output = synthetics[synthetic_for_index]
             .supply
-            .checked_add(amount_for)
+            .add(amount_for)
             .unwrap();
         set_synthetic_supply(&mut synthetics[synthetic_for_index], new_supply_output)?;
         // Set new supply input token
+
         let new_supply_input = synthetics[synthetic_in_index]
             .supply
-            .checked_sub(amount)
+            .sub(amount_decimal)
             .unwrap();
         set_synthetic_supply(&mut synthetics[synthetic_in_index], new_supply_input)?;
         // Burn input token
@@ -641,7 +636,7 @@ pub mod exchange {
 
         // Mint output token
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(cpi_ctx_mint, amount_for)?;
+        token::mint_to(cpi_ctx_mint, amount_for.into())?;
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)

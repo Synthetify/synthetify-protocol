@@ -7,8 +7,11 @@ use crate::*;
 pub const ACCURACY: u8 = 6; // xUSD decimal
 pub const PRICE_OFFSET: u8 = 8;
 pub const INTEREST_RATE_DECIMAL: u8 = 18;
-pub const MIN_SWAP_USD_VALUE: u128 = 1000; // depends on ACCURACY
 pub const MINUTES_IN_YEAR: u32 = 525600;
+pub const MIN_SWAP_USD_VALUE: Decimal = Decimal {
+    val: 1000u128,
+    scale: ACCURACY,
+};
 
 pub fn calculate_debt(
     assets_list: &RefMut<AssetsList>,
@@ -218,39 +221,27 @@ pub fn calculate_value_difference_in_usd(
     return value_in.checked_sub(value_out).unwrap();
 }
 
-pub fn calculate_swap_tax(total_fee: u64, swap_tax: Decimal) -> u64 {
-    return swap_tax.try_mul(total_fee as u128).unwrap() as u64;
+pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
+    return swap_tax.mul(total_fee);
 }
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
     synthetic_in: &Synthetic,
     synthetic_for: &Synthetic,
-    amount: u64,
-    fee: u32, // in range from 0-99 | 30/10000 => 0.3% fee
-) -> Result<(u64, u64)> {
+    amount: Decimal,
+    fee: Decimal, // in range from 0-99 | 30/10000 => 0.3% fee
+) -> Result<(Decimal, Decimal)> {
     const FEE_DECIMAL: u32 = 5;
-    let value_in_usd = (asset_in.price as u128)
-        .checked_mul(amount as u128)
-        .unwrap()
-        .checked_div(
-            10u128
-                .checked_pow((synthetic_in.decimals + PRICE_OFFSET - ACCURACY).into())
-                .unwrap(),
-        )
-        .unwrap();
+    let value_in_usd = (asset_in.price).mul(amount).to_scale(ACCURACY);
     // Check min swap value
-    if value_in_usd < MIN_SWAP_USD_VALUE {
+    if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
-    let fee = value_in_usd
-        .checked_mul(fee as u128)
-        .unwrap()
-        .checked_div(10u128.checked_pow(FEE_DECIMAL).unwrap())
-        .unwrap();
-    let value_out_usd = value_in_usd.checked_sub(fee).unwrap();
-    let amount_out = usd_to_token_amount(asset_for, synthetic_for.decimals, value_out_usd as u64);
-    return Ok((amount_out, fee as u64));
+    let fee = value_in_usd.mul(fee);
+    let value_out_usd = value_in_usd.sub(fee).unwrap();
+    let amount_out = usd_to_token_amount(asset_for, value_out_usd);
+    return Ok((amount_out, fee));
 }
 pub fn calculate_burned_shares(
     asset: &Asset,
