@@ -1058,7 +1058,7 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
-        if exchange_account.user_staking_data.amount_to_claim == 0u64 {
+        if exchange_account.user_staking_data.amount_to_claim.val == 0u128 {
             return Err(ErrorCode::NoRewards.into());
         }
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -1072,9 +1072,15 @@ pub mod exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        token::transfer(cpi_ctx, exchange_account.user_staking_data.amount_to_claim)?;
+        token::transfer(
+            cpi_ctx,
+            exchange_account.user_staking_data.amount_to_claim.to_u64(),
+        )?;
         // Reset rewards amount
-        exchange_account.user_staking_data.amount_to_claim = 0u64;
+        exchange_account.user_staking_data.amount_to_claim = Decimal {
+            val: 0,
+            scale: SNY_DECIMALS,
+        };
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
@@ -1168,7 +1174,7 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount.to_usd())?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd().to_u64())?;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
@@ -1202,7 +1208,7 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount.to_usd())?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd().to_u64())?;
 
         Ok(())
     }
@@ -1314,7 +1320,10 @@ pub mod exchange {
         msg!("Synthetify:Admin:Staking: SET AMOUNT PER ROUND");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.staking.amount_per_round = amount_per_round;
+        state.staking.amount_per_round = Decimal {
+            val: amount_per_round.into(),
+            scale: SNY_DECIMALS,
+        };
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
