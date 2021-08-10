@@ -148,7 +148,7 @@ impl DivUp<Decimal> for Decimal {
 }
 impl DivScale<Decimal> for Decimal {
     fn div_to_scale(self, other: Decimal, to_scale: u8) -> Self {
-        let decimal_difference = to_scale - self.scale;
+        let decimal_difference = to_scale as i16 - self.scale as i16;
 
         let val = if decimal_difference < 0 {
             self.val
@@ -156,13 +156,13 @@ impl DivScale<Decimal> for Decimal {
                 .unwrap()
                 .checked_div(other.val)
                 .unwrap()
-                .checked_div(10u128.pow(decimal_difference.into()))
+                .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
         } else {
             self.val
                 .checked_mul(other.denominator())
                 .unwrap()
-                .checked_mul(10u128.pow(decimal_difference.into()))
+                .checked_mul(10u128.pow(decimal_difference..try_into().unwrap()))
                 .unwrap()
                 .checked_div(other.val)
                 .unwrap()
