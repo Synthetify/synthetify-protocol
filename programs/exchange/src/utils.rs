@@ -2,10 +2,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
 use crate::decimal::{Add, Gt};
-use crate::math::{
-    calculate_compounded_interest, calculate_debt, calculate_debt_interest_rate,
-    calculate_minute_interest_rate,
-};
+use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
 use crate::*;
 
 pub fn check_feed_update(
