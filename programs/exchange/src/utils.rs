@@ -221,126 +221,126 @@ mod tests {
     use super::*;
     use std::{cell::RefCell, u64};
 
-    // #[test]
-    // fn adjust_staking_account_test() {
-    //     let staking_round_length = 100;
-    //     let amount_per_round = 300;
-    //     let slot = 12u64;
-    //     let staking = Staking {
-    //         round_length: staking_round_length,
-    //         amount_per_round: amount_per_round,
-    //         finished_round: StakingRound {
-    //             all_points: 1,
-    //             amount: 0,
-    //             start: slot,
-    //         },
-    //         current_round: StakingRound {
-    //             all_points: 2,
-    //             amount: 0,
-    //             start: slot.checked_add(staking_round_length as u64).unwrap(),
-    //         },
-    //         next_round: StakingRound {
-    //             all_points: 3,
-    //             amount: amount_per_round,
-    //             start: slot
-    //                 .checked_add(staking_round_length as u64)
-    //                 .unwrap()
-    //                 .checked_add(staking_round_length.into())
-    //                 .unwrap(),
-    //         },
-    //         ..Default::default()
-    //     };
-    //     {
-    //         // Last update before finished round
-    //         let mut exchange_account = ExchangeAccount {
-    //             debt_shares: 10,
-    //             // collateral_shares: 100,
-    //             head: 1,
-    //             user_staking_data: UserStaking {
-    //                 amount_to_claim: 0,
-    //                 finished_round_points: 2,
-    //                 current_round_points: 5,
-    //                 next_round_points: 10,
-    //                 last_update: slot - 1,
-    //             },
-    //             ..Default::default()
-    //         };
-    //         let exchange_account_copy = exchange_account.clone();
-    //         adjust_staking_account(&mut exchange_account, &staking);
-    //         assert_ne!(
-    //             exchange_account.user_staking_data,
-    //             exchange_account_copy.user_staking_data
-    //         );
-    //         assert_eq!(
-    //             { exchange_account.user_staking_data.finished_round_points },
-    //             { exchange_account.debt_shares }
-    //         );
-    //         assert_eq!(
-    //             { exchange_account.user_staking_data.current_round_points },
-    //             { exchange_account.debt_shares }
-    //         );
-    //         assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
-    //             exchange_account.debt_shares
-    //         });
-    //         assert_eq!({ exchange_account.user_staking_data.last_update }, {
-    //             staking.current_round.start + 1
-    //         });
-    //     }
-    //     {
-    //         // Last update before current round but after finished round
-    //         let mut exchange_account = ExchangeAccount {
-    //             debt_shares: 10,
-    //             user_staking_data: UserStaking {
-    //                 amount_to_claim: 0,
-    //                 finished_round_points: 2,
-    //                 current_round_points: 5,
-    //                 next_round_points: 10,
-    //                 last_update: slot + 1,
-    //             },
-    //             ..Default::default()
-    //         };
-    //         let exchange_account_copy = exchange_account.clone();
-    //         adjust_staking_account(&mut exchange_account, &staking);
-    //         assert_ne!(
-    //             exchange_account.user_staking_data,
-    //             exchange_account_copy.user_staking_data
-    //         );
-    //         assert_eq!(
-    //             { exchange_account.user_staking_data.finished_round_points },
-    //             { exchange_account_copy.user_staking_data.current_round_points }
-    //         );
-    //         assert_eq!(
-    //             { exchange_account.user_staking_data.current_round_points },
-    //             { exchange_account_copy.user_staking_data.next_round_points }
-    //         );
-    //         assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
-    //             exchange_account.debt_shares
-    //         });
-    //         assert_eq!({ exchange_account.user_staking_data.last_update }, {
-    //             staking.current_round.start + 1
-    //         });
-    //     }
-    //     {
-    //         // Last update in current round
-    //         let mut exchange_account = ExchangeAccount {
-    //             debt_shares: 10,
-    //             user_staking_data: UserStaking {
-    //                 amount_to_claim: 0,
-    //                 finished_round_points: 2,
-    //                 current_round_points: 5,
-    //                 next_round_points: 10,
-    //                 last_update: slot + staking_round_length as u64 + 1,
-    //             },
-    //             ..Default::default()
-    //         };
-    //         let exchange_account_copy = exchange_account.clone();
-    //         adjust_staking_account(&mut exchange_account, &staking);
-    //         assert_eq!(
-    //             exchange_account.user_staking_data,
-    //             exchange_account_copy.user_staking_data
-    //         );
-    //     }
-    // }
+    #[test]
+    fn adjust_staking_account_test() {
+        let staking_round_length = 100;
+        let amount_per_round = Decimal::new(300, ACCURACY);
+        let slot = 12u64;
+        let staking = Staking {
+            round_length: staking_round_length,
+            amount_per_round: amount_per_round,
+            finished_round: StakingRound {
+                all_points: 1,
+                amount: Decimal::from_sny(0),
+                start: slot,
+            },
+            current_round: StakingRound {
+                all_points: 2,
+                amount: Decimal::from_sny(0),
+                start: slot.checked_add(staking_round_length as u64).unwrap(),
+            },
+            next_round: StakingRound {
+                all_points: 3,
+                amount: amount_per_round,
+                start: slot
+                    .checked_add(staking_round_length as u64)
+                    .unwrap()
+                    .checked_add(staking_round_length.into())
+                    .unwrap(),
+            },
+            ..Default::default()
+        };
+        {
+            // Last update before finished round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                // collateral_shares: 100,
+                head: 1,
+                user_staking_data: UserStaking {
+                    amount_to_claim: Decimal::from_sny(0),
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot - 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_ne!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+            assert_eq!(
+                { exchange_account.user_staking_data.finished_round_points },
+                { exchange_account.debt_shares }
+            );
+            assert_eq!(
+                { exchange_account.user_staking_data.current_round_points },
+                { exchange_account.debt_shares }
+            );
+            assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
+                exchange_account.debt_shares
+            });
+            assert_eq!({ exchange_account.user_staking_data.last_update }, {
+                staking.current_round.start + 1
+            });
+        }
+        {
+            // Last update before current round but after finished round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                user_staking_data: UserStaking {
+                    amount_to_claim: Decimal::from_sny(0),
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot + 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_ne!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+            assert_eq!(
+                { exchange_account.user_staking_data.finished_round_points },
+                { exchange_account_copy.user_staking_data.current_round_points }
+            );
+            assert_eq!(
+                { exchange_account.user_staking_data.current_round_points },
+                { exchange_account_copy.user_staking_data.next_round_points }
+            );
+            assert_eq!({ exchange_account.user_staking_data.next_round_points }, {
+                exchange_account.debt_shares
+            });
+            assert_eq!({ exchange_account.user_staking_data.last_update }, {
+                staking.current_round.start + 1
+            });
+        }
+        {
+            // Last update in current round
+            let mut exchange_account = ExchangeAccount {
+                debt_shares: 10,
+                user_staking_data: UserStaking {
+                    amount_to_claim: Decimal::from_sny(0),
+                    finished_round_points: 2,
+                    current_round_points: 5,
+                    next_round_points: 10,
+                    last_update: slot + staking_round_length as u64 + 1,
+                },
+                ..Default::default()
+            };
+            let exchange_account_copy = exchange_account.clone();
+            adjust_staking_account(&mut exchange_account, &staking);
+            assert_eq!(
+                exchange_account.user_staking_data,
+                exchange_account_copy.user_staking_data
+            );
+        }
+    }
     // #[test]
     // fn adjust_staking_rounds_with_fixed_round_length_test() {
     //     let staking_round_length = 100;
