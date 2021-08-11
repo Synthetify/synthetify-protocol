@@ -72,21 +72,11 @@ pub fn calculate_user_debt_in_usd(
     debt_shares: u64,
 ) -> Decimal {
     if debt_shares == 0 {
-        return Decimal {
-            val: 0,
-            scale: ACCURACY,
-        };
+        return Decimal::from_integer(0).to_usd();
     }
 
-    let debt_shares = Decimal {
-        val: debt_shares.into(),
-        scale: 0,
-    };
-    let user_shares = Decimal {
-        val: user_account.debt_shares.into(),
-        scale: 0,
-    };
-
+    let debt_shares = Decimal::from_integer(debt_shares);
+    let user_shares = Decimal::from_integer(user_account.debt_shares);
     debt.mul(user_shares).div_up(debt_shares).to_usd()
 }
 pub fn calculate_new_shares_by_rounding_down(
@@ -219,10 +209,7 @@ pub fn calculate_burned_shares(
         return 0u64;
     }
     calculate_value_in_usd(asset.price, amount)
-        .mul(Decimal {
-            val: all_shares.into(),
-            scale: 0,
-        })
+        .mul(Decimal::from_integer(all_shares))
         .div(all_debt)
         .to_scale(0)
         .into()
@@ -1142,7 +1129,7 @@ mod tests {
             let value = Decimal::from_usd(100);
             let token_amount = usd_to_token_amount(&asset, value, scale);
             // 7,142...
-            let expected = Decimal { val: 7, scale };
+            let expected = Decimal::new(7, scale);
             assert_eq!(token_amount, expected);
         }
         // large amount
