@@ -151,7 +151,7 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
     )
   }, new BN(0))
 }
-export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
+export const toEffectiveFee = (fee: Decimal, userCollateralBalance: BN) => {
   // decimals of token = 6
   const ONE_SNY = new BN(1000000)
   let discount = 0
@@ -206,7 +206,7 @@ export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
       discount = 15
       break
   }
-  return Math.ceil(fee - (fee * discount) / 100)
+  return (fee.val.toNumber() - fee.val.toNumber() * discount) / 10 ** fee.scale
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))

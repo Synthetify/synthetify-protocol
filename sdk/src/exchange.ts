@@ -803,15 +803,18 @@ export class Exchange {
     decimals,
     maxSupply
   }: AddSyntheticInstruction) {
-    return (await this.program.instruction.addSynthetic(maxSupply, decimals, {
-      accounts: {
-        state: this.stateAddress,
-        admin: this.state.admin,
-        assetsList,
-        assetAddress: assetAddress,
-        feedAddress: priceFeed
+    return (await this.program.instruction.addSynthetic(
+      { val: maxSupply, scale: decimals },
+      {
+        accounts: {
+          state: this.stateAddress,
+          admin: this.state.admin,
+          assetsList,
+          assetAddress: assetAddress,
+          feedAddress: priceFeed
+        }
       }
-    })) as TransactionInstruction
+    )) as TransactionInstruction
   }
 
   public async initializeAssetsList({

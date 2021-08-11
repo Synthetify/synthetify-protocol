@@ -161,42 +161,32 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
 }
 pub fn amount_to_discount(sny_amount: Decimal) -> Decimal {
     // decimals of token = 6
-    const ONE_SNY: u128 = 10u128.pow(SNY_SCALE as u32);
+    let one_sny = Decimal::from_integer(1).to_sny().val;
     let amount = sny_amount.val;
 
     let v: u16 = match () {
-        () if amount < ONE_SNY * 100 => 0,
-        () if amount < ONE_SNY * 200 => 1,
-        () if amount < ONE_SNY * 500 => 2,
-        () if amount < ONE_SNY * 1_000 => 3,
-        () if amount < ONE_SNY * 2_000 => 4,
-        () if amount < ONE_SNY * 5_000 => 5,
-        () if amount < ONE_SNY * 10_000 => 6,
-        () if amount < ONE_SNY * 25_000 => 7,
-        () if amount < ONE_SNY * 50_000 => 8,
-        () if amount < ONE_SNY * 100_000 => 9,
-        () if amount < ONE_SNY * 250_000 => 10,
-        () if amount < ONE_SNY * 250_000 => 10,
-        () if amount < ONE_SNY * 500_000 => 11,
-        () if amount < ONE_SNY * 1_000_000 => 12,
-        () if amount < ONE_SNY * 2_000_000 => 13,
-        () if amount < ONE_SNY * 5_000_000 => 14,
-        () if amount < ONE_SNY * 10_000_000 => 15,
+        () if amount < one_sny * 100 => 0,
+        () if amount < one_sny * 200 => 1,
+        () if amount < one_sny * 500 => 2,
+        () if amount < one_sny * 1_000 => 3,
+        () if amount < one_sny * 2_000 => 4,
+        () if amount < one_sny * 5_000 => 5,
+        () if amount < one_sny * 10_000 => 6,
+        () if amount < one_sny * 25_000 => 7,
+        () if amount < one_sny * 50_000 => 8,
+        () if amount < one_sny * 100_000 => 9,
+        () if amount < one_sny * 250_000 => 10,
+        () if amount < one_sny * 250_000 => 10,
+        () if amount < one_sny * 500_000 => 11,
+        () if amount < one_sny * 1_000_000 => 12,
+        () if amount < one_sny * 2_000_000 => 13,
+        () if amount < one_sny * 5_000_000 => 14,
+        () if amount < one_sny * 10_000_000 => 15,
         () => 15,
     };
     return Decimal::from_percent(v);
 }
 pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
-    // return (price as u128)
-    //     .checked_mul(amount as u128)
-    //     .unwrap()
-    //     .checked_div(
-    //         10u128
-    //             .checked_pow((decimal + PRICE_OFFSET - ACCURACY).into())
-    //             .unwrap(),
-    //     )
-    //     .unwrap() as u64;
-
     price.mul(amount).to_usd()
 }
 pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
