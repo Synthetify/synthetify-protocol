@@ -247,6 +247,7 @@ pub mod exchange {
         state.last_debt_adjustment = timestamp;
         state.penalty_to_liquidator = Decimal { val: 500, scale: 4 }; // 5%
         state.penalty_to_exchange = Decimal { val: 500, scale: 4 }; // 5%
+        state.accumulated_debt_interest = Decimal { val: 0, scale: 6 };
         state.liquidation_rate = Decimal {
             val: 2_000,
             scale: 4,

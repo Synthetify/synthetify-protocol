@@ -68,6 +68,13 @@ export const calculateSwapTax = (totalFee: BN, swapTax: Decimal): BN => {
   // swapTax 20 -> 20%
   return totalFee.mul(swapTax.val).div(new BN(10).pow(new BN(swapTax.scale)))
 }
+export const eqDecimals = (a: Decimal, b: Decimal) => {
+  // swapTax 20 -> 20%
+  if (a.scale !== b.scale) {
+    return false
+  }
+  return a.val.eq(b.val)
+}
 export const usdToTokenAmount = (
   asset: Asset,
   token: Synthetic | Collateral,

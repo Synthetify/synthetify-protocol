@@ -8,11 +8,14 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { Asset, AssetsList, Collateral, ExchangeAccount } from './exchange'
+import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 8
 export const ACCURACY = 6
+export const UNIFIED_PERCENT_SCALE = 4
+export const SNY_DECIMALS = 6
+export const XUSD_DECIMALS = 6
 // hex code must be at the end of message
 export enum ERRORS {
   SIGNATURE = 'Error: Signature verification failed',
@@ -71,6 +74,12 @@ export const signAndSend = async (
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
+}
+export const percentToDecimal = (value: number): Decimal => {
+  return { val: new BN(value * 10 ** (UNIFIED_PERCENT_SCALE - 2)), scale: UNIFIED_PERCENT_SCALE }
+}
+export const toDecimal = (value: BN, scale: number): Decimal => {
+  return { val: value, scale: scale }
 }
 export const divUp = (a: BN, b: BN) => {
   return a.add(b.subn(1)).div(b)

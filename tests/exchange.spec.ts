@@ -27,10 +27,17 @@ import {
   createCollateralToken,
   calculateFee,
   calculateSwapTax,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/lib/utils'
+import {
+  ERRORS,
+  percentToDecimal,
+  SNY_DECIMALS,
+  toDecimal,
+  XUSD_DECIMALS
+} from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 
@@ -124,11 +131,12 @@ describe('exchange', () => {
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
+
+    assert.ok(eqDecimals(state.fee, percentToDecimal(0.3)))
     // assert.ok(state.swapTaxRatio === 20)
-    assert.ok(state.swapTaxReserve.eq(new BN(0)))
-    assert.ok(state.debtInterestRate === 10)
-    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
+    assert.ok(eqDecimals(state.swapTaxReserve, toDecimal(new BN(0), SNY_DECIMALS)))
+    assert.ok(eqDecimals(state.debtInterestRate, percentToDecimal(1)))
+    assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
     assert.ok(state.debtShares.eq(new BN(0)))
   })
   it('Account Creation', async () => {
