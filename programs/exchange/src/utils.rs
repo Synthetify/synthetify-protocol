@@ -215,16 +215,13 @@ pub fn get_user_sny_collateral_balance(
 
 #[cfg(test)]
 mod tests {
-
-    use crate::math::{ACCURACY, PRICE_OFFSET};
-
     use super::*;
     use std::{cell::RefCell, u64};
 
     #[test]
     fn adjust_staking_account_test() {
         let staking_round_length = 100;
-        let amount_per_round = Decimal::new(300, ACCURACY);
+        let amount_per_round = Decimal::from_sny(300);
         let slot = 12u64;
         let staking = Staking {
             round_length: staking_round_length,
@@ -344,7 +341,7 @@ mod tests {
     #[test]
     fn adjust_staking_rounds_with_fixed_round_length_test() {
         let staking_round_length = 100;
-        let amount_per_round = Decimal::new(300, ACCURACY);
+        let amount_per_round = Decimal::from_sny(300);
         let debt_shares = 999u64;
         let staking = Staking {
             round_length: staking_round_length,
@@ -549,7 +546,7 @@ mod tests {
     #[test]
     fn adjust_staking_rounds_with_variable_round_length_test() {
         let staking_round_length = 100;
-        let amount_per_round = Decimal::new(300, ACCURACY);
+        let amount_per_round = Decimal::from_sny(300);
         let debt_shares = 999u64;
         let staking = Staking {
             round_length: staking_round_length,
