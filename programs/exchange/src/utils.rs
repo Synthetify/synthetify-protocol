@@ -627,105 +627,110 @@ mod tests {
         // No tollerance
         assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
     }
+    #[test]
+    fn test_set_synthetic_supply() {
+        // Regular
+        {
+            let scale = 6;
+            let max_supply = Decimal::new(100, scale);
+            let mut synthetic = Synthetic {
+                supply: Decimal::new(10, scale),
+                max_supply,
+                ..Default::default()
+            };
+            let new_supply = Decimal::new(50, scale);
+            let result = set_synthetic_supply(&mut synthetic, new_supply);
+            assert!(result.is_ok());
+            assert_eq!({ synthetic.max_supply }, max_supply);
+            assert_eq!({ synthetic.supply }, new_supply);
+        }
+        // Up to limit
+        {
+            let scale = 7;
+            let max_supply = Decimal::new(100, scale);
+            let mut synthetic = Synthetic {
+                supply: Decimal::new(10, scale),
+                max_supply,
+                ..Default::default()
+            };
 
-    // #[test]
-    // fn test_set_synthetic_supply() {
-    //     // Regular
-    //     {
-    //         let mut synthetic = Synthetic {
-    //             supply: 10,
-    //             max_supply: 100,
-    //             ..Default::default()
-    //         };
-    //         let result = set_synthetic_supply(&mut synthetic, 50);
-    //         assert!(result.is_ok());
-    //         assert_eq!({ synthetic.max_supply }, 100);
-    //         assert_eq!({ synthetic.supply }, 50);
-    //     }
-    //     // Up to limit
-    //     {
-    //         let mut synthetic = Synthetic {
-    //             supply: 10,
-    //             max_supply: 100,
-    //             ..Default::default()
-    //         };
-    //         let result = set_synthetic_supply(&mut synthetic, 100);
-    //         assert!(result.is_ok());
-    //         assert_eq!({ synthetic.supply }, 100);
-    //     }
-    //     // Over limit
-    //     {
-    //         let mut synthetic = Synthetic {
-    //             supply: 10,
-    //             max_supply: 100,
-    //             ..Default::default()
-    //         };
-    //         let result = set_synthetic_supply(&mut synthetic, 101);
-    //         assert!(result.is_err());
-    //     }
-    // }
+            let result = set_synthetic_supply(&mut synthetic, max_supply);
+            assert!(result.is_ok());
+            assert_eq!({ synthetic.supply }, max_supply);
+        }
+        // Over limit
+        {
+            let scale = 8;
+            let mut synthetic = Synthetic {
+                supply: Decimal::new(10, scale),
+                max_supply: Decimal::new(100, scale),
+                ..Default::default()
+            };
+            let result = set_synthetic_supply(&mut synthetic, Decimal::new(101, scale));
+            assert!(result.is_err());
+        }
+    }
+    #[test]
+    fn test_get_user_sny_collateral_balance() {
+        let sny_address = Pubkey::new_unique();
+        let sny_asset = Collateral {
+            collateral_address: sny_address,
+            ..Default::default()
+        };
 
-    // #[test]
-    // fn test_get_user_sny_collateral_balance() {
-    //     let sny_address = Pubkey::new_unique();
-    //     let sny_asset = Collateral {
-    //         collateral_address: sny_address,
-    //         ..Default::default()
-    //     };
+        // Empty list
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
 
-    //     // Empty list
-    //     {
-    //         let exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(0))
+        }
+        // With other assets
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: sny_address,
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
 
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 0)
-    //     }
-    //     // With other assets
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: sny_address,
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(100))
+        }
+        // Without SNY
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
 
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 100)
-    //     }
-    //     // Without SNY
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 0)
-    //     }
-    // }
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(0))
+        }
+    }
 
     // #[test]
     // fn test_adjust_interest_debt() {
