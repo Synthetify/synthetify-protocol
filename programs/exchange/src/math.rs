@@ -1387,5 +1387,15 @@ mod tests {
             let expected = Decimal::from_interest_rate(380517503805);
             assert_eq!(minute_interest_rate, expected);
         }
+        // 11% [UNIFIED_PERCENT_SCALE]
+        {
+            let apr_percent = Decimal::new(11, 2).to_percent();
+            let apr = apr_percent.to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.00002092846270928... %
+            // expected 0.0000209284627092     %
+            let expected = Decimal::from_interest_rate(209284627092);
+            assert_eq!(minute_interest_rate, expected);
+        }
     }
 }
