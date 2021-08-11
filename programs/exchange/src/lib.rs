@@ -228,32 +228,22 @@ pub mod exchange {
         state.nonce = nonce;
         state.debt_shares = 0u64;
         state.assets_list = *ctx.accounts.assets_list.key;
-        state.health_factor = Decimal {
-            // 50%
-            val: 5_000,
-            scale: 4,
-        };
+        state.health_factor = Decimal::from_percent(50);
         // once we will not be able to fit all data into one transaction we will
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
-        state.fee = Decimal { val: 30, scale: 4 }; // 0.3%
-        state.swap_tax_ratio = Decimal {
-            // 20%
-            val: 2_000,
-            scale: 4,
-        };
-        state.swap_tax_reserve = Decimal { val: 0, scale: 6 };
-        state.debt_interest_rate = Decimal { val: 100, scale: 4 }; // 1%
+        state.fee = Decimal::new(3, 3).to_percent(); // 0.3%
+        state.swap_tax_ratio = Decimal::from_percent(20); // 20%
+        state.swap_tax_reserve = Decimal::from_usd(0);
+        state.debt_interest_rate = Decimal::from_percent(1).to_interest_rate(); //1% APR
         state.last_debt_adjustment = timestamp;
-        state.penalty_to_liquidator = Decimal { val: 500, scale: 4 }; // 5%
-        state.penalty_to_exchange = Decimal { val: 500, scale: 4 }; // 5%
-        state.accumulated_debt_interest = Decimal { val: 0, scale: 6 };
-        state.liquidation_rate = Decimal {
-            val: 2_000,
-            scale: 4,
-        }; // 20%
-           // TODO decide about length of buffer
-           // Maybe just couple of minutes will be enough ?
+        state.penalty_to_liquidator = Decimal::from_percent(5); // 5%
+        state.penalty_to_exchange = Decimal::from_percent(5); // 5%
+        state.accumulated_debt_interest = Decimal::from_usd(0);
+        state.liquidation_rate = Decimal::from_percent(20); // 20%
+
+        // TODO decide about length of buffer
+        // Maybe just couple of minutes will be enough ?
         state.liquidation_buffer = 172800; // about 24 Hours;
         state.staking = Staking {
             round_length: staking_round_length,
@@ -264,26 +254,17 @@ pub mod exchange {
             fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
             finished_round: StakingRound {
                 all_points: 0,
-                amount: Decimal {
-                    val: 0,
-                    scale: SNY_DECIMALS,
-                },
+                amount: Decimal::from_sny(0),
                 start: 0,
             },
             current_round: StakingRound {
                 all_points: 0,
-                amount: Decimal {
-                    val: 0,
-                    scale: SNY_DECIMALS,
-                },
+                amount: Decimal::from_sny(0),
                 start: slot,
             },
             next_round: StakingRound {
                 all_points: 0,
-                amount: Decimal {
-                    val: amount_per_round.into(),
-                    scale: SNY_DECIMALS,
-                },
+                amount: Decimal::from_sny(amount_per_round.into()),
                 start: slot.checked_add(staking_round_length.into()).unwrap(),
             },
         };
@@ -1217,10 +1198,10 @@ pub mod exchange {
     pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u16) -> Result<()> {
         msg!("Synthetify:Admin: SWAP TAX RATIO");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let decimal_swap_tax_ratio = Decimal::from_percent(swap_tax_ratio);
+        let decimal_swap_tax_ratio = Decimal::from_unified_percent(swap_tax_ratio);
         // max decimal_swap_tax_ratio must be less or equals 20%
         require!(
-            decimal_swap_tax_ratio.ltq(Decimal::from_percent(2000))?,
+            decimal_swap_tax_ratio.ltq(Decimal::from_unified_percent(2000))?,
             ParameterOutOfRange
         );
 
@@ -1234,10 +1215,10 @@ pub mod exchange {
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let decimal_debt_interest_rate = Decimal::from_percent(debt_interest_rate);
+        let decimal_debt_interest_rate = Decimal::from_unified_percent(debt_interest_rate);
         // max debt_interest_rate must be less or equals 20%
         require!(
-            decimal_debt_interest_rate.ltq(Decimal::from_percent(2000))?,
+            decimal_debt_interest_rate.ltq(Decimal::from_unified_percent(2000))?,
             ParameterOutOfRange
         );
 
@@ -1261,10 +1242,10 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_liquidation_rate = Decimal::from_percent(liquidation_rate);
+        let decimal_liquidation_rate = Decimal::from_unified_percent(liquidation_rate);
         // liquidation_rate should be less or equals 100%
         require!(
-            decimal_liquidation_rate.ltq(Decimal::from_percent(10000))?,
+            decimal_liquidation_rate.ltq(Decimal::from_unified_percent(10000))?,
             ParameterOutOfRange
         );
         state.liquidation_rate = decimal_liquidation_rate;
@@ -1276,9 +1257,9 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_fee = Decimal::from_percent(fee);
+        let decimal_fee = Decimal::from_unified_percent(fee);
         require!(
-            decimal_fee.ltq(Decimal::from_percent(10000))?,
+            decimal_fee.ltq(Decimal::from_unified_percent(10000))?,
             ParameterOutOfRange
         );
         state.fee = decimal_fee;
@@ -1305,9 +1286,9 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_factor = Decimal::from_percent(factor);
+        let decimal_factor = Decimal::from_unified_percent(factor);
         require!(
-            decimal_factor.ltq(Decimal::from_percent(10000))?,
+            decimal_factor.ltq(Decimal::from_unified_percent(10000))?,
             ParameterOutOfRange
         );
         state.health_factor = decimal_factor;
@@ -1379,14 +1360,14 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_penalty_to_exchange = Decimal::from_percent(penalty_to_exchange);
-        let decimal_penalty_to_liquidator = Decimal::from_percent(penalty_to_liquidator);
+        let decimal_penalty_to_exchange = Decimal::from_unified_percent(penalty_to_exchange);
+        let decimal_penalty_to_liquidator = Decimal::from_unified_percent(penalty_to_liquidator);
         require!(
-            decimal_penalty_to_exchange.ltq(Decimal::from_percent(2500))?,
+            decimal_penalty_to_exchange.ltq(Decimal::from_unified_percent(2500))?,
             ParameterOutOfRange
         );
         require!(
-            decimal_penalty_to_liquidator.ltq(Decimal::from_percent(2500))?,
+            decimal_penalty_to_liquidator.ltq(Decimal::from_unified_percent(2500))?,
             ParameterOutOfRange
         );
 
@@ -1411,10 +1392,10 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        let decimal_collateral_ratio = Decimal::from_unified_percent(collateral_ratio);
         // collateral_ratio should be less or equals 100%
         require!(
-            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            decimal_collateral_ratio.ltq(Decimal::from_unified_percent(10000))?,
             ParameterOutOfRange
         );
         let new_collateral = Collateral {
@@ -1444,10 +1425,10 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let decimal_collateral_ratio = Decimal::from_percent(collateral_ratio);
+        let decimal_collateral_ratio = Decimal::from_unified_percent(collateral_ratio);
         // collateral_ratio should be less or equals 100%
         require!(
-            decimal_collateral_ratio.ltq(Decimal::from_percent(10000))?,
+            decimal_collateral_ratio.ltq(Decimal::from_unified_percent(10000))?,
             ParameterOutOfRange
         );
         collateral.collateral_ratio = decimal_collateral_ratio;

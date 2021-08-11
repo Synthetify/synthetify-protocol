@@ -12,31 +12,34 @@ impl Decimal {
         Self { val: value, scale }
     }
     pub fn denominator(self) -> u128 {
-        return 10u128.pow(self.scale.into());
+        10u128.pow(self.scale.into())
     }
-    pub fn from_percent(percent: u16) -> Self {
-        return Decimal {
+    pub fn from_unified_percent(percent: u16) -> Self {
+        Decimal {
             val: percent.into(),
             scale: UNIFIED_PERCENT_SCALE,
-        };
+        }
+    }
+    pub fn from_percent(percent: u16) -> Self {
+        Decimal::new(percent.into(), 2).to_percent()
     }
     pub fn from_integer(integer: u64) -> Self {
-        return Decimal {
+        Decimal {
             val: integer.into(),
             scale: 0,
-        };
+        }
     }
     pub fn from_price(price: u128) -> Self {
-        return Decimal {
+        Decimal {
             val: price,
             scale: PRICE_OFFSET,
-        };
+        }
     }
     pub fn from_usd(value: u128) -> Self {
-        return Decimal {
+        Decimal {
             val: value.into(),
             scale: ACCURACY,
-        };
+        }
     }
     pub fn from_sny(value: u128) -> Self {
         Decimal {

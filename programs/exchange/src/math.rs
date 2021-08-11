@@ -184,7 +184,7 @@ pub fn amount_to_discount(sny_amount: Decimal) -> Decimal {
         () if amount < one_sny * 10_000_000 => 15,
         () => 15,
     };
-    return Decimal::from_percent(v);
+    return Decimal::from_unified_percent(v);
 }
 pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
     price.mul(amount).to_usd()
@@ -261,7 +261,7 @@ pub fn calculate_compounded_interest(
     base_value.mul_up(compounded)
 }
 pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
-    Decimal::from_percent(debt_interest_rate).to_interest_rate()
+    Decimal::from_unified_percent(debt_interest_rate).to_interest_rate()
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
@@ -376,8 +376,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(999_999_999);
             let max_debt = Decimal::from_usd(999_999_999);
-            let collateral_ratio = Decimal::from_percent(1000);
-            let health_factor = Decimal::from_percent(10000);
+            let collateral_ratio = Decimal::from_unified_percent(1000);
+            let health_factor = Decimal::from_unified_percent(10000);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -387,8 +387,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(1_000_000_000);
             let max_debt = Decimal::from_usd(900_000_000);
-            let collateral_ratio = Decimal::from_percent(1000);
-            let health_factor = Decimal::from_percent(10000);
+            let collateral_ratio = Decimal::from_unified_percent(1000);
+            let health_factor = Decimal::from_unified_percent(10000);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -398,8 +398,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(900_000_123);
             let max_debt = Decimal::from_usd(1_000_000_000);
-            let collateral_ratio = Decimal::from_percent(8000);
-            let health_factor = Decimal::from_percent(10000);
+            let collateral_ratio = Decimal::from_unified_percent(8000);
+            let health_factor = Decimal::from_unified_percent(10000);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -410,8 +410,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(900_000_000);
             let max_debt = Decimal::from_usd(1_000_000_000);
-            let collateral_ratio = Decimal::from_percent(1000);
-            let health_factor = Decimal::from_percent(4000);
+            let collateral_ratio = Decimal::from_unified_percent(1000);
+            let health_factor = Decimal::from_unified_percent(4000);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -699,7 +699,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(6), // only for decimals
-            collateral_ratio: Decimal::from_percent(50_00),
+            collateral_ratio: Decimal::from_unified_percent(50_00),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -711,7 +711,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(8),
-            collateral_ratio: Decimal::from_percent(50_00),
+            collateral_ratio: Decimal::from_unified_percent(50_00),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -723,7 +723,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(4),
-            collateral_ratio: Decimal::from_percent(12_00),
+            collateral_ratio: Decimal::from_unified_percent(12_00),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -735,7 +735,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(6),
-            collateral_ratio: Decimal::from_percent(90_00),
+            collateral_ratio: Decimal::from_unified_percent(90_00),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -935,37 +935,37 @@ mod tests {
         {
             let amount = Decimal::from_integer(10).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(0))
+            assert_eq!(result, Decimal::from_unified_percent(0))
         }
         {
             let amount = Decimal::from_integer(100).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(1))
+            assert_eq!(result, Decimal::from_unified_percent(1))
         }
         {
             let amount = Decimal::from_integer(200).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(2))
+            assert_eq!(result, Decimal::from_unified_percent(2))
         }
         {
             let amount = Decimal::from_integer(350).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(2))
+            assert_eq!(result, Decimal::from_unified_percent(2))
         }
         {
             let amount = Decimal::from_integer(500).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(3))
+            assert_eq!(result, Decimal::from_unified_percent(3))
         }
         {
             let amount = Decimal::from_integer(999_999).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(12))
+            assert_eq!(result, Decimal::from_unified_percent(12))
         }
         {
             let amount = Decimal::from_integer(1_000_000).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(13))
+            assert_eq!(result, Decimal::from_unified_percent(13))
         }
     }
     #[test]
@@ -985,7 +985,7 @@ mod tests {
             price: Decimal::from_integer(2000).to_price(),
             ..Default::default()
         };
-        let fee = Decimal::from_percent(30);
+        let fee = Decimal::from_unified_percent(30);
         // should fail because swap value is too low
         {
             let amount = Decimal::new(10, 6);
@@ -1106,7 +1106,7 @@ mod tests {
         // MIN - 0%
         {
             let total_fee = Decimal::from_usd(1_227_775);
-            let swap_tax_ratio = Decimal::from_percent(0);
+            let swap_tax_ratio = Decimal::from_unified_percent(0);
             let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
             // expect 0 tax
             assert_eq!(swap_tax, Decimal::from_usd(0));
