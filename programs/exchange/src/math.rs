@@ -35,7 +35,9 @@ pub fn calculate_debt(
         };
         // rounding up to be sure that debt is not less than minted tokens
 
-        debt = debt.add(price.mul_up(synthetic.supply).to_usd()).unwrap();
+        debt = debt
+            .add(price.mul_up(synthetic.supply).to_usd_up())
+            .unwrap();
     }
     Ok(debt)
 }
@@ -115,7 +117,7 @@ pub fn calculate_new_shares_by_rounding_up(
     }
     let all_shares_decimal = Decimal::from_integer(all_shares);
     all_shares_decimal
-        .mul(new_amount)
+        .mul_up(new_amount)
         .div_up(full_amount)
         .to_scale(0)
         .into()
@@ -569,72 +571,68 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
-        // {
-        //     let slot = 100;
-        //     let mut assets_list = AssetsList {
-        //         ..Default::default()
-        //     };
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
 
-        //     // debt 200_000_000
-        //     assets_list.append_asset(Asset {
-        //         price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: slot - 10,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: 100_000_000 * 10u64.pow(8),
-        //         decimals: 8,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 200_000_000
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(2).to_price(),
+                last_update: slot - 10,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(100_000_000).to_scale(8),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     // debt 5_000_000_000
-        //     assets_list.append_asset(Asset {
-        //         price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
-        //         last_update: 100,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: 100_000 * 10u64.pow(8),
-        //         decimals: 8,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 5_000_000_000
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(50_000).to_price(),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(100_000).to_scale(8),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     // debt 0.0001
-        //     assets_list.append_asset(Asset {
-        //         price: (0.0001 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: 1 * 10u64.pow(6),
-        //         decimals: 6,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 0.0001
+            assets_list.append_asset(Asset {
+                price: Decimal::new(1, 4).to_price(),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(1).to_scale(6),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     // debt 0.152407...
-        //     assets_list.append_asset(Asset {
-        //         price: (1.2345 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: (0.12345678 * 10u64.pow(8) as f64) as u64,
-        //         decimals: 8,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 0.152407...
+            assets_list.append_asset(Asset {
+                price: Decimal::new(12345, 4).to_price(),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::new(12345678, 8).to_scale(8),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     let assets_ref = RefCell::new(assets_list);
+            let assets_ref = RefCell::new(assets_list);
 
-        //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
-        //     match result {
-        //         Ok(debt) => assert_eq!(debt, 5200000000_152508),
-        //         Err(_) => assert!(false, "Shouldn't check"),
-        //     }
-        // }
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
+            match result {
+                Ok(debt) => assert_eq!({ debt.val }, 5200000000_152508),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
         // {
         //     let slot = 100;
         //     let mut assets_list = AssetsList {
