@@ -517,42 +517,42 @@ mod test {
             // to_scale == scale
             let to_scale = 8;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(5_000, to_scale);
+            let expected = Decimal::from_integer(5_000).to_scale(to_scale);
             assert_eq!(result, expected);
 
-            // to_scale > scale
+            // // to_scale > scale
             let to_scale = 11;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(5_000_000, to_scale);
+            let expected = Decimal::from_integer(5_000).to_scale(to_scale);
             assert_eq!(result, expected);
 
-            // to_scale < scale
+            // // to_scale < scale
             let to_scale = 5;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(5, to_scale);
+            let expected = Decimal::from_integer(5_000).to_scale(to_scale);
             assert_eq!(result, expected);
         }
         // nominator scale != denominator scale
         {
             let nominator = Decimal::new(35, 5);
-            let denominator = Decimal::new(5, 7);
+            let denominator = Decimal::new(5, 1);
 
             // to_scale == nominator scale
             let to_scale = 7;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(700, to_scale);
+            let expected = Decimal::new(7000, to_scale);
             assert_eq!(result, expected);
 
             // to_scale > nominator scale
             let to_scale = 9;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(70_000, to_scale);
+            let expected = Decimal::new(700_000, to_scale);
             assert_eq!(result, expected);
 
             // to_scale < nominator scale
             let to_scale = 5;
             let result = nominator.div_to_scale(denominator, to_scale);
-            let expected = Decimal::new(7, to_scale);
+            let expected = Decimal::new(70, to_scale);
             assert_eq!(result, expected);
         }
     }
