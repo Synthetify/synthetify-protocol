@@ -731,97 +731,96 @@ mod tests {
             assert_eq!(amount, Decimal::from_sny(0))
         }
     }
+    #[test]
+    fn test_adjust_interest_debt() {
+        // 1%
+        let state = State {
+            debt_interest_rate: Decimal::new(1, 2).to_interest_rate(),
+            accumulated_debt_interest: Decimal::from_usd(0),
+            last_debt_adjustment: 0,
+            ..Default::default()
+        };
+        let usd = Synthetic {
+            supply: Decimal::from_integer(100_000).to_usd(),
+            ..Default::default()
+        };
+        // single period adjustment
+        {
+            let total_debt = Decimal::from_integer(100_000).to_usd();
+            let current_timestamp = 65;
+            let mut state = state.clone();
+            let mut usd = usd.clone();
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-    // #[test]
-    // fn test_adjust_interest_debt() {
-    //     let state = State {
-    //         debt_interest_rate: 10,
-    //         accumulated_debt_interest: 0,
-    //         last_debt_adjustment: 0,
-    //         ..Default::default()
-    //     };
-    //     let usd = Synthetic {
-    //         supply: 100_000 * 10u64.pow(ACCURACY.into()),
-    //         ..Default::default()
-    //     };
-    //     // single period adjustment
-    //     {
-    //         let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let current_timestamp = 65;
-    //         let mut state = state.clone();
-    //         let mut usd = usd.clone();
-    //         adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            // real     0.0019025... $
+            // expected 0.001903     $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_001_903));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(1903));
+            assert_eq!(last_debt_adjustment, 60);
+        }
+        // multiple period adjustment
+        {
+            let total_debt = Decimal::from_integer(100_000).to_usd();
+            let current_timestamp = 120;
+            let mut state = state.clone();
+            let mut usd = usd.clone();
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-    //         // real     0.0019025... $
-    //         // expected 0.001903     $
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_001_903);
-    //         assert_eq!(accumulated_debt_interest, 1903);
-    //         assert_eq!(last_debt_adjustment, 60);
-    //     }
-    //     // multiple period adjustment
-    //     {
-    //         let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let current_timestamp = 120;
-    //         let mut state = state.clone();
-    //         let mut usd = usd.clone();
-    //         adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            // real     0.0038051... $
+            // expected 0.003806     $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_003_806));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(3806));
+            assert_eq!(last_debt_adjustment, 120);
+        }
+        // multiple adjustment interest rate
+        {
+            // timestamp [90 -> 121 -> 183]
+            let total_debt = Decimal::from_integer(100_000).to_usd();
+            let current_timestamp = 90;
+            let mut state = state.clone();
+            let mut usd = usd.clone();
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-    //         // real     0.0038051... $
-    //         // expected 0.003806     $
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_003_806);
-    //         assert_eq!(accumulated_debt_interest, 3806);
-    //         assert_eq!(last_debt_adjustment, 120);
-    //     }
-    //     // multiple adjustment interest rate
-    //     {
-    //         // timestamp [90 -> 31 -> 62]
-    //         let total_debt = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let current_timestamp = 90;
-    //         let mut state = state.clone();
-    //         let mut usd = usd.clone();
-    //         adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            // real     0.0019025... $
+            // expected 0.001903     $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_001_903));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(1903));
+            assert_eq!(last_debt_adjustment, 60);
 
-    //         // real     0.0019025... $
-    //         // expected 0.001903     $
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_001_903);
-    //         assert_eq!(accumulated_debt_interest, 1903);
-    //         assert_eq!(last_debt_adjustment, 60);
+            let current_timestamp = 121;
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-    //         let current_timestamp = 121;
-    //         adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            // real     0.0038051... $
+            // expected 0.003806     $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_003_806));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(3806));
+            assert_eq!(last_debt_adjustment, 120);
 
-    //         // real     0.0038051... $
-    //         // expected 0.003806     $
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_003_806);
-    //         assert_eq!(accumulated_debt_interest, 3806);
-    //         assert_eq!(last_debt_adjustment, 120);
+            let current_timestamp = 183;
+            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
 
-    //         let current_timestamp = 183;
-    //         adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
-
-    //         // real     0.005707... $
-    //         // expected 0.005709    $
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_005_709);
-    //         assert_eq!(accumulated_debt_interest, 5709);
-    //         assert_eq!(last_debt_adjustment, 180);
-    //     }
-    // }
-
+            // real     0.005707... $
+            // expected 0.005709    $
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_709));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5709));
+            assert_eq!(last_debt_adjustment, 180);
+        }
+    }
     // #[test]
     // fn test_calculate_debt_with_interest_multi_adjustment() {
     //     {
