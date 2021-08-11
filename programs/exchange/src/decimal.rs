@@ -509,19 +509,51 @@ mod test {
 
     #[test]
     fn test_div_to_scale() {
-        // to_scale is equals decimal scale
+        // nominator scale == denominator scale
         {
-            let scale = 7;
-            let decimal = Decimal::new(2_000, scale);
-            let divided_by = Decimal::new(4, scale);
-            let result = decimal.div_to_scale(divided_by, scale);
-            // 2_000 / 4 = 500
-            let expected = Decimal::new(500, scale);
+            let nominator = Decimal::new(20_000, 8);
+            let denominator = Decimal::new(4, 8);
+
+            // to_scale == scale
+            let to_scale = 8;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(5_000, to_scale);
+            assert_eq!(result, expected);
+
+            // to_scale > scale
+            let to_scale = 11;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(5_000_000, to_scale);
+            assert_eq!(result, expected);
+
+            // to_scale < scale
+            let to_scale = 5;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(5, to_scale);
             assert_eq!(result, expected);
         }
-        // to_scale is smaller than decimal scale
-        {}
-        // to_scale is bigger than decimal scale
-        {}
+        // nominator scale != denominator scale
+        {
+            let nominator = Decimal::new(35, 5);
+            let denominator = Decimal::new(5, 7);
+
+            // to_scale == nominator scale
+            let to_scale = 7;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(700, to_scale);
+            assert_eq!(result, expected);
+
+            // to_scale > nominator scale
+            let to_scale = 9;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(70_000, to_scale);
+            assert_eq!(result, expected);
+
+            // to_scale < nominator scale
+            let to_scale = 5;
+            let result = nominator.div_to_scale(denominator, to_scale);
+            let expected = Decimal::new(7, to_scale);
+            assert_eq!(result, expected);
+        }
     }
 }
