@@ -604,35 +604,29 @@ mod tests {
             assert_eq!(425, { adjusted_state.staking.next_round.start });
         }
     }
-    // #[test]
-    // fn test_div_up() {
-    //     assert_eq!(div_up(0, 1), 0);
-    //     assert_eq!(div_up(1, 2), 1);
-    //     assert_eq!(div_up(2 * 10u128.pow(20) + 1, 2), 10u128.pow(20) + 1);
-    // }
-    // #[test]
-    // fn test_check_feed_update() {
-    //     let mut list = AssetsList {
-    //         ..Default::default()
-    //     };
-    //     list.append_asset(Asset {
-    //         last_update: 10,
-    //         ..Default::default()
-    //     });
-    //     list.append_asset(Asset {
-    //         last_update: 10,
-    //         ..Default::default()
-    //     });
+    #[test]
+    fn test_check_feed_update() {
+        let mut list = AssetsList {
+            ..Default::default()
+        };
+        list.append_asset(Asset {
+            last_update: 10,
+            ..Default::default()
+        });
+        list.append_asset(Asset {
+            last_update: 10,
+            ..Default::default()
+        });
 
-    //     // Outdated
-    //     assert!(check_feed_update(&list.assets, 0, 1, 10, 100).is_err());
-    //     // Outdated a little
-    //     assert!(check_feed_update(&list.assets, 0, 1, 10, 21).is_err());
-    //     // On the limit
-    //     assert!(check_feed_update(&list.assets, 0, 1, 10, 20).is_ok());
-    //     // No tollerance
-    //     assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
-    // }
+        // Outdated
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 100).is_err());
+        // Outdated a little
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 21).is_err());
+        // On the limit
+        assert!(check_feed_update(&list.assets, 0, 1, 10, 20).is_ok());
+        // No tollerance
+        assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
+    }
 
     // #[test]
     // fn test_set_synthetic_supply() {
