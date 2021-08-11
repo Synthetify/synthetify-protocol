@@ -255,26 +255,6 @@ pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
-// pub fn pow_with_accuracy(mut base: Decimal, mut exp: u128) -> Decimal {
-//     let one = Decimal {
-//         val: 1 * base.denominator(),
-//         scale: base.scale,
-//     };
-
-//     if exp == 0 {
-//         return one;
-//     }
-//     let mut result = one;
-
-//     while exp > 0 {
-//         if exp % 2 != 0 {
-//             result = result.mul(base);
-//         }
-//         exp /= 2;
-//         base = base.mul(base);
-//     }
-//     return result;
-// }
 pub fn calculate_compounded_interest(
     base_value: Decimal,
     periodic_interest_rate: Decimal,
@@ -298,9 +278,6 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::decimal::INTEREST_RATE_SCALE;
-
     use super::*;
     use std::{cell::RefCell, ops::Div};
 
