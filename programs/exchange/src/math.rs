@@ -1261,9 +1261,8 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(15, INTEREST_RATE_SCALE - 9).to_interest_rate();
             let periods_number: u128 = 0;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1274,9 +1273,8 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(15, INTEREST_RATE_SCALE - 9).to_interest_rate();
             let periods_number: u128 = 1;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1289,8 +1287,8 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.000001902587519%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate = Decimal::new(19025875190, INTEREST_RATE_SCALE);
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::from_interest_rate(19025875190);
             let periods_number: u128 = 2;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1303,9 +1301,8 @@ mod tests {
         {
             // value = 300 000$
             // period interest rate = 0.000002%
-            let base_value = Decimal::new(300_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(2, INTEREST_RATE_SCALE - 8).to_scale(INTEREST_RATE_SCALE);
+            let base_value = Decimal::new(300_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(2, INTEREST_RATE_SCALE - 8).to_interest_rate();
             let periods_number: u128 = 525600;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
