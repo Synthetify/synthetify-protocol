@@ -151,7 +151,7 @@ describe('exchange', () => {
     assert.ok(userExchangeAccount.version === 0)
     assert.ok(userExchangeAccount.collaterals.length === 0)
   })
-  describe('#deposit()', async () => {
+  describe.only('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -197,7 +197,7 @@ describe('exchange', () => {
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListData = await exchange.getAssetsList(assetsList)
-      assert.ok(assetListData.collaterals[0].reserveBalance.eq(amount))
+      assert.ok(assetListData.collaterals[0].reserveBalance.val.eq(amount))
     })
     it('Deposit collateral next', async () => {
       const accountOwner = new Account()
@@ -247,8 +247,8 @@ describe('exchange', () => {
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataAfter.collaterals[0].reserveBalance
-          .sub(assetListDataBefore.collaterals[0].reserveBalance)
+        assetListDataAfter.collaterals[0].reserveBalance.val
+          .sub(assetListDataBefore.collaterals[0].reserveBalance.val)
           .eq(amount)
       )
     })
