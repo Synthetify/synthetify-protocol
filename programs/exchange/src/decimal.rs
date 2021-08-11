@@ -507,4 +507,22 @@ mod test {
             assert_eq!(a.div_up(b), Decimal::new(5, 2));
         }
     }
+
+    #[test]
+    fn test_div_to_scale() {
+        // to_scale is equals decimal scale
+        {
+            let scale = 7;
+            let decimal = Decimal::new(2_000, scale);
+            let divided_by = Decimal::new(4, scale);
+            let result = decimal.div_to_scale(divided_by, scale);
+            // 2_000 / 4 = 500
+            let expected = Decimal::new(500, scale);
+            assert_eq!(result, expected);
+        }
+        // to_scale is smaller than decimal scale
+        {}
+        // to_scale is bigger than decimal scale
+        {}
+    }
 }
