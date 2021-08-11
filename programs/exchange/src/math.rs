@@ -1122,54 +1122,53 @@ mod tests {
     //         assert_eq!(burned_shares, 0);
     //     }
     // }
-    // #[test]
-    // fn test_calculate_value_in_usd() {
-    //     // zero price
-    //     {
-    //         let price = 0;
-    //         let amount = 2 * 10u64.pow(PRICE_OFFSET.into());
-    //         let decimal = PRICE_OFFSET;
-    //         let value_in_usd = calculate_value_in_usd(price, amount, decimal);
-    //         // should be 0 USD
-    //         assert_eq!(value_in_usd, 0);
-    //     }
-    //     // No amount
-    //     {
-    //         let price = 50 * 10u64.pow(PRICE_OFFSET.into());
-    //         let amount = 0;
-    //         let decimal = PRICE_OFFSET;
-    //         let value_in_usd = calculate_value_in_usd(price, amount, decimal);
-    //         // should be 0 USD
-    //         assert_eq!(value_in_usd, 0);
-    //     }
-    //     // decimal same as xUSD
-    //     {
-    //         let price = 3 * 10u64.pow(PRICE_OFFSET.into());
-    //         let amount = 2 * 10u64.pow(ACCURACY.into());
-    //         let decimal = ACCURACY;
-    //         let value_in_usd = calculate_value_in_usd(price, amount, decimal);
-    //         // should be 6 USD
-    //         assert_eq!(value_in_usd, 6 * 10u64.pow(ACCURACY.into()));
-    //     }
-    //     // decimal lower than xUSD
-    //     {
-    //         let price = 112 * 10u64.pow(PRICE_OFFSET as u32);
-    //         let amount = 2 * 10u64.pow(6);
-    //         let decimal = 4;
-    //         let value_in_usd = calculate_value_in_usd(price, amount, decimal);
-    //         // should be 22400 USD
-    //         assert_eq!(value_in_usd, 22_400 * 10u64.pow(ACCURACY.into()));
-    //     }
-    //     // decimal bigger than xUSD
-    //     {
-    //         let price = 91 * 10u64.pow(PRICE_OFFSET as u32);
-    //         let amount = 2 * 10u64.pow(12);
-    //         let decimal = 10;
-    //         let value_in_usd = calculate_value_in_usd(price, amount, decimal);
-    //         // should be 18200 USD
-    //         assert_eq!(value_in_usd, 18_200 * 10u64.pow(ACCURACY.into()));
-    //     }
-    // }
+    #[test]
+    fn test_calculate_value_in_usd() {
+        // zero price
+        {
+            let price = Decimal::from_integer(0).to_price();
+            let amount = Decimal::from_integer(2).to_usd();
+            let value_in_usd = calculate_value_in_usd(price, amount);
+            // should be 0 USD
+            assert_eq!(value_in_usd, Decimal::from_integer(0).to_usd());
+        }
+        // No amount
+        {
+            let price = Decimal::from_integer(50).to_price();
+            let amount = Decimal::from_integer(0).to_usd();
+            let value_in_usd = calculate_value_in_usd(price, amount);
+            // should be 0 USD
+            assert_eq!(value_in_usd, Decimal::from_integer(0).to_usd());
+        }
+        // decimal same as xUSD
+        {
+            let price = Decimal::from_integer(3).to_price();
+            let amount = Decimal::from_integer(2).to_usd();
+            let value_in_usd = calculate_value_in_usd(price, amount);
+            // should be 6 USD
+            assert_eq!(value_in_usd, Decimal::from_integer(6).to_usd());
+        }
+        // // decimal lower than xUSD
+        {
+            let asset_scale = 4;
+            let price = Decimal::from_integer(112).to_price();
+            let amount = Decimal::from_integer(200).to_scale(asset_scale);
+            let value_in_usd = calculate_value_in_usd(price, amount);
+            // should be 22400 USD
+            let expected = Decimal::from_integer(22_400).to_usd();
+            assert_eq!(value_in_usd, expected);
+        }
+        // decimal bigger than xUSD
+        {
+            let asset_scale = 10;
+            let price = Decimal::from_integer(91).to_price();
+            let amount = Decimal::from_integer(200).to_scale(asset_scale);
+            let value_in_usd = calculate_value_in_usd(price, amount);
+            // should be 18200 USD
+            let expected = Decimal::from_integer(18_200).to_usd();
+            assert_eq!(value_in_usd, expected);
+        }
+    }
     #[test]
     fn test_calculate_swap_tax() {
         // MIN - 0%
