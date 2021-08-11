@@ -523,5 +523,17 @@ mod test {
         {}
         // to_scale is bigger than decimal scale
         {}
+        {
+            let a = Decimal {
+                val: 5_0000,
+                scale: 4,
+            };
+            let b = Decimal {
+                val: 5_00,
+                scale: 2,
+            };
+            let result = a.div_to_scale(b, 4);
+            assert_eq!(result, Decimal::from_integer(1).to_scale(4));
+        }
     }
 }
