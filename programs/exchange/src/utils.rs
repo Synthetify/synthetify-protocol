@@ -546,64 +546,64 @@ mod tests {
             );
         }
     }
-    // #[test]
-    // fn adjust_staking_rounds_with_variable_round_length_test() {
-    //     let staking_round_length = 100;
-    //     let amount_per_round = 300;
-    //     let debt_shares = 999u64;
-    //     let staking = Staking {
-    //         round_length: staking_round_length,
-    //         amount_per_round: amount_per_round,
-    //         finished_round: StakingRound {
-    //             all_points: 0,
-    //             amount: 0,
-    //             start: 0,
-    //         },
-    //         current_round: StakingRound {
-    //             all_points: 0,
-    //             amount: 0,
-    //             start: staking_round_length as u64,
-    //         },
-    //         next_round: StakingRound {
-    //             all_points: 0,
-    //             amount: amount_per_round,
-    //             start: staking_round_length as u64 + staking_round_length as u64,
-    //         },
-    //         ..Default::default()
-    //     };
-    //     let original_state = State {
-    //         debt_shares: debt_shares,
-    //         staking: staking,
-    //         ..Default::default()
-    //     };
-    //     {
-    //         // Should move one round forward
-    //         let mut adjusted_state = original_state.clone();
-    //         adjust_staking_rounds(&mut adjusted_state, 201);
-    //         // |    |   |
-    //         // f    c   n
-    //         // 100  200 300
-    //         assert_ne!(original_state, adjusted_state);
+    #[test]
+    fn adjust_staking_rounds_with_variable_round_length_test() {
+        let staking_round_length = 100;
+        let amount_per_round = Decimal::new(300, ACCURACY);
+        let debt_shares = 999u64;
+        let staking = Staking {
+            round_length: staking_round_length,
+            amount_per_round: amount_per_round,
+            finished_round: StakingRound {
+                all_points: 0,
+                amount: Decimal::from_sny(0),
+                start: 0,
+            },
+            current_round: StakingRound {
+                all_points: 0,
+                amount: Decimal::from_sny(0),
+                start: staking_round_length as u64,
+            },
+            next_round: StakingRound {
+                all_points: 0,
+                amount: amount_per_round,
+                start: staking_round_length as u64 + staking_round_length as u64,
+            },
+            ..Default::default()
+        };
+        let original_state = State {
+            debt_shares: debt_shares,
+            staking: staking,
+            ..Default::default()
+        };
+        {
+            // Should move one round forward
+            let mut adjusted_state = original_state.clone();
+            adjust_staking_rounds(&mut adjusted_state, 201);
+            // |    |   |
+            // f    c   n
+            // 100  200 300
+            assert_ne!(original_state, adjusted_state);
 
-    //         // Curly braces force copy and makes warning disappear
-    //         assert_eq!({ adjusted_state.staking.finished_round.start }, {
-    //             original_state.staking.current_round.start
-    //         });
-    //         assert_eq!({ adjusted_state.staking.current_round.start }, {
-    //             original_state.staking.next_round.start
-    //         });
-    //         assert_eq!({ adjusted_state.staking.next_round.start }, {
-    //             original_state.staking.next_round.start + staking_round_length as u64
-    //         });
-    //         // change round length
+            // Curly braces force copy and makes warning disappear
+            assert_eq!({ adjusted_state.staking.finished_round.start }, {
+                original_state.staking.current_round.start
+            });
+            assert_eq!({ adjusted_state.staking.current_round.start }, {
+                original_state.staking.next_round.start
+            });
+            assert_eq!({ adjusted_state.staking.next_round.start }, {
+                original_state.staking.next_round.start + staking_round_length as u64
+            });
+            // change round length
 
-    //         adjusted_state.staking.round_length = 25;
-    //         adjust_staking_rounds(&mut adjusted_state, 401);
-    //         assert_eq!(375, { adjusted_state.staking.finished_round.start });
-    //         assert_eq!(400, { adjusted_state.staking.current_round.start });
-    //         assert_eq!(425, { adjusted_state.staking.next_round.start });
-    //     }
-    // }
+            adjusted_state.staking.round_length = 25;
+            adjust_staking_rounds(&mut adjusted_state, 401);
+            assert_eq!(375, { adjusted_state.staking.finished_round.start });
+            assert_eq!(400, { adjusted_state.staking.current_round.start });
+            assert_eq!(425, { adjusted_state.staking.next_round.start });
+        }
+    }
     // #[test]
     // fn test_div_up() {
     //     assert_eq!(div_up(0, 1), 0);
