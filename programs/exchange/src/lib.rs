@@ -99,7 +99,7 @@ pub mod exchange {
         };
         let sny_collateral = Collateral {
             asset_index: 1,
-            collateral_ratio: Decimal::from_percent(10),
+            collateral_ratio: Decimal::new(10, 2).to_percent(),
             collateral_address: collateral_token,
             reserve_balance: Decimal {
                 val: 0,
@@ -388,7 +388,6 @@ pub mod exchange {
             scale: xusd_synthetic.supply.scale,
         };
         let debt_after_mint = user_debt.add(amount_decimal).unwrap();
-
         if mint_limit.lt(debt_after_mint).unwrap() {
             return Err(ErrorCode::MintLimit.into());
         }

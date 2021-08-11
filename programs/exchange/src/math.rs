@@ -54,7 +54,6 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
             val: collateral_entry.amount.into(),
             scale: collateral.reserve_balance.scale,
         };
-
         max_debt = max_debt
             .add(
                 asset
