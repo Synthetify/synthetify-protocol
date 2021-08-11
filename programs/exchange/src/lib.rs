@@ -228,7 +228,8 @@ pub mod exchange {
         state.nonce = nonce;
         state.debt_shares = 0u64;
         state.assets_list = *ctx.accounts.assets_list.key;
-        state.health_factor = Decimal::from_percent(50);
+        state.health_factor = Decimal::from_percent(50); // 50%
+
         // once we will not be able to fit all data into one transaction we will
         // use max_delay to allow split updating oracles and exchange operation
         state.max_delay = 0;
@@ -1412,7 +1413,7 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_collateral_ratio(
         ctx: Context<SetCollateralRatio>,
-        collateral_ratio: u16,
+        collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET COLLATERAL RATIO");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1425,13 +1426,14 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let decimal_collateral_ratio = Decimal::from_unified_percent(collateral_ratio);
         // collateral_ratio should be less or equals 100%
-        require!(
-            decimal_collateral_ratio.ltq(Decimal::from_unified_percent(10000))?,
-            ParameterOutOfRange
-        );
-        collateral.collateral_ratio = decimal_collateral_ratio;
+        let same_scale = collateral.collateral_ratio.scale == collateral_ratio.scale;
+        let in_range = collateral
+            .collateral_ratio
+            .ltq(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        collateral.collateral_ratio = collateral_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
