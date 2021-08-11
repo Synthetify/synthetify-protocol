@@ -821,117 +821,115 @@ mod tests {
             assert_eq!(last_debt_adjustment, 180);
         }
     }
-    // #[test]
-    // fn test_calculate_debt_with_interest_multi_adjustment() {
-    //     {
-    //         let slot = 100;
-    //         let mut assets_list = AssetsList {
-    //             ..Default::default()
-    //         };
-    //         let mut state = State {
-    //             debt_interest_rate: 10,
-    //             accumulated_debt_interest: 0,
-    //             last_debt_adjustment: 0,
-    //             ..Default::default()
-    //         };
+    #[test]
+    fn test_calculate_debt_with_interest_multi_adjustment() {
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            let mut state = State {
+                debt_interest_rate: Decimal::new(1, 2).to_interest_rate(),
+                accumulated_debt_interest: Decimal::from_usd(0),
+                last_debt_adjustment: 0,
+                ..Default::default()
+            };
 
-    //         // xusd - fixed price 1 USD
-    //         // debt 100000
-    //         assets_list.append_asset(Asset {
-    //             twap: 10u64.pow(PRICE_OFFSET.into()),
-    //             last_update: slot,
-    //             ..Default::default()
-    //         });
-    //         assets_list.append_synthetic(Synthetic {
-    //             supply: 100_000 * 10u64.pow(6),
-    //             decimals: 6,
-    //             asset_index: assets_list.head_assets as u8 - 1,
-    //             ..Default::default()
-    //         });
+            // xusd - fixed price 1 USD
+            // debt 100000
+            assets_list.append_asset(Asset {
+                twap: Decimal::from_integer(1).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(100_000).to_usd(),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-    //         // debt 50000
-    //         assets_list.append_asset(Asset {
-    //             twap: 5 * 10u64.pow(PRICE_OFFSET.into()),
-    //             last_update: slot,
-    //             ..Default::default()
-    //         });
-    //         assets_list.append_synthetic(Synthetic {
-    //             supply: 10_000 * 10u64.pow(6),
-    //             decimals: 6,
-    //             asset_index: assets_list.head_assets as u8 - 1,
-    //             ..Default::default()
-    //         });
-    //         let timestamp: i64 = 120;
+            // debt 50000
+            assets_list.append_asset(Asset {
+                twap: Decimal::from_integer(5).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(10_000).to_usd(),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
+            let timestamp: i64 = 120;
 
-    //         let assets_ref = RefCell::new(assets_list);
-    //         // base debt 150000
-    //         let total_debt = calculate_debt_with_interest(
-    //             &mut state,
-    //             &mut assets_ref.borrow_mut(),
-    //             slot,
-    //             timestamp,
-    //         );
-    //         // real     150_000.005_707... $
-    //         // expected 150_000.005_708    $
-    //         match total_debt {
-    //             Ok(debt) => assert_eq!(debt, 150_000_005_708),
-    //             Err(_) => assert!(false, "Shouldn't check"),
-    //         }
+            let assets_ref = RefCell::new(assets_list);
+            // base debt 150000
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // real     150_000.005_707... $
+            // expected 150_000.005_708    $
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_708)),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
 
-    //         let usd = assets_ref.borrow().synthetics[0];
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_005_708);
-    //         assert_eq!(accumulated_debt_interest, 5708);
-    //         assert_eq!(last_debt_adjustment, 120);
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_708));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5708));
+            assert_eq!(last_debt_adjustment, 120);
 
-    //         // timestamp that not trigger debt adjustment
-    //         let timestamp: i64 = 150;
+            // timestamp that not trigger debt adjustment
+            let timestamp: i64 = 150;
 
-    //         let total_debt = calculate_debt_with_interest(
-    //             &mut state,
-    //             &mut assets_ref.borrow_mut(),
-    //             slot,
-    //             timestamp,
-    //         );
-    //         // debt should be the same
-    //         match total_debt {
-    //             Ok(debt) => assert_eq!(debt, 150_000_005_708),
-    //             Err(_) => assert!(false, "Shouldn't check"),
-    //         }
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // debt should be the same
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_708)),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
 
-    //         let usd = assets_ref.borrow().synthetics[0];
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         // should be the same
-    //         assert_eq!(usd_supply, 100_000_005_708);
-    //         assert_eq!(accumulated_debt_interest, 5708);
-    //         assert_eq!(last_debt_adjustment, 120);
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            // should be the same
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_708));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5708));
+            assert_eq!(last_debt_adjustment, 120);
 
-    //         let timestamp: i64 = 185;
+            let timestamp: i64 = 185;
 
-    //         let total_debt = calculate_debt_with_interest(
-    //             &mut state,
-    //             &mut assets_ref.borrow_mut(),
-    //             slot,
-    //             timestamp,
-    //         );
-    //         // real     150_000.008_561... $
-    //         // expected 150_000.008_562    $
-    //         match total_debt {
-    //             Ok(debt) => assert_eq!(debt, 150_000_008_562),
-    //             Err(_) => assert!(false, "Shouldn't check"),
-    //         }
+            let total_debt = calculate_debt_with_interest(
+                &mut state,
+                &mut assets_ref.borrow_mut(),
+                slot,
+                timestamp,
+            );
+            // real     150_000.008_561... $
+            // expected 150_000.008_562    $
+            match total_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_008_562)),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
 
-    //         let usd = assets_ref.borrow().synthetics[0];
-    //         let usd_supply = usd.supply;
-    //         let accumulated_debt_interest = state.accumulated_debt_interest;
-    //         let last_debt_adjustment = state.last_debt_adjustment;
-    //         assert_eq!(usd_supply, 100_000_008_562);
-    //         assert_eq!(accumulated_debt_interest, 8562);
-    //         assert_eq!(last_debt_adjustment, 180);
-    //     }
-    // }
+            let usd = assets_ref.borrow().synthetics[0];
+            let usd_supply = usd.supply;
+            let accumulated_debt_interest = state.accumulated_debt_interest;
+            let last_debt_adjustment = state.last_debt_adjustment;
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_008_562));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(8562));
+            assert_eq!(last_debt_adjustment, 180);
+        }
+    }
 }
