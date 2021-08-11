@@ -375,7 +375,7 @@ pub mod exchange {
         let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
-        let mint_limit = state.health_factor.mul(max_debt);
+        let mint_limit = max_debt.mul(state.health_factor);
 
         let synthetics = &mut assets_list.synthetics;
 
