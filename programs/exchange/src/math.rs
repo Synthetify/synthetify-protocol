@@ -302,6 +302,8 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 #[cfg(test)]
 mod tests {
 
+    use crate::decimal::INTEREST_RATE_SCALE;
+
     use super::*;
     use std::{cell::RefCell, ops::Div};
 
@@ -1253,60 +1255,66 @@ mod tests {
     //         assert!(token_amount.eq(&expected));
     //     }
     // }
-    // #[test]
-    // fn test_calculate_compounded_interest() {
-    //     // periods_number = 0
-    //     {
-    //         // value = 100 000$
-    //         // period interest rate = 0.0000015%
-    //         let base_value = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
-    //         let periods_number: u128 = 0;
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-    //         // should be 0
-    //         assert_eq!(compounded_value, 0);
-    //     }
-    //     // periods_number = 1
-    //     {
-    //         // value = 100 000$
-    //         // period interest rate = 0.0000015%
-    //         let base_value = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let period_interest_rate = 15 * 10u128.pow((INTEREST_RATE_DECIMAL - 9).into());
-    //         let periods_number: u128 = 1;
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-    //         // expected 0.0015 $
-    //         // real     0.0015... $
-    //         assert_eq!(compounded_value, 1_500);
-    //     }
-    //     // period_number = 2
-    //     {
-    //         // value = 100 000$
-    //         // period interest rate = 0.000001902587519%
-    //         let base_value = 100_000 * 10u64.pow(ACCURACY.into());
-    //         let period_interest_rate = 19025875190;
-    //         let periods_number: u128 = 2;
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-    //         // expected 0.003806... $
-    //         // real     0.0038051... $
-    //         assert_eq!(compounded_value, 3_806);
-    //     }
-    //     // periods_number = 525600 (every minute of the year )
-    //     {
-    //         // value = 300 000$
-    //         // period interest rate = 0.000002%
-    //         let base_value = 300_000 * 10u64.pow(ACCURACY.into());
-    //         let period_interest_rate = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
-    //         let periods_number: u128 = 525600;
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, periods_number);
-    //         // expected 3170.233523... $
-    //         // real     3170.233522... $
-    //         assert_eq!(compounded_value, 3_170_233523);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_compounded_interest() {
+        // periods_number = 0
+        {
+            // value = 100 000$
+            // period interest rate = 0.0000015%
+            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
+            let period_interest_rate =
+                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            let periods_number: u128 = 0;
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // should be 0
+            assert_eq!(compounded_value, Decimal::new(0, base_value.scale));
+        }
+        // periods_number = 1
+        {
+            // value = 100 000$
+            // period interest rate = 0.0000015%
+            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
+            let period_interest_rate =
+                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            let periods_number: u128 = 1;
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // expected 0.0015 $
+            // real     0.0015... $
+            let expected = Decimal::new(1_500, base_value.scale);
+            assert_eq!(compounded_value, expected);
+        }
+        // period_number = 2
+        {
+            // value = 100 000$
+            // period interest rate = 0.000001902587519%
+            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
+            let period_interest_rate = Decimal::new(19025875190, INTEREST_RATE_SCALE);
+            let periods_number: u128 = 2;
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // expected 0.003806... $
+            // real     0.0038051... $
+            let expected = Decimal::new(3_806, base_value.scale);
+            assert_eq!(compounded_value, expected);
+        }
+        // periods_number = 525600 (every minute of the year )
+        {
+            // value = 300 000$
+            // period interest rate = 0.000002%
+            let base_value = Decimal::new(300_000, 0).to_scale(ACCURACY);
+            let period_interest_rate =
+                Decimal::new(2, INTEREST_RATE_SCALE - 8).to_scale(INTEREST_RATE_SCALE);
+            let periods_number: u128 = 525600;
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, periods_number);
+            // expected 3170.233523... $
+            // real     3170.233522... $
+            let expected = Decimal::new(3_170_233523, base_value.scale);
+            assert_eq!(compounded_value, expected);
+        }
+    }
 
     // #[test]
     // fn test_calculate_multi_compounded_interest() {
