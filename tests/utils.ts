@@ -7,6 +7,7 @@ import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
+import { divUp } from '@synthetify/sdk/lib/utils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
@@ -44,11 +45,10 @@ export const calculateAmountAfterFee = (
   effectiveFee: number,
   amount: BN
 ): BN => {
-  const feeDecimal = 5
-  const valueInUsd = assetIn.price
+  const valueInUsd = assetIn.price.val
     .mul(amount)
-    .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
-  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+    .div(new BN(10 ** (syntheticIn.supply.scale + ORACLE_OFFSET - ACCURACY)))
+  const fee = valueInUsd.muln(effectiveFee)
   return usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
 }
 export const calculateFee = (
@@ -57,16 +57,15 @@ export const calculateFee = (
   amountIn: BN,
   effectiveFee: number
 ): BN => {
-  const feeDecimal = 5
-  const value = assetIn.price
+  const value = assetIn.price.val
     .mul(amountIn)
-    .div(new BN(10).pow(new BN(syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+    .div(new BN(10).pow(new BN(syntheticIn.supply.scale + ORACLE_OFFSET - ACCURACY)))
 
-  return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
+  return value.muln(effectiveFee)
 }
 export const calculateSwapTax = (totalFee: BN, swapTax: Decimal): BN => {
   // swapTax 20 -> 20%
-  return totalFee.mul(swapTax.val).div(new BN(10).pow(new BN(swapTax.scale)))
+  return divUp(totalFee.mul(swapTax.val), new BN(10).pow(new BN(swapTax.scale)))
 }
 export const eqDecimals = (a: Decimal, b: Decimal) => {
   // swapTax 20 -> 20%
@@ -80,15 +79,23 @@ export const usdToTokenAmount = (
   token: Synthetic | Collateral,
   valueInUsd: BN
 ): BN => {
-  let decimalDifference = token.decimals - ACCURACY
+  let decimalDifference
+  //@ts-expect-error
+  if (token?.supply.scale) {
+    //@ts-expect-error
+    decimalDifference = token?.supply.scale - ACCURACY
+  } else {
+    //@ts-expect-error
+    decimalDifference = token.reserveBalance.scale - ACCURACY
+  }
   let amount
   if (decimalDifference < 0) {
     amount = valueInUsd
       .mul(new BN(10 ** ORACLE_OFFSET))
       .div(new BN(10 ** decimalDifference))
-      .div(asset.price)
+      .div(asset.price.val)
   } else {
-    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price)
+    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price.val)
   }
   return amount
 }
