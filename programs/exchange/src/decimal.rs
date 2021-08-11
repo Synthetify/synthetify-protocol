@@ -214,16 +214,12 @@ impl DivScale<Decimal> for Decimal {
 
         let val = if decimal_difference < 0 {
             self.val
-                .checked_mul(other.denominator())
-                .unwrap()
                 .checked_div(other.val)
                 .unwrap()
                 .checked_div(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
         } else {
             self.val
-                .checked_mul(other.denominator())
-                .unwrap()
                 .checked_mul(10u128.pow(decimal_difference.try_into().unwrap()))
                 .unwrap()
                 .checked_div(other.val)
