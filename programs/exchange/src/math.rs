@@ -54,7 +54,6 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
             val: collateral_entry.amount.into(),
             scale: collateral.reserve_balance.scale,
         };
-
         max_debt = max_debt
             .add(
                 asset
@@ -992,7 +991,7 @@ mod tests {
         };
         // 7 decimals
         let asset_eth = Asset {
-            price: Decimal::from_integer(12000).to_price(),
+            price: Decimal::from_integer(2000).to_price(),
             ..Default::default()
         };
         let fee = Decimal::from_percent(30);
@@ -1025,61 +1024,45 @@ mod tests {
             // fee should be 150 USD
             assert_eq!(swap_fee, Decimal::from_integer(150).to_usd());
         }
-        // {
-        //     let (out_amount, swap_fee) = calculate_swap_out_amount(
-        //         &asset_btc,
-        //         &asset_eth,
-        //         &synthetic_btc,
-        //         &synthetic_eth,
-        //         99700000,
-        //         fee,
-        //     )
-        //     .unwrap();
-        //     // out amount should be 24.850225 ETH
-        //     assert_eq!(out_amount, 24_850_2250);
-        //     // fee should be 149,55 USD
-        //     assert_eq!(swap_fee, 14955 * 10u64.pow(4));
-        // }
+        {
+            let amount = Decimal::new(99700000, 8);
+            let (out_amount, swap_fee) =
+                calculate_swap_out_amount(&asset_btc, &asset_eth, 7, amount, fee).unwrap();
+            // out amount should be 24.850225 ETH
+            assert_eq!(out_amount, Decimal::new(24_850_2250, 7));
+            // fee should be 149,55 USD
+            assert_eq!(swap_fee, Decimal::new(149_55, 2).to_usd());
+        }
     }
-    // #[test]
-    // fn test_calculate_burned_shares() {
-    //     // all_debt
-    //     {
-    //         // 7772,102...
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let synthetic = Synthetic {
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let all_debt = 1598;
-    //         let all_shares = 90;
-    //         let amount = 9857;
-    //         let burned_shares =
-    //             calculate_burned_shares(&asset, &synthetic, all_debt, all_shares, amount);
-    //         assert_eq!(burned_shares, 7772);
-    //     }
-    //     // user_debt
-    //     {
-    //         // user_debt = 0
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let synthetic = Synthetic {
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 0;
-    //         let user_shares = 0;
-    //         let amount = 0;
-    //         let burned_shares =
-    //             calculate_burned_shares(&asset, &synthetic, user_debt, user_shares, amount);
-    //         assert_eq!(burned_shares, 0);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_burned_shares() {
+        // all_debt
+        {
+            // 7772,102...
+            let asset = Asset {
+                price: Decimal::from_integer(14).to_price(),
+                ..Default::default()
+            };
+            let all_debt = Decimal::from_usd(1598);
+            let all_shares = 90;
+            let amount = Decimal::from_usd(9857);
+            let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
+            assert_eq!(burned_shares, 7772);
+        }
+        // user_debt
+        {
+            // user_debt = 0
+            let asset = Asset {
+                price: Decimal::from_integer(14).to_price(),
+                ..Default::default()
+            };
+            let user_debt = Decimal::from_usd(0);
+            let user_shares = 0;
+            let amount = Decimal::from_usd(0);
+            let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
+            assert_eq!(burned_shares, 0);
+        }
+    }
     #[test]
     fn test_calculate_value_in_usd() {
         // zero price
