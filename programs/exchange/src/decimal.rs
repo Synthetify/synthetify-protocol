@@ -56,6 +56,9 @@ impl Decimal {
     pub fn to_usd_up(self) -> Decimal {
         self.to_scale_up(ACCURACY)
     }
+    pub fn to_sny(self) -> Decimal {
+        self.to_scale(ACCURACY)
+    }
     pub fn to_price(self) -> Decimal {
         self.to_scale(PRICE_OFFSET)
     }
