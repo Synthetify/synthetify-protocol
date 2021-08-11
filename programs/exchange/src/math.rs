@@ -1252,7 +1252,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015% = 15 * 10^(-9)
-            let base_value = Decimal::new(100_000, 0).to_usd();
+            let base_value = Decimal::from_integer(100_000).to_usd();
             let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 0;
             let compounded_value =
@@ -1264,7 +1264,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.0000015% = 15 * 10^(-9)
-            let base_value = Decimal::new(100_000, 0).to_usd();
+            let base_value = Decimal::from_integer(100_000).to_usd();
             let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 1;
             let compounded_value =
@@ -1278,7 +1278,7 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.000001902587519%
-            let base_value = Decimal::new(100_000, 0).to_usd();
+            let base_value = Decimal::from_integer(100_000).to_usd();
             let period_interest_rate = Decimal::from_interest_rate(19025875190);
             let periods_number: u128 = 2;
             let compounded_value =
@@ -1292,7 +1292,7 @@ mod tests {
         {
             // value = 300 000$
             // period interest rate = 0.000002% = 2 * 10^(-8)
-            let base_value = Decimal::new(300_000, 0).to_usd();
+            let base_value = Decimal::from_integer(300_000).to_usd();
             let period_interest_rate = Decimal::new(2, 8).to_interest_rate();
             let periods_number: u128 = 525600;
             let compounded_value =
@@ -1309,7 +1309,7 @@ mod tests {
         // start value 200 000 $
         // period interest rate = 0.000002% = 2 * 10^(-8)
         let period_interest_rate = Decimal::new(2, 8).to_interest_rate();
-        let start_value = Decimal::new(200_000, 0).to_usd();
+        let start_value = Decimal::from_integer(200_000).to_usd();
         // irregular compound
         // [period number] 100_000 -> 10_000 -> 5 -> 415_595
         {
@@ -1336,25 +1336,26 @@ mod tests {
             assert_eq!(interest_diff, expected);
         }
         // regular compound (every 3 minutes for the year)
-        // {
-        //     let mut i: u128 = 0;
-        //     let interval: u128 = 3;
-        //     let mut base_value = start_value;
-        //     loop {
-        //         let compounded_value =
-        //             calculate_compounded_interest(base_value, period_interest_rate, interval);
-        //         base_value = base_value.checked_add(compounded_value).unwrap();
+        {
+            let mut i: u128 = 0;
+            let interval: u128 = 3;
+            let mut base_value = start_value;
+            loop {
+                let compounded_value =
+                    calculate_compounded_interest(base_value, period_interest_rate, interval);
+                base_value = base_value.add(compounded_value).unwrap();
 
-        //         i += interval;
-        //         if i >= 525600 {
-        //             break;
-        //         }
-        //     }
-        //     let interest_diff = base_value.checked_sub(start_value).unwrap();
-        //     // real     2113.4... $
-        //     // expected 2113.5... $
-        //     assert_eq!(interest_diff, 2113577183);
-        // }
+                i += interval;
+                if i >= MINUTES_IN_YEAR.into() {
+                    break;
+                }
+            }
+            let interest_diff = base_value.sub(start_value).unwrap();
+            // real     2113.4... $
+            // expected 2113.5... $
+            let expected = Decimal::new(2113577183, ACCURACY);
+            assert_eq!(interest_diff, expected);
+        }
     }
 
     #[test]
