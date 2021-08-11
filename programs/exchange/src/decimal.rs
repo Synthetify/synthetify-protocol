@@ -110,9 +110,17 @@ impl Mul<u128> for Decimal {
 }
 impl MulUp<Decimal> for Decimal {
     fn mul_up(self, other: Decimal) -> Self {
-        let denominator = Decimal::new(other.denominator(), 0);
+        let denominator = other.denominator();
+
         Self {
-            val: self.mul(other).div_up(denominator).val,
+            val: self
+                .val
+                .checked_mul(other.val)
+                .unwrap()
+                .checked_add(denominator.checked_sub(1).unwrap())
+                .unwrap()
+                .checked_div(denominator)
+                .unwrap(),
             scale: self.scale,
         }
     }
@@ -400,35 +408,53 @@ mod test {
             assert_eq!(result, expected);
         }
     }
+
     #[test]
     fn test_mul_up() {
+        // mul of little
         {
             let a = Decimal::new(1, 10);
             let b = Decimal::new(1, 10);
             assert_eq!(a.mul_up(b), Decimal::new(1, 10));
         }
+        // mul calculable without precision loss
         {
             let a = Decimal::new(1000, 3);
             let b = Decimal::new(300, 3);
-            assert_eq!(a.mul_up(b), Decimal::new(334, 3));
+            assert_eq!(a.mul_up(b), Decimal::new(300, 3));
+        }
+        // mul by zero
+        {
+            let a = Decimal::new(1000, 3);
+            let b = Decimal::new(0, 0);
+            assert_eq!(a.mul_up(b), Decimal::new(0, 3));
+        }
+        // mul with different decimals
+        {
+            let a = Decimal::new(1_000_000_000, 9);
+            let b = Decimal::new(3, 8);
+            assert_eq!(a.mul_up(b), Decimal::new(30, 9));
         }
     }
 
     #[test]
     fn test_div_up() {
+        // div of zero
         {
             let a = Decimal::new(0, 0);
             let b = Decimal::new(1, 0);
             assert_eq!(a.div_up(b), Decimal::new(0, 0));
         }
+        // div check rounding up
         {
             let a = Decimal::new(1, 0);
             let b = Decimal::new(2, 0);
             assert_eq!(a.div_up(b), Decimal::new(1, 0));
         }
+        // div big number
         {
             let a = Decimal::new(200_000_000_001, 6);
-            let b = Decimal::new(2, 0);
+            let b = Decimal::new(2_000, 3);
             assert!(!a.div_up(b).lt(Decimal::new(100_000_000_001, 6)).unwrap());
         }
     }
