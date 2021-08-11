@@ -76,6 +76,20 @@ impl Decimal {
             scale,
         }
     }
+    pub fn to_scale_up(self, scale: u8) -> Self {
+        let decimal = Self::new(self.val, scale);
+        if self.scale >= scale {
+            decimal.div_up(Self::new(
+                10u128.pow((self.scale - scale).try_into().unwrap()),
+                0,
+            ))
+        } else {
+            decimal.mul_up(Self::new(
+                10u128.pow((scale - self.scale).try_into().unwrap()),
+                0,
+            ))
+        }
+    }
 
     // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
     //     return Ok(self
@@ -172,17 +186,12 @@ impl Div<Decimal> for Decimal {
 }
 impl DivUp<Decimal> for Decimal {
     fn div_up(self, other: Decimal) -> Self {
-        let almost_other = other
-            .to_scale(self.scale)
-            .sub(Decimal::new(1, self.scale))
-            .unwrap();
-
         Self {
             val: self
                 .val
                 .checked_mul(other.denominator())
                 .unwrap()
-                .checked_add(almost_other.val)
+                .checked_add(other.val.checked_sub(1).unwrap())
                 .unwrap()
                 .checked_div(other.val)
                 .unwrap(),
@@ -192,7 +201,7 @@ impl DivUp<Decimal> for Decimal {
 }
 impl DivScale<Decimal> for Decimal {
     fn div_to_scale(self, other: Decimal, to_scale: u8) -> Self {
-        let decimal_difference = to_scale as i16 - self.scale as i16;
+        let decimal_difference = to_scale as i32 - self.scale as i32;
 
         let val = if decimal_difference < 0 {
             self.val
@@ -346,6 +355,35 @@ mod test {
             assert_eq!({ result.val }, 0);
         }
     }
+
+    #[test]
+    fn test_to_scale_up() {
+        // Increasing precision
+        {
+            let decimal = Decimal { val: 42, scale: 2 };
+            let result = decimal.to_scale_up(3);
+
+            assert_eq!(result.scale, 3);
+            assert_eq!({ result.val }, 420);
+        }
+        // Decreasing precision
+        {
+            let decimal = Decimal { val: 42, scale: 2 };
+            let result = decimal.to_scale_up(1);
+
+            assert_eq!(result.scale, 1);
+            assert_eq!({ result.val }, 5);
+        }
+        // Decreasing precision over value
+        {
+            let decimal = Decimal { val: 123, scale: 4 };
+            let result = decimal.to_scale_up(0);
+
+            assert_eq!(result.scale, 0);
+            assert_eq!({ result.val }, 1);
+        }
+    }
+
     #[test]
     fn test_pow_with_accuracy() {
         // Zero base
@@ -456,6 +494,11 @@ mod test {
             let a = Decimal::new(200_000_000_001, 6);
             let b = Decimal::new(2_000, 3);
             assert!(!a.div_up(b).lt(Decimal::new(100_000_000_001, 6)).unwrap());
+        }
+        {
+            let a = Decimal::new(42, 2);
+            let b = Decimal::new(10, 0);
+            assert_eq!(a.div_up(b), Decimal::new(5, 2));
         }
     }
 }
