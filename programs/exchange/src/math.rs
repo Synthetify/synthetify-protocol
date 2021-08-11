@@ -200,7 +200,7 @@ pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
     price.mul(amount).to_usd()
 }
 pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
-    return swap_tax.mul(total_fee);
+    total_fee.mul(swap_tax)
 }
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
@@ -1173,40 +1173,35 @@ mod tests {
     //         assert_eq!(value_in_usd, 18_200 * 10u64.pow(ACCURACY.into()));
     //     }
     // }
-    // #[test]
-    // fn test_calculate_swap_tax() {
-    //     // MIN - 0%
-    //     {
-    //         let total_fee: u64 = 1_227_775;
-    //         let swap_tax: Decimal = Decimal { val: 0, scale: 9 };
-    //         let swap_tax_in_usd = calculate_swap_tax(total_fee, swap_tax);
-    //         // expect 0 tax
-    //         assert_eq!(swap_tax_in_usd, 0);
-    //     }
-    //     // MAX - 20%
-    //     {
-    //         let total_fee: u64 = 1_227_775;
-    //         let swap_tax: Decimal = Decimal {
-    //             val: 20_000,
-    //             scale: 5,
-    //         };
-
-    //         let swap_tax = calculate_swap_tax(total_fee, swap_tax);
-    //         // 245555
-    //         assert_eq!(swap_tax, 245555);
-    //     }
-    //     // ~11% (valid rounding)
-    //     {
-    //         let total_fee: u64 = 1_227_775;
-    //         let swap_tax: Decimal = Decimal {
-    //             val: 11_000,
-    //             scale: 5,
-    //         };
-    //         // 135055,25
-    //         let swap_tax = calculate_swap_tax(total_fee, swap_tax);
-    //         assert_eq!(swap_tax, 135_055);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_swap_tax() {
+        // MIN - 0%
+        {
+            let total_fee = Decimal::from_usd(1_227_775);
+            let swap_tax_ratio = Decimal::from_percent(0);
+            let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
+            // expect 0 tax
+            assert_eq!(swap_tax, Decimal::from_usd(0));
+        }
+        // MAX - 20%
+        {
+            let total_fee = Decimal::from_usd(1_227_775);
+            let swap_tax_ratio = Decimal::new(2, 1).to_percent();
+            let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
+            // 245555
+            let expected = Decimal::from_usd(245_555);
+            assert_eq!(swap_tax, expected);
+        }
+        // 11% - valid rounding
+        {
+            let total_fee = Decimal::from_usd(1_227_775);
+            let swap_tax_ratio = Decimal::new(11, 2).to_percent();
+            let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
+            // 135055,25
+            let expected = Decimal::from_usd(135_055);
+            assert_eq!(swap_tax, expected);
+        }
+    }
 
     // #[test]
     // fn test_usd_to_token_amount() {
