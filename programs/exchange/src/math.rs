@@ -859,53 +859,53 @@ mod tests {
             assert_eq!(result, Decimal::from_integer(0).to_usd());
         }
     }
-    // #[test]
-    // fn test_calculate_user_debt() {
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 0,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 1_000_000;
+    #[test]
+    fn test_calculate_user_debt() {
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 0,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = Decimal::from_integer(1).to_usd();
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 0);
-    //         assert_eq!(result, 0);
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 100,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 4400_162356;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 0);
+            assert_eq!(result, Decimal::from_integer(0).to_usd());
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 100,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = Decimal::new(4400_162356, 6).to_usd();
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-    //         assert_eq!(result, 356_577177)
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 1525783,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
+            assert_eq!(result, Decimal::new(356_577177, 6).to_usd())
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 1525783,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = Decimal::new(932210931_726361, 6).to_usd();
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //         assert_eq!(result, 115211)
-    //     }
-    //     {
-    //         let user_account = ExchangeAccount {
-    //             debt_shares: 9234567898765432,
-    //             owner: Pubkey::default(),
-    //             ..Default::default()
-    //         };
-    //         let debt = 526932210931_726361;
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, Decimal::new(115211, 6).to_usd())
+        }
+        {
+            let user_account = ExchangeAccount {
+                debt_shares: 9234567898765432,
+                owner: Pubkey::default(),
+                ..Default::default()
+            };
+            let debt = Decimal::new(526932210931_726361, 6).to_usd();
 
-    //         let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-    //         assert_eq!(result, 394145294459_835461)
-    //     }
-    // }
+            let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
+            assert_eq!(result, Decimal::new(394145294459_835461, 6).to_usd())
+        }
+    }
     // #[test]
     // fn test_amount_to_shares() {
     //     // not initialized shares
