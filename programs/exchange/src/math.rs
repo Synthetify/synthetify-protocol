@@ -251,6 +251,7 @@ pub fn calculate_burned_shares(
 //     return burned_amount_token.try_into().unwrap();
 // }
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u8) -> Decimal {
+    msg!("{:?} {:?} {}", value_in_usd, asset.price, decimals_out);
     return value_in_usd.div_to_scale(asset.price, decimals_out);
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
@@ -1139,40 +1140,40 @@ mod tests {
             assert_eq!(swap_tax, expected);
         }
     }
+    #[test]
+    fn test_usd_to_token_amount() {
+        // round down
+        {
+            let asset = Asset {
+                price: Decimal::from_price(14 * 10u128.pow(PRICE_OFFSET.into())),
+                ..Default::default()
+            };
+            let scale = 6u8;
+            let value = Decimal::from_usd(100);
+            let token_amount = usd_to_token_amount(&asset, value, scale);
+            // 7,142...
+            let expected = Decimal { val: 7, scale };
+            assert_eq!(token_amount, expected);
+        }
+        // large amount
+        {
+            let asset = Asset {
+                price: Decimal::from_integer(91).to_price(),
+                ..Default::default()
+            };
+            let scale = 10u8;
+            let value = Decimal::from_integer(100_003_900_802).to_usd();
+            let token_amount = usd_to_token_amount(&asset, value, scale);
+            // used to be 11031876945054945054
+            // 1098943964,857142857
+            let expected = Decimal {
+                val: 1098943964_8571428571,
+                scale,
+            };
 
-    // #[test]
-    // fn test_usd_to_token_amount() {
-    //     // round down
-    //     {
-    //         let asset = Asset {
-    //             price: Decimal::from_price(14 * 10u128.pow(PRICE_OFFSET.into())),
-    //             ..Default::default()
-    //         };
-    //         let value = Decimal::from_usd(100);
-    //         let token_amount = usd_to_token_amount(&asset, value);
-    //         // 7,142...
-    //         let expected = Decimal {
-    //             val: 7,
-    //             scale: asset.price.scale,
-    //         };
-    //         assert!(token_amount.eq(&expected));
-    //     }
-    //     // large amount
-    //     {
-    //         let asset = Asset {
-    //             price: Decimal::from_price(91 * 10u128.pow(PRICE_OFFSET.into())),
-    //             ..Default::default()
-    //         };
-    //         let value = Decimal::from_usd(100_003_900_802 * 10u128.pow(ACCURACY));
-    //         let token_amount = usd_to_token_amount(&asset, value);
-    //         // 11031876945054945054
-    //         let expected = Decimal {
-    //             val: 11031876945054945054,
-    //             scale: asset.price.scale,
-    //         };
-    //         assert!(token_amount.eq(&expected));
-    //     }
-    // }
+            assert_eq!(token_amount, expected);
+        }
+    }
     #[test]
     fn test_calculate_compounded_interest() {
         // periods_number = 0
