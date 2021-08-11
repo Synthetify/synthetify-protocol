@@ -130,7 +130,8 @@ pub fn calculate_max_withdraw_in_usd(
         return Decimal::from_usd(0);
     }
 
-    (max_user_debt_in_usd.sub(user_debt_in_usd))
+    max_user_debt_in_usd
+        .sub(user_debt_in_usd)
         .unwrap()
         .div(collateral_ratio)
         .div(health_factor)
@@ -292,11 +293,7 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
     return Decimal::from_percent(debt_interest_rate).to_interest_rate();
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
-    // return apr.div(MINUTES_IN_YEAR.into()).unwrap();
-    apr.div(Decimal {
-        val: MINUTES_IN_YEAR.into(),
-        scale: 0,
-    })
+    Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
 
 #[cfg(test)]
@@ -1374,7 +1371,7 @@ mod tests {
         }
         // 1%
         {
-            let apr = Decimal::new(1, INTEREST_RATE_SCALE - 2).to_interest_rate();
+            let apr = Decimal::new(1, 2).to_interest_rate();
             let minute_interest_rate = calculate_minute_interest_rate(apr);
             // real     0.0000019025875190... %
             // expected 0.0000019025875190    %
@@ -1383,7 +1380,7 @@ mod tests {
         }
         // 20%
         {
-            let apr = Decimal::new(20, INTEREST_RATE_SCALE - 2).to_interest_rate();
+            let apr = Decimal::new(2, 1).to_interest_rate();
             let minute_interest_rate = calculate_minute_interest_rate(apr);
             // real     0.0000380517503805...%
             // expected 0.0000380517503805   %
