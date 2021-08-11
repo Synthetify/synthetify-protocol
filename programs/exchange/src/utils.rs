@@ -670,67 +670,67 @@ mod tests {
             assert!(result.is_err());
         }
     }
-    // #[test]
-    // fn test_get_user_sny_collateral_balance() {
-    //     let sny_address = Pubkey::new_unique();
-    //     let sny_asset = Collateral {
-    //         collateral_address: sny_address,
-    //         ..Default::default()
-    //     };
+    #[test]
+    fn test_get_user_sny_collateral_balance() {
+        let sny_address = Pubkey::new_unique();
+        let sny_asset = Collateral {
+            collateral_address: sny_address,
+            ..Default::default()
+        };
 
-    //     // Empty list
-    //     {
-    //         let exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
+        // Empty list
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
 
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 0)
-    //     }
-    //     // With other assets
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: sny_address,
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(0))
+        }
+        // With other assets
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: sny_address,
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
 
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 100)
-    //     }
-    //     // Without SNY
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
-    //         exchange_account.append(CollateralEntry {
-    //             collateral_address: Pubkey::new_unique(),
-    //             amount: 100,
-    //             ..Default::default()
-    //         });
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(100))
+        }
+        // Without SNY
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
+            exchange_account.append(CollateralEntry {
+                collateral_address: Pubkey::new_unique(),
+                amount: 100,
+                ..Default::default()
+            });
 
-    //         let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
-    //         assert_eq!(amount, 0)
-    //     }
-    // }
+            let amount = get_user_sny_collateral_balance(&exchange_account, &sny_asset);
+            assert_eq!(amount, Decimal::from_sny(0))
+        }
+    }
 
     // #[test]
     // fn test_adjust_interest_debt() {
