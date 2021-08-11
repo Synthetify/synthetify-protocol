@@ -1176,9 +1176,9 @@ export interface ExchangeState {
   maxDelay: number
   fee: Decimal
   swapTaxRatio: Decimal
-  swapTaxReserve: BN
+  swapTaxReserve: Decimal
   debtInterestRate: Decimal
-  accumulatedDebtInterest: BN
+  accumulatedDebtInterest: Decimal
   lastDebtAdjustment: BN
   liquidationRate: Decimal
   penaltyToLiquidator: Decimal
