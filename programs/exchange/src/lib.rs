@@ -10,7 +10,7 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 const SNY_DECIMALS: u8 = 6;
 const XUSD_DECIMALS: u8 = 6;
-// #[program]
+#[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
@@ -2250,7 +2250,7 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 }
 
 #[zero_copy]
-#[derive(PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug, AnchorDeserialize, AnchorSerialize)]
 pub struct Decimal {
     pub val: u128,
     pub scale: u8,
