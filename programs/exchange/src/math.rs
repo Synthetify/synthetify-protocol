@@ -684,45 +684,43 @@ mod tests {
             }
         }
     }
-    // #[test]
-    // fn test_calculate_debt_error() {
-    //     let slot = 100;
-    //     let mut assets_list = AssetsList {
-    //         ..Default::default()
-    //     };
+    #[test]
+    fn test_calculate_debt_error() {
+        let slot = 100;
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
 
-    //     // debt 1400
-    //     assets_list.append_asset(Asset {
-    //         price: 10 * 10u64.pow(PRICE_OFFSET.into()),
-    //         last_update: slot - 10,
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_synthetic(Synthetic {
-    //         supply: 100 * 10u64.pow(8),
-    //         decimals: 8,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+        // debt 1400
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(10).to_price(),
+            last_update: slot - 10,
+            ..Default::default()
+        });
+        assets_list.append_synthetic(Synthetic {
+            supply: Decimal::from_integer(100).to_scale(8),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     // debt 1000
-    //     assets_list.append_asset(Asset {
-    //         price: 12 * 10u64.pow(PRICE_OFFSET.into()),
-    //         last_update: 100,
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_synthetic(Synthetic {
-    //         supply: 200 * 10u64.pow(8),
-    //         decimals: 8,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+        // debt 1000
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(12).to_price(),
+            last_update: 100,
+            ..Default::default()
+        });
+        assets_list.append_synthetic(Synthetic {
+            supply: Decimal::from_integer(200).to_scale(8),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     let assets_ref = RefCell::new(assets_list);
+        let assets_ref = RefCell::new(assets_list);
 
-    //     // debt 2400
-    //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0, false);
-    //     assert!(result.is_err());
-    // }
+        // debt 2400
+        let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0, false);
+        assert!(result.is_err());
+    }
     // #[test]
     // fn test_calculate_max_debt_in_usd() {
     //     let mut assets_list = AssetsList {
