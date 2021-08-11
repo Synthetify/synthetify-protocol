@@ -99,7 +99,7 @@ pub mod exchange {
         };
         let sny_collateral = Collateral {
             asset_index: 1,
-            collateral_ratio: Decimal::from_percent(10),
+            collateral_ratio: Decimal::new(10, 2).to_percent(),
             collateral_address: collateral_token,
             reserve_balance: Decimal {
                 val: 0,
@@ -388,7 +388,6 @@ pub mod exchange {
             scale: xusd_synthetic.supply.scale,
         };
         let debt_after_mint = user_debt.add(amount_decimal).unwrap();
-
         if mint_limit.lt(debt_after_mint).unwrap() {
             return Err(ErrorCode::MintLimit.into());
         }
@@ -444,7 +443,7 @@ pub mod exchange {
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
-        let max_borrow = state.health_factor.mul(max_debt);
+        let max_borrow = max_debt.mul(state.health_factor);
 
         let (assets, collaterals, _) = assets_list.split_borrow();
         let mut collateral = match collaterals
@@ -516,7 +515,7 @@ pub mod exchange {
             .try_into()
             .unwrap();
 
-        if amount_collateral.val == 0 {
+        if exchange_account_collateral.amount == 0 {
             exchange_account.remove(entry_index);
         }
 

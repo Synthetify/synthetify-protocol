@@ -28,7 +28,8 @@ import {
   calculateFee,
   calculateSwapTax,
   U64_MAX,
-  eqDecimals
+  eqDecimals,
+  mulByDecimal
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
@@ -40,6 +41,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -151,7 +153,7 @@ describe('exchange', () => {
     assert.ok(userExchangeAccount.version === 0)
     assert.ok(userExchangeAccount.collaterals.length === 0)
   })
-  describe.only('#deposit()', async () => {
+  describe('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
       const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
@@ -315,7 +317,7 @@ describe('exchange', () => {
 
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
+      assert.ok(assetsListAfter.synthetics[0].supply.val.eq(usdMintAmount))
 
       // Increase user xusd balance
       const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
@@ -360,8 +362,8 @@ describe('exchange', () => {
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListAfter.synthetics[0].supply.eq(
-          assetsListBefore.synthetics[0].supply.add(usdMintAmount)
+        assetsListAfter.synthetics[0].supply.val.eq(
+          assetsListBefore.synthetics[0].supply.val.add(usdMintAmount)
         )
       )
 
@@ -396,9 +398,9 @@ describe('exchange', () => {
     })
   })
   describe('#withdraw()', async () => {
-    let healthFactor: BN
+    let healthFactor: Decimal
     before(async () => {
-      healthFactor = new BN((await exchange.getState()).healthFactor)
+      healthFactor = (await exchange.getState()).healthFactor
     })
     it('withdraw with no debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
@@ -451,8 +453,8 @@ describe('exchange', () => {
       // Updating amount in assetList check
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.collaterals[0].reserveBalance
-          .sub(assetListDataAfter.collaterals[0].reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance.val
+          .sub(assetListDataAfter.collaterals[0].reserveBalance.val)
           .eq(withdrawAmount)
       )
 
@@ -517,8 +519,8 @@ describe('exchange', () => {
       // Updating amount in assetList
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.collaterals[0].reserveBalance
-          .sub(assetListDataAfter.collaterals[0].reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance.val
+          .sub(assetListDataAfter.collaterals[0].reserveBalance.val)
           .eq(withdrawAmount)
       )
 
@@ -571,7 +573,7 @@ describe('exchange', () => {
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
 
       // We can mint max 20 * 1e6 * healthFactor
-      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(10 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,

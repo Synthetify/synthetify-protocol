@@ -30,9 +30,9 @@ export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.synthetics.reduce((acc, synthetic) => {
     const asset = assetsList.assets[synthetic.assetIndex]
     return acc.add(
-      synthetic.supply
-        .mul(asset.price)
-        .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+      synthetic.supply.val
+        .mul(asset.price.val)
+        .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -457,6 +457,9 @@ export const skipTimestamps = async (
 
 export const mulByPercentage = (a: BN, percentage: BN) => {
   return a.mul(percentage).div(new BN(100))
+}
+export const mulByDecimal = (a: BN, b: Decimal) => {
+  return a.mul(b.val).div(new BN(10 ** b.scale))
 }
 
 export const waitForBeggingOfASlot = async (connection: Connection) => {
