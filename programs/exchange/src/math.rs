@@ -1362,31 +1362,33 @@ mod tests {
         // }
     }
 
-    // #[test]
-    // fn test_calculate_minute_interest_rate() {
-    //     // 0%
-    //     {
-    //         let minute_interest_rate = calculate_minute_interest_rate(0);
-
-    //         // should be 0
-    //         assert_eq!(minute_interest_rate, 0);
-    //     }
-    //     // 1%
-    //     {
-    //         let one_percent: u128 = 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
-    //         let minute_interest_rate = calculate_minute_interest_rate(one_percent);
-
-    //         // real     0.0000019025875190... %
-    //         // expected 0.0000019025875190    %
-    //         assert_eq!(minute_interest_rate, 19025875190);
-    //     }
-    //     // 20%
-    //     {
-    //         let twenty_percent: u128 = 20 * 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
-    //         let minute_interest_rate = calculate_minute_interest_rate(twenty_percent);
-
-    //         // real     0.0000380517503805...%
-    //         // expected 0.0000380517503805   %
-    //         assert_eq!(minute_interest_rate, 380517503805);
-    //     }
+    #[test]
+    fn test_calculate_minute_interest_rate() {
+        // 0%
+        {
+            let apr = Decimal::from_interest_rate(0);
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // should be 0
+            let expected = Decimal::from_interest_rate(0);
+            assert_eq!(minute_interest_rate, expected);
+        }
+        // 1%
+        {
+            let apr = Decimal::new(1, INTEREST_RATE_SCALE - 2).to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.0000019025875190... %
+            // expected 0.0000019025875190    %
+            let expected = Decimal::from_interest_rate(19025875190);
+            assert_eq!(minute_interest_rate, expected);
+        }
+        // 20%
+        {
+            let apr = Decimal::new(20, INTEREST_RATE_SCALE - 2).to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.0000380517503805...%
+            // expected 0.0000380517503805   %
+            let expected = Decimal::from_interest_rate(380517503805);
+            assert_eq!(minute_interest_rate, expected);
+        }
+    }
 }
