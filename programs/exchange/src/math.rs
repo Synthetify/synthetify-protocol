@@ -42,11 +42,9 @@ pub fn calculate_debt(
     Ok(debt)
 }
 pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> Decimal {
-    let mut max_debt = Decimal {
-        val: 10u128.pow(ACCURACY.into()),
-        scale: ACCURACY,
-    };
+    let mut max_debt = Decimal::from_integer(0).to_usd();
     let head = account.head as usize;
+
     for collateral_entry in account.collaterals[..head].iter() {
         let collateral = &assets_list.collaterals[collateral_entry.index as usize];
         let asset = &assets_list.assets[collateral.asset_index as usize];
@@ -62,7 +60,8 @@ pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &Assets
                 asset
                     .price
                     .mul(amount_of_collateral)
-                    .mul(collateral.collateral_ratio),
+                    .mul(collateral.collateral_ratio)
+                    .to_usd(),
             )
             .unwrap();
     }
@@ -721,145 +720,145 @@ mod tests {
         let result = calculate_debt(&assets_ref.borrow_mut(), slot, 0, false);
         assert!(result.is_err());
     }
-    // #[test]
-    // fn test_calculate_max_debt_in_usd() {
-    //     let mut assets_list = AssetsList {
-    //         ..Default::default()
-    //     };
-    //     // SNY
-    //     assets_list.append_asset(Asset {
-    //         price: 2 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_collateral(Collateral {
-    //         decimals: 6,
-    //         collateral_ratio: 50,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+    #[test]
+    fn test_calculate_max_debt_in_usd() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        // SNY
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(2).to_price(),
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            reserve_balance: Decimal::from_integer(0).to_scale(6), // only for decimals
+            collateral_ratio: Decimal::from_percent(50_00),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     // BTC
-    //     assets_list.append_asset(Asset {
-    //         price: 50_000 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_collateral(Collateral {
-    //         decimals: 8,
-    //         collateral_ratio: 50,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+        // BTC
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(50_000).to_price(),
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            reserve_balance: Decimal::from_integer(0).to_scale(8),
+            collateral_ratio: Decimal::from_percent(50_00),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     // SOL
-    //     assets_list.append_asset(Asset {
-    //         price: 25 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_collateral(Collateral {
-    //         decimals: 4,
-    //         collateral_ratio: 12,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+        // SOL
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(25).to_price(),
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            reserve_balance: Decimal::from_integer(0).to_scale(4),
+            collateral_ratio: Decimal::from_percent(12_00),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     // USD
-    //     assets_list.append_asset(Asset {
-    //         price: 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     });
-    //     assets_list.append_collateral(Collateral {
-    //         decimals: 6,
-    //         collateral_ratio: 90,
-    //         asset_index: assets_list.head_assets as u8 - 1,
-    //         ..Default::default()
-    //     });
+        // USD
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        });
+        assets_list.append_collateral(Collateral {
+            reserve_balance: Decimal::from_integer(0).to_scale(6),
+            collateral_ratio: Decimal::from_percent(90_00),
+            asset_index: assets_list.head_assets as u8 - 1,
+            ..Default::default()
+        });
 
-    //     // No collaterals
-    //     {
-    //         let exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-    //         assert_eq!(result, 0);
-    //     }
-    //     // Simple calculations
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1 * 10u64.pow(6),
-    //             index: 0,
-    //             ..Default::default()
-    //         });
+        // No collaterals
+        {
+            let exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
+            assert_eq!(result, Decimal::from_integer(0).to_usd());
+        }
+        // Simple calculations
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                amount: 1 * 10u64.pow(6),
+                index: 0,
+                ..Default::default()
+            });
 
-    //         let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-    //         assert_eq!(result, 1 * 10u128.pow(6));
-    //     }
-    //     // Multiple collaterals
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         // 1 * 50000 * 0.5
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1 * 10u64.pow(6),
-    //             index: 0,
-    //             ..Default::default()
-    //         });
-    //         // 1 * 2 * 0.5
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1 * 10u64.pow(8),
-    //             index: 1,
-    //             ..Default::default()
-    //         });
-    //         // 1 * 25 * 0.12
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1 * 10u64.pow(4),
-    //             index: 2,
-    //             ..Default::default()
-    //         });
+            let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
+            assert_eq!(result, Decimal::from_integer(1).to_usd());
+        }
+        // Multiple collaterals
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            // 1 * 50000 * 0.5
+            exchange_account.append(CollateralEntry {
+                amount: 1 * 10u64.pow(6),
+                index: 0,
+                ..Default::default()
+            });
+            // 1 * 2 * 0.5
+            exchange_account.append(CollateralEntry {
+                amount: 1 * 10u64.pow(8),
+                index: 1,
+                ..Default::default()
+            });
+            // 1 * 25 * 0.12
+            exchange_account.append(CollateralEntry {
+                amount: 1 * 10u64.pow(4),
+                index: 2,
+                ..Default::default()
+            });
 
-    //         let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-    //         assert_eq!(result, 25_004 * 10u128.pow(6));
-    //     }
-    //     // Small numbers
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         // 1
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1,
-    //             index: 0,
-    //             ..Default::default()
-    //         });
-    //         // 500
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1,
-    //             index: 2,
-    //             ..Default::default()
-    //         });
+            let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
+            assert_eq!(result, Decimal::from_integer(25_004).to_usd());
+        }
+        // Small numbers
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            // 1
+            exchange_account.append(CollateralEntry {
+                amount: 1,
+                index: 0,
+                ..Default::default()
+            });
+            // 500
+            exchange_account.append(CollateralEntry {
+                amount: 1,
+                index: 2,
+                ..Default::default()
+            });
 
-    //         let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-    //         assert_eq!(result, 301);
-    //     }
-    //     // Rounding down
-    //     {
-    //         let mut exchange_account = ExchangeAccount {
-    //             ..Default::default()
-    //         };
-    //         exchange_account.append(CollateralEntry {
-    //             amount: 1,
-    //             index: 3,
-    //             ..Default::default()
-    //         });
+            let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
+            assert_eq!(result, Decimal::from_integer(301).to_usd());
+        }
+        // Rounding down
+        {
+            let mut exchange_account = ExchangeAccount {
+                ..Default::default()
+            };
+            exchange_account.append(CollateralEntry {
+                amount: 1,
+                index: 3,
+                ..Default::default()
+            });
 
-    //         let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-    //         // 0.9
-    //         assert_eq!(result, 0);
-    //     }
-    // }
+            let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
+            // 0.9
+            assert_eq!(result, Decimal::from_integer(0).to_usd());
+        }
+    }
     // #[test]
     // fn test_calculate_user_debt() {
     //     {
