@@ -1254,9 +1254,9 @@ mod tests {
         // periods_number = 0
         {
             // value = 100 000$
-            // period interest rate = 0.0000015%
+            // period interest rate = 0.0000015% = 15 * 10^(-9)
             let base_value = Decimal::new(100_000, 0).to_usd();
-            let period_interest_rate = Decimal::new(15, INTEREST_RATE_SCALE - 9).to_interest_rate();
+            let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 0;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1266,9 +1266,9 @@ mod tests {
         // periods_number = 1
         {
             // value = 100 000$
-            // period interest rate = 0.0000015%
+            // period interest rate = 0.0000015% = 15 * 10^(-9)
             let base_value = Decimal::new(100_000, 0).to_usd();
-            let period_interest_rate = Decimal::new(15, INTEREST_RATE_SCALE - 9).to_interest_rate();
+            let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 1;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1294,9 +1294,9 @@ mod tests {
         // periods_number = 525600 (every minute of the year )
         {
             // value = 300 000$
-            // period interest rate = 0.000002%
+            // period interest rate = 0.000002% = 2 * 10^(-8)
             let base_value = Decimal::new(300_000, 0).to_usd();
-            let period_interest_rate = Decimal::new(2, INTEREST_RATE_SCALE - 8).to_interest_rate();
+            let period_interest_rate = Decimal::new(2, 8).to_interest_rate();
             let periods_number: u128 = 525600;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
