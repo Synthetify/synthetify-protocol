@@ -130,7 +130,8 @@ pub fn calculate_max_withdraw_in_usd(
         return Decimal::from_usd(0);
     }
 
-    (max_user_debt_in_usd.sub(user_debt_in_usd))
+    max_user_debt_in_usd
+        .sub(user_debt_in_usd)
         .unwrap()
         .div(collateral_ratio)
         .div(health_factor)
@@ -292,11 +293,7 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
     return Decimal::from_percent(debt_interest_rate).to_interest_rate();
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
-    // return apr.div(MINUTES_IN_YEAR.into()).unwrap();
-    apr.div(Decimal {
-        val: MINUTES_IN_YEAR.into(),
-        scale: 0,
-    })
+    Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
 
 #[cfg(test)]
@@ -1257,10 +1254,9 @@ mod tests {
         // periods_number = 0
         {
             // value = 100 000$
-            // period interest rate = 0.0000015%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            // period interest rate = 0.0000015% = 15 * 10^(-9)
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 0;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1270,10 +1266,9 @@ mod tests {
         // periods_number = 1
         {
             // value = 100 000$
-            // period interest rate = 0.0000015%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(15, INTEREST_RATE_SCALE - 9).to_scale(INTEREST_RATE_SCALE);
+            // period interest rate = 0.0000015% = 15 * 10^(-9)
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(15, 9).to_interest_rate();
             let periods_number: u128 = 1;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1286,8 +1281,8 @@ mod tests {
         {
             // value = 100 000$
             // period interest rate = 0.000001902587519%
-            let base_value = Decimal::new(100_000, 0).to_scale(ACCURACY);
-            let period_interest_rate = Decimal::new(19025875190, INTEREST_RATE_SCALE);
+            let base_value = Decimal::new(100_000, 0).to_usd();
+            let period_interest_rate = Decimal::from_interest_rate(19025875190);
             let periods_number: u128 = 2;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1299,10 +1294,9 @@ mod tests {
         // periods_number = 525600 (every minute of the year )
         {
             // value = 300 000$
-            // period interest rate = 0.000002%
-            let base_value = Decimal::new(300_000, 0).to_scale(ACCURACY);
-            let period_interest_rate =
-                Decimal::new(2, INTEREST_RATE_SCALE - 8).to_scale(INTEREST_RATE_SCALE);
+            // period interest rate = 0.000002% = 2 * 10^(-8)
+            let base_value = Decimal::new(300_000, 0).to_usd();
+            let period_interest_rate = Decimal::new(2, 8).to_interest_rate();
             let periods_number: u128 = 525600;
             let compounded_value =
                 calculate_compounded_interest(base_value, period_interest_rate, periods_number);
@@ -1365,31 +1359,43 @@ mod tests {
         // }
     }
 
-    // #[test]
-    // fn test_calculate_minute_interest_rate() {
-    //     // 0%
-    //     {
-    //         let minute_interest_rate = calculate_minute_interest_rate(0);
-
-    //         // should be 0
-    //         assert_eq!(minute_interest_rate, 0);
-    //     }
-    //     // 1%
-    //     {
-    //         let one_percent: u128 = 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
-    //         let minute_interest_rate = calculate_minute_interest_rate(one_percent);
-
-    //         // real     0.0000019025875190... %
-    //         // expected 0.0000019025875190    %
-    //         assert_eq!(minute_interest_rate, 19025875190);
-    //     }
-    //     // 20%
-    //     {
-    //         let twenty_percent: u128 = 20 * 10u128.pow((INTEREST_RATE_DECIMAL - 2).into());
-    //         let minute_interest_rate = calculate_minute_interest_rate(twenty_percent);
-
-    //         // real     0.0000380517503805...%
-    //         // expected 0.0000380517503805   %
-    //         assert_eq!(minute_interest_rate, 380517503805);
-    //     }
+    #[test]
+    fn test_calculate_minute_interest_rate() {
+        // 0%
+        {
+            let apr = Decimal::from_interest_rate(0);
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // should be 0
+            let expected = Decimal::from_interest_rate(0);
+            assert_eq!(minute_interest_rate, expected);
+        }
+        // 1%
+        {
+            let apr = Decimal::new(1, 2).to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.0000019025875190... %
+            // expected 0.0000019025875190    %
+            let expected = Decimal::from_interest_rate(19025875190);
+            assert_eq!(minute_interest_rate, expected);
+        }
+        // 20%
+        {
+            let apr = Decimal::new(2, 1).to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.0000380517503805...%
+            // expected 0.0000380517503805   %
+            let expected = Decimal::from_interest_rate(380517503805);
+            assert_eq!(minute_interest_rate, expected);
+        }
+        // 11% [UNIFIED_PERCENT_SCALE]
+        {
+            let apr_percent = Decimal::new(11, 2).to_percent();
+            let apr = apr_percent.to_interest_rate();
+            let minute_interest_rate = calculate_minute_interest_rate(apr);
+            // real     0.00002092846270928... %
+            // expected 0.0000209284627092     %
+            let expected = Decimal::from_interest_rate(209284627092);
+            assert_eq!(minute_interest_rate, expected);
+        }
+    }
 }

@@ -62,6 +62,9 @@ impl Decimal {
     pub fn to_interest_rate(self) -> Self {
         self.to_scale(INTEREST_RATE_SCALE)
     }
+    pub fn to_percent(self) -> Self {
+        self.to_scale(UNIFIED_PERCENT_SCALE)
+    }
     pub fn to_scale(self, scale: u8) -> Self {
         Self {
             val: if self.scale > scale {
