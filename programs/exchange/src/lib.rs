@@ -21,7 +21,7 @@ pub mod exchange {
         calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
     };
 
-    use crate::decimal::{Add, DivUp, Gt, Lt, Ltq, Mul, Sub};
+    use crate::decimal::{Add, DivUp, Gt, Lt, Ltq, Mul, Sub, UNIFIED_PERCENT_SCALE};
 
     use super::*;
 
@@ -1355,32 +1355,30 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_liquidation_penalties(
         ctx: Context<AdminAction>,
-        penalty_to_exchange: u16,
-        penalty_to_liquidator: u16,
+        penalty_to_exchange: Decimal,
+        penalty_to_liquidator: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_penalty_to_exchange = Decimal::from_unified_percent(penalty_to_exchange);
-        let decimal_penalty_to_liquidator = Decimal::from_unified_percent(penalty_to_liquidator);
-        require!(
-            decimal_penalty_to_exchange.ltq(Decimal::from_unified_percent(2500))?,
-            ParameterOutOfRange
-        );
-        require!(
-            decimal_penalty_to_liquidator.ltq(Decimal::from_unified_percent(2500))?,
-            ParameterOutOfRange
-        );
+        // penalty_to_exchange and penalty_to_liquidator should be less or equals 25%
+        let same_scale = penalty_to_exchange.scale == state.penalty_to_exchange.scale;
+        let in_range = penalty_to_exchange.ltq(Decimal::from_percent(25))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
 
-        state.penalty_to_exchange = decimal_penalty_to_exchange;
-        state.penalty_to_liquidator = decimal_penalty_to_liquidator;
+        let same_scale = penalty_to_liquidator.scale == state.penalty_to_liquidator.scale;
+        let in_range = penalty_to_liquidator.ltq(Decimal::from_percent(25))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        state.penalty_to_exchange = penalty_to_exchange;
+        state.penalty_to_liquidator = penalty_to_liquidator;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
         reserve_balance: Decimal,
-        collateral_ratio: u16,
+        collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1393,18 +1391,17 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let decimal_collateral_ratio = Decimal::from_unified_percent(collateral_ratio);
         // collateral_ratio should be less or equals 100%
-        require!(
-            decimal_collateral_ratio.ltq(Decimal::from_unified_percent(10000))?,
-            ParameterOutOfRange
-        );
+        let same_scale = collateral_ratio.scale == UNIFIED_PERCENT_SCALE;
+        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
             liquidation_fund: *ctx.accounts.liquidation_fund.key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
-            collateral_ratio: decimal_collateral_ratio,
+            collateral_ratio,
             reserve_balance,
         };
         assets_list.append_collateral(new_collateral);
