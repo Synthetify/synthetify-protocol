@@ -615,7 +615,7 @@ mod tests {
 
             // debt 0.152407...
             assets_list.append_asset(Asset {
-                price: Decimal::new(12345, 4).to_price(),
+                price: Decimal::new(1_2345, 4).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
@@ -633,59 +633,56 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
-        // {
-        //     let slot = 100;
-        //     let mut assets_list = AssetsList {
-        //         ..Default::default()
-        //     };
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
 
-        //     // debt 198807739,182321
-        //     assets_list.append_asset(Asset {
-        //         price: (1.567 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: slot - 10,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: (126871562.97531672 * 10u64.pow(8) as f64) as u64,
-        //         decimals: 8,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 198807739,182321
+            assets_list.append_asset(Asset {
+                price: Decimal::new(1_567, 3).to_price(),
+                last_update: slot - 10,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::new(126871562_97531672, 8),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     // debt 733398054,012891
-        //     assets_list.append_asset(Asset {
-        //         price: (51420.19 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: (14262.842164 * 10u64.pow(6) as f64) as u64,
-        //         decimals: 6,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 733398054,012891
+            assets_list.append_asset(Asset {
+                price: Decimal::new(51420_19, 2).to_price(),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::new(14262_842164, 6),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     // debt 5138,531149
-        //     assets_list.append_asset(Asset {
-        //         price: (3.9672 * 10u64.pow(PRICE_OFFSET.into()) as f64) as u64,
-        //         last_update: 100,
-        //         ..Default::default()
-        //     });
-        //     assets_list.append_synthetic(Synthetic {
-        //         supply: (1295.25386912 * 10u64.pow(8) as f64) as u64,
-        //         decimals: 8,
-        //         asset_index: assets_list.head_assets as u8 - 1,
-        //         ..Default::default()
-        //     });
+            // debt 5138,531149
+            assets_list.append_asset(Asset {
+                price: Decimal::new(3_9672, 4).to_price(),
+                last_update: 100,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::new(1295_25386912, 8),
+                asset_index: assets_list.head_assets as u8 - 1,
+                ..Default::default()
+            });
 
-        //     let assets_ref = RefCell::new(assets_list);
+            let assets_ref = RefCell::new(assets_list);
 
-        //     let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
-        //     match result {
-        //         Ok(debt) => assert_eq!(debt, 932210931_726364),
-        //         Err(_) => assert!(false, "Shouldn't check"),
-        //     }
-        // }
+            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
+            match result {
+                Ok(debt) => assert_eq!({ debt.val }, 932210931_726364),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
     }
     // #[test]
     // fn test_calculate_debt_error() {
