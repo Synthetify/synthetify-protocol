@@ -1241,7 +1241,7 @@ pub mod exchange {
             ParameterOutOfRange
         );
 
-        state.debt_interest_rate = decimal_debt_interest_rate;
+        state.debt_interest_rate = decimal_debt_interest_rate.to_interest_rate();
         Ok(())
     }
 

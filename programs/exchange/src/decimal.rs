@@ -99,15 +99,6 @@ impl Decimal {
             ))
         }
     }
-
-    // pub fn try_mul_inverse(self, value: u128) -> Result<u128> {
-    //     return Ok(self
-    //         .val
-    //         .checked_mul(self.denominator())
-    //         .unwrap()
-    //         .checked_div(value)
-    //         .unwrap());
-    // }
 }
 
 impl Mul<Decimal> for Decimal {
