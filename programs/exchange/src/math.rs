@@ -215,7 +215,6 @@ pub fn calculate_swap_out_amount(
     if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
-    msg!("{:?}", asset_for.price);
     let fee = value_in_usd.mul_up(fee);
     let value_out_usd = value_in_usd.sub(fee).unwrap();
     let amount_out = usd_to_token_amount(asset_for, value_out_usd, decimals_out);
@@ -253,12 +252,6 @@ pub fn calculate_burned_shares(
 //     return burned_amount_token.try_into().unwrap();
 // }
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u8) -> Decimal {
-    msg!(
-        "price: {:?}, value: {:?}, decimals: {}",
-        asset.price,
-        value_in_usd,
-        decimals_out
-    );
     return value_in_usd.div_to_scale(asset.price, decimals_out);
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
@@ -1018,21 +1011,20 @@ mod tests {
             // fee should be 150 USD
             assert_eq!(swap_fee, Decimal::from_integer(150).to_usd());
         }
-        // {
-        //     let (out_amount, swap_fee) = calculate_swap_out_amount(
-        //         &asset_btc,
-        //         &asset_usd,
-        //         &synthetic_btc,
-        //         &synthetic_usd,
-        //         1 * 10u64.pow(synthetic_btc.decimals.into()),
-        //         fee,
-        //     )
-        //     .unwrap();
-        //     // out amount should be 49850 USD
-        //     assert_eq!(out_amount, 49850_000_000);
-        //     // fee should be 150 USD
-        //     assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-        // }
+        {
+            let (out_amount, swap_fee) = calculate_swap_out_amount(
+                &asset_btc,
+                &asset_usd,
+                6,
+                Decimal::from_integer(1).to_scale(8),
+                fee,
+            )
+            .unwrap();
+            // out amount should be 49850 USD
+            assert_eq!(out_amount, Decimal::from_integer(49850).to_scale(6));
+            // fee should be 150 USD
+            assert_eq!(swap_fee, Decimal::from_integer(150).to_usd());
+        }
         // {
         //     let (out_amount, swap_fee) = calculate_swap_out_amount(
         //         &asset_btc,
