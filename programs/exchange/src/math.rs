@@ -1316,80 +1316,57 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_calculate_multi_compounded_interest() {
-    //     let period_interest_rate: u128 = 2 * 10u128.pow((INTEREST_RATE_DECIMAL - 8).into());
-    //     let start_value = 200_000 * 10u64.pow(ACCURACY.into());
-    //     // irregular compound
-    //     // 100_000 -> 10_000 -> 5 -> 415_595
-    //     {
-    //         let compounded_value =
-    //             calculate_compounded_interest(start_value, period_interest_rate, 100_000);
+    #[test]
+    fn test_calculate_multi_compounded_interest() {
+        // let period_interest_rate =
+        //     Decimal::new(2, INTEREST_RATE_SCALE - 8).to_scale(INTEREST_RATE_SCALE);
+        // let start_value = Decimal::new(200_000, 0).to_scale(ACCURACY);
+        // irregular compound
+        // 100_000 -> 10_000 -> 5 -> 415_595
+        // {
+        //     let compounded_value =
+        //         calculate_compounded_interest(start_value, period_interest_rate, 100_000);
 
-    //         let base_value = start_value.checked_add(compounded_value).unwrap();
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, 10_000);
+        //     let base_value = start_value.add(compounded_value).unwrap();
+        //     let compounded_value =
+        //         calculate_compounded_interest(base_value, period_interest_rate, 10_000);
 
-    //         let base_value = base_value.checked_add(compounded_value).unwrap();
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, 5);
+        //     let base_value = base_value.add(compounded_value).unwrap();
+        //     let compounded_value =
+        //         calculate_compounded_interest(base_value, period_interest_rate, 5);
 
-    //         let base_value = base_value.checked_add(compounded_value).unwrap();
-    //         let compounded_value =
-    //             calculate_compounded_interest(base_value, period_interest_rate, 415_595);
+        //     let base_value = base_value.add(compounded_value).unwrap();
+        //     let compounded_value =
+        //         calculate_compounded_interest(base_value, period_interest_rate, 415_595);
 
-    //         let final_value = base_value.checked_add(compounded_value).unwrap();
-    //         let interest_diff = final_value.checked_sub(start_value).unwrap();
-    //         // real     2113.489015... $
-    //         // expected 2113.489017... $
-    //         assert_eq!(interest_diff, 2113489017);
-    //     }
-    //     // regular compound (every 3 minutes for the year)
-    //     {
-    //         let mut i: u128 = 0;
-    //         let interval: u128 = 3;
-    //         let mut base_value = start_value;
-    //         loop {
-    //             let compounded_value =
-    //                 calculate_compounded_interest(base_value, period_interest_rate, interval);
-    //             base_value = base_value.checked_add(compounded_value).unwrap();
+        //     let final_value = base_value.add(compounded_value).unwrap();
+        //     let interest_diff = final_value.sub(start_value).unwrap();
+        //     // real     2113.489015... $
+        //     // expected 2113.489017... $
+        //     let expected = Decimal::new(2113489017, ACCURACY);
+        //     assert_eq!(interest_diff, expected);
+        // }
+        // regular compound (every 3 minutes for the year)
+        // {
+        //     let mut i: u128 = 0;
+        //     let interval: u128 = 3;
+        //     let mut base_value = start_value;
+        //     loop {
+        //         let compounded_value =
+        //             calculate_compounded_interest(base_value, period_interest_rate, interval);
+        //         base_value = base_value.checked_add(compounded_value).unwrap();
 
-    //             i += interval;
-    //             if i >= 525600 {
-    //                 break;
-    //             }
-    //         }
-    //         let interest_diff = base_value.checked_sub(start_value).unwrap();
-    //         // real     2113.4... $
-    //         // expected 2113.5... $
-    //         assert_eq!(interest_diff, 2113577183);
-    //     }
-    // }
-
-    // #[test]
-    // fn test_calculate_debt_interest_rate() {
-    //     let tenth_of_percent = 10u128.pow((INTEREST_RATE_DECIMAL - 3).into());
-    //     // 0%
-    //     {
-    //         let debt_interest_rate = calculate_debt_interest_rate(0);
-    //         assert_eq!(debt_interest_rate, 0);
-    //     }
-    //     // 0.1%
-    //     {
-    //         let debt_interest_rate = calculate_debt_interest_rate(1);
-    //         assert_eq!(debt_interest_rate, tenth_of_percent);
-    //     }
-    //     // 1%
-    //     {
-    //         let debt_interest_rate = calculate_debt_interest_rate(10);
-    //         assert_eq!(debt_interest_rate, 10 * tenth_of_percent);
-    //     }
-    //     // 20%
-    //     {
-    //         let debt_interest_rate = calculate_debt_interest_rate(200);
-    //         assert_eq!(debt_interest_rate, 200 * tenth_of_percent);
-    //     }
-    // }
+        //         i += interval;
+        //         if i >= 525600 {
+        //             break;
+        //         }
+        //     }
+        //     let interest_diff = base_value.checked_sub(start_value).unwrap();
+        //     // real     2113.4... $
+        //     // expected 2113.5... $
+        //     assert_eq!(interest_diff, 2113577183);
+        // }
+    }
 
     // #[test]
     // fn test_calculate_minute_interest_rate() {
