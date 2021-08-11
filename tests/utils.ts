@@ -458,6 +458,9 @@ export const skipTimestamps = async (
 export const mulByPercentage = (a: BN, percentage: BN) => {
   return a.mul(percentage).div(new BN(100))
 }
+export const mulByDecimal = (a: BN, b: Decimal) => {
+  return a.mul(b.val).div(new BN(10 ** b.scale))
+}
 
 export const waitForBeggingOfASlot = async (connection: Connection) => {
   const startSlot = await connection.getSlot()
