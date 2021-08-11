@@ -284,13 +284,10 @@ pub fn calculate_compounded_interest(
     };
     let interest = periodic_interest_rate.add(one).unwrap();
     let compounded = interest.pow_with_accuracy(periods_number).sub(one).unwrap();
-    let scaled_value = base_value.mul(compounded);
-
-    scaled_value.div_up(one)
+    base_value.mul_up(compounded)
 }
 pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
-    // 1 -> 0.01%
-    return Decimal::from_percent(debt_interest_rate).to_interest_rate();
+    Decimal::from_percent(debt_interest_rate).to_interest_rate()
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
@@ -1309,34 +1306,35 @@ mod tests {
 
     #[test]
     fn test_calculate_multi_compounded_interest() {
-        // let period_interest_rate =
-        //     Decimal::new(2, INTEREST_RATE_SCALE - 8).to_scale(INTEREST_RATE_SCALE);
-        // let start_value = Decimal::new(200_000, 0).to_scale(ACCURACY);
+        // start value 200 000 $
+        // period interest rate = 0.000002% = 2 * 10^(-8)
+        let period_interest_rate = Decimal::new(2, 8).to_interest_rate();
+        let start_value = Decimal::new(200_000, 0).to_usd();
         // irregular compound
-        // 100_000 -> 10_000 -> 5 -> 415_595
-        // {
-        //     let compounded_value =
-        //         calculate_compounded_interest(start_value, period_interest_rate, 100_000);
+        // [period number] 100_000 -> 10_000 -> 5 -> 415_595
+        {
+            let compounded_value =
+                calculate_compounded_interest(start_value, period_interest_rate, 100_000);
 
-        //     let base_value = start_value.add(compounded_value).unwrap();
-        //     let compounded_value =
-        //         calculate_compounded_interest(base_value, period_interest_rate, 10_000);
+            let base_value = start_value.add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 10_000);
 
-        //     let base_value = base_value.add(compounded_value).unwrap();
-        //     let compounded_value =
-        //         calculate_compounded_interest(base_value, period_interest_rate, 5);
+            let base_value = base_value.add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 5);
 
-        //     let base_value = base_value.add(compounded_value).unwrap();
-        //     let compounded_value =
-        //         calculate_compounded_interest(base_value, period_interest_rate, 415_595);
+            let base_value = base_value.add(compounded_value).unwrap();
+            let compounded_value =
+                calculate_compounded_interest(base_value, period_interest_rate, 415_595);
 
-        //     let final_value = base_value.add(compounded_value).unwrap();
-        //     let interest_diff = final_value.sub(start_value).unwrap();
-        //     // real     2113.489015... $
-        //     // expected 2113.489017... $
-        //     let expected = Decimal::new(2113489017, ACCURACY);
-        //     assert_eq!(interest_diff, expected);
-        // }
+            let final_value = base_value.add(compounded_value).unwrap();
+            let interest_diff = final_value.sub(start_value).unwrap();
+            // real     2113.489015... $
+            // expected 2113.489017... $
+            let expected = Decimal::new(2113489017, ACCURACY);
+            assert_eq!(interest_diff, expected);
+        }
         // regular compound (every 3 minutes for the year)
         // {
         //     let mut i: u128 = 0;
