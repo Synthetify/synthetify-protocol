@@ -903,101 +903,101 @@ mod tests {
             assert_eq!(result, Decimal::new(394145294459_835461, 6).to_usd())
         }
     }
-    // #[test]
-    // fn test_amount_to_shares() {
-    //     // not initialized shares
-    //     {
-    //         let all_shares = 0;
-    //         let full_amount = 0;
-    //         let amount = 0;
+    #[test]
+    fn test_amount_to_shares() {
+        // not initialized shares
+        {
+            let all_shares = 0;
+            let full_amount = 0;
+            let amount = 0;
 
-    //         let amount_by_rounding_down =
-    //             amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-    //         let amount_by_rounding_up =
-    //             amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-    //         assert_eq!(amount_by_rounding_down, 0);
-    //         assert_eq!(amount_by_rounding_up, 0);
-    //     }
-    //     // zero amount
-    //     {
-    //         let all_shares = 100;
-    //         let full_amount = 100 * 10u64.pow(6);
-    //         let amount = 0;
+            let amount_by_rounding_down =
+                amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+            let amount_by_rounding_up =
+                amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+            assert_eq!(amount_by_rounding_down, 0);
+            assert_eq!(amount_by_rounding_up, 0);
+        }
+        // zero amount
+        {
+            let all_shares = 100;
+            let full_amount = 100 * 10u64.pow(6);
+            let amount = 0;
 
-    //         let amount_by_rounding_down =
-    //             amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-    //         let amount_by_rounding_up =
-    //             amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-    //         assert_eq!(amount_by_rounding_down, 0);
-    //         assert_eq!(amount_by_rounding_up, 0);
-    //     }
-    //     // basic
-    //     {
-    //         let all_shares = 10;
-    //         let full_amount = 100;
-    //         let amount = 10;
+            let amount_by_rounding_down =
+                amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+            let amount_by_rounding_up =
+                amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+            assert_eq!(amount_by_rounding_down, 0);
+            assert_eq!(amount_by_rounding_up, 0);
+        }
+        // basic
+        {
+            let all_shares = 10;
+            let full_amount = 100;
+            let amount = 10;
 
-    //         let amount_by_rounding_down =
-    //             amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-    //         let amount_by_rounding_up =
-    //             amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-    //         // 1/10 of all_shares
-    //         assert_eq!(amount_by_rounding_down, 1);
-    //         assert_eq!(amount_by_rounding_up, 1);
-    //     }
-    //     // large numbers
-    //     {
-    //         let all_shares = 10u64.pow(6);
-    //         let full_amount = 1_000_000_000 * 10u64.pow(10);
-    //         let amount = 198_112 * 10u64.pow(10);
+            let amount_by_rounding_down =
+                amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+            let amount_by_rounding_up =
+                amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+            // 1/10 of all_shares
+            assert_eq!(amount_by_rounding_down, 1);
+            assert_eq!(amount_by_rounding_up, 1);
+        }
+        // large numbers
+        {
+            let all_shares = 10u64.pow(6);
+            let full_amount = 1_000_000_000 * 10u64.pow(10);
+            let amount = 198_112 * 10u64.pow(10);
 
-    //         let amount_by_rounding_down =
-    //             amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
-    //         let amount_by_rounding_up =
-    //             amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
-    //         // 198,112
-    //         assert_eq!(amount_by_rounding_down, 198);
-    //         assert_eq!(amount_by_rounding_up, 199);
-    //     }
-    // }
-    // #[test]
-    // fn test_amount_to_discount() {
-    //     {
-    //         let amount = 10u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 0)
-    //     }
-    //     {
-    //         let amount = 100u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 1)
-    //     }
-    //     {
-    //         let amount = 200u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 2)
-    //     }
-    //     {
-    //         let amount = 350u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 2)
-    //     }
-    //     {
-    //         let amount = 500u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 3)
-    //     }
-    //     {
-    //         let amount = 1_000_000u64 * 10u64.pow(6);
-    //         let result = amount_to_discount(amount);
-    //         assert_eq!(result, 13);
-    //         let result = amount_to_discount(amount - 1);
-    //         assert_eq!(result, 12);
-    //         // max discount 20%
-    //         let result = amount_to_discount(amount * 2);
-    //         assert_eq!(result, 14);
-    //     }
-    // }
+            let amount_by_rounding_down =
+                amount_to_shares_by_rounding_down(all_shares, full_amount, amount);
+            let amount_by_rounding_up =
+                amount_to_shares_by_rounding_up(all_shares, full_amount, amount);
+            // 198,112
+            assert_eq!(amount_by_rounding_down, 198);
+            assert_eq!(amount_by_rounding_up, 199);
+        }
+    }
+    #[test]
+    fn test_amount_to_discount() {
+        {
+            let amount = 10u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(0))
+        }
+        {
+            let amount = 100u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(1))
+        }
+        {
+            let amount = 200u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(2))
+        }
+        {
+            let amount = 350u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(2))
+        }
+        {
+            let amount = 500u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(3))
+        }
+        {
+            let amount = 1_000_000u64 * 10u64.pow(6);
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(13));
+            let result = amount_to_discount(amount - 1);
+            assert_eq!(result, Decimal::from_percent(12));
+            // max discount 20%
+            let result = amount_to_discount(amount * 2);
+            assert_eq!(result, Decimal::from_percent(14));
+        }
+    }
     // #[test]
     // fn test_calculate_swap_out_amount() {
     //     let asset_usd = Asset {
