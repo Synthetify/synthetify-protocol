@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub, SNY_SCALE};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -160,9 +160,11 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
     );
     return shares.try_into().unwrap();
 }
-pub fn amount_to_discount(amount: u64) -> Decimal {
+pub fn amount_to_discount(sny_amount: Decimal) -> Decimal {
     // decimals of token = 6
-    const ONE_SNY: u64 = 1_000_000u64;
+    const ONE_SNY: u128 = 10u128.pow(SNY_SCALE as u32);
+    let amount = sny_amount.val;
+
     let v: u16 = match () {
         () if amount < ONE_SNY * 100 => 0,
         () if amount < ONE_SNY * 200 => 1,
