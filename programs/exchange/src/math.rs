@@ -1,6 +1,6 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub, SNY_SCALE};
 use crate::*;
 
 // Min decimals for asset = 6
@@ -160,9 +160,11 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
     );
     return shares.try_into().unwrap();
 }
-pub fn amount_to_discount(amount: u64) -> Decimal {
+pub fn amount_to_discount(sny_amount: Decimal) -> Decimal {
     // decimals of token = 6
-    const ONE_SNY: u64 = 1_000_000u64;
+    const ONE_SNY: u128 = 10u128.pow(SNY_SCALE as u32);
+    let amount = sny_amount.val;
+
     let v: u16 = match () {
         () if amount < ONE_SNY * 100 => 0,
         () if amount < ONE_SNY * 200 => 1,
@@ -204,6 +206,7 @@ pub fn calculate_swap_tax(total_fee: Decimal, swap_tax: Decimal) -> Decimal {
 pub fn calculate_swap_out_amount(
     asset_in: &Asset,
     asset_for: &Asset,
+    decimals_out: u8,
     amount: Decimal,
     fee: Decimal, // in range from 0-99 | 30/10000 => 0.3% fee
 ) -> Result<(Decimal, Decimal)> {
@@ -214,7 +217,7 @@ pub fn calculate_swap_out_amount(
     }
     let fee = value_in_usd.mul(fee);
     let value_out_usd = value_in_usd.sub(fee).unwrap();
-    let amount_out = usd_to_token_amount(asset_for, value_out_usd);
+    let amount_out = usd_to_token_amount(asset_for, value_out_usd, decimals_out);
     return Ok((amount_out, fee));
 }
 pub fn calculate_burned_shares(
@@ -248,8 +251,8 @@ pub fn calculate_burned_shares(
 //     );
 //     return burned_amount_token.try_into().unwrap();
 // }
-pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal) -> Decimal {
-    return value_in_usd.div_to_scale(asset.price, asset.price.scale);
+pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u8) -> Decimal {
+    return value_in_usd.div_to_scale(asset.price, decimals_out);
 }
 pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
@@ -838,7 +841,7 @@ mod tests {
             });
 
             let result = calculate_max_debt_in_usd(&exchange_account, &assets_list);
-            assert_eq!(result, Decimal::from_integer(301).to_usd());
+            assert_eq!(result, Decimal::from_usd(301));
         }
         // Rounding down
         {
@@ -963,126 +966,105 @@ mod tests {
     #[test]
     fn test_amount_to_discount() {
         {
-            let amount = 10u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(10).to_sny();
             let result = amount_to_discount(amount);
             assert_eq!(result, Decimal::from_percent(0))
         }
         {
-            let amount = 100u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(100).to_sny();
             let result = amount_to_discount(amount);
             assert_eq!(result, Decimal::from_percent(1))
         }
         {
-            let amount = 200u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(200).to_sny();
             let result = amount_to_discount(amount);
             assert_eq!(result, Decimal::from_percent(2))
         }
         {
-            let amount = 350u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(350).to_sny();
             let result = amount_to_discount(amount);
             assert_eq!(result, Decimal::from_percent(2))
         }
         {
-            let amount = 500u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(500).to_sny();
             let result = amount_to_discount(amount);
             assert_eq!(result, Decimal::from_percent(3))
         }
         {
-            let amount = 1_000_000u64 * 10u64.pow(6);
+            let amount = Decimal::from_integer(999_999).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_percent(13));
-            let result = amount_to_discount(amount - 1);
-            assert_eq!(result, Decimal::from_percent(12));
-            // max discount 20%
-            let result = amount_to_discount(amount * 2);
-            assert_eq!(result, Decimal::from_percent(14));
+            assert_eq!(result, Decimal::from_percent(12))
+        }
+        {
+            let amount = Decimal::from_integer(1_000_000).to_sny();
+            let result = amount_to_discount(amount);
+            assert_eq!(result, Decimal::from_percent(13))
         }
     }
-    // #[test]
-    // fn test_calculate_swap_out_amount() {
-    //     let asset_usd = Asset {
-    //         price: 1 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     };
-    //     let synthetic_usd = Synthetic {
-    //         decimals: 6,
-    //         ..Default::default()
-    //     };
-    //     let asset_btc = Asset {
-    //         price: 50000 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     };
-    //     let synthetic_btc = Synthetic {
-    //         decimals: 8,
-    //         ..Default::default()
-    //     };
-    //     let asset_eth = Asset {
-    //         price: 2000 * 10u64.pow(PRICE_OFFSET.into()),
-    //         ..Default::default()
-    //     };
-    //     let synthetic_eth = Synthetic {
-    //         decimals: 7,
-    //         ..Default::default()
-    //     };
-    //     let fee = 300u32;
-    //     // should fail because swap value is too low
-    //     {
-    //         let result = calculate_swap_out_amount(
-    //             &asset_usd,
-    //             &asset_btc,
-    //             &synthetic_usd,
-    //             &synthetic_btc,
-    //             10,
-    //             fee,
-    //         );
-    //         assert!(result.is_err());
-    //     }
-    //     {
-    //         let (out_amount, swap_fee) = calculate_swap_out_amount(
-    //             &asset_usd,
-    //             &asset_btc,
-    //             &synthetic_usd,
-    //             &synthetic_btc,
-    //             50000 * 10u64.pow(ACCURACY.into()),
-    //             fee,
-    //         )
-    //         .unwrap();
-    //         // out amount should be 0.997 BTC
-    //         assert_eq!(out_amount, 0_99700000);
-    //         // fee should be 150 USD
-    //         assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-    //     }
-    //     {
-    //         let (out_amount, swap_fee) = calculate_swap_out_amount(
-    //             &asset_btc,
-    //             &asset_usd,
-    //             &synthetic_btc,
-    //             &synthetic_usd,
-    //             1 * 10u64.pow(synthetic_btc.decimals.into()),
-    //             fee,
-    //         )
-    //         .unwrap();
-    //         // out amount should be 49850 USD
-    //         assert_eq!(out_amount, 49850_000_000);
-    //         // fee should be 150 USD
-    //         assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
-    //     }
-    //     {
-    //         let (out_amount, swap_fee) = calculate_swap_out_amount(
-    //             &asset_btc,
-    //             &asset_eth,
-    //             &synthetic_btc,
-    //             &synthetic_eth,
-    //             99700000,
-    //             fee,
-    //         )
-    //         .unwrap();
-    //         // out amount should be 24.850225 ETH
-    //         assert_eq!(out_amount, 24_850_2250);
-    //         // fee should be 149,55 USD
-    //         assert_eq!(swap_fee, 14955 * 10u64.pow(4));
-    //     }
-    // }
+    #[test]
+    fn test_calculate_swap_out_amount() {
+        // 6 decimals
+        let asset_usd = Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        };
+        // 8 decimals
+        let asset_btc = Asset {
+            price: Decimal::from_integer(150000).to_price(),
+            ..Default::default()
+        };
+        // 7 decimals
+        let asset_eth = Asset {
+            price: Decimal::from_integer(12000).to_price(),
+            ..Default::default()
+        };
+        let fee = Decimal::from_percent(300);
+        // should fail because swap value is too low
+        {
+            let amount = Decimal::new(10, 6);
+            let result = calculate_swap_out_amount(&asset_usd, &asset_btc, 8, amount, fee);
+            assert!(result.is_err());
+        }
+        // {
+        //     let amount = Decimal::from_integer(50000).to_usd();
+        //     let (out_amount, swap_fee) =
+        //         calculate_swap_out_amount(&asset_usd, &asset_btc, amount, fee).unwrap();
+        //     // out amount should be 0.997 BTC
+        //     assert_eq!(out_amount, 0_99700000);
+        //     // fee should be 150 USD
+        //     assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
+        // }
+        // {
+        //     let (out_amount, swap_fee) = calculate_swap_out_amount(
+        //         &asset_btc,
+        //         &asset_usd,
+        //         &synthetic_btc,
+        //         &synthetic_usd,
+        //         1 * 10u64.pow(synthetic_btc.decimals.into()),
+        //         fee,
+        //     )
+        //     .unwrap();
+        //     // out amount should be 49850 USD
+        //     assert_eq!(out_amount, 49850_000_000);
+        //     // fee should be 150 USD
+        //     assert_eq!(swap_fee, 150 * 10u64.pow(ACCURACY.into()));
+        // }
+        // {
+        //     let (out_amount, swap_fee) = calculate_swap_out_amount(
+        //         &asset_btc,
+        //         &asset_eth,
+        //         &synthetic_btc,
+        //         &synthetic_eth,
+        //         99700000,
+        //         fee,
+        //     )
+        //     .unwrap();
+        //     // out amount should be 24.850225 ETH
+        //     assert_eq!(out_amount, 24_850_2250);
+        //     // fee should be 149,55 USD
+        //     assert_eq!(swap_fee, 14955 * 10u64.pow(4));
+        // }
+    }
     // #[test]
     // fn test_calculate_burned_shares() {
     //     // all_debt

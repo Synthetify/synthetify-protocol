@@ -202,14 +202,14 @@ pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> P
 pub fn get_user_sny_collateral_balance(
     exchange_account: &ExchangeAccount,
     sny_asset: &Collateral,
-) -> u64 {
+) -> Decimal {
     let entry = exchange_account
         .collaterals
         .iter()
         .find(|x| x.collateral_address.eq(&sny_asset.collateral_address));
     match entry {
-        Some(x) => return x.amount,
-        None => return 0,
+        Some(x) => return Decimal::from_sny(x.amount.into()),
+        None => return Decimal::from_sny(0),
     }
 }
 

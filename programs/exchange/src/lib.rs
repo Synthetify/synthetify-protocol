@@ -10,7 +10,7 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 const SNY_DECIMALS: u8 = 6;
 const XUSD_DECIMALS: u8 = 6;
-// #[program]
+#[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
@@ -480,8 +480,11 @@ pub mod exchange {
 
         let amount_to_withdraw: Decimal;
         if amount == u64::MAX {
-            let max_withdrawable_in_token =
-                usd_to_token_amount(collateral_asset, max_withdrawable_in_usd);
+            let max_withdrawable_in_token = usd_to_token_amount(
+                collateral_asset,
+                max_withdrawable_in_usd,
+                collateral.reserve_balance.scale,
+            );
 
             if max_withdrawable_in_token.lt(amount_collateral).unwrap() {
                 amount_to_withdraw = amount_collateral;
@@ -597,8 +600,13 @@ pub mod exchange {
             val: amount.into(),
             scale: synthetics[synthetic_in_index].supply.scale,
         };
-        let (amount_for, fee_usd) =
-            calculate_swap_out_amount(&asset_in, &asset_for, amount_decimal, effective_fee)?;
+        let (amount_for, fee_usd) = calculate_swap_out_amount(
+            &asset_in,
+            &asset_for,
+            synthetics[synthetic_for_index].supply.scale,
+            amount_decimal,
+            effective_fee,
+        )?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -844,8 +852,11 @@ pub mod exchange {
             .checked_sub(burned_debt_shares)
             .unwrap();
 
-        let seized_collateral_in_token =
-            usd_to_token_amount(liquidated_asset, seized_collateral_in_usd);
+        let seized_collateral_in_token = usd_to_token_amount(
+            liquidated_asset,
+            seized_collateral_in_usd,
+            liquidated_collateral.reserve_balance.scale,
+        );
 
         let mut exchange_account_collateral =
             match exchange_account.collaterals.iter_mut().find(|x| {
@@ -2239,7 +2250,7 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 }
 
 #[zero_copy]
-#[derive(PartialEq, Default, Debug)]
+#[derive(PartialEq, Default, Debug, AnchorDeserialize, AnchorSerialize)]
 pub struct Decimal {
     pub val: u128,
     pub scale: u8,
