@@ -1034,45 +1034,35 @@ mod tests {
             assert_eq!(swap_fee, Decimal::new(149_55, 2).to_usd());
         }
     }
-    // #[test]
-    // fn test_calculate_burned_shares() {
-    //     // all_debt
-    //     {
-    //         // 7772,102...
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let synthetic = Synthetic {
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let all_debt = 1598;
-    //         let all_shares = 90;
-    //         let amount = 9857;
-    //         let burned_shares =
-    //             calculate_burned_shares(&asset, &synthetic, all_debt, all_shares, amount);
-    //         assert_eq!(burned_shares, 7772);
-    //     }
-    //     // user_debt
-    //     {
-    //         // user_debt = 0
-    //         let asset = Asset {
-    //             price: 14 * 10u64.pow(PRICE_OFFSET.into()),
-    //             ..Default::default()
-    //         };
-    //         let synthetic = Synthetic {
-    //             decimals: 6,
-    //             ..Default::default()
-    //         };
-    //         let user_debt = 0;
-    //         let user_shares = 0;
-    //         let amount = 0;
-    //         let burned_shares =
-    //             calculate_burned_shares(&asset, &synthetic, user_debt, user_shares, amount);
-    //         assert_eq!(burned_shares, 0);
-    //     }
-    // }
+    #[test]
+    fn test_calculate_burned_shares() {
+        // all_debt
+        {
+            // 7772,102...
+            let asset = Asset {
+                price: Decimal::from_integer(14).to_price(),
+                ..Default::default()
+            };
+            let all_debt = Decimal::from_usd(1598);
+            let all_shares = 90;
+            let amount = Decimal::from_usd(9857);
+            let burned_shares = calculate_burned_shares(&asset, all_debt, all_shares, amount);
+            assert_eq!(burned_shares, 7772);
+        }
+        // user_debt
+        {
+            // user_debt = 0
+            let asset = Asset {
+                price: Decimal::from_integer(14).to_price(),
+                ..Default::default()
+            };
+            let user_debt = Decimal::from_usd(0);
+            let user_shares = 0;
+            let amount = Decimal::from_usd(0);
+            let burned_shares = calculate_burned_shares(&asset, user_debt, user_shares, amount);
+            assert_eq!(burned_shares, 0);
+        }
+    }
     #[test]
     fn test_calculate_value_in_usd() {
         // zero price
