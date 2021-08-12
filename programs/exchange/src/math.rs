@@ -669,7 +669,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(6), // only for decimals
-            collateral_ratio: Decimal::from_unified_percent(50_00),
+            collateral_ratio: Decimal::from_percent(50),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -681,7 +681,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(8),
-            collateral_ratio: Decimal::from_unified_percent(50_00),
+            collateral_ratio: Decimal::from_percent(50),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -693,7 +693,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(4),
-            collateral_ratio: Decimal::from_unified_percent(12_00),
+            collateral_ratio: Decimal::from_percent(12),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -705,7 +705,7 @@ mod tests {
         });
         assets_list.append_collateral(Collateral {
             reserve_balance: Decimal::from_integer(0).to_scale(6),
-            collateral_ratio: Decimal::from_unified_percent(90_00),
+            collateral_ratio: Decimal::from_percent(90),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -815,10 +815,10 @@ mod tests {
                 owner: Pubkey::default(),
                 ..Default::default()
             };
-            let debt = Decimal::new(4400_162356, 6).to_usd();
+            let debt = Decimal::from_usd(4400_162356);
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 1234);
-            assert_eq!(result, Decimal::new(356_577177, 6).to_usd())
+            assert_eq!(result, Decimal::from_usd(356_577177))
         }
         {
             let user_account = ExchangeAccount {
@@ -826,10 +826,10 @@ mod tests {
                 owner: Pubkey::default(),
                 ..Default::default()
             };
-            let debt = Decimal::new(932210931_726361, 6).to_usd();
+            let debt = Decimal::from_usd(932210931_726361);
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-            assert_eq!(result, Decimal::new(115211, 6).to_usd())
+            assert_eq!(result, Decimal::from_usd(115211))
         }
         {
             let user_account = ExchangeAccount {
@@ -837,10 +837,10 @@ mod tests {
                 owner: Pubkey::default(),
                 ..Default::default()
             };
-            let debt = Decimal::new(526932210931_726361, 6).to_usd();
+            let debt = Decimal::from_usd(526932210931_726361);
 
             let result = calculate_user_debt_in_usd(&user_account, debt, 12345678987654321);
-            assert_eq!(result, Decimal::new(394145294459_835461, 6).to_usd())
+            assert_eq!(result, Decimal::from_usd(394145294459_835461))
         }
     }
     #[test]
