@@ -17,6 +17,8 @@ import {
   waitForBeggingOfASlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { Decimal } from '../sdk/src/exchange'
+import { toDecimal } from '../sdk/lib/utils'
 
 // limited by MTU size
 const ASSET_LIMIT = 30 // >=20 splits transaction
@@ -41,7 +43,7 @@ describe('max collaterals', () => {
   let nonce: number
   let tokens: Token[] = []
   let reserves: PublicKey[] = []
-  let healthFactor: BN
+  let healthFactor: Decimal
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -106,7 +108,7 @@ describe('max collaterals', () => {
       exchangeProgram.programId
     )
 
-    healthFactor = new BN((await exchange.getState()).healthFactor)
+    healthFactor = (await exchange.getState()).healthFactor
     const createCollateralProps = {
       exchange,
       exchangeAuthority,
@@ -185,7 +187,7 @@ describe('max collaterals', () => {
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
+    assert.ok(state.fee === toDecimal(300, 4))
     assert.ok(state.debtShares.eq(new BN(0)))
   })
   it('Initialize tokens', async () => {
