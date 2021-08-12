@@ -14,11 +14,13 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   createAccountWithMultipleCollaterals,
   skipToSlot,
-  mulByPercentage,
-  createCollateralToken
+  createCollateralToken,
+  eqDecimals,
+  mulByDecimal
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { Collateral } from '../sdk/lib/exchange'
+import { toDecimal } from '../sdk/lib/utils'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -122,11 +124,11 @@ describe('staking', () => {
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
+    assert.ok(eqDecimals(state.fee, toDecimal(new BN(300), 5)))
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.staking.fundAccount.equals(stakingFundAccount))
-    assert.ok(state.staking.amountPerRound.eq(amountPerRound))
+    assert.ok(state.staking.amountPerRound.val.eq(amountPerRound))
     assert.ok(state.staking.roundLength === stakingRoundLength)
   })
   describe('Staking', async () => {
@@ -145,18 +147,18 @@ describe('staking', () => {
           usdToken
         })
 
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
 
       assert.ok(
         (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
-          mulByPercentage(new BN(200 * 1e6), healthFactor)
+          mulByDecimal(new BN(200 * 1e6), healthFactor)
         )
       )
       assert.ok(nextRoundStart.gtn(await connection.getSlot()))
       // Wait for start of new round
       await skipToSlot(nextRoundStart.toNumber(), connection)
       // Burn should reduce next round stake
-      const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      const amountBurn = mulByDecimal(new BN(100 * 1e6), healthFactor)
       await exchange.burn({
         amount: amountBurn,
         exchangeAccount,
@@ -167,7 +169,7 @@ describe('staking', () => {
       assert.ok(nextRoundStart.toNumber() < (await connection.getSlot()))
       const exchangeAccountDataAfterBurn = await exchange.getExchangeAccount(exchangeAccount)
 
-      const amountScaledByHealth = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      const amountScaledByHealth = mulByDecimal(new BN(100 * 1e6), healthFactor)
 
       assert.ok(
         exchangeAccountDataAfterBurn.userStakingData.nextRoundPoints.eq(amountScaledByHealth)
@@ -225,7 +227,7 @@ describe('staking', () => {
       const exchangeAccount2ndData = await exchange.getExchangeAccount(exchangeAccount2nd)
       assert.ok(
         exchangeAccount2ndData.userStakingData.nextRoundPoints.eq(
-          mulByPercentage(new BN(200 * 1e6), healthFactor)
+          mulByDecimal(new BN(200 * 1e6), healthFactor)
         )
       )
 
@@ -283,8 +285,8 @@ describe('staking', () => {
         })
 
       // Minting using both collaterals
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
       const firstRoundStart = nextRoundStart.addn(4 * stakingRoundLength)
@@ -305,7 +307,7 @@ describe('staking', () => {
 
       assert.ok(
         (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.nextRoundPoints.eq(
-          mulByPercentage(new BN(200 * 1e6), healthFactor)
+          mulByDecimal(new BN(200 * 1e6), healthFactor)
         )
       )
 
