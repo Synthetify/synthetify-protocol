@@ -621,7 +621,7 @@ mod tests {
         assert!(check_feed_update(&list.assets, 0, 1, 10, 21).is_err());
         // On the limit
         assert!(check_feed_update(&list.assets, 0, 1, 10, 20).is_ok());
-        // No tollerance
+        // No tolerance
         assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
     }
     #[test]

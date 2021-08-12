@@ -8,8 +8,6 @@ use pyth::pc::{Price, PriceStatus};
 use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
-const SNY_DECIMALS: u8 = 6;
-const XUSD_DECIMALS: u8 = 6;
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
@@ -18,10 +16,13 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount, PRICE_OFFSET,
+        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount,
     };
 
-    use crate::decimal::{Add, DivUp, Gt, Lt, Ltq, Mul, Sub, UNIFIED_PERCENT_SCALE};
+    use crate::decimal::{
+        Add, DivUp, Gt, Lt, Ltq, Mul, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
+        XUSD_SCALE,
+    };
 
     use super::*;
 
@@ -50,20 +51,20 @@ pub mod exchange {
             last_update: u64::MAX,           // we don't update usd price
             price: Decimal {
                 val: 100_000_000,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             confidence: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             twap: Decimal {
                 val: 100_000_000,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             status: PriceStatus::Trading.into(),
             twac: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
         };
         let usd_synthetic = Synthetic {
@@ -81,20 +82,20 @@ pub mod exchange {
             last_update: 0,
             price: Decimal {
                 val: 2_000_000,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             confidence: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             twap: Decimal {
                 val: 2_000_000,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             status: PriceStatus::Unknown.into(),
             twac: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
         };
         let sny_collateral = Collateral {
@@ -103,7 +104,7 @@ pub mod exchange {
             collateral_address: collateral_token,
             reserve_balance: Decimal {
                 val: 0,
-                scale: SNY_DECIMALS,
+                scale: SNY_SCALE,
             },
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
@@ -127,7 +128,7 @@ pub mod exchange {
                 .find(|x| x.feed_address == *feed_address);
             match asset {
                 Some(asset) => {
-                    let offset = (PRICE_OFFSET as i32).checked_add(price_feed.expo).unwrap();
+                    let offset = (PRICE_SCALE as i32).checked_add(price_feed.expo).unwrap();
                     if offset >= 0 {
                         let scaled_price = price_feed
                             .agg
@@ -151,19 +152,19 @@ pub mod exchange {
                             .unwrap();
                         asset.price = Decimal {
                             val: scaled_price.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.twap = Decimal {
                             val: scaled_twap.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.confidence = Decimal {
                             val: scaled_confidence.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.twac = Decimal {
                             val: scaled_twac.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                     } else {
                         let scaled_price = price_feed
@@ -188,19 +189,19 @@ pub mod exchange {
                             .unwrap();
                         asset.price = Decimal {
                             val: scaled_price.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.twap = Decimal {
                             val: scaled_twap.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.confidence = Decimal {
                             val: scaled_confidence.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                         asset.twac = Decimal {
                             val: scaled_twac.try_into().unwrap(),
-                            scale: PRICE_OFFSET,
+                            scale: PRICE_SCALE,
                         };
                     }
                     asset.status = price_feed.agg.status.into();
@@ -250,7 +251,7 @@ pub mod exchange {
             round_length: staking_round_length,
             amount_per_round: Decimal {
                 val: amount_per_round.into(),
-                scale: SNY_DECIMALS,
+                scale: SNY_SCALE,
             },
             fund_account: *ctx.accounts.staking_fund_account.to_account_info().key,
             finished_round: StakingRound {
@@ -811,7 +812,7 @@ pub mod exchange {
         let liquidated_asset = &assets[liquidated_collateral.asset_index as usize];
         let liquidation_amount = Decimal {
             val: amount.into(),
-            scale: XUSD_DECIMALS,
+            scale: XUSD_SCALE,
         };
         let seized_collateral_in_usd = liquidation_amount
             .div_up(
@@ -1109,20 +1110,20 @@ pub mod exchange {
             last_update: 0,
             price: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             confidence: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             twap: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
             status: PriceStatus::Trading.into(),
             twac: Decimal {
                 val: 0,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             },
         };
 
@@ -1305,7 +1306,7 @@ pub mod exchange {
 
         state.staking.amount_per_round = Decimal {
             val: amount_per_round.into(),
-            scale: SNY_DECIMALS,
+            scale: SNY_SCALE,
         };
         Ok(())
     }
@@ -2357,7 +2358,7 @@ fn fund_account<'info>(
 
 #[cfg(test)]
 mod tests {
-    use crate::math::PRICE_OFFSET;
+    use crate::decimal::PRICE_SCALE;
 
     use super::*;
 
@@ -2443,7 +2444,7 @@ mod tests {
             };
             let price = Decimal {
                 val: 2,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             };
             assets_list.append_asset(Asset {
                 price: price,
@@ -2455,7 +2456,7 @@ mod tests {
             assert_eq!(assets_list.head_synthetics, 0);
             let price2 = Decimal {
                 val: 3,
-                scale: PRICE_OFFSET,
+                scale: PRICE_SCALE,
             };
             assets_list.append_asset(Asset {
                 price: price2,
@@ -2515,7 +2516,7 @@ mod tests {
         };
         let price = Decimal {
             val: 2,
-            scale: PRICE_OFFSET,
+            scale: PRICE_SCALE,
         };
         assets_list.append_asset(Asset {
             price: price,

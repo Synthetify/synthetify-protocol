@@ -1,11 +1,12 @@
 use std::convert::TryInto;
 
-use crate::math::{ACCURACY, PRICE_OFFSET};
 use crate::*;
 
+pub const XUSD_SCALE: u8 = 6;
+pub const SNY_SCALE: u8 = 6;
+pub const PRICE_SCALE: u8 = 8;
 pub const UNIFIED_PERCENT_SCALE: u8 = 4;
 pub const INTEREST_RATE_SCALE: u8 = 18;
-pub const SNY_SCALE: u8 = 6;
 
 impl Decimal {
     pub fn new(value: u128, scale: u8) -> Self {
@@ -32,13 +33,13 @@ impl Decimal {
     pub fn from_price(price: u128) -> Self {
         Decimal {
             val: price,
-            scale: PRICE_OFFSET,
+            scale: PRICE_SCALE,
         }
     }
     pub fn from_usd(value: u128) -> Self {
         Decimal {
             val: value.into(),
-            scale: ACCURACY,
+            scale: XUSD_SCALE,
         }
     }
     pub fn from_sny(value: u128) -> Self {
@@ -54,16 +55,16 @@ impl Decimal {
         }
     }
     pub fn to_usd(self) -> Decimal {
-        self.to_scale(ACCURACY)
+        self.to_scale(XUSD_SCALE)
     }
     pub fn to_usd_up(self) -> Decimal {
-        self.to_scale_up(ACCURACY)
+        self.to_scale_up(XUSD_SCALE)
     }
     pub fn to_sny(self) -> Decimal {
-        self.to_scale(ACCURACY)
+        self.to_scale(XUSD_SCALE)
     }
     pub fn to_price(self) -> Decimal {
-        self.to_scale(PRICE_OFFSET)
+        self.to_scale(PRICE_SCALE)
     }
     pub fn to_u64(self) -> u64 {
         self.val.try_into().unwrap()
@@ -387,7 +388,7 @@ mod test {
     fn test_pow_with_accuracy() {
         // Zero base
         {
-            let decimal: u8 = PRICE_OFFSET;
+            let decimal: u8 = PRICE_SCALE;
             let base = Decimal::new(0, 0).to_scale(decimal);
             let exp: u128 = 100;
             let result = base.pow_with_accuracy(exp);
@@ -396,7 +397,7 @@ mod test {
         }
         // Zero exponent
 
-        let decimal: u8 = PRICE_OFFSET;
+        let decimal: u8 = PRICE_SCALE;
         let base = Decimal::new(10, 0).to_scale(decimal);
         let exp: u128 = 0;
         let result = base.pow_with_accuracy(exp);
@@ -404,7 +405,7 @@ mod test {
         assert_eq!(result, expected);
         // 2^17, with price decimal
         {
-            let decimal: u8 = PRICE_OFFSET;
+            let decimal: u8 = PRICE_SCALE;
             let base = Decimal::new(2, 0).to_scale(decimal);
             let exp: u128 = 17;
             let result = base.pow_with_accuracy(exp);

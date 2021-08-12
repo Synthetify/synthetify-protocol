@@ -1,15 +1,12 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub};
+use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub, XUSD_SCALE};
 use crate::*;
 
-// Min decimals for asset = 6
-pub const ACCURACY: u8 = 6; // xUSD decimal
-pub const PRICE_OFFSET: u8 = 8;
 pub const MINUTES_IN_YEAR: u32 = 525600;
 pub const MIN_SWAP_USD_VALUE: Decimal = Decimal {
     val: 1000u128,
-    scale: ACCURACY,
+    scale: XUSD_SCALE,
 };
 
 pub fn calculate_debt(
@@ -20,7 +17,7 @@ pub fn calculate_debt(
 ) -> Result<Decimal> {
     let mut debt = Decimal {
         val: 0,
-        scale: ACCURACY,
+        scale: XUSD_SCALE,
     };
     let synthetics = &assets_list.synthetics;
     let head = assets_list.head_synthetics as usize;
@@ -256,6 +253,8 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 
 #[cfg(test)]
 mod tests {
+    use crate::decimal::PRICE_SCALE;
+
     use super::*;
     use std::{cell::RefCell, ops::Div};
 
@@ -1122,7 +1121,7 @@ mod tests {
         // round down
         {
             let asset = Asset {
-                price: Decimal::from_price(14 * 10u128.pow(PRICE_OFFSET.into())),
+                price: Decimal::from_price(14 * 10u128.pow(PRICE_SCALE.into())),
                 ..Default::default()
             };
             let scale = 6u8;
@@ -1237,7 +1236,7 @@ mod tests {
             let interest_diff = final_value.sub(start_value).unwrap();
             // real     2113.489015... $
             // expected 2113.489017... $
-            let expected = Decimal::new(2113489017, ACCURACY);
+            let expected = Decimal::new(2113489017, XUSD_SCALE);
             assert_eq!(interest_diff, expected);
         }
         // regular compound (every 3 minutes for the year)
@@ -1258,7 +1257,7 @@ mod tests {
             let interest_diff = base_value.sub(start_value).unwrap();
             // real     2113.4... $
             // expected 2113.5... $
-            let expected = Decimal::new(2113577183, ACCURACY);
+            let expected = Decimal::new(2113577183, XUSD_SCALE);
             assert_eq!(interest_diff, expected);
         }
     }
