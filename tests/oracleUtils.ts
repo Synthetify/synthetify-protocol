@@ -13,23 +13,29 @@ export const createPriceFeed = async ({
   oracleProgram,
   initPrice,
   confidence,
-  expo = -4
+  expo = -8
 }: ICreatePriceFeed) => {
-  const conf = confidence || new BN((initPrice / 10) * 10 ** -expo)
+  const conf = confidence || new BN(initPrice / 10).mul(new BN(10).pow(new BN(-expo)))
   const collateralTokenFeed = new web3.Account()
-  await oracleProgram.rpc.initialize(new BN(initPrice * 10 ** -expo), expo, conf, {
-    accounts: { price: collateralTokenFeed.publicKey },
-    signers: [collateralTokenFeed],
-    instructions: [
-      web3.SystemProgram.createAccount({
-        fromPubkey: oracleProgram.provider.wallet.publicKey,
-        newAccountPubkey: collateralTokenFeed.publicKey,
-        space: 3312,
-        lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(3312),
-        programId: oracleProgram.programId
-      })
-    ]
-  })
+
+  await oracleProgram.rpc.initialize(
+    new BN(initPrice).mul(new BN(10).pow(new BN(-expo))),
+    expo,
+    conf,
+    {
+      accounts: { price: collateralTokenFeed.publicKey },
+      signers: [collateralTokenFeed],
+      instructions: [
+        web3.SystemProgram.createAccount({
+          fromPubkey: oracleProgram.provider.wallet.publicKey,
+          newAccountPubkey: collateralTokenFeed.publicKey,
+          space: 3312,
+          lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(3312),
+          programId: oracleProgram.programId
+        })
+      ]
+    }
+  )
   return collateralTokenFeed.publicKey
 }
 export const setFeedPrice = async (
