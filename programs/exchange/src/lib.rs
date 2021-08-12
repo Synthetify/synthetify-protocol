@@ -73,7 +73,7 @@ pub mod exchange {
         };
         let sny_collateral = Collateral {
             asset_index: 1,
-            collateral_ratio: Decimal::new(10, 2).to_percent(), // 20%
+            collateral_ratio: Decimal::from_percent(10), // 10%
             collateral_address: collateral_token,
             reserve_balance: Decimal::from_sny(0),
             reserve_address: *ctx.accounts.sny_reserve.key,

@@ -15,10 +15,7 @@ pub fn calculate_debt(
     max_delay: u32,
     twap: bool,
 ) -> Result<Decimal> {
-    let mut debt = Decimal {
-        val: 0,
-        scale: XUSD_SCALE,
-    };
+    let mut debt = Decimal::from_usd(0);
     let synthetics = &assets_list.synthetics;
     let head = assets_list.head_synthetics as usize;
     for synthetic in synthetics[..head].iter() {
@@ -39,7 +36,7 @@ pub fn calculate_debt(
     Ok(debt)
 }
 pub fn calculate_max_debt_in_usd(account: &ExchangeAccount, assets_list: &AssetsList) -> Decimal {
-    let mut max_debt = Decimal::from_integer(0).to_usd();
+    let mut max_debt = Decimal::from_usd(0);
     let head = account.head as usize;
 
     for collateral_entry in account.collaterals[..head].iter() {
@@ -69,7 +66,7 @@ pub fn calculate_user_debt_in_usd(
     debt_shares: u64,
 ) -> Decimal {
     if debt_shares == 0 {
-        return Decimal::from_integer(0).to_usd();
+        return Decimal::from_usd(0);
     }
 
     let debt_shares = Decimal::from_integer(debt_shares);
@@ -212,23 +209,10 @@ pub fn calculate_burned_shares(
         .into()
 }
 
-// This should always return user_debt if xusd === 1 USD
-// Should we remove this function ?
-// pub fn calculate_max_burned_in_xusd(asset: &Asset, user_debt: u64) -> u64 {
-//     // rounding up to be sure that burned amount is not less than user debt
-//     let burned_amount_token = div_up(
-//         (user_debt as u128)
-//             .checked_mul(10u128.pow(PRICE_OFFSET.into()))
-//             .unwrap(),
-//         asset.price as u128,
-//     );
-//     return burned_amount_token.try_into().unwrap();
-// }
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u8) -> Decimal {
     msg!("{:?} {:?} {}", value_in_usd, asset.price, decimals_out);
     return value_in_usd.div_to_scale(asset.price, decimals_out);
 }
-pub const CONFIDENCE_OFFSET: u8 = 6u8;
 
 pub fn calculate_compounded_interest(
     base_value: Decimal,
@@ -264,7 +248,7 @@ mod tests {
         {
             let collateral_shares = 0u64;
             let collateral_amount = Decimal::from_usd(0);
-            let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
+            let to_deposit_amount = Decimal::from_integer(1).to_usd();
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -282,8 +266,8 @@ mod tests {
         // With existing shares
         {
             let collateral_shares = 10u64.pow(6);
-            let collateral_amount = Decimal::from_usd(10u128.pow(6));
-            let to_deposit_amount = Decimal::from_usd(10u128.pow(6));
+            let collateral_amount = Decimal::from_integer(1).to_usd();
+            let to_deposit_amount = Decimal::from_integer(1).to_usd();
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -301,7 +285,7 @@ mod tests {
         // Zero new shares
         {
             let collateral_shares = 10u64.pow(6);
-            let collateral_amount = Decimal::from_usd(10u128.pow(6));
+            let collateral_amount = Decimal::from_integer(1).to_usd();
             let to_deposit_amount = Decimal::from_usd(0);
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
@@ -320,7 +304,7 @@ mod tests {
         // Valid rounding
         {
             let collateral_shares = 10_001 * 10u64.pow(6);
-            let collateral_amount = Decimal::from_usd(988_409 * 10u128.pow(6));
+            let collateral_amount = Decimal::from_integer(988_409).to_usd();
             let to_deposit_amount = Decimal::from_usd(579_112);
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
@@ -339,8 +323,8 @@ mod tests {
         // Test on big numbers
         {
             let collateral_shares = 100_000_000 * 10u64.pow(6);
-            let collateral_amount = Decimal::from_usd(100_000_000 * 10u128.pow(6));
-            let to_deposit_amount = Decimal::from_usd(10_000_000 * 10u128.pow(6));
+            let collateral_amount = Decimal::from_integer(100_000_000).to_usd();
+            let to_deposit_amount = Decimal::from_integer(10_000_000).to_usd();
             let new_shares_rounding_down = calculate_new_shares_by_rounding_down(
                 collateral_shares,
                 collateral_amount,
@@ -362,8 +346,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(999_999_999);
             let max_debt = Decimal::from_usd(999_999_999);
-            let collateral_ratio = Decimal::from_unified_percent(1000);
-            let health_factor = Decimal::from_unified_percent(10000);
+            let collateral_ratio = Decimal::from_percent(10);
+            let health_factor = Decimal::from_percent(100);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -373,8 +357,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(1_000_000_000);
             let max_debt = Decimal::from_usd(900_000_000);
-            let collateral_ratio = Decimal::from_unified_percent(1000);
-            let health_factor = Decimal::from_unified_percent(10000);
+            let collateral_ratio = Decimal::from_percent(10);
+            let health_factor = Decimal::from_percent(100);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -384,8 +368,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(900_000_123);
             let max_debt = Decimal::from_usd(1_000_000_000);
-            let collateral_ratio = Decimal::from_unified_percent(8000);
-            let health_factor = Decimal::from_unified_percent(10000);
+            let collateral_ratio = Decimal::from_percent(80);
+            let health_factor = Decimal::from_percent(100);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
@@ -396,8 +380,8 @@ mod tests {
         {
             let debt = Decimal::from_usd(900_000_000);
             let max_debt = Decimal::from_usd(1_000_000_000);
-            let collateral_ratio = Decimal::from_unified_percent(1000);
-            let health_factor = Decimal::from_unified_percent(4000);
+            let collateral_ratio = Decimal::from_percent(10);
+            let health_factor = Decimal::from_percent(40);
 
             let max_withdraw =
                 calculate_max_withdraw_in_usd(max_debt, debt, collateral_ratio, health_factor);
