@@ -17,7 +17,7 @@ import {
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import { ERRORS, INTEREST_RATE_DECIMALS, toScale } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
+import { Asset, Collateral, Decimal, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import {
   ERRORS_EXCHANGE,
   percentToDecimal,
@@ -171,68 +171,68 @@ describe('admin', () => {
       eqDecimals(usdSynthetic.maxSupply, toDecimal(new BN('ffffffffffffffff', 16), XUSD_DECIMALS))
     )
   })
-  // describe('#setLiquidationBuffer()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const newLiquidationBuffer = 999
-  //     const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.liquidationBuffer !== newLiquidationBuffer)
-  //   })
-  //   it('change value', async () => {
-  //     const newLiquidationBuffer = 999
-  //     const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.liquidationBuffer === newLiquidationBuffer)
-  //   })
-  // })
-  // describe('#setLiquidationRate()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const newLiquidationRate = 15
-  //     const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.liquidationRate !== newLiquidationRate)
-  //   })
-  //   it('change value', async () => {
-  //     const newLiquidationRate = 15
-  //     const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.liquidationRate === newLiquidationRate)
-  //   })
-  // })
-  // describe('#setSwapTaxRatio', async () => {
-  //   it('should set swap tax ratio', async () => {
-  //     const newSwapTaxRatio = 100
-  //     const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.swapTaxRatio === newSwapTaxRatio)
-  //   })
-  //   it('set swap tax ratio should fail without admin signature', async () => {
-  //     const ix = await exchange.setSwapTaxRatioInstruction(50)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //   })
-  //   it('set swap tax ratio should fail because of paramter out of range', async () => {
-  //     const outOfRange = 230
-  //     const ix = await exchange.setSwapTaxRatioInstruction(outOfRange)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
-  //       ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
-  //     )
-  //   })
-  // })
+  describe('#setLiquidationBuffer()', async () => {
+    it('Fail without admin signature', async () => {
+      const newLiquidationBuffer = 999
+      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.liquidationBuffer !== newLiquidationBuffer)
+    })
+    it('change value', async () => {
+      const newLiquidationBuffer = 999
+      const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.liquidationBuffer === newLiquidationBuffer)
+    })
+  })
+  describe('#setLiquidationRate()', async () => {
+    it('Fail without admin signature', async () => {
+      const newLiquidationRate = percentToDecimal(15)
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.liquidationRate !== newLiquidationRate)
+    })
+    it('change value', async () => {
+      const newLiquidationRate = percentToDecimal(15)
+      const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.liquidationRate, newLiquidationRate))
+    })
+  })
+  describe('#setSwapTaxRatio', async () => {
+    it('should set swap tax ratio', async () => {
+      const newSwapTaxRatio = percentToDecimal(25)
+      const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
+    })
+    it('set swap tax ratio should fail without admin signature', async () => {
+      const ix = await exchange.setSwapTaxRatioInstruction(percentToDecimal(10))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('set swap tax ratio should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(31)
+      const ix = await exchange.setSwapTaxRatioInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+  })
   // describe('#setDebtInterestRate', async () => {
   //   it('should set debt interest rate', async () => {
   //     const newDebtInterestRate = 110
