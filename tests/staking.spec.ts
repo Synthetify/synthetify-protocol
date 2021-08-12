@@ -45,7 +45,7 @@ describe('staking', () => {
   let CollateralTokenMinter: Account = wallet
   let nonce: number
 
-  const amountPerRound = new BN(100)
+  const amountPerRound = toDecimal(new BN(100), 6)
   const stakingRoundLength = 20
 
   let initialCollateralPrice = 2
@@ -101,7 +101,7 @@ describe('staking', () => {
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
       nonce,
-      amountPerRound: amountPerRound,
+      amountPerRound: amountPerRound.val,
       stakingRoundLength: stakingRoundLength,
       stakingFundAccount: stakingFundAccount
     })
@@ -128,7 +128,7 @@ describe('staking', () => {
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.staking.fundAccount.equals(stakingFundAccount))
-    assert.ok(state.staking.amountPerRound.val.eq(amountPerRound))
+    assert.ok(eqDecimals(state.staking.amountPerRound, amountPerRound))
     assert.ok(state.staking.roundLength === stakingRoundLength)
   })
   describe('Staking', async () => {
@@ -180,7 +180,6 @@ describe('staking', () => {
       // Wait for round to end
       const secondRound = nextRoundStart.toNumber() + 1 + stakingRoundLength
       await skipToSlot(secondRound, connection)
-
       // Claim rewards
       await exchange.claimRewards(exchangeAccount)
       const state = await exchange.getState()
@@ -188,7 +187,7 @@ describe('staking', () => {
       assert.ok(state.staking.currentRound.allPoints.eq(amountScaledByHealth))
       assert.ok(state.staking.nextRound.allPoints.eq(amountScaledByHealth))
 
-      assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      assert.ok(eqDecimals(state.staking.finishedRound.amount, amountPerRound))
       const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
@@ -200,7 +199,7 @@ describe('staking', () => {
         stakingFundAccount,
         CollateralTokenMinter,
         [],
-        tou64(amountPerRound)
+        tou64(amountPerRound.val)
       )
       await exchange.withdrawRewards({
         exchangeAccount,
@@ -210,7 +209,7 @@ describe('staking', () => {
       })
       assert.ok(
         (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+          exchangeAccountDataRewardClaim.userStakingData.amountToClaim.val
         )
       )
 
@@ -237,14 +236,14 @@ describe('staking', () => {
       await exchange.claimRewards(exchangeAccount)
       await exchange.claimRewards(exchangeAccount2nd)
       assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.eq(
+        (await exchange.getExchangeAccount(exchangeAccount)).userStakingData.amountToClaim.val.eq(
           new BN(100)
         )
       )
       assert.ok(
-        (await exchange.getExchangeAccount(exchangeAccount2nd)).userStakingData.amountToClaim.eq(
-          new BN(0)
-        )
+        (
+          await exchange.getExchangeAccount(exchangeAccount2nd)
+        ).userStakingData.amountToClaim.val.eq(new BN(0))
       )
       // Wait for nextRound to end
       await skipToSlot(secondRound + 2 * stakingRoundLength, connection)
@@ -255,8 +254,8 @@ describe('staking', () => {
         exchangeAccount2nd
       )
 
-      assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.eq(new BN(133)))
-      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.eq(new BN(66)))
+      assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(133)))
+      assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(66)))
     })
     it('with multiple collaterals', async () => {
       const { token: btcToken, reserve: btcReserve } = await createCollateralToken({

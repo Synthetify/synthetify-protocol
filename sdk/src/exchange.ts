@@ -1191,7 +1191,7 @@ export interface Staking {
 }
 export interface StakingRound {
   start: BN
-  amount: BN
+  amount: Decimal
   allPoints: BN
 }
 export interface ExchangeAccount {
@@ -1217,7 +1217,7 @@ export interface CollateralEntry {
   index: number
 }
 export interface UserStaking {
-  amountToClaim: BN
+  amountToClaim: Decimal
   finishedRoundPoints: BN
   currentRoundPoints: BN
   nextRoundPoints: BN
