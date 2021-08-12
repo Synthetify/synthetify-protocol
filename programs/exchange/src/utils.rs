@@ -775,7 +775,7 @@ mod tests {
             assert_eq!(accumulated_debt_interest, Decimal::from_usd(3806));
             assert_eq!(last_debt_adjustment, 120);
         }
-        // multiple adjustment interest rate
+        // multiple adjustment
         {
             // timestamp [90 -> 121 -> 183]
             let total_debt = Decimal::from_integer(100_000).to_usd();
@@ -825,6 +825,7 @@ mod tests {
             let mut assets_list = AssetsList {
                 ..Default::default()
             };
+            // 1% APR
             let mut state = State {
                 debt_interest_rate: Decimal::new(1, 2).to_interest_rate(),
                 accumulated_debt_interest: Decimal::from_usd(0),

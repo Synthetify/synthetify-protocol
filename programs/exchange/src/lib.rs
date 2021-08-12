@@ -1149,18 +1149,17 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_debt_interest_rate(
         ctx: Context<AdminAction>,
-        debt_interest_rate: u16,
+        debt_interest_rate: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: SET DEBT INTEREST RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let decimal_debt_interest_rate = Decimal::from_unified_percent(debt_interest_rate);
-        // max debt_interest_rate must be less or equals 20%
-        require!(
-            decimal_debt_interest_rate.ltq(Decimal::from_unified_percent(2000))?,
-            ParameterOutOfRange
-        );
 
-        state.debt_interest_rate = decimal_debt_interest_rate.to_interest_rate();
+        // max debt_interest_rate must be less or equals 20%
+        let same_scale = debt_interest_rate.scale == state.debt_interest_rate.scale;
+        let in_range = debt_interest_rate.ltq(Decimal::from_percent(20).to_interest_rate())?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        state.debt_interest_rate = debt_interest_rate;
         Ok(())
     }
 
@@ -1176,31 +1175,33 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_liquidation_rate(ctx: Context<AdminAction>, liquidation_rate: u16) -> Result<()> {
+    pub fn set_liquidation_rate(
+        ctx: Context<AdminAction>,
+        liquidation_rate: Decimal,
+    ) -> Result<()> {
         msg!("Synthetify:Admin: SET LIQUIDATION RATE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_liquidation_rate = Decimal::from_unified_percent(liquidation_rate);
         // liquidation_rate should be less or equals 100%
-        require!(
-            decimal_liquidation_rate.ltq(Decimal::from_unified_percent(10000))?,
-            ParameterOutOfRange
-        );
-        state.liquidation_rate = decimal_liquidation_rate;
+        let same_scale = liquidation_rate.scale == state.liquidation_rate.scale;
+        let in_range = liquidation_rate.ltq(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        state.liquidation_rate = liquidation_rate;
         Ok(())
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_fee(ctx: Context<AdminAction>, fee: u16) -> Result<()> {
+    pub fn set_fee(ctx: Context<AdminAction>, fee: Decimal) -> Result<()> {
         msg!("Synthetify:Admin: SET FEE");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_fee = Decimal::from_unified_percent(fee);
-        require!(
-            decimal_fee.ltq(Decimal::from_unified_percent(10000))?,
-            ParameterOutOfRange
-        );
-        state.fee = decimal_fee;
+        //  fee must be less or equals 1%
+        let same_scale = fee.scale == state.fee.scale;
+        let in_range = fee.ltq(Decimal::from_percent(1))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        state.fee = fee;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1220,16 +1221,15 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_health_factor(ctx: Context<AdminAction>, factor: u16) -> Result<()> {
+    pub fn set_health_factor(ctx: Context<AdminAction>, factor: Decimal) -> Result<()> {
         msg!("Synthetify:Admin: SET HEALTH FACTOR");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        let decimal_factor = Decimal::from_unified_percent(factor);
-        require!(
-            decimal_factor.ltq(Decimal::from_unified_percent(10000))?,
-            ParameterOutOfRange
-        );
-        state.health_factor = decimal_factor;
+        // factor must be less or equals 100%
+        let same_scale = factor.scale == state.health_factor.scale;
+        let in_range = factor.ltq(Decimal::from_price(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+        state.health_factor = factor;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -1295,7 +1295,7 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET LIQUIDATION PENALTIES");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        // penalty_to_exchange and penalty_to_liquidator should be less or equals 25%
+        // penalty_to_exchange and penalty_to_liquidator must be less or equals 25%
         let same_scale = penalty_to_exchange.scale == state.penalty_to_exchange.scale;
         let in_range = penalty_to_exchange.ltq(Decimal::from_percent(25))?;
         require!(same_scale && in_range, ParameterOutOfRange);
@@ -1325,7 +1325,7 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        // collateral_ratio should be less or equals 100%
+        // collateral_ratio must be less or equals 100%
         let same_scale = collateral_ratio.scale == UNIFIED_PERCENT_SCALE;
         let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
@@ -1357,7 +1357,7 @@ pub mod exchange {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        // collateral_ratio should be less or equals 100%
+        // collateral_ratio must be less or equals 100%
         let same_scale = collateral.collateral_ratio.scale == collateral_ratio.scale;
         let in_range = collateral
             .collateral_ratio
@@ -2291,8 +2291,6 @@ fn fund_account<'info>(
 
 #[cfg(test)]
 mod tests {
-    use crate::decimal::PRICE_SCALE;
-
     use super::*;
 
     #[test]
