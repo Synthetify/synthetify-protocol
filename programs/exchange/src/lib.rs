@@ -58,7 +58,7 @@ pub mod exchange {
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal::from_usd(0),
-            max_supply: Decimal::from_usd(u128::MAX), // no limit for usd asset
+            max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
             settlement_slot: u64::MAX,
             asset_index: 0,
         };
