@@ -258,7 +258,7 @@ describe('staking', () => {
       assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(133)))
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(66)))
     })
-    it.only('with multiple collaterals', async () => {
+    it('with multiple collaterals', async () => {
       const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
         exchange,
         exchangeAuthority,
@@ -331,11 +331,11 @@ describe('staking', () => {
       assert.ok(exchangeAccountDataAfterBurn.userStakingData.currentRoundPoints.eq(remainingAmount))
 
       // Wait for round to end
-      const thirdRoundStart = firstRoundStart.addn(stakingRoundLength * 2)
+      const thirdRoundStart = secondRoundStart.addn(stakingRoundLength + 2)
       await skipToSlot(thirdRoundStart.toNumber(), connection)
 
       // Claim rewards
-      // await exchange.claimRewards(exchangeAccount)
+      await exchange.claimRewards(exchangeAccount)
       const state = await exchange.getState()
 
       assert.ok(state.staking.finishedRound.amount.val.eq(amountPerRound.val))
