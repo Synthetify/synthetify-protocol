@@ -1220,7 +1220,7 @@ pub mod exchange {
 
         // factor must be less or equals 100%
         let same_scale = factor.scale == state.health_factor.scale;
-        let in_range = factor.ltq(Decimal::from_price(100))?;
+        let in_range = factor.ltq(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
         state.health_factor = factor;
         Ok(())
