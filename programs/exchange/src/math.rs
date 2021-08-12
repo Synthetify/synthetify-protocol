@@ -237,8 +237,6 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
 
 #[cfg(test)]
 mod tests {
-    use crate::decimal::PRICE_SCALE;
-
     use super::*;
     use std::{cell::RefCell, ops::Div};
 

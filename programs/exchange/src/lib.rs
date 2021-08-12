@@ -1133,17 +1133,16 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: u16) -> Result<()> {
+    pub fn set_swap_tax_ratio(ctx: Context<AdminAction>, swap_tax_ratio: Decimal) -> Result<()> {
         msg!("Synthetify:Admin: SWAP TAX RATIO");
         let state = &mut ctx.accounts.state.load_mut()?;
-        let decimal_swap_tax_ratio = Decimal::from_unified_percent(swap_tax_ratio);
-        // max decimal_swap_tax_ratio must be less or equals 20%
-        require!(
-            decimal_swap_tax_ratio.ltq(Decimal::from_unified_percent(2000))?,
-            ParameterOutOfRange
-        );
 
-        state.swap_tax_ratio = decimal_swap_tax_ratio;
+        // max swap_tax_ratio must be less or equals 30%
+        let same_scale = swap_tax_ratio.scale == state.swap_tax_ratio.scale;
+        let in_range = swap_tax_ratio.ltq(Decimal::from_percent(30))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        state.swap_tax_ratio = swap_tax_ratio;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
