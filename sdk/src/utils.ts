@@ -236,10 +236,10 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  Sp7hoXrvaBA42RLsmFshjAmFT3CZemVDm5WGhsy18Cz: 'xUSD',
-  EUdH9pgy4GtgYb42sj9MjiRW5i4s7HaEAbcNzwRhuaYa: 'SNY',
-  '5JvEdz8xUTb3UYCQ6XuWVbpcGTAmrpESmhDQ86kCz5ur': 'xBTC',
-  '8zGRx7MVmJxWgRbqZxkUg1GCz3gXNm3ivNVGYoU6Rduf': 'xSOL',
-  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM',
+  Ch1FPDNSD97Z23oNHXzHZJgLyKeutFCccDf7PXat43eA: 'xUSD',
+  '9dLGczoMUANNef7Je5qpSYjBxyT8PTh5tEZqo3pJktM9': 'SNY',
+  '3awh1xDhY81t56B9fwnaHAr45oWDHijYjqkVmDNdgAhG': 'xBTC',
+  DRVsdNrGG1Em6TfSB2EJ1gcavmPBnCLnW3hCVH9fDicg: 'xSOL',
+  HYHydTmHn2sLaeq5DX4Rv7n5NXVGAffFJaPh6HF4FDED: 'xSRM',
   So11111111111111111111111111111111111111112: 'WSOL'
 }
