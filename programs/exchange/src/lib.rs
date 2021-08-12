@@ -594,6 +594,7 @@ pub mod exchange {
 
         let tx_signer = ctx.accounts.owner.key;
         let user_token_account_burn = &ctx.accounts.user_token_account_burn;
+        msg!("121");
 
         // Signer need to be owner of source account
         if !tx_signer.eq(&user_token_account_burn.owner) {
@@ -602,7 +603,6 @@ pub mod exchange {
         // xUSD got static index 0
         let burn_asset = &mut assets[0];
         let burn_synthetic = &mut synthetics[0];
-
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
 
         // Rounding down - debt is burned in favor of the system
@@ -616,19 +616,15 @@ pub mod exchange {
             exchange_account.debt_shares,
             amount_decimal,
         );
-
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
 
         // Check if user burned more than debt
         if burned_shares >= exchange_account.debt_shares {
-            // This should be removed if passes tests
-            // Burn adjusted amount
-            // let burned_amount = calculate_max_burned_in_xusd(&burn_asset, user_debt);
-            // state.debt_shares = state
-            //     .debt_shares
-            //     .checked_sub(exchange_account.debt_shares)
-            //     .unwrap();
+            state.debt_shares = state
+                .debt_shares
+                .checked_sub(exchange_account.debt_shares)
+                .unwrap();
 
             state.staking.next_round.all_points = state.debt_shares;
             // Should be fine used checked math just in case
