@@ -383,7 +383,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setFeeInstruction(newFee: number) {
+  public async setFeeInstruction(newFee: Decimal) {
     return await (this.program.instruction.setFee(newFee, {
       accounts: {
         state: this.stateAddress,
@@ -410,7 +410,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setHealthFactorInstruction(percentage: BN) {
+  public async setHealthFactorInstruction(percentage: Decimal) {
     return await (this.program.instruction.setHealthFactor(percentage, {
       accounts: {
         state: this.stateAddress,
@@ -1011,8 +1011,8 @@ export interface SetPriceFeedInstruction {
 }
 
 export interface SetLiquidationPenaltiesInstruction {
-  penaltyToExchange: number
-  penaltyToLiquidator: number
+  penaltyToExchange: Decimal
+  penaltyToLiquidator: Decimal
 }
 
 export interface AddSyntheticInstruction {
@@ -1209,7 +1209,7 @@ export interface Settlement {
   tokenOutAddress: PublicKey
   decimalsIn: number
   decimalsOut: number
-  ratio: BN
+  ratio: Decimal
 }
 export interface CollateralEntry {
   amount: BN

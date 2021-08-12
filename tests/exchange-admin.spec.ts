@@ -180,7 +180,7 @@ describe('admin', () => {
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationBuffer !== newLiquidationBuffer)
+      assert.isFalse(state.liquidationBuffer === newLiquidationBuffer)
     })
     it('change value', async () => {
       const newLiquidationBuffer = 999
@@ -199,7 +199,7 @@ describe('admin', () => {
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationRate !== newLiquidationRate)
+      assert.isFalse(eqDecimals(state.liquidationRate, newLiquidationRate))
     })
     it('change value', async () => {
       const newLiquidationRate = percentToDecimal(15)
@@ -215,6 +215,8 @@ describe('admin', () => {
         signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.liquidationRate, outOfRange))
     })
   })
   describe('#setSwapTaxRatio', async () => {
@@ -226,11 +228,14 @@ describe('admin', () => {
       assert.ok(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
     })
     it('should fail without admin signature', async () => {
-      const ix = await exchange.setSwapTaxRatioInstruction(percentToDecimal(10))
+      const newSwapTaxRatio = percentToDecimal(10)
+      const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
     })
     it('should fail because of paramter out of range', async () => {
       const outOfRange = percentToDecimal(31)
@@ -239,6 +244,8 @@ describe('admin', () => {
         signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.swapTaxRatio, outOfRange))
     })
   })
   describe('#setDebtInterestRate', async () => {
@@ -256,6 +263,8 @@ describe('admin', () => {
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
     it('should fail because of paramter out of range', async () => {
       const newDebtInterestRate = toScale(percentToDecimal(27), INTEREST_RATE_DECIMALS)
@@ -264,114 +273,153 @@ describe('admin', () => {
         signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
   })
-  // describe('#setLiquidationPenalties()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const penaltyToExchange = 10
-  //     const penaltyToLiquidator = 10
-  //     const ix = await exchange.setLiquidationPenaltiesInstruction({
-  //       penaltyToExchange,
-  //       penaltyToLiquidator
-  //     })
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.penaltyToExchange !== penaltyToExchange)
-  //     assert.ok(state.penaltyToLiquidator !== penaltyToLiquidator)
-  //   })
-  //   it('Change values', async () => {
-  //     const penaltyToExchange = 10
-  //     const penaltyToLiquidator = 10
-  //     const ix = await exchange.setLiquidationPenaltiesInstruction({
-  //       penaltyToExchange,
-  //       penaltyToLiquidator
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+  describe('#setLiquidationPenalties()', async () => {
+    it('Fail without admin signature', async () => {
+      const penaltyToExchange = percentToDecimal(10)
+      const penaltyToLiquidator = percentToDecimal(10)
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
 
-  //     const state = await exchange.getState()
-  //     assert.ok(state.penaltyToExchange == penaltyToExchange)
-  //     assert.ok(state.penaltyToLiquidator == penaltyToLiquidator)
-  //   })
-  // })
-  // describe('#setFee()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const newFee = 999
-  //     const ix = await exchange.setFeeInstruction(newFee)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.fee !== newFee)
-  //   })
-  //   it('change value', async () => {
-  //     const newFee = 999
-  //     const ix = await exchange.setFeeInstruction(newFee)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.fee === newFee)
-  //   })
-  // })
-  // describe('#setMaxDelay()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const newMaxDelay = 999
-  //     const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.maxDelay !== newMaxDelay)
-  //   })
-  //   it('change value', async () => {
-  //     const newMaxDelay = 999
-  //     const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.maxDelay === newMaxDelay)
-  //   })
-  // })
-  // describe('#setHalted()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const halted = true
-  //     const ix = await exchange.setHaltedInstruction(halted)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.halted !== halted)
-  //   })
-  //   it('change value', async () => {
-  //     const halted = true
-  //     const ix = await exchange.setHaltedInstruction(halted)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.halted === halted)
-  //   })
-  // })
-  // describe('#setHealthFactor()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const healthFactor = 70
-  //     const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.healthFactor !== healthFactor)
-  //   })
-  //   it('change value', async () => {
-  //     const healthFactor = 70
-  //     const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.healthFactor === healthFactor)
-  //   })
-  // })
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.isFalse(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
+    })
+    it('Change values', async () => {
+      const penaltyToExchange = percentToDecimal(10)
+      const penaltyToLiquidator = percentToDecimal(10)
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.ok(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const penaltyToExchange = percentToDecimal(30)
+      const penaltyToLiquidator = percentToDecimal(30)
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.isFalse(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
+    })
+  })
+  describe('#setFee()', async () => {
+    it('Fail without admin signature', async () => {
+      const newFee = percentToDecimal(0.999)
+      const ix = await exchange.setFeeInstruction(newFee)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.fee, newFee))
+    })
+    it('change value', async () => {
+      const newFee = percentToDecimal(0.999)
+      const ix = await exchange.setFeeInstruction(newFee)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.fee, newFee))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const newFee = percentToDecimal(2)
+      const ix = await exchange.setFeeInstruction(newFee)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.fee, newFee))
+    })
+  })
+  describe('#setMaxDelay()', async () => {
+    it('Fail without admin signature', async () => {
+      const newMaxDelay = 999
+      const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.maxDelay !== newMaxDelay)
+    })
+    it('change value', async () => {
+      const newMaxDelay = 999
+      const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.maxDelay === newMaxDelay)
+    })
+  })
+  describe('#setHalted()', async () => {
+    it('Fail without admin signature', async () => {
+      const halted = true
+      const ix = await exchange.setHaltedInstruction(halted)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.halted !== halted)
+    })
+    it('change value', async () => {
+      const halted = true
+      const ix = await exchange.setHaltedInstruction(halted)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.halted === halted)
+    })
+  })
+  describe('#setHealthFactor()', async () => {
+    it('Fail without admin signature', async () => {
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.healthFactor, healthFactor))
+    })
+    it('change value', async () => {
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.healthFactor, healthFactor))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(120)
+      const ix = await exchange.setHealthFactorInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
+    })
+  })
   // describe('#setSettlementSlot()', async () => {
   //   let addedSynthetic: Synthetic | undefined
   //   before(async () => {
@@ -450,25 +498,25 @@ describe('admin', () => {
   //     assert.ok(state.staking.amountPerRound.eq(amount))
   //   })
   // })
-  // describe('#setStakingRoundLength()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const length = 999912
-  //     const ix = await exchange.setStakingRoundLength(length)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.staking.roundLength !== length)
-  //   })
-  //   it('change value', async () => {
-  //     const length = 999912
-  //     const ix = await exchange.setStakingRoundLength(length)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.staking.roundLength === length)
-  //   })
-  // })
+  describe('#setStakingRoundLength()', async () => {
+    it('Fail without admin signature', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength !== length)
+    })
+    it('change value', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength === length)
+    })
+  })
   // describe('#addNewAsset', async () => {
   //   it('Should add new asset ', async () => {
   //     const beforeAssetList = await exchange.getAssetsList(assetsList)
