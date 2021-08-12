@@ -65,9 +65,9 @@ pub mod exchange {
         let sny_asset = Asset {
             feed_address: collateral_token_feed,
             last_update: 0,
-            price: Decimal::from_price(2_000_000),
+            price: Decimal::from_integer(2).to_price(),
             confidence: Decimal::from_price(0),
-            twap: Decimal::from_price(2_000_000),
+            twap: Decimal::from_integer(2).to_price(),
             status: PriceStatus::Unknown.into(),
             twac: Decimal::from_price(0),
         };
