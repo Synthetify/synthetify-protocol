@@ -528,7 +528,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setDebtInterestRateInstruction(debtInterestRate: number) {
+  public async setDebtInterestRateInstruction(debtInterestRate: Decimal) {
     return await (this.program.instruction.setDebtInterestRate(debtInterestRate, {
       accounts: {
         state: this.stateAddress,
