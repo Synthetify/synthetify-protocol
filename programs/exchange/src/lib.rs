@@ -34,6 +34,7 @@ pub mod exchange {
         exchange_account.bump = bump;
         exchange_account.liquidation_deadline = u64::MAX;
         exchange_account.user_staking_data = UserStaking::default();
+        exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
 
