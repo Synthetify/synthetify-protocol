@@ -58,16 +58,16 @@ pub mod exchange {
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal::from_usd(0),
-            max_supply: Decimal::from_usd(u128::MAX), // no limit for usd asset
+            max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
             settlement_slot: u64::MAX,
             asset_index: 0,
         };
         let sny_asset = Asset {
             feed_address: collateral_token_feed,
             last_update: 0,
-            price: Decimal::from_price(2_000_000),
+            price: Decimal::from_integer(2).to_price(),
             confidence: Decimal::from_price(0),
-            twap: Decimal::from_price(2_000_000),
+            twap: Decimal::from_integer(2).to_price(),
             status: PriceStatus::Unknown.into(),
             twac: Decimal::from_price(0),
         };

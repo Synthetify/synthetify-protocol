@@ -22,6 +22,7 @@ import {
   ERRORS_EXCHANGE,
   percentToDecimal,
   sleep,
+  SNY_DECIMALS,
   toDecimal,
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
@@ -62,7 +63,7 @@ describe('admin', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: initialCollateralPrice,
-      expo: -6
+      expo: -8
     })
 
     collateralToken = await createToken({
@@ -136,32 +137,40 @@ describe('admin', () => {
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
   })
-  // it('Initialize assets', async () => {
-  //   const initTokensDecimals = 6
-  //   const assetsListData = await exchange.getAssetsList(assetsList)
-  //   // Length should be 2
-  //   assert.ok(assetsListData.assets.length === 2)
-  //   // Authority of list
+  it('Initialize assets', async () => {
+    const initTokensDecimals = 6
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    // Length should be 2
+    assert.ok(assetsListData.assets.length === 2)
+    // Authority of list
 
-  //   // Check feed address
-  //   const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
-  //   assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
-  //   assert.ok(snyAsset.price.eq(new BN(0)))
+    // Check feed address
+    const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
+    assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
+    assert.ok(
+      eqDecimals(
+        snyAsset.price,
+        toScale(toDecimal(new BN(initialCollateralPrice), 0), ORACLE_OFFSET)
+      )
+    )
 
-  //   // Check token address
-  //   const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
-  //   assert.ok(snyCollateral.collateralAddress.equals(collateralToken.publicKey))
+    // Check token address
+    const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
+    assert.ok(snyCollateral.collateralAddress.equals(collateralToken.publicKey))
 
-  //   // USD token address
-  //   const usdAsset = assetsListData.assets[0]
-  //   assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
+    // USD token address
+    const usdAsset = assetsListData.assets[0]
+    assert.ok(eqDecimals(usdAsset.price, toScale(toDecimal(new BN(1), 0), ORACLE_OFFSET)))
 
-  //   // xUSD checks
-  //   const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
-  //   assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
-  //   assert.ok(usdSynthetic.decimals === initTokensDecimals)
-  //   assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
-  // })
+    // xUSD checks
+    const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
+    assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
+
+    assert.ok(usdSynthetic.supply.scale === initTokensDecimals)
+    assert.ok(
+      eqDecimals(usdSynthetic.maxSupply, toDecimal(new BN('ffffffffffffffff', 16), XUSD_DECIMALS))
+    )
+  })
   // describe('#setLiquidationBuffer()', async () => {
   //   it('Fail without admin signature', async () => {
   //     const newLiquidationBuffer = 999
