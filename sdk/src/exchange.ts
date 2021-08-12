@@ -383,7 +383,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setFeeInstruction(newFee: number) {
+  public async setFeeInstruction(newFee: Decimal) {
     return await (this.program.instruction.setFee(newFee, {
       accounts: {
         state: this.stateAddress,
@@ -1011,8 +1011,8 @@ export interface SetPriceFeedInstruction {
 }
 
 export interface SetLiquidationPenaltiesInstruction {
-  penaltyToExchange: number
-  penaltyToLiquidator: number
+  penaltyToExchange: Decimal
+  penaltyToLiquidator: Decimal
 }
 
 export interface AddSyntheticInstruction {
