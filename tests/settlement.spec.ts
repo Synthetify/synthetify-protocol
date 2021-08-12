@@ -238,10 +238,10 @@ describe('settlement', () => {
         syntheticToSettle.assetAddress
       )
       const valueOfSetteledSynthetic = new BN(tokenToSettleAmount.toString())
-        .mul(settlementData.ratio)
-        .div(new BN(10 ** (settlementData.decimalsIn + ORACLE_OFFSET - ACCURACY)))
-      const delta = assetsListAfterSettlement.synthetics[0].supply.sub(
-        assetsListBeforeSettlement.synthetics[0].supply
+        .mul(settlementData.ratio.val)
+        .div(new BN(10 ** (settlementData.decimalsIn + settlementData.ratio.scale - ACCURACY)))
+      const delta = assetsListAfterSettlement.synthetics[0].supply.val.sub(
+        assetsListBeforeSettlement.synthetics[0].supply.val
       )
       const settelmentAsset = assetsListAfterSettlement.assets[syntheticToSettle.assetIndex]
       assert.ok(almostEqual(valueOfSetteledSynthetic, delta))
@@ -251,8 +251,8 @@ describe('settlement', () => {
         ) === undefined
       )
       assert.ok(settlementData.decimalsOut === (await usdToken.getMintInfo()).decimals)
-      assert.ok(settlementData.decimalsIn === syntheticToSettle.decimals)
-      assert.ok(almostEqual(settelmentAsset.price, settlementData.ratio))
+      assert.ok(settlementData.decimalsIn === syntheticToSettle.supply.scale)
+      assert.ok(almostEqual(settelmentAsset.price.val, settlementData.ratio.val))
       assert.ok(settlementData.reserveAddress.equals(settlementReserve))
       assert.ok(settlementData.tokenInAddress.equals(syntheticToSettle.assetAddress))
       assert.ok(settlementData.tokenOutAddress.equals(usdToken.publicKey))

@@ -241,7 +241,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('mint', async () => {
+  it('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -337,10 +337,10 @@ describe('max collaterals', () => {
   it('swap', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
-    const collateralAmount = new BN(1e13)
+    const collateralAmount = new BN(10).pow(new BN(16))
 
-    const userCollateralTokenAccount = await tokens[2].createAccount(accountOwner.publicKey)
-    await tokens[2].mintTo(userCollateralTokenAccount, wallet, [], tou64(collateralAmount))
+    const userCollateralTokenAccount = await tokens[5].createAccount(accountOwner.publicKey)
+    await tokens[5].mintTo(userCollateralTokenAccount, wallet, [], tou64(collateralAmount))
 
     // Deposit
     await exchange.deposit({
@@ -348,8 +348,8 @@ describe('max collaterals', () => {
       exchangeAccount,
       owner: accountOwner.publicKey,
       userCollateralAccount: userCollateralTokenAccount,
-      reserveAccount: reserves[2],
-      collateralToken: tokens[2],
+      reserveAccount: reserves[5],
+      collateralToken: tokens[5],
       exchangeAuthority,
       signers: [wallet, accountOwner]
     })

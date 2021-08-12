@@ -1209,7 +1209,7 @@ export interface Settlement {
   tokenOutAddress: PublicKey
   decimalsIn: number
   decimalsOut: number
-  ratio: BN
+  ratio: Decimal
 }
 export interface CollateralEntry {
   amount: BN
