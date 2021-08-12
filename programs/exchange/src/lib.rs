@@ -47,7 +47,7 @@ pub mod exchange {
 
         let usd_asset = Asset {
             feed_address: Pubkey::default(), // unused
-            last_update: u64::MAX,           // we dont update usd price
+            last_update: u64::MAX,           // we don't update usd price
             price: Decimal {
                 val: 100_000_000,
                 scale: PRICE_OFFSET,
@@ -970,7 +970,7 @@ pub mod exchange {
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
-        // If account is undercollaterized set liquidation_deadline
+        // If account is undercollateralized set liquidation_deadline
         // After liquidation_deadline slot account can be liquidated
         if max_debt.gt(user_debt)? {
             exchange_account.liquidation_deadline = u64::MAX;
@@ -1763,7 +1763,7 @@ pub struct CreateExchangeAccount<'info> {
 #[associated(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
 pub struct ExchangeAccount {
-    pub owner: Pubkey,                  // Identity controling account
+    pub owner: Pubkey,                  // Identity controlling account
     pub version: u8,                    // Version of account struct
     pub debt_shares: u64,               // Shares representing part of entire debt pool
     pub liquidation_deadline: u64,      // Slot number after which account can be liquidated
