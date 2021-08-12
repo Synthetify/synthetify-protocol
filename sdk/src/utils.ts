@@ -54,7 +54,9 @@ export enum ERRORS_EXCHANGE {
   INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW = '0x144', //24
   SETTLEMENT_NOT_REACHED = '0x145', //25
   USD_SETTLEMENT = '0x146', //26
-  PARAMETER_OUT_OF_RANGE = '0x147' //27
+  PARAMETER_OUT_OF_RANGE = '0x147', //27
+  OVERFLOW = '0x148', //28
+  DIFFERENT_SCALE = '0x149' //29
 }
 export const signAndSend = async (
   tx: Transaction,

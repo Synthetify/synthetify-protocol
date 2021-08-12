@@ -210,7 +210,6 @@ pub fn calculate_burned_shares(
 }
 
 pub fn usd_to_token_amount(asset: &Asset, value_in_usd: Decimal, decimals_out: u8) -> Decimal {
-    msg!("{:?} {:?} {}", value_in_usd, asset.price, decimals_out);
     return value_in_usd.div_to_scale(asset.price, decimals_out);
 }
 
