@@ -151,17 +151,19 @@ pub fn calculate_debt_with_interest(
 ) -> Result<Decimal> {
     let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
     let usd = &mut assets_list.borrow_mut().synthetics[0];
-    let debt_with_interest = adjust_interest_debt(state, usd, total_debt_twap, timestamp);
-    Ok(debt_with_interest)
+    adjust_interest_debt(state, usd, total_debt_twap, timestamp);
+
+    let total_debt_price = calculate_debt(assets_list, slot, state.max_delay, false).unwrap();
+    Ok(total_debt_price)
 }
 
 // Change total_twap_debt
 pub fn adjust_interest_debt(
     state: &mut State,
     usd: &mut Synthetic,
-    total_debt: Decimal,
+    total_debt_twap: Decimal,
     timestamp: i64,
-) -> Decimal {
+) {
     const ADJUSTMENT_PERIOD: i64 = 60;
     let diff = timestamp
         .checked_sub(state.last_debt_adjustment)
@@ -169,12 +171,9 @@ pub fn adjust_interest_debt(
         .checked_div(ADJUSTMENT_PERIOD)
         .unwrap();
     if diff >= 1 {
-        // let debt_interest_rate = calculate_debt_interest_rate(state.debt_interest_rate);
-        // let minute_interest_rate = calculate_minute_interest_rate(debt_interest_rate);
         let minute_interest_rate = calculate_minute_interest_rate(state.debt_interest_rate);
-
         let compounded_interest =
-            calculate_compounded_interest(total_debt, minute_interest_rate, diff as u128);
+            calculate_compounded_interest(total_debt_twap, minute_interest_rate, diff as u128);
 
         usd.supply = usd.supply.add(compounded_interest).unwrap();
         state.accumulated_debt_interest = state
@@ -186,10 +185,7 @@ pub fn adjust_interest_debt(
             .unwrap()
             .checked_add(state.last_debt_adjustment)
             .unwrap();
-
-        return total_debt.add(compounded_interest).unwrap();
     }
-    return total_debt;
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
