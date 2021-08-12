@@ -738,7 +738,9 @@
       "args": [
         {
           "name": "swapTaxRatio",
-          "type": "u16"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -759,7 +761,9 @@
       "args": [
         {
           "name": "debtInterestRate",
-          "type": "u16"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -801,7 +805,9 @@
       "args": [
         {
           "name": "liquidationRate",
-          "type": "u16"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -822,7 +828,9 @@
       "args": [
         {
           "name": "fee",
-          "type": "u16"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -885,7 +893,9 @@
       "args": [
         {
           "name": "factor",
-          "type": "u16"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
