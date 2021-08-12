@@ -12,10 +12,11 @@ import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './excha
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 8
-export const ACCURACY = 6
+export const ACCURACY = 6 // TODO: remove, use always XUSD_DECIMALS
 export const UNIFIED_PERCENT_SCALE = 5
 export const SNY_DECIMALS = 6
 export const XUSD_DECIMALS = 6
+export const INTEREST_DECIMALS = 18
 // hex code must be at the end of message
 export enum ERRORS {
   SIGNATURE = 'Error: Signature verification failed',
@@ -81,6 +82,20 @@ export const percentToDecimal = (value: number): Decimal => {
 export const toDecimal = (value: BN, scale: number): Decimal => {
   return { val: value, scale: scale }
 }
+export const toScale = (decimal: Decimal, scale: number) => {
+  if (decimal.scale > scale) {
+    return {
+      val: decimal.val.div(new BN(10).pow(new BN(decimal.scale - scale))),
+      scale
+    }
+  } else {
+    return {
+      val: decimal.val.mul(new BN(10).pow(new BN(scale - decimal.scale))),
+      scale
+    }
+  }
+}
+
 export const divUp = (a: BN, b: BN) => {
   return a.add(b.subn(1)).div(b)
 }
