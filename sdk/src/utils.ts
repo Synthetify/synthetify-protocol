@@ -16,7 +16,7 @@ export const ACCURACY = 6 // TODO: remove, use always XUSD_DECIMALS
 export const UNIFIED_PERCENT_SCALE = 5
 export const SNY_DECIMALS = 6
 export const XUSD_DECIMALS = 6
-export const INTEREST_DECIMALS = 18
+export const INTEREST_RATE_DECIMALS = 18
 // hex code must be at the end of message
 export enum ERRORS {
   SIGNATURE = 'Error: Signature verification failed',
