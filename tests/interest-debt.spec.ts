@@ -13,10 +13,11 @@ import {
   createAccountWithCollateral,
   skipTimestamps,
   assertThrowsAsync,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { calculateDebt } from '../sdk/lib/utils'
+import { calculateDebt, toDecimal } from '../sdk/lib/utils'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { signAndSend } from '@synthetify/sdk'
 import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
@@ -114,8 +115,8 @@ describe('Interest debt accumulation', () => {
   describe('Accumulate debt interest', async () => {
     it('should initialized interest debt parameters', async () => {
       const state = await exchange.getState()
-      assert.ok(state.debtInterestRate === 10)
-      assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
+      assert.ok(eqDecimals(state.debtInterestRate, toDecimal(new BN(10).pow(new BN(16)), 18)))
+      assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), 6)))
     })
     it('should initialized assets list', async () => {
       const initTokensDecimals = 6
