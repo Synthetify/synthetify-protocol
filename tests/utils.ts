@@ -7,7 +7,7 @@ import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
-import { divUp } from '@synthetify/sdk/lib/utils'
+import { divUp, toDecimal, UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
 export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
@@ -396,15 +396,17 @@ export const createCollateralToken = async ({
   const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
   const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
 
+  const reserveBalanceDecimal = toDecimal(new BN(0), decimals)
+  const collateralRatioDecimal = toDecimal(new BN(collateralRatio), UNIFIED_PERCENT_SCALE)
+
   const addCollateralIx = await exchange.addCollateralInstruction({
     assetsList,
     assetAddress: collateralToken.publicKey,
     liquidationFund,
     reserveAccount,
     feedAddress: oracleAddress,
-    collateralRatio,
-    reserveBalance: new BN(0),
-    decimals
+    collateralRatio: collateralRatioDecimal,
+    reserveBalance: reserveBalanceDecimal
   })
   await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
 
