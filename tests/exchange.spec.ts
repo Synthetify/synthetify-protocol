@@ -1452,8 +1452,8 @@ describe('exchange', () => {
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 200 * 1e6 * healthFactor
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1503,8 +1503,8 @@ describe('exchange', () => {
         })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
       // We can mint max 200 * 1e6 * healthFactor
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1809,8 +1809,10 @@ describe('exchange', () => {
       })
     })
     it('#burn()', async () => {
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const collateralAmount = new BN(100 * 1e6).div(healthFactor).mul(new BN(100))
+      const healthFactor = (await exchange.getState()).healthFactor
+      const collateralAmount = new BN(100 * 1e6)
+        .div(healthFactor.val)
+        .mul(new BN(10 ** healthFactor.scale))
       const {
         accountOwner,
         exchangeAccount,
