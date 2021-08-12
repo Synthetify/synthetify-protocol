@@ -107,7 +107,7 @@ impl Decimal {
 
 impl Mul<Decimal> for Decimal {
     fn mul(self, value: Decimal) -> Self {
-        return Self {
+        Self {
             val: self
                 .val
                 .checked_mul(value.val)
@@ -115,7 +115,7 @@ impl Mul<Decimal> for Decimal {
                 .checked_div(value.denominator())
                 .unwrap(),
             scale: self.scale,
-        };
+        }
     }
 }
 impl Mul<u128> for Decimal {
@@ -145,7 +145,7 @@ impl MulUp<Decimal> for Decimal {
 }
 impl MulInverse<Decimal> for Decimal {
     fn mul_inverse(self, value: Decimal) -> Self {
-        return Self {
+        Self {
             val: self
                 .val
                 .checked_mul(self.denominator())
@@ -153,7 +153,7 @@ impl MulInverse<Decimal> for Decimal {
                 .checked_div(value.val)
                 .unwrap(),
             scale: self.scale,
-        };
+        }
     }
 }
 impl Add<Decimal> for Decimal {
