@@ -391,25 +391,35 @@ describe('admin', () => {
       assert.ok(state.halted === halted)
     })
   })
-  // describe('#setHealthFactor()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const healthFactor = 70
-  //     const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.healthFactor !== healthFactor)
-  //   })
-  //   it('change value', async () => {
-  //     const healthFactor = 70
-  //     const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.healthFactor === healthFactor)
-  //   })
-  // })
+  describe('#setHealthFactor()', async () => {
+    it('Fail without admin signature', async () => {
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.healthFactor, healthFactor))
+    })
+    it('change value', async () => {
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.healthFactor, healthFactor))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(120)
+      const ix = await exchange.setHealthFactorInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
+    })
+  })
   // describe('#setSettlementSlot()', async () => {
   //   let addedSynthetic: Synthetic | undefined
   //   before(async () => {
@@ -488,25 +498,25 @@ describe('admin', () => {
   //     assert.ok(state.staking.amountPerRound.eq(amount))
   //   })
   // })
-  // describe('#setStakingRoundLength()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const length = 999912
-  //     const ix = await exchange.setStakingRoundLength(length)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(state.staking.roundLength !== length)
-  //   })
-  //   it('change value', async () => {
-  //     const length = 999912
-  //     const ix = await exchange.setStakingRoundLength(length)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.staking.roundLength === length)
-  //   })
-  // })
+  describe('#setStakingRoundLength()', async () => {
+    it('Fail without admin signature', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength !== length)
+    })
+    it('change value', async () => {
+      const length = 999912
+      const ix = await exchange.setStakingRoundLength(length)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.staking.roundLength === length)
+    })
+  })
   // describe('#addNewAsset', async () => {
   //   it('Should add new asset ', async () => {
   //     const beforeAssetList = await exchange.getAssetsList(assetsList)

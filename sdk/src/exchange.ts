@@ -410,7 +410,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setHealthFactorInstruction(percentage: BN) {
+  public async setHealthFactorInstruction(percentage: Decimal) {
     return await (this.program.instruction.setHealthFactor(percentage, {
       accounts: {
         state: this.stateAddress,
