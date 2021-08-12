@@ -375,11 +375,10 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setLiquidationRateInstruction(newLiquidationRate: number) {
+  public async setLiquidationRateInstruction(newLiquidationRate: Decimal) {
     return await (this.program.instruction.setLiquidationRate(newLiquidationRate, {
       accounts: {
         state: this.stateAddress,
-
         admin: this.state.admin
       }
     }) as TransactionInstruction)
@@ -521,7 +520,7 @@ export class Exchange {
     }) as TransactionInstruction
     return ix
   }
-  public async setSwapTaxRatioInstruction(swapTaxRatio: number) {
+  public async setSwapTaxRatioInstruction(swapTaxRatio: Decimal) {
     return await (this.program.instruction.setSwapTaxRatio(swapTaxRatio, {
       accounts: {
         state: this.stateAddress,
@@ -529,7 +528,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setDebtInterestRateInstruction(debtInterestRate: number) {
+  public async setDebtInterestRateInstruction(debtInterestRate: Decimal) {
     return await (this.program.instruction.setDebtInterestRate(debtInterestRate, {
       accounts: {
         state: this.stateAddress,

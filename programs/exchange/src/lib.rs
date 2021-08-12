@@ -58,16 +58,16 @@ pub mod exchange {
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal::from_usd(0),
-            max_supply: Decimal::from_usd(u128::MAX), // no limit for usd asset
+            max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
             settlement_slot: u64::MAX,
             asset_index: 0,
         };
         let sny_asset = Asset {
             feed_address: collateral_token_feed,
             last_update: 0,
-            price: Decimal::from_price(2_000_000),
+            price: Decimal::from_integer(2).to_price(),
             confidence: Decimal::from_price(0),
-            twap: Decimal::from_price(2_000_000),
+            twap: Decimal::from_integer(2).to_price(),
             status: PriceStatus::Unknown.into(),
             twac: Decimal::from_price(0),
         };
@@ -758,17 +758,6 @@ pub mod exchange {
             val: amount.into(),
             scale: XUSD_SCALE,
         };
-        msg!("liquidation_amount, {:?}", liquidation_amount);
-        msg!(
-            "state
-        .penalty_to_liquidator
-        .add(state.penalty_to_exchange)
-        .unwrap(), {:?}",
-            state
-                .penalty_to_liquidator
-                .add(state.penalty_to_exchange)
-                .unwrap()
-        );
 
         let seized_collateral_in_usd = liquidation_amount
             .mul_up(
@@ -796,11 +785,7 @@ pub mod exchange {
             seized_collateral_in_usd,
             liquidated_collateral.reserve_balance.scale,
         );
-        msg!(
-            "seized_collateral_in_token, {:?}",
-            seized_collateral_in_token
-        );
-        msg!("seized_collateral_in_usd, {:?}", seized_collateral_in_usd);
+
         let mut exchange_account_collateral =
             match exchange_account.collaterals.iter_mut().find(|x| {
                 x.collateral_address
@@ -828,12 +813,9 @@ pub mod exchange {
                     .unwrap(),
             );
 
-        msg!("collateral_to_exchange, {:?}", collateral_to_exchange);
-
         let collateral_to_liquidator = seized_collateral_in_token
             .sub(collateral_to_exchange)
             .unwrap();
-        msg!("collateral_to_liquidator, {:?}", collateral_to_liquidator);
 
         // Remove staking for liquidation
         state.staking.next_round.all_points = state.debt_shares;
