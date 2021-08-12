@@ -385,7 +385,7 @@ export const createCollateralToken = async ({
   const oracleAddress = await createPriceFeed({
     oracleProgram,
     initPrice: price,
-    expo: -decimals
+    expo: -8
   })
   const addAssetIx = await exchange.addNewAssetInstruction({
     assetsList,
