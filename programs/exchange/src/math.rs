@@ -940,17 +940,17 @@ mod tests {
     }
     #[test]
     fn test_calculate_swap_out_amount() {
-        // 6 decimals
+        let usd_decimal = 6;
         let asset_usd = Asset {
             price: Decimal::from_integer(1).to_price(),
             ..Default::default()
         };
-        // 8 decimals
+        let btc_decimal = 8;
         let asset_btc = Asset {
             price: Decimal::from_integer(50000).to_price(),
             ..Default::default()
         };
-        // 7 decimals
+        let eth_decimal = 7;
         let asset_eth = Asset {
             price: Decimal::from_integer(2000).to_price(),
             ..Default::default()
@@ -959,15 +959,17 @@ mod tests {
         // should fail because swap value is too low
         {
             let amount = Decimal::new(10, 6);
-            let result = calculate_swap_out_amount(&asset_usd, &asset_btc, 8, amount, fee);
+            let result =
+                calculate_swap_out_amount(&asset_usd, &asset_btc, btc_decimal, amount, fee);
             assert!(result.is_err());
         }
         {
             let amount = Decimal::from_integer(50000).to_usd();
             let (out_amount, swap_fee) =
-                calculate_swap_out_amount(&asset_usd, &asset_btc, 8, amount, fee).unwrap();
+                calculate_swap_out_amount(&asset_usd, &asset_btc, btc_decimal, amount, fee)
+                    .unwrap();
             // out amount should be 0.997 BTC
-            assert_eq!(out_amount, Decimal::new(99700000, 8));
+            assert_eq!(out_amount, Decimal::new(99700000, btc_decimal));
             // fee should be 150 USD
             assert_eq!(swap_fee, Decimal::from_integer(150).to_usd());
         }
@@ -975,22 +977,26 @@ mod tests {
             let (out_amount, swap_fee) = calculate_swap_out_amount(
                 &asset_btc,
                 &asset_usd,
-                6,
-                Decimal::from_integer(1).to_scale(8),
+                usd_decimal,
+                Decimal::from_integer(1).to_scale(btc_decimal),
                 fee,
             )
             .unwrap();
             // out amount should be 49850 USD
-            assert_eq!(out_amount, Decimal::from_integer(49850).to_scale(6));
+            assert_eq!(
+                out_amount,
+                Decimal::from_integer(49850).to_scale(usd_decimal)
+            );
             // fee should be 150 USD
             assert_eq!(swap_fee, Decimal::from_integer(150).to_usd());
         }
         {
-            let amount = Decimal::new(99700000, 8);
+            let amount = Decimal::new(99700000, btc_decimal);
             let (out_amount, swap_fee) =
-                calculate_swap_out_amount(&asset_btc, &asset_eth, 7, amount, fee).unwrap();
+                calculate_swap_out_amount(&asset_btc, &asset_eth, eth_decimal, amount, fee)
+                    .unwrap();
             // out amount should be 24.850225 ETH
-            assert_eq!(out_amount, Decimal::new(24_850_2250, 7));
+            assert_eq!(out_amount, Decimal::new(24_850_2250, eth_decimal));
             // fee should be 149,55 USD
             assert_eq!(swap_fee, Decimal::new(149_55, 2).to_usd());
         }
@@ -1076,7 +1082,7 @@ mod tests {
         // MIN - 0%
         {
             let total_fee = Decimal::from_usd(1_227_775);
-            let swap_tax_ratio = Decimal::from_unified_percent(0);
+            let swap_tax_ratio = Decimal::from_percent(0);
             let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
             // expect 0 tax
             assert_eq!(swap_tax, Decimal::from_usd(0));
@@ -1084,7 +1090,7 @@ mod tests {
         // MAX - 20%
         {
             let total_fee = Decimal::from_usd(1_227_775);
-            let swap_tax_ratio = Decimal::new(2, 1).to_percent();
+            let swap_tax_ratio = Decimal::from_percent(20);
             let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
             // 245555
             let expected = Decimal::from_usd(245_555);
@@ -1093,7 +1099,7 @@ mod tests {
         // 11% - valid rounding
         {
             let total_fee = Decimal::from_usd(1_227_775);
-            let swap_tax_ratio = Decimal::new(11, 2).to_percent();
+            let swap_tax_ratio = Decimal::from_percent(11);
             let swap_tax = calculate_swap_tax(total_fee, swap_tax_ratio);
             // 135055,25
             let expected = Decimal::from_usd(135_055);
@@ -1105,7 +1111,7 @@ mod tests {
         // round down
         {
             let asset = Asset {
-                price: Decimal::from_price(14 * 10u128.pow(PRICE_SCALE.into())),
+                price: Decimal::from_integer(14).to_price(),
                 ..Default::default()
             };
             let scale = 6u8;
