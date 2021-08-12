@@ -832,6 +832,7 @@ mod tests {
             // xusd - fixed price 1 USD
             // debt 100000
             assets_list.append_asset(Asset {
+                price: Decimal::from_integer(1).to_price(),
                 twap: Decimal::from_integer(1).to_price(),
                 last_update: slot,
                 ..Default::default()
@@ -844,7 +845,8 @@ mod tests {
 
             // debt 50000
             assets_list.append_asset(Asset {
-                twap: Decimal::from_integer(5).to_price(),
+                price: Decimal::from_integer(5).to_price(),
+                twap: Decimal::from_integer(4).to_price(),
                 last_update: slot,
                 ..Default::default()
             });
@@ -856,17 +858,24 @@ mod tests {
             let timestamp: i64 = 120;
 
             let assets_ref = RefCell::new(assets_list);
-            // base debt 150000
+            // price debt 150_000 USD
+            // twap debt 140_000 USD
             let total_debt = calculate_debt_with_interest(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
                 timestamp,
             );
-            // real     150_000.005_707... $
-            // expected 150_000.005_708    $
+            // real:        current debt price = 150_000 USD,
+            //              current debt twap = 140_000 USD
+            //              interest debt based od twap = 0.00532724... USD
+            //              total debt = current debt price + interest rate[debt twap]
+            //              total debt = 150_000.00532724... USD
+
+            // expected:    interest debt based od twap = 0.005328 USD
+            //              total debt = 150_000.005328 USD
             match total_debt {
-                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_708)),
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_328)),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
 
@@ -874,13 +883,15 @@ mod tests {
             let usd_supply = usd.supply;
             let accumulated_debt_interest = state.accumulated_debt_interest;
             let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_708));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5708));
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_328));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5328));
             assert_eq!(last_debt_adjustment, 120);
 
             // timestamp that not trigger debt adjustment
             let timestamp: i64 = 150;
 
+            // price debt 150_000.005328 USD
+            // twap debt 140_000.005328 USD
             let total_debt = calculate_debt_with_interest(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
@@ -889,7 +900,7 @@ mod tests {
             );
             // debt should be the same
             match total_debt {
-                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_708)),
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_005_328)),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
 
@@ -898,8 +909,8 @@ mod tests {
             let accumulated_debt_interest = state.accumulated_debt_interest;
             let last_debt_adjustment = state.last_debt_adjustment;
             // should be the same
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_708));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5708));
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_328));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5328));
             assert_eq!(last_debt_adjustment, 120);
 
             let timestamp: i64 = 185;
@@ -910,10 +921,16 @@ mod tests {
                 slot,
                 timestamp,
             );
-            // real     150_000.008_561... $
-            // expected 150_000.008_562    $
+            // real:        current debt price = 150_000.005328 USD,
+            //              current debt twap = 140_000.005328 USD
+            //              interest debt based od twap = 0.00266362... USD
+            //              total debt = current debt price + interest rate[debt twap]
+            //              total debt = 150_000.00799162... USD
+
+            // expected:    interest debt based od twap = 0.002664 USD
+            //              total debt = 150_000.007992 USD
             match total_debt {
-                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_008_562)),
+                Ok(debt) => assert_eq!(debt, Decimal::from_usd(150_000_007_992)),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
 
@@ -921,8 +938,8 @@ mod tests {
             let usd_supply = usd.supply;
             let accumulated_debt_interest = state.accumulated_debt_interest;
             let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_008_562));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(8562));
+            assert_eq!(usd_supply, Decimal::from_usd(100_000_007_992));
+            assert_eq!(accumulated_debt_interest, Decimal::from_usd(7992));
             assert_eq!(last_debt_adjustment, 180);
         }
     }
