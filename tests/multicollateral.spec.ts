@@ -11,10 +11,11 @@ import {
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
-  mulByPercentage,
   createCollateralToken,
   createToken,
-  waitForBeggingOfASlot
+  waitForBeggingOfASlot,
+  eqDecimals,
+  mulByDecimal
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { Decimal } from '../sdk/src/exchange'
@@ -187,7 +188,7 @@ describe('max collaterals', () => {
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === toDecimal(300, 4))
+    assert.ok(eqDecimals(state.fee, toDecimal(new BN(300), 5)))
     assert.ok(state.debtShares.eq(new BN(0)))
   })
   it('Initialize tokens', async () => {
@@ -236,11 +237,11 @@ describe('max collaterals', () => {
         const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
         assert.ok(userExchangeAccountAfter.collaterals[index].amount.eq(amount))
         const assetListData = await exchange.getAssetsList(assetsList)
-        assert.ok(assetListData.collaterals[index + 1].reserveBalance.eq(amount))
+        assert.ok(assetListData.collaterals[index + 1].reserveBalance.val.eq(amount))
       })
     )
   })
-  it('mint', async () => {
+  it.only('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -273,7 +274,7 @@ describe('max collaterals', () => {
     assert.ok((await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-    const mintAmount = mulByPercentage(new BN(55 * 1e4), healthFactor)
+    const mintAmount = mulByDecimal(new BN(55 * 1e4), healthFactor)
 
     // Mint xUSD
     await exchange.mint({
@@ -354,7 +355,7 @@ describe('max collaterals', () => {
     })
 
     // Mint
-    const amount = mulByPercentage(new BN(1e12), healthFactor)
+    const amount = mulByDecimal(new BN(1e12), healthFactor)
     const userTokenAccountIn = await usdToken.createAccount(accountOwner.publicKey)
     await exchange.mint({
       amount,
