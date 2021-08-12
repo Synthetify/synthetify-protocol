@@ -5,7 +5,7 @@ use crate::*;
 pub const XUSD_SCALE: u8 = 6;
 pub const SNY_SCALE: u8 = 6;
 pub const PRICE_SCALE: u8 = 8;
-pub const UNIFIED_PERCENT_SCALE: u8 = 4;
+pub const UNIFIED_PERCENT_SCALE: u8 = 5;
 pub const INTEREST_RATE_SCALE: u8 = 18;
 
 impl Decimal {

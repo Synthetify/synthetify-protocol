@@ -168,7 +168,7 @@ pub fn amount_to_discount(sny_amount: Decimal) -> Decimal {
         () if amount < one_sny * 10_000_000 => 15,
         () => 15,
     };
-    return Decimal::from_unified_percent(v);
+    return Decimal::from_percent(v);
 }
 pub fn calculate_value_in_usd(price: Decimal, amount: Decimal) -> Decimal {
     price.mul(amount).to_usd()
@@ -908,32 +908,32 @@ mod tests {
         {
             let amount = Decimal::from_integer(100).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(1))
+            assert_eq!(result, Decimal::from_unified_percent(1000))
         }
         {
             let amount = Decimal::from_integer(200).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(2))
+            assert_eq!(result, Decimal::from_unified_percent(2000))
         }
         {
             let amount = Decimal::from_integer(350).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(2))
+            assert_eq!(result, Decimal::from_unified_percent(2000))
         }
         {
             let amount = Decimal::from_integer(500).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(3))
+            assert_eq!(result, Decimal::from_unified_percent(3000))
         }
         {
             let amount = Decimal::from_integer(999_999).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(12))
+            assert_eq!(result, Decimal::from_unified_percent(12000))
         }
         {
             let amount = Decimal::from_integer(1_000_000).to_sny();
             let result = amount_to_discount(amount);
-            assert_eq!(result, Decimal::from_unified_percent(13))
+            assert_eq!(result, Decimal::from_unified_percent(13000))
         }
     }
     #[test]
@@ -953,7 +953,7 @@ mod tests {
             price: Decimal::from_integer(2000).to_price(),
             ..Default::default()
         };
-        let fee = Decimal::from_unified_percent(30);
+        let fee = Decimal::from_unified_percent(300);
         // should fail because swap value is too low
         {
             let amount = Decimal::new(10, 6);

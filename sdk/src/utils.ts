@@ -13,7 +13,7 @@ import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './excha
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 8
 export const ACCURACY = 6
-export const UNIFIED_PERCENT_SCALE = 4
+export const UNIFIED_PERCENT_SCALE = 5
 export const SNY_DECIMALS = 6
 export const XUSD_DECIMALS = 6
 // hex code must be at the end of message
@@ -206,7 +206,7 @@ export const toEffectiveFee = (fee: Decimal, userCollateralBalance: BN) => {
       discount = 15
       break
   }
-  return (fee.val.toNumber() - fee.val.toNumber() * discount) / 10 ** fee.scale
+  return toDecimal(fee.val.sub(fee.val.muln(discount).divn(100)), fee.scale)
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
