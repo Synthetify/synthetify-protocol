@@ -44,6 +44,7 @@ export const setFeedPrice = async (
   priceFeed: web3.PublicKey
 ) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   const data = parsePriceData(info.data)
   await oracleProgram.rpc.setPrice(new BN(newPrice * 10 ** -data.exponent), {
     accounts: { price: priceFeed }
@@ -64,6 +65,7 @@ export const setTwap = async (
   priceFeed: web3.PublicKey
 ) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   const data = parsePriceData(info.data)
   await oracleProgram.rpc.setTwap(new BN(newTwap * 10 ** -data.exponent), {
     accounts: { price: priceFeed }
@@ -71,5 +73,6 @@ export const setTwap = async (
 }
 export const getFeedData = async (oracleProgram: Program, priceFeed: web3.PublicKey) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   return parsePriceData(info.data)
 }
