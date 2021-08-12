@@ -102,19 +102,19 @@ export const divUp = (a: BN, b: BN) => {
 export const calculateLiquidation = (
   maxDebt: BN,
   debtValue: BN,
-  penaltyToLiquidator: number,
-  penaltyToExchange: number,
-  liquidationRate: number,
+  penaltyToLiquidator: Decimal,
+  penaltyToExchange: Decimal,
+  liquidationRate: Decimal,
   asset: Asset,
   collateral: Collateral
 ) => {
   if (maxDebt.gt(debtValue)) {
     throw new Error('Account is safe')
   }
-  const maxAmount = debtValue.muln(liquidationRate).divn(100)
+  const maxAmount = debtValue.mul(liquidationRate.val).divn(10 ** liquidationRate.scale)
   const seizedCollateralInUsd = divUp(
-    maxAmount.muln(penaltyToExchange + penaltyToLiquidator),
-    new BN(100)
+    maxAmount.mul(penaltyToExchange.val.add(penaltyToLiquidator.val)),
+    new BN(10 ** penaltyToExchange.scale)
   ).add(maxAmount)
 
   const seizedInToken = seizedCollateralInUsd
@@ -122,8 +122,8 @@ export const calculateLiquidation = (
     .div(asset.price.val)
 
   const collateralToExchange = divUp(
-    seizedInToken.muln(penaltyToExchange),
-    new BN(100).addn(penaltyToExchange).addn(penaltyToLiquidator)
+    seizedInToken.mul(penaltyToExchange.val),
+    new BN(10 ** penaltyToExchange.scale).add(penaltyToExchange.val).add(penaltyToLiquidator.val)
   )
   const collateralToLiquidator = seizedInToken.sub(collateralToExchange)
   return { seizedInToken, maxAmount, collateralToExchange, collateralToLiquidator }
@@ -161,7 +161,7 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
       entry.amount
         .mul(asset.price.val)
         .mul(collateral.collateralRatio.val)
-        .divn(collateral.collateralRatio.scale)
+        .divn(10 ** collateral.collateralRatio.scale)
         .div(new BN(10 ** (collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))

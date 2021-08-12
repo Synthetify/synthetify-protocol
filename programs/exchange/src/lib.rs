@@ -20,7 +20,7 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, DivUp, Gt, Lt, Ltq, Mul, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
+        Add, DivUp, Gt, Lt, Ltq, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
         XUSD_SCALE,
     };
 
@@ -758,8 +758,20 @@ pub mod exchange {
             val: amount.into(),
             scale: XUSD_SCALE,
         };
+        msg!("liquidation_amount, {:?}", liquidation_amount);
+        msg!(
+            "state
+        .penalty_to_liquidator
+        .add(state.penalty_to_exchange)
+        .unwrap(), {:?}",
+            state
+                .penalty_to_liquidator
+                .add(state.penalty_to_exchange)
+                .unwrap()
+        );
+
         let seized_collateral_in_usd = liquidation_amount
-            .div_up(
+            .mul_up(
                 state
                     .penalty_to_liquidator
                     .add(state.penalty_to_exchange)
@@ -784,7 +796,11 @@ pub mod exchange {
             seized_collateral_in_usd,
             liquidated_collateral.reserve_balance.scale,
         );
-
+        msg!(
+            "seized_collateral_in_token, {:?}",
+            seized_collateral_in_token
+        );
+        msg!("seized_collateral_in_usd, {:?}", seized_collateral_in_usd);
         let mut exchange_account_collateral =
             match exchange_account.collaterals.iter_mut().find(|x| {
                 x.collateral_address
@@ -805,19 +821,19 @@ pub mod exchange {
         let collateral_to_exchange = seized_collateral_in_token
             .mul(state.penalty_to_exchange)
             .div_up(
-                Decimal {
-                    val: 10000,
-                    scale: 4, // TODO: why magic number?
-                }
-                .add(state.penalty_to_liquidator)
-                .unwrap()
-                .add(state.penalty_to_exchange)
-                .unwrap(),
+                Decimal::from_percent(100)
+                    .add(state.penalty_to_liquidator)
+                    .unwrap()
+                    .add(state.penalty_to_exchange)
+                    .unwrap(),
             );
+
+        msg!("collateral_to_exchange, {:?}", collateral_to_exchange);
 
         let collateral_to_liquidator = seized_collateral_in_token
             .sub(collateral_to_exchange)
             .unwrap();
+        msg!("collateral_to_liquidator, {:?}", collateral_to_liquidator);
 
         // Remove staking for liquidation
         state.staking.next_round.all_points = state.debt_shares;
