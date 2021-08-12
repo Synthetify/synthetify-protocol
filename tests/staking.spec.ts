@@ -16,7 +16,8 @@ import {
   skipToSlot,
   createCollateralToken,
   eqDecimals,
-  mulByDecimal
+  mulByDecimal,
+  waitForBeggingOfASlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import { Collateral } from '../sdk/lib/exchange'
@@ -257,7 +258,7 @@ describe('staking', () => {
       assert.ok(exchangeAccountDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(133)))
       assert.ok(exchangeAccount2ndDataAfterRewards.userStakingData.amountToClaim.val.eq(new BN(66)))
     })
-    it('with multiple collaterals', async () => {
+    it.only('with multiple collaterals', async () => {
       const { token: btcToken, reserve: btcReserve } = await createCollateralToken({
         exchange,
         exchangeAuthority,
@@ -270,7 +271,7 @@ describe('staking', () => {
       })
 
       const collateralAmount = new BN(20 * 1e8)
-      const { accountOwner, exchangeAccount, userOtherTokenAccount, userCollateralTokenAccount } =
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithMultipleCollaterals({
           reserveAddress: reserveAddress,
           otherReserveAddress: btcReserve,
@@ -334,10 +335,10 @@ describe('staking', () => {
       await skipToSlot(thirdRoundStart.toNumber(), connection)
 
       // Claim rewards
-      await exchange.claimRewards(exchangeAccount)
+      // await exchange.claimRewards(exchangeAccount)
       const state = await exchange.getState()
 
-      assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      assert.ok(state.staking.finishedRound.amount.val.eq(amountPerRound.val))
       const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataRewardClaim.userStakingData.finishedRoundPoints.eq(new BN(0)))
 
@@ -349,8 +350,9 @@ describe('staking', () => {
         stakingFundAccount,
         CollateralTokenMinter,
         [],
-        tou64(amountPerRound)
+        tou64(amountPerRound.val)
       )
+      await waitForBeggingOfASlot(connection)
       await exchange.withdrawRewards({
         exchangeAccount,
         owner: accountOwner.publicKey,
@@ -359,7 +361,7 @@ describe('staking', () => {
       })
       assert.ok(
         (await collateralToken.getAccountInfo(userCollateralTokenAccount)).amount.eq(
-          exchangeAccountDataRewardClaim.userStakingData.amountToClaim
+          exchangeAccountDataRewardClaim.userStakingData.amountToClaim.val
         )
       )
     })
