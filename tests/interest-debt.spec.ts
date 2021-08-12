@@ -128,7 +128,7 @@ describe('Interest debt accumulation', () => {
       // Check feed address
       const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
       assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
-      assert.ok(snyAsset.price.eq(new BN(0)))
+      assert.ok(snyAsset.price.val.eq(new BN(0)))
 
       // Check token address
       const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
@@ -136,13 +136,14 @@ describe('Interest debt accumulation', () => {
 
       // USD token address
       const usdAsset = assetsListData.assets[0]
-      assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
+      assert.ok(eqDecimals(usdAsset.price, toDecimal(new BN(10 ** ORACLE_OFFSET), ORACLE_OFFSET)))
 
       // xUSD checks
       const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
       assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
-      assert.ok(usdSynthetic.decimals === initTokensDecimals)
-      assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
+      assert.ok(usdSynthetic.supply.scale === initTokensDecimals)
+      assert.ok(usdSynthetic.maxSupply.scale === initTokensDecimals)
+      assert.ok(usdSynthetic.maxSupply.val.eq(new BN('ffffffffffffffff', 16)))
     })
     it('should prepare base debt (mint debt)', async () => {
       const collateralAmount = new BN(500_000 * 10 ** ACCURACY)
