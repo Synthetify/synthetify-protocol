@@ -1809,8 +1809,10 @@ describe('exchange', () => {
       })
     })
     it('#burn()', async () => {
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const collateralAmount = new BN(100 * 1e6).div(healthFactor).mul(new BN(100))
+      const healthFactor = (await exchange.getState()).healthFactor
+      const collateralAmount = new BN(100 * 1e6)
+        .div(healthFactor.val)
+        .mul(new BN(10 ** healthFactor.scale))
       const {
         accountOwner,
         exchangeAccount,
