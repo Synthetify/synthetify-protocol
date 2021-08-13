@@ -99,10 +99,12 @@ Liquidation method is defined [here](https://github.com/Synthetify/synthetify-pr
   * **exchange_authority** - authority of the exchange
   * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
   * **token_program** - address of program of liquidated token
-  * **usd_token** - address of usd token
-  * **liquidator_usd_account** - signer's account on usd token
+  * **usd_token** - address of xUSD token
+  * **liquidator_usd_account** - signer's account on xUSD token
   * **liquidator_collateral_account** - account on collateral token that is liquidated
   * **exchange_account** - account with data of liquidated user
   * **signer** - liquidator that signed transaction
   * **liquidation_fund** - account where liquidation penalty is kept
   * **reserve_account** - account with collateral tokens belonging to exchange
+
+This method checks if *liquidation_deadline* has passed and debt exceeds value of collateral. If so it proceeds to liquidate specified amount up to *liquidation_rate* increased by liquidation penalties. Liquidators xUSD is burned and liquidated users debt_shares decreased. Collateral together with *penalty_to_liquidator* (percentage of liquidated amount) goes to user account and *penalty_to_exchange* to *liquidation_fund*
