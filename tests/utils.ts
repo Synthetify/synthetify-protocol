@@ -100,11 +100,6 @@ export const usdToTokenAmount = (
   }
   return amount
 }
-export const calculateValueInUsd = (asset: Asset, token: Synthetic | Collateral, amount: BN) => {
-  return asset.price
-    .mul(amount)
-    .div(new BN(10).pow(new BN(token.decimals + ORACLE_OFFSET - ACCURACY)))
-}
 interface ICreateToken {
   connection: Connection
   payer: Account
