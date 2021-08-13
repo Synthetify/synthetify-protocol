@@ -375,16 +375,15 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setLiquidationRateInstruction(newLiquidationRate: number) {
+  public async setLiquidationRateInstruction(newLiquidationRate: Decimal) {
     return await (this.program.instruction.setLiquidationRate(newLiquidationRate, {
       accounts: {
         state: this.stateAddress,
-
         admin: this.state.admin
       }
     }) as TransactionInstruction)
   }
-  public async setFeeInstruction(newFee: number) {
+  public async setFeeInstruction(newFee: Decimal) {
     return await (this.program.instruction.setFee(newFee, {
       accounts: {
         state: this.stateAddress,
@@ -411,7 +410,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setHealthFactorInstruction(percentage: BN) {
+  public async setHealthFactorInstruction(percentage: Decimal) {
     return await (this.program.instruction.setHealthFactor(percentage, {
       accounts: {
         state: this.stateAddress,
@@ -419,7 +418,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setStakingAmountPerRound(amount: BN) {
+  public async setStakingAmountPerRound(amount: Decimal) {
     return await (this.program.instruction.setStakingAmountPerRound(amount, {
       accounts: {
         state: this.stateAddress,
@@ -435,7 +434,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setCollateralRatio(collateralAddress: PublicKey, newRatio: number) {
+  public async setCollateralRatio(collateralAddress: PublicKey, newRatio: Decimal) {
     return await (this.program.instruction.setCollateralRatio(newRatio, {
       accounts: {
         state: this.stateAddress,
@@ -521,7 +520,7 @@ export class Exchange {
     }) as TransactionInstruction
     return ix
   }
-  public async setSwapTaxRatioInstruction(swapTaxRatio: number) {
+  public async setSwapTaxRatioInstruction(swapTaxRatio: Decimal) {
     return await (this.program.instruction.setSwapTaxRatio(swapTaxRatio, {
       accounts: {
         state: this.stateAddress,
@@ -529,7 +528,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setDebtInterestRateInstruction(debtInterestRate: number) {
+  public async setDebtInterestRateInstruction(debtInterestRate: Decimal) {
     return await (this.program.instruction.setDebtInterestRate(debtInterestRate, {
       accounts: {
         state: this.stateAddress,
@@ -803,15 +802,18 @@ export class Exchange {
     decimals,
     maxSupply
   }: AddSyntheticInstruction) {
-    return (await this.program.instruction.addSynthetic(maxSupply, decimals, {
-      accounts: {
-        state: this.stateAddress,
-        admin: this.state.admin,
-        assetsList,
-        assetAddress: assetAddress,
-        feedAddress: priceFeed
+    return (await this.program.instruction.addSynthetic(
+      { val: maxSupply, scale: decimals },
+      {
+        accounts: {
+          state: this.stateAddress,
+          admin: this.state.admin,
+          assetsList,
+          assetAddress: assetAddress,
+          feedAddress: priceFeed
+        }
       }
-    })) as TransactionInstruction
+    )) as TransactionInstruction
   }
 
   public async initializeAssetsList({
@@ -892,26 +894,20 @@ export class Exchange {
     reserveAccount,
     feedAddress,
     collateralRatio,
-    reserveBalance,
-    decimals
+    reserveBalance
   }: AddCollateralInstruction) {
-    return (await this.program.instruction.addCollateral(
-      reserveBalance,
-      decimals,
-      collateralRatio,
-      {
-        accounts: {
-          admin: this.state.admin,
-          state: this.stateAddress,
-          signer: this.state.admin,
-          assetsList,
-          assetAddress,
-          liquidationFund,
-          feedAddress,
-          reserveAccount
-        }
+    return (await this.program.instruction.addCollateral(reserveBalance, collateralRatio, {
+      accounts: {
+        admin: this.state.admin,
+        state: this.stateAddress,
+        signer: this.state.admin,
+        assetsList,
+        assetAddress,
+        liquidationFund,
+        feedAddress,
+        reserveAccount
       }
-    )) as TransactionInstruction
+    })) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -957,11 +953,11 @@ export enum PriceStatus {
 }
 export interface Asset {
   feedAddress: PublicKey
-  price: BN
+  price: Decimal
   lastUpdate: BN
-  confidence: BN
-  twap: BN
-  twac: BN
+  confidence: Decimal
+  twap: Decimal
+  twac: Decimal
   status: PriceStatus
 }
 export interface AssetsList {
@@ -978,17 +974,15 @@ export interface Collateral {
   collateralAddress: PublicKey
   reserveAddress: PublicKey
   liquidationFund: PublicKey
-  reserveBalance: BN
-  collateralRatio: number
-  decimals: number
+  reserveBalance: Decimal
+  collateralRatio: Decimal
 }
 export interface Synthetic {
   assetIndex: number
   assetAddress: PublicKey
-  supply: BN
-  maxSupply: BN
+  supply: Decimal
+  maxSupply: Decimal
   settlementSlot: BN
-  decimals: number
 }
 
 export interface SetAssetSupply {
@@ -1000,7 +994,7 @@ export interface SetAssetMaxSupply {
   assetAddress: PublicKey
   assetsList: PublicKey
   exchangeAdmin: Account
-  newMaxSupply: BN
+  newMaxSupply: Decimal
 }
 export interface AddNewAssetInstruction {
   assetsList: PublicKey
@@ -1017,8 +1011,8 @@ export interface SetPriceFeedInstruction {
 }
 
 export interface SetLiquidationPenaltiesInstruction {
-  penaltyToExchange: number
-  penaltyToLiquidator: number
+  penaltyToExchange: Decimal
+  penaltyToLiquidator: Decimal
 }
 
 export interface AddSyntheticInstruction {
@@ -1033,10 +1027,9 @@ export interface AddCollateralInstruction {
   assetAddress: PublicKey
   liquidationFund: PublicKey
   feedAddress: PublicKey
-  reserveBalance: BN
+  reserveBalance: Decimal
   reserveAccount: PublicKey
-  collateralRatio: number
-  decimals: number
+  collateralRatio: Decimal
 }
 
 export interface Mint {
@@ -1174,31 +1167,31 @@ export interface ExchangeState {
   nonce: number
   debtShares: BN
   assetsList: PublicKey
-  healthFactor: number
+  healthFactor: Decimal
   maxDelay: number
-  fee: number
-  swapTaxRatio: number
-  swapTaxReserve: BN
-  debtInterestRate: number
-  accumulatedDebtInterest: BN
+  fee: Decimal
+  swapTaxRatio: Decimal
+  swapTaxReserve: Decimal
+  debtInterestRate: Decimal
+  accumulatedDebtInterest: Decimal
   lastDebtAdjustment: BN
-  liquidationRate: number
-  penaltyToLiquidator: number
-  penaltyToExchange: number
+  liquidationRate: Decimal
+  penaltyToLiquidator: Decimal
+  penaltyToExchange: Decimal
   liquidationBuffer: number
   staking: Staking
 }
 export interface Staking {
   fundAccount: PublicKey
   roundLength: number
-  amountPerRound: BN
+  amountPerRound: Decimal
   finishedRound: StakingRound
   currentRound: StakingRound
   nextRound: StakingRound
 }
 export interface StakingRound {
   start: BN
-  amount: BN
+  amount: Decimal
   allPoints: BN
 }
 export interface ExchangeAccount {
@@ -1216,7 +1209,7 @@ export interface Settlement {
   tokenOutAddress: PublicKey
   decimalsIn: number
   decimalsOut: number
-  ratio: BN
+  ratio: Decimal
 }
 export interface CollateralEntry {
   amount: BN
@@ -1224,9 +1217,13 @@ export interface CollateralEntry {
   index: number
 }
 export interface UserStaking {
-  amountToClaim: BN
+  amountToClaim: Decimal
   finishedRoundPoints: BN
   currentRoundPoints: BN
   nextRoundPoints: BN
   lastUpdate: BN
+}
+export interface Decimal {
+  val: BN
+  scale: number
 }

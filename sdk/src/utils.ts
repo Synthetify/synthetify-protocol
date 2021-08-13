@@ -8,11 +8,15 @@ import {
   sendAndConfirmRawTransaction,
   Account
 } from '@solana/web3.js'
-import { Asset, AssetsList, Collateral, ExchangeAccount } from './exchange'
+import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './exchange'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 8
-export const ACCURACY = 6
+export const ACCURACY = 6 // TODO: remove, use always XUSD_DECIMALS
+export const UNIFIED_PERCENT_SCALE = 5
+export const SNY_DECIMALS = 6
+export const XUSD_DECIMALS = 6
+export const INTEREST_RATE_DECIMALS = 18
 // hex code must be at the end of message
 export enum ERRORS {
   SIGNATURE = 'Error: Signature verification failed',
@@ -50,7 +54,9 @@ export enum ERRORS_EXCHANGE {
   INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW = '0x144', //24
   SETTLEMENT_NOT_REACHED = '0x145', //25
   USD_SETTLEMENT = '0x146', //26
-  PARAMETER_OUT_OF_RANGE = '0x147' //27
+  PARAMETER_OUT_OF_RANGE = '0x147', //27
+  OVERFLOW = '0x148', //28
+  DIFFERENT_SCALE = '0x149' //29
 }
 export const signAndSend = async (
   tx: Transaction,
@@ -72,34 +78,57 @@ export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
+export const percentToDecimal = (value: number): Decimal => {
+  return { val: new BN(value * 10 ** (UNIFIED_PERCENT_SCALE - 2)), scale: UNIFIED_PERCENT_SCALE }
+}
+export const decimalToPercent = (decimal: Decimal): number => {
+  return decimal.val.toNumber() / 10 ** (decimal.scale - 2)
+}
+export const toDecimal = (value: BN, scale: number): Decimal => {
+  return { val: value, scale: scale }
+}
+export const toScale = (decimal: Decimal, scale: number) => {
+  if (decimal.scale > scale) {
+    return {
+      val: decimal.val.div(new BN(10).pow(new BN(decimal.scale - scale))),
+      scale
+    }
+  } else {
+    return {
+      val: decimal.val.mul(new BN(10).pow(new BN(scale - decimal.scale))),
+      scale
+    }
+  }
+}
+
 export const divUp = (a: BN, b: BN) => {
   return a.add(b.subn(1)).div(b)
 }
 export const calculateLiquidation = (
   maxDebt: BN,
   debtValue: BN,
-  penaltyToLiquidator: number,
-  penaltyToExchange: number,
-  liquidationRate: number,
+  penaltyToLiquidator: Decimal,
+  penaltyToExchange: Decimal,
+  liquidationRate: Decimal,
   asset: Asset,
   collateral: Collateral
 ) => {
   if (maxDebt.gt(debtValue)) {
     throw new Error('Account is safe')
   }
-  const maxAmount = debtValue.muln(liquidationRate).divn(100)
+  const maxAmount = debtValue.mul(liquidationRate.val).divn(10 ** liquidationRate.scale)
   const seizedCollateralInUsd = divUp(
-    maxAmount.muln(penaltyToExchange + penaltyToLiquidator),
-    new BN(100)
+    maxAmount.mul(penaltyToExchange.val.add(penaltyToLiquidator.val)),
+    new BN(10 ** penaltyToExchange.scale)
   ).add(maxAmount)
 
   const seizedInToken = seizedCollateralInUsd
-    .mul(new BN(10).pow(new BN(collateral.decimals + ORACLE_OFFSET - ACCURACY)))
-    .div(asset.price)
+    .mul(new BN(10).pow(new BN(collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
+    .div(asset.price.val)
 
   const collateralToExchange = divUp(
-    seizedInToken.muln(penaltyToExchange),
-    new BN(100).addn(penaltyToExchange).addn(penaltyToLiquidator)
+    seizedInToken.mul(penaltyToExchange.val),
+    new BN(10 ** penaltyToExchange.scale).add(penaltyToExchange.val).add(penaltyToLiquidator.val)
   )
   const collateralToLiquidator = seizedInToken.sub(collateralToExchange)
   return { seizedInToken, maxAmount, collateralToExchange, collateralToLiquidator }
@@ -109,9 +138,9 @@ export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.synthetics.reduce(
     (acc, synthetic) =>
       acc.add(
-        synthetic.supply
-          .mul(assetsList.assets[synthetic.assetIndex].price)
-          .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+        synthetic.supply.val
+          .mul(assetsList.assets[synthetic.assetIndex].price.val)
+          .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
       ),
     new BN(0)
   )
@@ -124,8 +153,8 @@ export const calculateUserCollateral = (
     const collateral = assetsList.collaterals[entry.index]
     return acc.add(
       entry.amount
-        .mul(assetsList.assets[collateral.assetIndex].price)
-        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
+        .mul(assetsList.assets[collateral.assetIndex].price.val)
+        .div(new BN(10 ** (collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -135,14 +164,14 @@ export const calculateUserMaxDebt = (exchangeAccount: ExchangeAccount, assetsLis
     const asset = assetsList.assets[collateral.assetIndex]
     return acc.add(
       entry.amount
-        .mul(asset.price)
-        .muln(collateral.collateralRatio)
-        .divn(100)
-        .div(new BN(10 ** (collateral.decimals + ORACLE_OFFSET - ACCURACY)))
+        .mul(asset.price.val)
+        .mul(collateral.collateralRatio.val)
+        .divn(10 ** collateral.collateralRatio.scale)
+        .div(new BN(10 ** (collateral.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
-export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
+export const toEffectiveFee = (fee: Decimal, userCollateralBalance: BN) => {
   // decimals of token = 6
   const ONE_SNY = new BN(1000000)
   let discount = 0
@@ -197,7 +226,7 @@ export const toEffectiveFee = (fee: number, userCollateralBalance: BN) => {
       discount = 15
       break
   }
-  return Math.ceil(fee - (fee * discount) / 100)
+  return toDecimal(fee.val.sub(fee.val.muln(discount).divn(100)), fee.scale)
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -210,10 +239,10 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  Sp7hoXrvaBA42RLsmFshjAmFT3CZemVDm5WGhsy18Cz: 'xUSD',
-  EUdH9pgy4GtgYb42sj9MjiRW5i4s7HaEAbcNzwRhuaYa: 'SNY',
-  '5JvEdz8xUTb3UYCQ6XuWVbpcGTAmrpESmhDQ86kCz5ur': 'xBTC',
-  '8zGRx7MVmJxWgRbqZxkUg1GCz3gXNm3ivNVGYoU6Rduf': 'xSOL',
-  '2CMihX9gxt51Z868cGUYjsrjYvDLjrr5wX3FNZ9CLnBX': 'xSRM',
+  Ch1FPDNSD97Z23oNHXzHZJgLyKeutFCccDf7PXat43eA: 'xUSD',
+  '9dLGczoMUANNef7Je5qpSYjBxyT8PTh5tEZqo3pJktM9': 'SNY',
+  '3awh1xDhY81t56B9fwnaHAr45oWDHijYjqkVmDNdgAhG': 'xBTC',
+  DRVsdNrGG1Em6TfSB2EJ1gcavmPBnCLnW3hCVH9fDicg: 'xSOL',
+  HYHydTmHn2sLaeq5DX4Rv7n5NXVGAffFJaPh6HF4FDED: 'xSRM',
   So11111111111111111111111111111111111111112: 'WSOL'
 }

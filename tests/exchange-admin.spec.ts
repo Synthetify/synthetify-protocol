@@ -12,12 +12,21 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
   DEFAULT_PUBLIC_KEY,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { ERRORS_EXCHANGE, sleep } from '@synthetify/sdk/lib/utils'
+import { ERRORS, INTEREST_RATE_DECIMALS, toScale } from '@synthetify/sdk/src/utils'
+import { Asset, Collateral, Decimal, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
+import {
+  decimalToPercent,
+  ERRORS_EXCHANGE,
+  percentToDecimal,
+  sleep,
+  SNY_DECIMALS,
+  toDecimal,
+  XUSD_DECIMALS
+} from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('admin', () => {
@@ -55,7 +64,7 @@ describe('admin', () => {
     collateralTokenFeed = await createPriceFeed({
       oracleProgram,
       initPrice: initialCollateralPrice,
-      expo: -6
+      expo: -8
     })
 
     collateralToken = await createToken({
@@ -114,16 +123,18 @@ describe('admin', () => {
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
-    assert.ok(state.healthFactor === 50)
+    assert.ok(eqDecimals(state.healthFactor, percentToDecimal(50)))
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
-    assert.ok(state.swapTaxRatio === 20)
-    assert.ok(state.swapTaxReserve.eq(new BN(0)))
-    assert.ok(state.debtInterestRate === 10)
-    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
-    assert.ok(state.liquidationRate === 20)
-    assert.ok(state.penaltyToLiquidator === 5)
-    assert.ok(state.penaltyToExchange === 5)
+    assert.ok(eqDecimals(state.fee, percentToDecimal(0.3)))
+    assert.ok(eqDecimals(state.swapTaxRatio, percentToDecimal(20)))
+    assert.ok(eqDecimals(state.swapTaxReserve, toDecimal(new BN(0), XUSD_DECIMALS)))
+    assert.ok(
+      eqDecimals(state.debtInterestRate, toScale(percentToDecimal(1), INTEREST_RATE_DECIMALS))
+    )
+    assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
+    assert.ok(eqDecimals(state.liquidationRate, percentToDecimal(20)))
+    assert.ok(eqDecimals(state.penaltyToLiquidator, percentToDecimal(5)))
+    assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
   })
@@ -137,7 +148,12 @@ describe('admin', () => {
     // Check feed address
     const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
     assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
-    assert.ok(snyAsset.price.eq(new BN(0)))
+    assert.ok(
+      eqDecimals(
+        snyAsset.price,
+        toScale(toDecimal(new BN(initialCollateralPrice), 0), ORACLE_OFFSET)
+      )
+    )
 
     // Check token address
     const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
@@ -145,13 +161,16 @@ describe('admin', () => {
 
     // USD token address
     const usdAsset = assetsListData.assets[0]
-    assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
+    assert.ok(eqDecimals(usdAsset.price, toScale(toDecimal(new BN(1), 0), ORACLE_OFFSET)))
 
     // xUSD checks
     const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
     assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
-    assert.ok(usdSynthetic.decimals === initTokensDecimals)
-    assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
+
+    assert.ok(usdSynthetic.supply.scale === initTokensDecimals)
+    assert.ok(
+      eqDecimals(usdSynthetic.maxSupply, toDecimal(new BN('ffffffffffffffff', 16), XUSD_DECIMALS))
+    )
   })
   describe('#setLiquidationBuffer()', async () => {
     it('Fail without admin signature', async () => {
@@ -162,7 +181,7 @@ describe('admin', () => {
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationBuffer !== newLiquidationBuffer)
+      assert.isFalse(state.liquidationBuffer === newLiquidationBuffer)
     })
     it('change value', async () => {
       const newLiquidationBuffer = 999
@@ -174,75 +193,95 @@ describe('admin', () => {
   })
   describe('#setLiquidationRate()', async () => {
     it('Fail without admin signature', async () => {
-      const newLiquidationRate = 15
+      const newLiquidationRate = percentToDecimal(15)
       const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.liquidationRate !== newLiquidationRate)
+      assert.isFalse(eqDecimals(state.liquidationRate, newLiquidationRate))
     })
     it('change value', async () => {
-      const newLiquidationRate = 15
+      const newLiquidationRate = percentToDecimal(15)
       const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.liquidationRate === newLiquidationRate)
+      assert.ok(eqDecimals(state.liquidationRate, newLiquidationRate))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(101)
+      const ix = await exchange.setLiquidationRateInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.liquidationRate, outOfRange))
     })
   })
   describe('#setSwapTaxRatio', async () => {
-    it('should set swap tax ratio', async () => {
-      const newSwapTaxRatio = 100
+    it('should change', async () => {
+      const newSwapTaxRatio = percentToDecimal(25)
       const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.swapTaxRatio === newSwapTaxRatio)
+      assert.ok(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
     })
-    it('set swap tax ratio should fail without admin signature', async () => {
-      const ix = await exchange.setSwapTaxRatioInstruction(50)
+    it('should fail without admin signature', async () => {
+      const newSwapTaxRatio = percentToDecimal(10)
+      const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
     })
-    it('set swap tax ratio should fail because of paramter out of range', async () => {
-      const outOfRange = 230
+    it('should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(31)
       const ix = await exchange.setSwapTaxRatioInstruction(outOfRange)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.swapTaxRatio, outOfRange))
     })
   })
   describe('#setDebtInterestRate', async () => {
-    it('should set debt interest rate', async () => {
-      const newDebtInterestRate = 110
+    it('should change', async () => {
+      const newDebtInterestRate = toScale(percentToDecimal(5), INTEREST_RATE_DECIMALS)
       const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.debtInterestRate === newDebtInterestRate)
+      assert.ok(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
-    it('set debt interest rate should fail without admin signature', async () => {
-      const ix = await exchange.setDebtInterestRateInstruction(50)
+    it('should fail without admin signature', async () => {
+      const newDebtInterestRate = toScale(percentToDecimal(6), INTEREST_RATE_DECIMALS)
+      const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
-    it('set debt interest rate should fail because of paramter out of range', async () => {
-      const newDebtInterestRate = 230
+    it('should fail because of paramter out of range', async () => {
+      const newDebtInterestRate = toScale(percentToDecimal(27), INTEREST_RATE_DECIMALS)
       const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
   })
   describe('#setLiquidationPenalties()', async () => {
     it('Fail without admin signature', async () => {
-      const penaltyToExchange = 10
-      const penaltyToLiquidator = 10
+      const penaltyToExchange = percentToDecimal(10)
+      const penaltyToLiquidator = percentToDecimal(10)
       const ix = await exchange.setLiquidationPenaltiesInstruction({
         penaltyToExchange,
         penaltyToLiquidator
@@ -251,13 +290,14 @@ describe('admin', () => {
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
+
       const state = await exchange.getState()
-      assert.ok(state.penaltyToExchange !== penaltyToExchange)
-      assert.ok(state.penaltyToLiquidator !== penaltyToLiquidator)
+      assert.isFalse(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.isFalse(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
     })
     it('Change values', async () => {
-      const penaltyToExchange = 10
-      const penaltyToLiquidator = 10
+      const penaltyToExchange = percentToDecimal(10)
+      const penaltyToLiquidator = percentToDecimal(10)
       const ix = await exchange.setLiquidationPenaltiesInstruction({
         penaltyToExchange,
         penaltyToLiquidator
@@ -265,27 +305,53 @@ describe('admin', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
 
       const state = await exchange.getState()
-      assert.ok(state.penaltyToExchange == penaltyToExchange)
-      assert.ok(state.penaltyToLiquidator == penaltyToLiquidator)
+      assert.ok(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.ok(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const penaltyToExchange = percentToDecimal(30)
+      const penaltyToLiquidator = percentToDecimal(30)
+      const ix = await exchange.setLiquidationPenaltiesInstruction({
+        penaltyToExchange,
+        penaltyToLiquidator
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.penaltyToExchange, penaltyToExchange))
+      assert.isFalse(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
     })
   })
   describe('#setFee()', async () => {
     it('Fail without admin signature', async () => {
-      const newFee = 999
+      const newFee = percentToDecimal(0.999)
       const ix = await exchange.setFeeInstruction(newFee)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.fee !== newFee)
+      assert.isFalse(eqDecimals(state.fee, newFee))
     })
     it('change value', async () => {
-      const newFee = 999
+      const newFee = percentToDecimal(0.999)
       const ix = await exchange.setFeeInstruction(newFee)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.fee === newFee)
+      assert.ok(eqDecimals(state.fee, newFee))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const newFee = percentToDecimal(2)
+      const ix = await exchange.setFeeInstruction(newFee)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.fee, newFee))
     })
   })
   describe('#setMaxDelay()', async () => {
@@ -328,25 +394,35 @@ describe('admin', () => {
   })
   describe('#setHealthFactor()', async () => {
     it('Fail without admin signature', async () => {
-      const healthFactor = 70
-      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(state.healthFactor !== healthFactor)
+      assert.isFalse(eqDecimals(state.healthFactor, healthFactor))
     })
     it('change value', async () => {
-      const healthFactor = 70
-      const ix = await exchange.setHealthFactorInstruction(new BN(healthFactor))
+      const healthFactor = percentToDecimal(70)
+      const ix = await exchange.setHealthFactorInstruction(healthFactor)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.healthFactor === healthFactor)
+      assert.ok(eqDecimals(state.healthFactor, healthFactor))
+    })
+    it('should fail because of paramter out of range', async () => {
+      const outOfRange = percentToDecimal(120)
+      const ix = await exchange.setHealthFactorInstruction(outOfRange)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
     })
   })
   describe('#setSettlementSlot()', async () => {
-    let addedSynthetic: Synthetic | undefined
+    let addedSynthetic: Synthetic
     before(async () => {
       const state = await exchange.getState()
       const assetsList = await exchange.getAssetsList(state.assetsList)
@@ -367,10 +443,9 @@ describe('admin', () => {
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(state.assetsList)
-
       addedSynthetic = afterAssetList.synthetics.find((a) =>
         a.assetAddress.equals(newSynthetic.publicKey)
-      )
+      ) as Synthetic
       if (!addedSynthetic) {
         assert.ok(false)
         return
@@ -398,29 +473,29 @@ describe('admin', () => {
       const state = await exchange.getState()
       const changedAssetsList = await exchange.getAssetsList(state.assetsList)
 
-      const changedSynthetic = changedAssetsList.synthetics.find((a) =>
-        a.assetAddress.equals(addedSynthetic.assetAddress)
+      const changedSynthetic = changedAssetsList.synthetics.find((synthetic: Synthetic) =>
+        synthetic.assetAddress.equals(addedSynthetic.assetAddress)
       )
       assert.ok(changedSynthetic?.settlementSlot.eq(newSettlementSlot))
     })
   })
   describe('#setStakingAmountPerRound()', async () => {
-    it('Fail without admin signature', async () => {
-      const amount = new BN(12399)
+    it('fail without admin signature', async () => {
+      const amount = toDecimal(new BN(12399), SNY_DECIMALS)
       const ix = await exchange.setStakingAmountPerRound(amount)
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
-      assert.ok(!state.staking.amountPerRound.eq(amount))
+      assert.isFalse(eqDecimals(state.staking.amountPerRound, amount))
     })
     it('change value', async () => {
-      const amount = new BN(12399)
+      const amount = toDecimal(new BN(12399), SNY_DECIMALS)
       const ix = await exchange.setStakingAmountPerRound(amount)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.staking.amountPerRound.eq(amount))
+      assert.ok(eqDecimals(state.staking.amountPerRound, amount))
     })
   })
   describe('#setStakingRoundLength()', async () => {
@@ -466,7 +541,7 @@ describe('admin', () => {
       // Check new asset initial fields
       assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
       assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
-      assert.ok(addedNewAsset.price.eq(new BN(0)))
+      assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
     }),
       it('Should fail without admin signature', async () => {
         const newAssetFeedPublicKey = new Account().publicKey
@@ -481,6 +556,7 @@ describe('admin', () => {
       })
   })
   describe('#addSynthetic()', async () => {
+    const syntheticDecimal = 8
     it('Should add new synthetic ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const assetForSynthetic = beforeAssetList.assets[0]
@@ -488,12 +564,12 @@ describe('admin', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 8
+        decimals: syntheticDecimal
       })
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: 8,
+        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
@@ -508,9 +584,9 @@ describe('admin', () => {
 
       // Check synthetic initial fields
       assert.ok(addedSynthetic.assetAddress.equals(newSynthetic.publicKey))
-      assert.ok(addedSynthetic.decimals === 8)
-      assert.ok(addedSynthetic.maxSupply.eq(new BN(100)))
-      assert.ok(addedSynthetic.supply.eqn(0))
+      assert.ok(addedSynthetic.maxSupply.scale === syntheticDecimal)
+      assert.ok(eqDecimals(addedSynthetic.maxSupply, toDecimal(new BN(100), syntheticDecimal)))
+      assert.ok(eqDecimals(addedSynthetic.supply, toDecimal(new BN(0), syntheticDecimal)))
       assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
       assert.ok(
         afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
@@ -525,12 +601,12 @@ describe('admin', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 8
+        decimals: syntheticDecimal
       })
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: 8,
+        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
@@ -541,11 +617,11 @@ describe('admin', () => {
     })
   })
   describe('#addCollateral()', async () => {
-    it('Should add new collateral ', async () => {
+    it('should add new collateral ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const assetForCollateral = beforeAssetList.assets[0]
-      const reserveBalance = new BN(1000000)
       const decimals = 8
+      const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
       const newCollateral = await createToken({
         connection,
         payer: wallet,
@@ -554,7 +630,7 @@ describe('admin', () => {
       })
       const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
       const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
-      const collateralRatio = 50
+      const collateralRatio = percentToDecimal(50)
 
       const ix = await exchange.addCollateralInstruction({
         assetsList,
@@ -562,8 +638,7 @@ describe('admin', () => {
         liquidationFund,
         feedAddress: assetForCollateral.feedAddress,
         reserveAccount,
-        reserveBalance: reserveBalance,
-        decimals,
+        reserveBalance,
         collateralRatio
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
@@ -578,20 +653,19 @@ describe('admin', () => {
       // Check collateral initial fields
       assert.ok(addedCollateral.assetIndex === 0)
       assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
-      assert.ok(addedCollateral.collateralRatio === collateralRatio)
-      assert.ok(addedCollateral.decimals === decimals)
+      assert.ok(eqDecimals(addedCollateral.collateralRatio, collateralRatio))
       assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
       assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
-      assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
+      assert.ok(eqDecimals(addedCollateral.reserveBalance, reserveBalance))
     }),
-      it('Should fail without admin signature', async () => {
+      it('should fail without admin signature', async () => {
         const beforeAssetList = await exchange.getAssetsList(assetsList)
         const assetForCollateral = beforeAssetList.assets[0]
         const liquidationAccount = new Account()
         const reserveAccount = new Account()
-        const collateralRatio = 150
-        const reserveBalance = new BN(1000000)
+        const collateralRatio = percentToDecimal(150)
         const decimals = 8
+        const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
         const newCollateral = await createToken({
           connection,
           payer: wallet,
@@ -605,7 +679,6 @@ describe('admin', () => {
           feedAddress: assetForCollateral.feedAddress,
           reserveAccount: reserveAccount.publicKey,
           reserveBalance: reserveBalance,
-          decimals,
           collateralRatio
         })
         await assertThrowsAsync(
@@ -613,11 +686,39 @@ describe('admin', () => {
           ERRORS.SIGNATURE
         )
       })
+    it('should fail because of out of range paramter', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const liquidationAccount = new Account()
+      const reserveAccount = new Account()
+      const collateralRatio = percentToDecimal(150)
+      const decimals = 8
+      const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund: liquidationAccount.publicKey,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount: reserveAccount.publicKey,
+        reserveBalance: reserveBalance,
+        collateralRatio
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
   })
   describe('#setMaxSupply()', async () => {
-    const newAssetLimit = new BN(4 * 1e4)
+    const newAssetLimit = toDecimal(new BN(4), 4)
 
-    it('Error should be thrown while setting new max supply', async () => {
+    it('error should be thrown while setting new max supply', async () => {
       await assertThrowsAsync(
         exchange.setAssetMaxSupply({
           assetAddress: new Account().publicKey,
@@ -629,12 +730,14 @@ describe('admin', () => {
       )
 
       const afterAssetList = await exchange.getAssetsList(assetsList)
-
       assert.notOk(
-        afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
       )
     })
-    it('New max supply should be set', async () => {
+    it('new max supply should be set', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
 
@@ -646,9 +749,11 @@ describe('admin', () => {
       })
 
       const afterAssetList = await exchange.getAssetsList(assetsList)
-
       assert.ok(
-        afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
       )
     })
   })
@@ -691,10 +796,9 @@ describe('admin', () => {
       })
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const assetListAfterAdded = await exchange.getAssetsList(assetsList)
-      const asset = assetListAfterAdded.assets.find((a) => {
+      const asset = assetListAfterAdded.assets.find((a: Asset) => {
         return a.feedAddress.equals(assetFeed)
       }) as Asset
-      assert.ok(asset)
       // asset by default should have trading status
       assert.ok(asset.status == PriceStatus.Trading)
     })
@@ -706,11 +810,27 @@ describe('admin', () => {
     })
   })
   describe('#setCollateralRatio()', async () => {
-    it('Should set new collateral ratio for asset', async () => {
-      const newCollateralRatio = 99
+    it('should fail without admin signature', async () => {
+      const newCollateralRatio = percentToDecimal(99)
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const collateralBefore = beforeAssetList.collaterals[0]
-      assert.ok(collateralBefore.collateralRatio !== newCollateralRatio)
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
+    })
+    it('should set new collateral ratio for asset', async () => {
+      const newCollateralRatio = percentToDecimal(99)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralBefore.collateralRatio, newCollateralRatio))
       const ix = await exchange.setCollateralRatio(
         collateralBefore.collateralAddress,
         newCollateralRatio
@@ -718,17 +838,24 @@ describe('admin', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
       const collateralAfter = afterAssetList.collaterals[0]
-      assert.ok(collateralAfter.collateralRatio === newCollateralRatio)
+      assert.ok(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
     })
-    it('Fail without admin signature', async () => {
-      const newCollateralRatio = 99
+    it('should fail because of out of range paramter', async () => {
+      const newCollateralRatio = percentToDecimal(120)
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const collateralBefore = beforeAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralBefore.collateralRatio, newCollateralRatio))
       const ix = await exchange.setCollateralRatio(
         collateralBefore.collateralAddress,
         newCollateralRatio
       )
-      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
     })
   })
   describe('#setAssetsPrices()', async () => {
@@ -757,8 +884,7 @@ describe('admin', () => {
       const assetList = await exchange.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
-      // Check not changed price
-      assert.ok(collateralAsset.price.eq(new BN(0)))
+      assert.notOk(eqDecimals(collateralAsset.price, toDecimal(new BN(6), ORACLE_OFFSET)))
     })
     it('Should change prices', async () => {
       const assetListBefore = await exchange.getAssetsList(assetsList)
@@ -772,7 +898,8 @@ describe('admin', () => {
       const collateralAsset = assetList.assets[1]
 
       // Check new price
-      assert.ok(collateralAsset.price.eq(new BN(newPrice).mul(new BN(10 ** ORACLE_OFFSET))))
+      const expectedPrice = toScale(toDecimal(new BN(newPrice), 0), ORACLE_OFFSET)
+      assert.ok(eqDecimals(collateralAsset.price, expectedPrice))
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)

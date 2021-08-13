@@ -597,7 +597,9 @@
       "args": [
         {
           "name": "amount",
-          "type": "u64"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -736,7 +738,9 @@
       "args": [
         {
           "name": "swapTaxRatio",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -757,7 +761,9 @@
       "args": [
         {
           "name": "debtInterestRate",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -799,7 +805,9 @@
       "args": [
         {
           "name": "liquidationRate",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -820,7 +828,9 @@
       "args": [
         {
           "name": "fee",
-          "type": "u32"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -883,7 +893,9 @@
       "args": [
         {
           "name": "factor",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -904,7 +916,9 @@
       "args": [
         {
           "name": "amountPerRound",
-          "type": "u64"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -955,7 +969,9 @@
         },
         {
           "name": "newMaxSupply",
-          "type": "u64"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1007,11 +1023,15 @@
       "args": [
         {
           "name": "penaltyToExchange",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         },
         {
           "name": "penaltyToLiquidator",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1057,15 +1077,15 @@
       "args": [
         {
           "name": "reserveBalance",
-          "type": "u64"
-        },
-        {
-          "name": "decimals",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         },
         {
           "name": "collateralRatio",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1096,7 +1116,9 @@
       "args": [
         {
           "name": "collateralRatio",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1163,11 +1185,9 @@
       "args": [
         {
           "name": "maxSupply",
-          "type": "u64"
-        },
-        {
-          "name": "decimals",
-          "type": "u8"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1429,7 +1449,9 @@
           },
           {
             "name": "healthFactor",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "maxDelay",
@@ -1437,27 +1459,39 @@
           },
           {
             "name": "fee",
-            "type": "u32"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "swapTaxRatio",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "swapTaxReserve",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "liquidationRate",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "penaltyToLiquidator",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "penaltyToExchange",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "liquidationBuffer",
@@ -1465,11 +1499,15 @@
           },
           {
             "name": "debtInterestRate",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "accumulatedDebtInterest",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "lastDebtAdjustment",
@@ -1519,7 +1557,9 @@
           },
           {
             "name": "ratio",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           }
         ]
       }
@@ -1557,7 +1597,9 @@
           },
           {
             "name": "amount",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "allPoints",
@@ -1581,7 +1623,9 @@
           },
           {
             "name": "amountPerRound",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "finishedRound",
@@ -1611,7 +1655,9 @@
         "fields": [
           {
             "name": "amountToClaim",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "finishedRoundPoints",
@@ -1643,7 +1689,9 @@
           },
           {
             "name": "price",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "lastUpdate",
@@ -1651,11 +1699,15 @@
           },
           {
             "name": "twap",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "twac",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "status",
@@ -1663,7 +1715,9 @@
           },
           {
             "name": "confidence",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           }
         ]
       }
@@ -1691,15 +1745,15 @@
           },
           {
             "name": "reserveBalance",
-            "type": "u64"
-          },
-          {
-            "name": "decimals",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "collateralRatio",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           }
         ]
       }
@@ -1719,19 +1773,35 @@
           },
           {
             "name": "supply",
-            "type": "u64"
-          },
-          {
-            "name": "decimals",
-            "type": "u8"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "maxSupply",
-            "type": "u64"
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "settlementSlot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Decimal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "val",
+            "type": "u128"
+          },
+          {
+            "name": "scale",
+            "type": "u8"
           }
         ]
       }
@@ -1877,9 +1947,16 @@
       "code": 327,
       "name": "ParameterOutOfRange",
       "msg": "Parameter out of range"
+    },
+    {
+      "code": 328,
+      "name": "Overflow",
+      "msg": "Overflow"
+    },
+    {
+      "code": 329,
+      "name": "DifferentScale",
+      "msg": "Scale is different"
     }
-  ],
-  "metadata": {
-    "address": "UQRAVeiAXepTJyDyk7JQFKXTspwap4DJ9FgBFid88oC"
-  }
+  ]
 }

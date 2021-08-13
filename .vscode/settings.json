@@ -1,3 +1,35 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cSpell.words": [
+    "Bodziony",
+    "Keypair",
+    "Pubkey",
+    "Synthetify",
+    "Sysvar",
+    "WSOL",
+    "accountv",
+    "addn",
+    "atype",
+    "blockhash",
+    "collateralization",
+    "divn",
+    "lamports",
+    "ledgerhq",
+    "muln",
+    "multicollateral",
+    "multiuser",
+    "numer",
+    "overdrafting",
+    "ptype",
+    "pyth",
+    "pythnetwork",
+    "repr",
+    "solana",
+    "statev",
+    "subn",
+    "twac",
+    "twap",
+    "undercollateralized",
+    "xusd"
+  ]
 }

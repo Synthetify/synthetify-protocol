@@ -22,11 +22,17 @@ import {
   createAccountWithCollateralAndMaxMintUsd,
   tokenToUsdValue,
   assertThrowsAsync,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
-import { createPriceFeed, setFeedPrice } from './oracleUtils'
+import { createPriceFeed, getFeedData, setFeedPrice } from './oracleUtils'
 import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
-import { calculateUserCollateral, calculateUserMaxDebt } from '@synthetify/sdk/lib/utils'
+import {
+  calculateUserCollateral,
+  calculateUserMaxDebt,
+  percentToDecimal,
+  SNY_DECIMALS
+} from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 import { Collateral } from '@synthetify/sdk/lib/exchange'
 
@@ -71,7 +77,6 @@ describe('liquidation', () => {
       initPrice: initialCollateralPrice,
       expo: -6
     })
-
     collateralToken = await createToken({
       connection,
       payer: wallet,
@@ -127,7 +132,7 @@ describe('liquidation', () => {
       exchange,
       reserveAddress: snyReserve,
       collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-      amount: new BN(100000 * 10 ** snyCollateral.decimals) // give enough for liquidations
+      amount: new BN(100000 * 10 ** SNY_DECIMALS) // give enough for liquidations
     })
 
     liquidator = liquidatorData.accountOwner
@@ -137,19 +142,10 @@ describe('liquidation', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
-    assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
-    assert.ok(state.halted === false)
-    assert.ok(state.assetsList.equals(assetsList))
-    // Check initialized parameters
-    assert.ok(state.nonce === nonce)
-    assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
-    assert.ok(state.penaltyToExchange === 5)
-    assert.ok(state.penaltyToLiquidator === 5)
-    assert.ok(state.liquidationRate === 20)
+    assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
+    assert.ok(eqDecimals(state.penaltyToLiquidator, percentToDecimal(5)))
+    assert.ok(eqDecimals(state.liquidationRate, percentToDecimal(20)))
     assert.ok(state.liquidationBuffer === 172800)
-    assert.ok(state.debtShares.gt(new BN(0)))
   })
   describe('#liquidate()', async () => {
     afterEach(async () => {
@@ -162,7 +158,7 @@ describe('liquidation', () => {
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
     })
     it('should liquidate', async () => {
-      const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
+      const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -173,9 +169,10 @@ describe('liquidation', () => {
         amount: collateralAmount
       })
       const assetsListData = await exchange.getAssetsList(assetsList)
-
       assert.ok(
-        assetsListData.assets[1].price.eq(new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice))
+        assetsListData.assets[1].price.val.eq(
+          new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice)
+        )
       )
 
       const newCollateralPrice = initialCollateralPrice / 5
@@ -187,7 +184,9 @@ describe('liquidation', () => {
 
       const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListDataUpdated.assets[1].price.eq(new BN(newCollateralPrice * 10 ** ORACLE_OFFSET))
+        assetsListDataUpdated.assets[1].price.val.eq(
+          new BN(newCollateralPrice * 10 ** ORACLE_OFFSET)
+        )
       )
 
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
@@ -210,7 +209,6 @@ describe('liquidation', () => {
       const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
       const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
       const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListDataUpdated)
-
       assert.ok(userDebtBalance.eq(usdMintAmount))
       const collateral = assetsListDataUpdated.collaterals[0]
       const collateralAsset = assetsListDataUpdated.assets[collateral.assetIndex]
@@ -292,6 +290,7 @@ describe('liquidation', () => {
       // user debt should be reduced
       const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
       assert.ok(userDebtBalanceAfter.eq(userDebtBalance.sub(maxAmount)))
+
       assert.ok(
         exchangeAccountDataAfterLiquidation.collaterals[0].amount.eq(
           exchangeAccountData.collaterals[0].amount
@@ -321,7 +320,7 @@ describe('liquidation', () => {
       const withdrawPenaltyDestination = await collateralToken.createAccount(exchangeAuthority)
 
       const withdrawPenaltyIx = await exchangeProgram.instruction.withdrawLiquidationPenalty(
-        liquidationFundAccountData.amount,
+        { val: liquidationFundAccountData.amount, scale: SNY_DECIMALS },
         {
           accounts: {
             state: exchange.stateAddress,
@@ -354,7 +353,7 @@ describe('liquidation', () => {
       )
     })
     it('check halted', async () => {
-      const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
+      const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
       const { exchangeAccount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -451,7 +450,7 @@ describe('liquidation', () => {
       })
     })
     it('fail without signer', async () => {
-      const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
+      const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -504,7 +503,7 @@ describe('liquidation', () => {
       )
     })
     it('fail liquidate safe user', async () => {
-      const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
+      const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,
@@ -517,7 +516,9 @@ describe('liquidation', () => {
 
       const assetsListData = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListData.assets[1].price.eq(new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice))
+        assetsListData.assets[1].price.val.eq(
+          new BN(10 ** ORACLE_OFFSET).muln(initialCollateralPrice)
+        )
       )
 
       await exchange.updatePrices(assetsList)
@@ -543,7 +544,7 @@ describe('liquidation', () => {
       )
     })
     it('fail wrong asset list', async () => {
-      const collateralAmount = new BN(1000 * 10 ** snyCollateral.decimals)
+      const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
       const { exchangeAccount, usdMintAmount } = await createAccountWithCollateralAndMaxMintUsd({
         reserveAddress: snyReserve,
         collateralToken,

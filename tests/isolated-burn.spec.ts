@@ -13,8 +13,8 @@ import {
   createAccountWithCollateral,
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
-  mulByPercentage,
-  U64_MAX
+  U64_MAX,
+  mulByDecimal
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 
@@ -34,8 +34,6 @@ describe('isolated exchange burn', () => {
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  let collateralAccount: PublicKey
-  let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let snyReserve: PublicKey
   let snyLiquidationFund: PublicKey
@@ -58,8 +56,6 @@ describe('isolated exchange burn', () => {
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    collateralAccount = await collateralToken.createAccount(exchangeAuthority)
-    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
     snyReserve = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
@@ -89,9 +85,6 @@ describe('isolated exchange burn', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       assetsList,
-      collateralAccount,
-      liquidationAccount,
-      collateralToken: collateralToken.publicKey,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -119,8 +112,8 @@ describe('isolated exchange burn', () => {
     // create usd account
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
     // We can mint max 200 * 1e6
-    const healthFactor = new BN((await exchange.getState()).healthFactor)
-    const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+    const healthFactor = (await exchange.getState()).healthFactor
+    const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
     await exchange.mint({
       amount: usdMintAmount,
       exchangeAccount,
@@ -155,19 +148,18 @@ describe('isolated exchange burn', () => {
       amount: collateralAmount,
       usdToken
     })
-    const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
-      await createAccountWithCollateral({
-        reserveAddress: snyReserve,
-        collateralToken,
-        exchangeAuthority,
-        exchange,
-        collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
-        amount: collateralAmount
-      })
+    const { accountOwner, exchangeAccount } = await createAccountWithCollateral({
+      reserveAddress: snyReserve,
+      collateralToken,
+      exchangeAuthority,
+      exchange,
+      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+      amount: collateralAmount
+    })
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
     // We can mint max 200 * 1e6
-    const healthFactor = new BN((await exchange.getState()).healthFactor)
-    const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+    const healthFactor = (await exchange.getState()).healthFactor
+    const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
     await exchange.mint({
       amount: usdMintAmount,
       exchangeAccount,
