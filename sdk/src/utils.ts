@@ -81,6 +81,9 @@ export const tou64 = (amount) => {
 export const percentToDecimal = (value: number): Decimal => {
   return { val: new BN(value * 10 ** (UNIFIED_PERCENT_SCALE - 2)), scale: UNIFIED_PERCENT_SCALE }
 }
+export const decimalToPercent = (decimal: Decimal): number => {
+  return decimal.val.toNumber() / 10 ** (decimal.scale - 2)
+}
 export const toDecimal = (value: BN, scale: number): Decimal => {
   return { val: value, scale: scale }
 }
