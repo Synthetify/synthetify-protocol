@@ -160,3 +160,12 @@ In many places in synthetify code there is a need for numbers with decimal place
   Here _val_ is the value of decimal. _Scale_ can be interpreted as a position of a dot in decimal notation. _Val_ can be divided by 10 to the power of _scale_ to get a regular number. 
 
   To make _Decimal_ easier to use it also contains a few methods [defined here](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/decimal.rs). Simple math methods like _add_ and _div_ with their rounding up counterparts where needed like *mul_up*. It also contains few factory methods like *from_price* and *from_percent*.
+
+### Decimal in SDK
+
+Inside SDK _Decimal_ is stored as a simple object of the following interface.
+
+    interface Decimal {
+        val: BN
+        scale: number
+    }
