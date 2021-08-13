@@ -241,7 +241,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it('mint', async () => {
+  it.only('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
@@ -255,7 +255,7 @@ describe('max collaterals', () => {
         const userCollateralTokenAccount = await collateralToken.createAccount(
           accountOwner.publicKey
         )
-        const amount = new BN(10 * 1e6)
+        const amount = new BN(10 * 1e8)
         await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
 
         await exchange.deposit({
@@ -274,7 +274,7 @@ describe('max collaterals', () => {
     assert.ok((await exchange.getExchangeAccount(exchangeAccount)).debtShares.eq(new BN(0)))
 
     const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
-    const mintAmount = mulByDecimal(new BN(55 * 1e4), healthFactor)
+    const mintAmount = mulByDecimal(new BN(5500000), healthFactor)
 
     // Mint xUSD
     await exchange.mint({
