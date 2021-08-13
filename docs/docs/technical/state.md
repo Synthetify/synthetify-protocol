@@ -151,3 +151,17 @@ Synthetic assets created by Synthetify keep their data inside this structure:
 * **decimals** - amount of decimal places
 * **max_supply** - limit of tokens that can be minted. It exists to increase safety of the platform (can be changed at any time by admin)
 * **settlement_slot** - slot when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
+
+## Decimal
+In many places in synthetify code there is a need for numbers with decimal places. Tokens have them, percentages can be saved as them as well as interest rate. To avoid floating point numbers _Decimal_ was created.
+
+### Implementation
+
+    pub struct Decimal {
+        pub val: u128,
+        pub scale: u8,
+    }
+
+  Here _val_ is the value of decimal. _Scale_ can be interpreted as a position of a dot in decimal notation. _Val_ can be divided by 10 to the power of _scale_ to get a regular number. 
+
+  To make _Decimal_ easier to use it also contains a few methods [defined here](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/decimal.rs). Simple math methods like _add_ and _div_ with their rounding up counterparts where needed like *mul_up*. It also contains few factory methods like *from_price* and *from_percent*.
