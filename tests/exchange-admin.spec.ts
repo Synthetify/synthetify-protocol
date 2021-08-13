@@ -19,6 +19,7 @@ import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './or
 import { ERRORS, INTEREST_RATE_DECIMALS, toScale } from '@synthetify/sdk/src/utils'
 import { Asset, Collateral, Decimal, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import {
+  decimalToPercent,
   ERRORS_EXCHANGE,
   percentToDecimal,
   sleep,
@@ -554,200 +555,230 @@ describe('admin', () => {
         )
       })
   })
-  // describe('#addSynthetic()', async () => {
-  //   it('Should add new synthetic ', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const assetForSynthetic = beforeAssetList.assets[0]
-  //     const newSynthetic = await createToken({
-  //       connection,
-  //       payer: wallet,
-  //       mintAuthority: exchangeAuthority,
-  //       decimals: 8
-  //     })
-  //     const ix = await exchange.addSyntheticInstruction({
-  //       assetAddress: newSynthetic.publicKey,
-  //       assetsList,
-  //       decimals: 8,
-  //       maxSupply: new BN(100),
-  //       priceFeed: assetForSynthetic.feedAddress
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
+  describe('#addSynthetic()', async () => {
+    const syntheticDecimal = 8
+    it('Should add new synthetic ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: syntheticDecimal
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: syntheticDecimal,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
-  //     const addedSynthetic = afterAssetList.synthetics.find((a) =>
-  //       a.assetAddress.equals(newSynthetic.publicKey)
-  //     ) as Synthetic
-  //     // Length should be increased by 1
-  //     assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
+      const addedSynthetic = afterAssetList.synthetics.find((a) =>
+        a.assetAddress.equals(newSynthetic.publicKey)
+      ) as Synthetic
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.synthetics.length + 1 === afterAssetList.synthetics.length)
 
-  //     // Check synthetic initial fields
-  //     assert.ok(addedSynthetic.assetAddress.equals(newSynthetic.publicKey))
-  //     assert.ok(addedSynthetic.decimals === 8)
-  //     assert.ok(addedSynthetic.maxSupply.eq(new BN(100)))
-  //     assert.ok(addedSynthetic.supply.eqn(0))
-  //     assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
-  //     assert.ok(
-  //       afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
-  //         assetForSynthetic.feedAddress
-  //       )
-  //     )
-  //   })
-  //   it('Should fail without admin signature', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const assetForSynthetic = beforeAssetList.assets[0]
-  //     const newSynthetic = await createToken({
-  //       connection,
-  //       payer: wallet,
-  //       mintAuthority: exchangeAuthority,
-  //       decimals: 8
-  //     })
-  //     const ix = await exchange.addSyntheticInstruction({
-  //       assetAddress: newSynthetic.publicKey,
-  //       assetsList,
-  //       decimals: 8,
-  //       maxSupply: new BN(100),
-  //       priceFeed: assetForSynthetic.feedAddress
-  //     })
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //   })
-  // })
-  // describe('#addCollateral()', async () => {
-  //   it('Should add new collateral ', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const assetForCollateral = beforeAssetList.assets[0]
-  //     const reserveBalance = new BN(1000000)
-  //     const decimals = 8
-  //     const newCollateral = await createToken({
-  //       connection,
-  //       payer: wallet,
-  //       mintAuthority: exchangeAuthority,
-  //       decimals
-  //     })
-  //     const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
-  //     const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
-  //     const collateralRatio = 50
+      // Check synthetic initial fields
+      assert.ok(addedSynthetic.assetAddress.equals(newSynthetic.publicKey))
+      assert.ok(addedSynthetic.maxSupply.scale === syntheticDecimal)
+      assert.ok(eqDecimals(addedSynthetic.maxSupply, toDecimal(new BN(100), syntheticDecimal)))
+      assert.ok(eqDecimals(addedSynthetic.supply, toDecimal(new BN(0), syntheticDecimal)))
+      assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
+      assert.ok(
+        afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
+          assetForSynthetic.feedAddress
+        )
+      )
+    })
+    it('Should fail without admin signature', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForSynthetic = beforeAssetList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: syntheticDecimal
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList,
+        decimals: syntheticDecimal,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+  })
+  describe('#addCollateral()', async () => {
+    it('should add new collateral ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const decimals = 8
+      const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals
+      })
+      const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
+      const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
+      const collateralRatio = percentToDecimal(50)
 
-  //     const ix = await exchange.addCollateralInstruction({
-  //       assetsList,
-  //       assetAddress: newCollateral.publicKey,
-  //       liquidationFund,
-  //       feedAddress: assetForCollateral.feedAddress,
-  //       reserveAccount,
-  //       reserveBalance: reserveBalance,
-  //       decimals,
-  //       collateralRatio
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount,
+        reserveBalance,
+        collateralRatio
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
-  //     const addedCollateral = afterAssetList.collaterals.find((a) =>
-  //       a.collateralAddress.equals(newCollateral.publicKey)
-  //     ) as Collateral
-  //     // Length should be increased by 1
-  //     assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
+      const addedCollateral = afterAssetList.collaterals.find((a) =>
+        a.collateralAddress.equals(newCollateral.publicKey)
+      ) as Collateral
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
 
-  //     // Check collateral initial fields
-  //     assert.ok(addedCollateral.assetIndex === 0)
-  //     assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
-  //     assert.ok(addedCollateral.collateralRatio === collateralRatio)
-  //     assert.ok(addedCollateral.decimals === decimals)
-  //     assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
-  //     assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
-  //     assert.ok(addedCollateral.reserveBalance.eq(reserveBalance))
-  //   }),
-  //     it('Should fail without admin signature', async () => {
-  //       const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //       const assetForCollateral = beforeAssetList.assets[0]
-  //       const liquidationAccount = new Account()
-  //       const reserveAccount = new Account()
-  //       const collateralRatio = 150
-  //       const reserveBalance = new BN(1000000)
-  //       const decimals = 8
-  //       const newCollateral = await createToken({
-  //         connection,
-  //         payer: wallet,
-  //         mintAuthority: exchangeAuthority,
-  //         decimals: 8
-  //       })
-  //       const ix = await exchange.addCollateralInstruction({
-  //         assetsList,
-  //         assetAddress: newCollateral.publicKey,
-  //         liquidationFund: liquidationAccount.publicKey,
-  //         feedAddress: assetForCollateral.feedAddress,
-  //         reserveAccount: reserveAccount.publicKey,
-  //         reserveBalance: reserveBalance,
-  //         decimals,
-  //         collateralRatio
-  //       })
-  //       await assertThrowsAsync(
-  //         signAndSend(new Transaction().add(ix), [wallet], connection),
-  //         ERRORS.SIGNATURE
-  //       )
-  //     })
-  // })
-  // describe('#setMaxSupply()', async () => {
-  //   const newAssetLimit = new BN(4 * 1e4)
+      // Check collateral initial fields
+      assert.ok(addedCollateral.assetIndex === 0)
+      assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
+      assert.ok(eqDecimals(addedCollateral.collateralRatio, collateralRatio))
+      assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
+      assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
+      assert.ok(eqDecimals(addedCollateral.reserveBalance, reserveBalance))
+    }),
+      it('should fail without admin signature', async () => {
+        const beforeAssetList = await exchange.getAssetsList(assetsList)
+        const assetForCollateral = beforeAssetList.assets[0]
+        const liquidationAccount = new Account()
+        const reserveAccount = new Account()
+        const collateralRatio = percentToDecimal(150)
+        const decimals = 8
+        const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
+        const newCollateral = await createToken({
+          connection,
+          payer: wallet,
+          mintAuthority: exchangeAuthority,
+          decimals: 8
+        })
+        const ix = await exchange.addCollateralInstruction({
+          assetsList,
+          assetAddress: newCollateral.publicKey,
+          liquidationFund: liquidationAccount.publicKey,
+          feedAddress: assetForCollateral.feedAddress,
+          reserveAccount: reserveAccount.publicKey,
+          reserveBalance: reserveBalance,
+          collateralRatio
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
+    it('should fail because of out of range paramter', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const liquidationAccount = new Account()
+      const reserveAccount = new Account()
+      const collateralRatio = percentToDecimal(150)
+      const decimals = 8
+      const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund: liquidationAccount.publicKey,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount: reserveAccount.publicKey,
+        reserveBalance: reserveBalance,
+        collateralRatio
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+  })
+  describe('#setMaxSupply()', async () => {
+    const newAssetLimit = toDecimal(new BN(4), 4)
 
-  //   it('Error should be thrown while setting new max supply', async () => {
-  //     await assertThrowsAsync(
-  //       exchange.setAssetMaxSupply({
-  //         assetAddress: new Account().publicKey,
-  //         exchangeAdmin: EXCHANGE_ADMIN,
-  //         assetsList,
-  //         newMaxSupply: newAssetLimit
-  //       }),
-  //       ERRORS_EXCHANGE.NO_ASSET_FOUND
-  //     )
+    it('error should be thrown while setting new max supply', async () => {
+      await assertThrowsAsync(
+        exchange.setAssetMaxSupply({
+          assetAddress: new Account().publicKey,
+          exchangeAdmin: EXCHANGE_ADMIN,
+          assetsList,
+          newMaxSupply: newAssetLimit
+        }),
+        ERRORS_EXCHANGE.NO_ASSET_FOUND
+      )
 
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      assert.notOk(
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
+      )
+    })
+    it('new max supply should be set', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
 
-  //     assert.notOk(
-  //       afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
-  //     )
-  //   })
-  //   it('New max supply should be set', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
+      await exchange.setAssetMaxSupply({
+        assetAddress: beforeAsset.assetAddress,
+        exchangeAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        newMaxSupply: newAssetLimit
+      })
 
-  //     await exchange.setAssetMaxSupply({
-  //       assetAddress: beforeAsset.assetAddress,
-  //       exchangeAdmin: EXCHANGE_ADMIN,
-  //       assetsList,
-  //       newMaxSupply: newAssetLimit
-  //     })
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      assert.ok(
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
+      )
+    })
+  })
+  describe('#setPriceFeed()', async () => {
+    it('New price_feed should be set', async () => {
+      const newPriceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 2,
+        expo: -6
+      })
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const ix = await exchange.setPriceFeedInstruction({
+        assetsList,
+        priceFeed: newPriceFeed,
+        oldPriceFeed: beforeAsset.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
-
-  //     assert.ok(
-  //       afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
-  //     )
-  //   })
-  // })
-  // describe('#setPriceFeed()', async () => {
-  //   it('New price_feed should be set', async () => {
-  //     const newPriceFeed = await createPriceFeed({
-  //       oracleProgram,
-  //       initPrice: 2,
-  //       expo: -6
-  //     })
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-  //     const ix = await exchange.setPriceFeedInstruction({
-  //       assetsList,
-  //       priceFeed: newPriceFeed,
-  //       oldPriceFeed: beforeAsset.feedAddress
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
-
-  //     assert.ok(
-  //       afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
-  //     )
-  //   })
-  // })
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+      )
+    })
+  })
   describe('#setFeedTrading', async () => {
     let assetFeed: PublicKey
     before(async () => {
@@ -827,51 +858,51 @@ describe('admin', () => {
       assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
     })
   })
-  // describe('#setAssetsPrices()', async () => {
-  //   const newPrice = 6
-  //   it('Should not change prices', async () => {
-  //     const assetListBefore = await exchange.getAssetsList(assetsList)
+  describe('#setAssetsPrices()', async () => {
+    const newPrice = 6
+    it('Should not change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
 
-  //     const feedAddresses = assetListBefore.assets
-  //       .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-  //       .map((asset) => {
-  //         return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-  //       })
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
 
-  //     feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
-  //     await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-  //     await assertThrowsAsync(
-  //       exchangeProgram.rpc.setAssetsPrices({
-  //         remainingAccounts: feedAddresses,
-  //         accounts: {
-  //           assetsList: assetsList
-  //         }
-  //       }),
-  //       ERRORS.PANICKED
-  //     )
-  //     const assetList = await exchange.getAssetsList(assetsList)
-  //     const collateralAsset = assetList.assets[1]
+      await assertThrowsAsync(
+        exchangeProgram.rpc.setAssetsPrices({
+          remainingAccounts: feedAddresses,
+          accounts: {
+            assetsList: assetsList
+          }
+        }),
+        ERRORS.PANICKED
+      )
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
 
-  //     // Check not changed price
-  //     assert.ok(collateralAsset.price.eq(new BN(0)))
-  //   })
-  // it('Should change prices', async () => {
-  //   const assetListBefore = await exchange.getAssetsList(assetsList)
-  //   await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+      assert.notOk(eqDecimals(collateralAsset.price, toDecimal(new BN(6), ORACLE_OFFSET)))
+    })
+    it('Should change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-  //   const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
-  //   await exchange.updatePrices(assetsList)
+      await exchange.updatePrices(assetsList)
 
-  //   const assetList = await exchange.getAssetsList(assetsList)
-  //   const collateralAsset = assetList.assets[1]
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
 
-  //   // Check new price
-  //   assert.ok(collateralAsset.price.eq(new BN(newPrice).mul(new BN(10 ** ORACLE_OFFSET))))
+      // Check new price
+      const expectedPrice = toScale(toDecimal(new BN(newPrice), 0), ORACLE_OFFSET)
+      assert.ok(eqDecimals(collateralAsset.price, expectedPrice))
 
-  //   // Check last_update new value
-  //   assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
-  // })
-  // })
+      // Check last_update new value
+      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+  })
 })
