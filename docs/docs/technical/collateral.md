@@ -78,3 +78,31 @@ Method calculates [debt](/docs/technical/synthetics#debt) with [interest rate](/
 
 
 ### User Liquidation
+
+Liquidation method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/e8e70a9928b3659b6aca80eeec540b67baf596d5/programs/exchange/src/lib.rs#L704-L894) and takes amount (u64) and this context:
+
+    pub struct Liquidate<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub token_program: AccountInfo<'info>,
+        pub usd_token: AccountInfo<'info>,
+        pub liquidator_usd_account: CpiAccount<'info, TokenAccount>,
+        pub liquidator_collateral_account: AccountInfo<'info>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub signer: AccountInfo<'info>,
+        pub liquidation_fund: CpiAccount<'info, TokenAccount>,
+        pub reserve_account: CpiAccount<'info, TokenAccount>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_authority** - authority of the exchange
+  * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
+  * **token_program** - address of program of liquidated token
+  * **usd_token** - address of usd token
+  * **liquidator_usd_account** - signer's account on usd token
+  * **liquidator_collateral_account** - account on collateral token that is liquidated
+  * **exchange_account** - account with data of liquidated user
+  * **signer** - liquidator that signed transaction
+  * **liquidation_fund** - account where liquidation penalty is kept
+  * **reserve_account** - account with collateral tokens belonging to exchange
