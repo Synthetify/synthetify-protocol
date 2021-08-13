@@ -1,6 +1,8 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "cSpell.words": [
+    "Bodziony",
+    "Keypair",
     "Pubkey",
     "Synthetify",
     "Sysvar",

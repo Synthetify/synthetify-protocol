@@ -304,7 +304,7 @@ mod test {
     fn test_to_scale() {
         // Increasing precision
         {
-            let decimal = Decimal { val: 42, scale: 2 };
+            let decimal = Decimal::new(42, 2);
             let result = decimal.to_scale(3);
 
             assert_eq!(result.scale, 3);
@@ -312,7 +312,7 @@ mod test {
         }
         // Decreasing precision
         {
-            let decimal = Decimal { val: 42, scale: 2 };
+            let decimal = Decimal::new(42, 2);
             let result = decimal.to_scale(1);
 
             assert_eq!(result.scale, 1);
@@ -320,7 +320,7 @@ mod test {
         }
         // Decreasing precision over value
         {
-            let decimal = Decimal { val: 123, scale: 4 };
+            let decimal = Decimal::new(123, 4);
             let result = decimal.to_scale(0);
 
             assert_eq!(result.scale, 0);
@@ -332,7 +332,7 @@ mod test {
     fn test_to_scale_up() {
         // Increasing precision
         {
-            let decimal = Decimal { val: 42, scale: 2 };
+            let decimal = Decimal::new(42, 2);
             let result = decimal.to_scale_up(3);
 
             assert_eq!(result.scale, 3);
@@ -340,7 +340,7 @@ mod test {
         }
         // Decreasing precision
         {
-            let decimal = Decimal { val: 42, scale: 2 };
+            let decimal = Decimal::new(42, 2);
             let result = decimal.to_scale_up(1);
 
             assert_eq!(result.scale, 1);
@@ -348,7 +348,7 @@ mod test {
         }
         // Decreasing precision over value
         {
-            let decimal = Decimal { val: 123, scale: 4 };
+            let decimal = Decimal::new(123, 4);
             let result = decimal.to_scale_up(0);
 
             assert_eq!(result.scale, 0);
@@ -361,7 +361,7 @@ mod test {
         // Zero base
         {
             let decimal: u8 = PRICE_SCALE;
-            let base = Decimal::new(0, 0).to_scale(decimal);
+            let base = Decimal::new(0, decimal);
             let exp: u128 = 100;
             let result = base.pow_with_accuracy(exp);
             let expected = Decimal::new(0, decimal);
@@ -370,51 +370,48 @@ mod test {
         // Zero exponent
 
         let decimal: u8 = PRICE_SCALE;
-        let base = Decimal::new(10, 0).to_scale(decimal);
+        let base = Decimal::from_integer(10).to_scale(decimal);
         let exp: u128 = 0;
         let result = base.pow_with_accuracy(exp);
-        let expected = Decimal::new(1, 0).to_scale(decimal);
+        let expected = Decimal::from_integer(1).to_scale(decimal);
         assert_eq!(result, expected);
         // 2^17, with price decimal
         {
             let decimal: u8 = PRICE_SCALE;
-            let base = Decimal::new(2, 0).to_scale(decimal);
+            let base = Decimal::from_integer(2).to_scale(decimal);
             let exp: u128 = 17;
             let result = base.pow_with_accuracy(exp);
             // should be 131072
-            let expected = Decimal::new(131072, 0).to_scale(decimal);
+            let expected = Decimal::from_integer(131072).to_scale(decimal);
             assert_eq!(result, expected);
         }
         // 1.00000002^525600, with interest decimal
         {
-            let decimal: u8 = INTEREST_RATE_SCALE;
-            let base = Decimal::new(1_000_000_02, 8).to_scale(decimal);
+            let base = Decimal::new(1_000_000_02, 8).to_interest_rate();
             let exp: u128 = 525600;
             let result = base.pow_with_accuracy(exp);
             // expected 1.010567445075371...
             // real     1.010567445075377...
-            let expected = Decimal::new(1010567445075371366, decimal);
+            let expected = Decimal::from_interest_rate(1010567445075371366);
             assert_eq!(result, expected);
         }
         // 1.000000015^2, with interest decimal
         {
-            let decimal: u8 = INTEREST_RATE_SCALE;
-            let base = Decimal::new(1_000_000_015, 9).to_scale(decimal);
+            let base = Decimal::new(1_000_000_015, 9).to_interest_rate();
             let exp: u128 = 2;
             let result = base.pow_with_accuracy(exp);
             // expected 1.000000030000000225
             // real     1.000000030000000225.
-            let expected = Decimal::new(1000000030000000225, decimal);
+            let expected = Decimal::from_interest_rate(1000000030000000225);
             assert_eq!(result, expected);
         }
         // 1^525600, with interest decimal
         {
-            let decimal: u8 = INTEREST_RATE_SCALE;
-            let base = Decimal::new(1, 0).to_scale(decimal);
+            let base = Decimal::from_integer(1).to_interest_rate();
             let exp: u128 = 525600;
             let result = base.pow_with_accuracy(exp);
             // expected not change value
-            let expected = Decimal::new(1, 0).to_scale(decimal);
+            let expected = Decimal::from_integer(1).to_interest_rate();
             assert_eq!(result, expected);
         }
     }
