@@ -715,67 +715,70 @@ describe('admin', () => {
       )
     })
   })
+  describe('#setMaxSupply()', async () => {
+    const newAssetLimit = toDecimal(new BN(4), 4)
 
-  // describe('#setMaxSupply()', async () => {
-  //   const newAssetLimit = new BN(4 * 1e4)
+    it('error should be thrown while setting new max supply', async () => {
+      await assertThrowsAsync(
+        exchange.setAssetMaxSupply({
+          assetAddress: new Account().publicKey,
+          exchangeAdmin: EXCHANGE_ADMIN,
+          assetsList,
+          newMaxSupply: newAssetLimit
+        }),
+        ERRORS_EXCHANGE.NO_ASSET_FOUND
+      )
 
-  //   it('Error should be thrown while setting new max supply', async () => {
-  //     await assertThrowsAsync(
-  //       exchange.setAssetMaxSupply({
-  //         assetAddress: new Account().publicKey,
-  //         exchangeAdmin: EXCHANGE_ADMIN,
-  //         assetsList,
-  //         newMaxSupply: newAssetLimit
-  //       }),
-  //       ERRORS_EXCHANGE.NO_ASSET_FOUND
-  //     )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      assert.notOk(
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
+      )
+    })
+    it('new max supply should be set', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
 
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
+      await exchange.setAssetMaxSupply({
+        assetAddress: beforeAsset.assetAddress,
+        exchangeAdmin: EXCHANGE_ADMIN,
+        assetsList,
+        newMaxSupply: newAssetLimit
+      })
 
-  //     assert.notOk(
-  //       afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
-  //     )
-  //   })
-  //   it('New max supply should be set', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     let beforeAsset = beforeAssetList.synthetics[beforeAssetList.synthetics.length - 1]
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      assert.ok(
+        eqDecimals(
+          afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply,
+          newAssetLimit
+        )
+      )
+    })
+  })
+  describe('#setPriceFeed()', async () => {
+    it('New price_feed should be set', async () => {
+      const newPriceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 2,
+        expo: -6
+      })
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
+      const ix = await exchange.setPriceFeedInstruction({
+        assetsList,
+        priceFeed: newPriceFeed,
+        oldPriceFeed: beforeAsset.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
-  //     await exchange.setAssetMaxSupply({
-  //       assetAddress: beforeAsset.assetAddress,
-  //       exchangeAdmin: EXCHANGE_ADMIN,
-  //       assetsList,
-  //       newMaxSupply: newAssetLimit
-  //     })
-
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
-
-  //     assert.ok(
-  //       afterAssetList.synthetics[afterAssetList.synthetics.length - 1].maxSupply.eq(newAssetLimit)
-  //     )
-  //   })
-  // })
-  // describe('#setPriceFeed()', async () => {
-  //   it('New price_feed should be set', async () => {
-  //     const newPriceFeed = await createPriceFeed({
-  //       oracleProgram,
-  //       initPrice: 2,
-  //       expo: -6
-  //     })
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const beforeAsset = beforeAssetList.assets[beforeAssetList.assets.length - 1]
-  //     const ix = await exchange.setPriceFeedInstruction({
-  //       assetsList,
-  //       priceFeed: newPriceFeed,
-  //       oldPriceFeed: beforeAsset.feedAddress
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
-
-  //     assert.ok(
-  //       afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
-  //     )
-  //   })
-  // })
+      assert.ok(
+        afterAssetList.assets[afterAssetList.assets.length - 1].feedAddress.equals(newPriceFeed)
+      )
+    })
+  })
   describe('#setFeedTrading', async () => {
     let assetFeed: PublicKey
     before(async () => {
@@ -855,51 +858,51 @@ describe('admin', () => {
       assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
     })
   })
-  // describe('#setAssetsPrices()', async () => {
-  //   const newPrice = 6
-  //   it('Should not change prices', async () => {
-  //     const assetListBefore = await exchange.getAssetsList(assetsList)
+  describe('#setAssetsPrices()', async () => {
+    const newPrice = 6
+    it('Should not change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
 
-  //     const feedAddresses = assetListBefore.assets
-  //       .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
-  //       .map((asset) => {
-  //         return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
-  //       })
+      const feedAddresses = assetListBefore.assets
+        .filter((asset) => !asset.feedAddress.equals(DEFAULT_PUBLIC_KEY))
+        .map((asset) => {
+          return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
+        })
 
-  //     feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
-  //     await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+      feedAddresses.push({ pubkey: new Account().publicKey, isWritable: false, isSigner: false })
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-  //     await assertThrowsAsync(
-  //       exchangeProgram.rpc.setAssetsPrices({
-  //         remainingAccounts: feedAddresses,
-  //         accounts: {
-  //           assetsList: assetsList
-  //         }
-  //       }),
-  //       ERRORS.PANICKED
-  //     )
-  //     const assetList = await exchange.getAssetsList(assetsList)
-  //     const collateralAsset = assetList.assets[1]
+      await assertThrowsAsync(
+        exchangeProgram.rpc.setAssetsPrices({
+          remainingAccounts: feedAddresses,
+          accounts: {
+            assetsList: assetsList
+          }
+        }),
+        ERRORS.PANICKED
+      )
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
 
-  //     // Check not changed price
-  //     assert.ok(collateralAsset.price.eq(new BN(0)))
-  //   })
-  // it('Should change prices', async () => {
-  //   const assetListBefore = await exchange.getAssetsList(assetsList)
-  //   await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
+      assert.notOk(eqDecimals(collateralAsset.price, toDecimal(new BN(6), ORACLE_OFFSET)))
+    })
+    it('Should change prices', async () => {
+      const assetListBefore = await exchange.getAssetsList(assetsList)
+      await setFeedPrice(oracleProgram, newPrice, collateralTokenFeed)
 
-  //   const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
+      const collateralAssetLastUpdateBefore = assetListBefore.assets[1].lastUpdate
 
-  //   await exchange.updatePrices(assetsList)
+      await exchange.updatePrices(assetsList)
 
-  //   const assetList = await exchange.getAssetsList(assetsList)
-  //   const collateralAsset = assetList.assets[1]
+      const assetList = await exchange.getAssetsList(assetsList)
+      const collateralAsset = assetList.assets[1]
 
-  //   // Check new price
-  //   assert.ok(collateralAsset.price.eq(new BN(newPrice).mul(new BN(10 ** ORACLE_OFFSET))))
+      // Check new price
+      const expectedPrice = toScale(toDecimal(new BN(newPrice), 0), ORACLE_OFFSET)
+      assert.ok(eqDecimals(collateralAsset.price, expectedPrice))
 
-  //   // Check last_update new value
-  //   assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
-  // })
-  // })
+      // Check last_update new value
+      assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+  })
 })

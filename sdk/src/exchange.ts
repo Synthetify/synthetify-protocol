@@ -994,7 +994,7 @@ export interface SetAssetMaxSupply {
   assetAddress: PublicKey
   assetsList: PublicKey
   exchangeAdmin: Account
-  newMaxSupply: BN
+  newMaxSupply: Decimal
 }
 export interface AddNewAssetInstruction {
   assetsList: PublicKey
