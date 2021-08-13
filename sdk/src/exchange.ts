@@ -444,6 +444,15 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setAdmin(newAdmin: PublicKey) {
+    return await (this.program.instruction.setAdmin({
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        newAdmin: newAdmin
+      }
+    }) as TransactionInstruction)
+  }
   public async setSettlementSlotInstruction(syntheticAddress: PublicKey, newSettlementSlot: BN) {
     return await (this.program.instruction.setSettlementSlot(newSettlementSlot, {
       accounts: {

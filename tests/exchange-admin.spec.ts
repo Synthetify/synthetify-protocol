@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { Account, Keypair, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
@@ -419,6 +419,25 @@ describe('admin', () => {
       )
       const state = await exchange.getState()
       assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
+    })
+  })
+  describe.only('#setAdmin()', async () => {
+    it('Fail without admin signature', async () => {
+      const newAdmin = Keypair.generate().publicKey
+      const ix = await exchange.setAdmin(newAdmin)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(state.admin.equals(newAdmin))
+    })
+    it('change value', async () => {
+      const newAdmin = Keypair.generate().publicKey
+      const ix = await exchange.setAdmin(newAdmin)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(state.admin.equals(newAdmin))
     })
   })
   describe('#setSettlementSlot()', async () => {
