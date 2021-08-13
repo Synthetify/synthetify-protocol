@@ -1,27 +1,27 @@
 import { Provider } from '@project-serum/anchor'
+import { NATIVE_MINT, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
+import { percentToDecimal, sleep, toDecimal } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
+import { MINTER } from '../../migrations/minter'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
-import { percentToDecimal } from '@synthetify/sdk/lib/utils'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
-  skipPreflight: true
+  skipPreflight: false
 })
-const COLLATERAL_ADDRESS = new PublicKey('XYZ')
-const NEW_COLLATERAL_RATIO = 20
+const NEW_ADMIN = new PublicKey('6PxpYuwN3BnYDAzVsdVkCUQfBuQcqqcQTXWo9iqd6VDQ')
 const main = async () => {
-  const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection
+  const ledgerWallet = await getLedgerWallet()
+
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
-  const ix = await exchange.setCollateralRatio(
-    COLLATERAL_ADDRESS,
-    percentToDecimal(NEW_COLLATERAL_RATIO)
-  )
-  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
-  console.log(tx)
+
+  await sleep(1000)
+  const ix = await exchange.setAdmin(NEW_ADMIN)
+  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
 }
 main()

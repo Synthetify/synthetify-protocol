@@ -2,14 +2,14 @@ import { Provider } from '@project-serum/anchor'
 import { NATIVE_MINT, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
-import { sleep } from '@synthetify/sdk/lib/utils'
+import { percentToDecimal, sleep, toDecimal } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { MINTER } from '../../migrations/minter'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
-  skipPreflight: true
+  skipPreflight: false
 })
 const FEED_ADDRESS = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
 const TOKEN_MINT = NATIVE_MINT
@@ -30,13 +30,13 @@ const main = async () => {
   const ix = await exchange.addCollateralInstruction({
     assetAddress: TOKEN_MINT,
     assetsList: state.assetsList,
-    collateralRatio: 30,
-    decimals: tokenInfo.decimals,
+    collateralRatio: percentToDecimal(30),
     feedAddress: assetsList.assets[3].feedAddress,
     liquidationFund,
     reserveAccount,
-    reserveBalance: new BN(0)
+    reserveBalance: toDecimal(new BN(0), tokenInfo.decimals)
   })
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  console.log(tx)
 }
 main()

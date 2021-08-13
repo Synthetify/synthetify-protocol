@@ -1359,6 +1359,14 @@ pub mod exchange {
         collateral.collateral_ratio = collateral_ratio;
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_admin(ctx: Context<SetAdmin>) -> Result<()> {
+        msg!("Synthetify:Admin: SET ADMIN");
+        let mut state = ctx.accounts.state.load_mut()?;
+
+        state.admin = *ctx.accounts.new_admin.key;
+        Ok(())
+    }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn set_settlement_slot(
@@ -1645,6 +1653,14 @@ pub struct SetCollateralRatio<'info> {
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub collateral_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetAdmin<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub new_admin: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
