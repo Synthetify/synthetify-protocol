@@ -3,6 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
+import { percentToDecimal } from '@synthetify/sdk/lib/utils'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
@@ -16,7 +17,11 @@ const main = async () => {
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
-  const ix = await exchange.setCollateralRatio(COLLATERAL_ADDRESS, NEW_COLLATERAL_RATIO)
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  const ix = await exchange.setCollateralRatio(
+    COLLATERAL_ADDRESS,
+    percentToDecimal(NEW_COLLATERAL_RATIO)
+  )
+  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  console.log(tx)
 }
 main()

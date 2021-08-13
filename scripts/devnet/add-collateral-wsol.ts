@@ -9,7 +9,7 @@ import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
-  skipPreflight: true
+  skipPreflight: false
 })
 const FEED_ADDRESS = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
 const TOKEN_MINT = NATIVE_MINT
@@ -36,6 +36,7 @@ const main = async () => {
     reserveAccount,
     reserveBalance: toDecimal(new BN(0), tokenInfo.decimals)
   })
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  console.log(tx)
 }
 main()

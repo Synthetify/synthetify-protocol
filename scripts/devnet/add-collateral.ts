@@ -1,7 +1,7 @@
 import { Provider } from '@project-serum/anchor'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
-import { sleep } from '@synthetify/sdk/lib/utils'
+import { percentToDecimal, sleep, toDecimal } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { MINTER } from '../../migrations/minter'
 import { createToken } from '../../tests/utils'
@@ -38,13 +38,13 @@ const main = async () => {
   const ix = await exchange.addCollateralInstruction({
     assetAddress: token.publicKey,
     assetsList: state.assetsList,
-    collateralRatio: COLLATERAL_RATIO,
-    decimals: tokenInfo.decimals,
+    collateralRatio: percentToDecimal(COLLATERAL_RATIO),
     feedAddress: FEED_ADDRESS,
     liquidationFund,
     reserveAccount,
-    reserveBalance: new BN(0)
+    reserveBalance: toDecimal(new BN(0), tokenInfo.decimals)
   })
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  console.log(tx)
 }
 main()
