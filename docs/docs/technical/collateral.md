@@ -55,3 +55,20 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
 
 
 ## Liquidation
+
+When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to bump in price of minted tokens or drop in collateral ones. When that happens and *check_account_collateralization* function is run liquidation deadline is set. 
+
+
+### Checking collateralization
+
+Function responsible for it is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/e8e70a9928b3659b6aca80eeec540b67baf596d5/programs/exchange/src/lib.rs#L896-L929). It takes minimal context of: 
+
+    struct CheckCollateralization<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub assets_list: Loader<'info, AssetsList>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_account** - account with [user's](/docs/technical/account) collateral
+  * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
