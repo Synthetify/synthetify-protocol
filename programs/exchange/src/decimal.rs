@@ -143,19 +143,6 @@ impl MulUp<Decimal> for Decimal {
         }
     }
 }
-impl MulInverse<Decimal> for Decimal {
-    fn mul_inverse(self, value: Decimal) -> Self {
-        Self {
-            val: self
-                .val
-                .checked_mul(self.denominator())
-                .unwrap()
-                .checked_div(value.val)
-                .unwrap(),
-            scale: self.scale,
-        }
-    }
-}
 impl Add<Decimal> for Decimal {
     fn add(self, value: Decimal) -> Result<Self> {
         require!(self.scale == value.scale, DifferentScale);
@@ -259,25 +246,19 @@ impl Into<u128> for Decimal {
         self.val.try_into().unwrap()
     }
 }
-impl Ltq<Decimal> for Decimal {
+impl Compare<Decimal> for Decimal {
     fn ltq(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val <= other.val)
     }
-}
-impl Lt<Decimal> for Decimal {
     fn lt(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val < other.val)
     }
-}
-impl Gt<Decimal> for Decimal {
     fn gt(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val > other.val)
     }
-}
-impl Eq<Decimal> for Decimal {
     fn eq(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val == other.val)
@@ -304,23 +285,14 @@ pub trait Mul<T>: Sized {
 pub trait MulUp<T>: Sized {
     fn mul_up(self, rhs: T) -> Self;
 }
-pub trait MulInverse<T>: Sized {
-    fn mul_inverse(self, rhs: T) -> Self;
-}
 pub trait PowAccuracy<T>: Sized {
     fn pow_with_accuracy(self, rhs: T) -> Self;
 }
-pub trait Ltq<T>: Sized {
-    fn ltq(self, rhs: T) -> Result<bool>;
-}
-pub trait Lt<T>: Sized {
-    fn lt(self, rhs: T) -> Result<bool>;
-}
-pub trait Gt<T>: Sized {
-    fn gt(self, rhs: T) -> Result<bool>;
-}
-pub trait Eq<T>: Sized {
+pub trait Compare<T>: Sized {
     fn eq(self, rhs: T) -> Result<bool>;
+    fn lt(self, rhs: T) -> Result<bool>;
+    fn gt(self, rhs: T) -> Result<bool>;
+    fn ltq(self, rhs: T) -> Result<bool>;
 }
 
 #[cfg(test)]

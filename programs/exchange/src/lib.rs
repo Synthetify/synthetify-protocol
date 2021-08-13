@@ -20,7 +20,7 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, DivUp, Gt, Lt, Ltq, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
+        Add, Compare, DivUp, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
         XUSD_SCALE,
     };
 

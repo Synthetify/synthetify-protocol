@@ -1,6 +1,8 @@
 use std::{cell::RefMut, convert::TryInto};
 
-use crate::decimal::{Add, Div, DivScale, DivUp, Lt, Mul, MulUp, PowAccuracy, Sub, XUSD_SCALE};
+use crate::decimal::{
+    Add, Compare, Div, DivScale, DivUp, Mul, MulUp, PowAccuracy, Sub, XUSD_SCALE,
+};
 use crate::*;
 
 pub const MINUTES_IN_YEAR: u32 = 525600;
