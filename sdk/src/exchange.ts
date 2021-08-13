@@ -434,7 +434,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setCollateralRatio(collateralAddress: PublicKey, newRatio: number) {
+  public async setCollateralRatio(collateralAddress: PublicKey, newRatio: Decimal) {
     return await (this.program.instruction.setCollateralRatio(newRatio, {
       accounts: {
         state: this.stateAddress,

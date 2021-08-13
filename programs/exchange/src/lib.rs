@@ -1353,9 +1353,7 @@ pub mod exchange {
         };
         // collateral_ratio must be less or equals 100%
         let same_scale = collateral.collateral_ratio.scale == collateral_ratio.scale;
-        let in_range = collateral
-            .collateral_ratio
-            .ltq(Decimal::from_percent(100))?;
+        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         collateral.collateral_ratio = collateral_ratio;

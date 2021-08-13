@@ -749,63 +749,85 @@ describe('admin', () => {
   //     )
   //   })
   // })
-  // describe('#setFeedTrading', async () => {
-  //   let assetFeed: PublicKey
-  //   before(async () => {
-  //     // create and add new asset
-  //     assetFeed = await createPriceFeed({
-  //       oracleProgram,
-  //       initPrice: 1000000,
-  //       expo: -6
-  //     })
-  //   })
-  //   it('should add new asset with trading state', async () => {
-  //     const ix = await exchange.addNewAssetInstruction({
-  //       assetsList: assetsList,
-  //       assetFeedAddress: assetFeed
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const assetListAfterAdded = await exchange.getAssetsList(assetsList)
-  //     const asset = assetListAfterAdded.assets.find((a) => {
-  //       return a.feedAddress.equals(assetFeed)
-  //     }) as Asset
-  //     assert.ok(asset)
-  //     // asset by default should have trading status
-  //     assert.ok(asset.status == PriceStatus.Trading)
-  //   })
-  //   it('Feed Trading should be set to Auction', async () => {
-  //     await setFeedTrading(oracleProgram, 3, assetFeed)
-  //     const feed = await getFeedData(oracleProgram, assetFeed)
-  //     // asset status should change to Auction
-  //     assert.ok(feed.status == PriceStatus.Auction)
-  //   })
-  // })
-  // describe('#setCollateralRatio()', async () => {
-  //   it('Should set new collateral ratio for asset', async () => {
-  //     const newCollateralRatio = 99
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const collateralBefore = beforeAssetList.collaterals[0]
-  //     assert.ok(collateralBefore.collateralRatio !== newCollateralRatio)
-  //     const ix = await exchange.setCollateralRatio(
-  //       collateralBefore.collateralAddress,
-  //       newCollateralRatio
-  //     )
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
-  //     const collateralAfter = afterAssetList.collaterals[0]
-  //     assert.ok(collateralAfter.collateralRatio === newCollateralRatio)
-  //   })
-  //   it('Fail without admin signature', async () => {
-  //     const newCollateralRatio = 99
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const collateralBefore = beforeAssetList.collaterals[0]
-  //     const ix = await exchange.setCollateralRatio(
-  //       collateralBefore.collateralAddress,
-  //       newCollateralRatio
-  //     )
-  //     await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
-  //   })
-  // })
+  describe('#setFeedTrading', async () => {
+    let assetFeed: PublicKey
+    before(async () => {
+      // create and add new asset
+      assetFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1000000,
+        expo: -6
+      })
+    })
+    it('should add new asset with trading state', async () => {
+      const ix = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: assetFeed
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const assetListAfterAdded = await exchange.getAssetsList(assetsList)
+      const asset = assetListAfterAdded.assets.find((a: Asset) => {
+        return a.feedAddress.equals(assetFeed)
+      }) as Asset
+      // asset by default should have trading status
+      assert.ok(asset.status == PriceStatus.Trading)
+    })
+    it('Feed Trading should be set to Auction', async () => {
+      await setFeedTrading(oracleProgram, 3, assetFeed)
+      const feed = await getFeedData(oracleProgram, assetFeed)
+      // asset status should change to Auction
+      assert.ok(feed.status == PriceStatus.Auction)
+    })
+  })
+  describe('#setCollateralRatio()', async () => {
+    it('should fail without admin signature', async () => {
+      const newCollateralRatio = percentToDecimal(99)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
+    })
+    it('should set new collateral ratio for asset', async () => {
+      const newCollateralRatio = percentToDecimal(99)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralBefore.collateralRatio, newCollateralRatio))
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.ok(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
+    })
+    it('should fail because of out of range paramter', async () => {
+      const newCollateralRatio = percentToDecimal(120)
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralBefore.collateralRatio, newCollateralRatio))
+      const ix = await exchange.setCollateralRatio(
+        collateralBefore.collateralAddress,
+        newCollateralRatio
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
+    })
+  })
   // describe('#setAssetsPrices()', async () => {
   //   const newPrice = 6
   //   it('Should not change prices', async () => {
