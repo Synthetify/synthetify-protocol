@@ -1,7 +1,7 @@
 ---
-title: Minting 
+title: Synthetics 
 
-slug: /technical/minting
+slug: /technical/synthetics
 ---
 
 To mint synthetic assets user has to have [collateral](/docs/technical/collateral). 
@@ -145,3 +145,4 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
   * **owner** - owner of _exchange account_
 
+## Liquidation

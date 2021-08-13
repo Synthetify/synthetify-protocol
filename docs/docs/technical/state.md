@@ -46,7 +46,7 @@ Respectively these fields are used for:
   * **fee** - amount of fee payed on swap as a percentage
   * **swap_tax_ratio** - percentage of fee going to the _tax reserve_
   * **swap_tax_reserve** - part of total amount of charged tax, can be withdrawn by admin
-  * **liquidation_rate** - part of user debt repaid on [liquidation](/docs/technical/liquidation)
+  * **liquidation_rate** - part of user debt repaid on [liquidation](/docs/technical/collateral#liquidation)
   * **penalty_to_liquidator** - penalty on liquidation going to user that is liquidating
   * **penalty_to_exchange** - liquidation penalty going to liquidation fund
   * **liquidation_buffer** - amount of blocks between exceeding [max debt](/docs/glossary/max-debt)
@@ -161,9 +161,8 @@ In many places in synthetify code there is a need for numbers with decimal place
 
   To make _Decimal_ easier to use it also contains a few methods [defined here](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/decimal.rs). Simple math methods like _add_ and _div_ with their rounding up counterparts where needed like *mul_up*. It also contains few factory methods like *from_price* and *from_percent*.
 
-### Decimal in SDK
 
-Inside SDK _Decimal_ is stored as a simple object of the following interface.
+Inside SDK _Decimal_ is stored as a simple object of the following interface:
 
     interface Decimal {
         val: BN

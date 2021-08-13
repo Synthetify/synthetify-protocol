@@ -4,14 +4,14 @@ title: Collateral
 slug: /technical/collateral 
 ---
 
-### Why is there a need collateral?
+### Why is there a need for collateral?
 
 Collateral is needed to ensure that platform doesn't suffer losses. User's collateral is kept as a _CollateralEntry_ in an array of up to 32 different ones. It and an index to array is kept inside [_ExchangeAccount_](http://localhost:3000/docs/technical/account#structure-of-account).
 
 Collateral allows user to have debt and to mint tokens up to 
 Based on collateral program calculates [_mint limit_](/docs/glossary#mint-limit)
 
-### Deposit
+## Deposit
 
 To have a collateral user has to deposit it. Method responsible for it takes _amount (u64)_ and a following context: 
 
@@ -39,7 +39,7 @@ To have a collateral user has to deposit it. Method responsible for it takes _am
 Deposit instruction has to be preceded by an [approve](https://spl.solana.com/token#authority-delegation) allowing _exchange authority_ to transfer funds.
 
 
-### Collateral in account
+## Collateral in account
 
 Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntries_. Each of them corresponds to different deposited token and look like this:
 
@@ -52,3 +52,6 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
   * **amount** - amount of tokens, with decimals as in [_Collateral_](/docs/technical/state#collateral-asset) structure
   * **collateral_address** - address of deposited tokens
   * **index** - corresponds to index of Collateral in [_AssetList_](/docs/technical/state#assetslist-structure)
+
+
+## Liquidation

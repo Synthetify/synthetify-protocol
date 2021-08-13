@@ -27,7 +27,7 @@ Which are responsible for:
 * **owner** - public key belonging to owner of the account, one owner can have only one account
 * **version** - version of the structure, when it changes old accounts will be migrated to the new one
 * **debt_shares** - amount of user debt shares, when divided by all shares allows to calculate debt. More on that [here](/docs/technical/minting#debt)
-* **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/liquidation)
+* **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/collateral#liquidation)
 * **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
 * **bump** - used with [generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
 * **head** - index pointing to last of used fields in collaterals array

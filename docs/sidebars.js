@@ -25,8 +25,7 @@ module.exports = {
         'technical/account',
         'technical/state',
         'technical/collateral',
-        'technical/minting',
-        'technical/liquidation'
+        'technical/synthetics'
       ]
     }
   ]
