@@ -57,6 +57,7 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
 ## Liquidation
 
 When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to bump in price of minted tokens or drop in collateral ones. When that happens and *check_account_collateralization* function is run liquidation deadline is set. 
+If after certain buffer time user doesn't deposit collateral or burn synthetics account will be liquidated and part of collateral taken.
 
 
 ### Checking collateralization
@@ -72,3 +73,8 @@ Function responsible for it is defined [here](https://github.com/Synthetify/synt
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_account** - account with [user's](/docs/technical/account) collateral
   * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
+
+Method calculates [debt](/docs/technical/synthetics#debt) with [interest rate](/docs/technical/synthetics#interest-rate) as well as *max_debt* based on collateral and compares them. If debt is greater *liquidation_deadline* is set at current [slot](https://docs.solana.com/terminology#slot) increased by *liquidation_buffer*. When slot catches up to it user can be liquidated.
+
+
+### User Liquidation
