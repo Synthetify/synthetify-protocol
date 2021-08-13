@@ -418,7 +418,7 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
-  public async setStakingAmountPerRound(amount: BN) {
+  public async setStakingAmountPerRound(amount: Decimal) {
     return await (this.program.instruction.setStakingAmountPerRound(amount, {
       accounts: {
         state: this.stateAddress,

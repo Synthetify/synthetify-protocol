@@ -1229,12 +1229,12 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_staking_amount_per_round(
         ctx: Context<AdminAction>,
-        amount_per_round: u64,
+        amount_per_round: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin:Staking: SET AMOUNT PER ROUND");
         let state = &mut ctx.accounts.state.load_mut()?;
 
-        state.staking.amount_per_round = Decimal::from_sny(amount_per_round.into());
+        state.staking.amount_per_round = amount_per_round;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]

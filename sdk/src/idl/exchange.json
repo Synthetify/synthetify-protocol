@@ -916,7 +916,9 @@
       "args": [
         {
           "name": "amountPerRound",
-          "type": "u64"
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1956,8 +1958,5 @@
       "name": "DifferentScale",
       "msg": "Scale is different"
     }
-  ],
-  "metadata": {
-    "address": "2BmSvncsYUSWoaKiPeLjHc7JGCqg2YWbZr1mKv5NtmwB"
-  }
+  ]
 }

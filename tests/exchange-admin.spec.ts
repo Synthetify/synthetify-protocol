@@ -420,84 +420,83 @@ describe('admin', () => {
       assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
     })
   })
-  // describe('#setSettlementSlot()', async () => {
-  //   let addedSynthetic: Synthetic | undefined
-  //   before(async () => {
-  //     const state = await exchange.getState()
-  //     const assetsList = await exchange.getAssetsList(state.assetsList)
+  describe('#setSettlementSlot()', async () => {
+    let addedSynthetic: Synthetic
+    before(async () => {
+      const state = await exchange.getState()
+      const assetsList = await exchange.getAssetsList(state.assetsList)
 
-  //     const assetForSynthetic = assetsList.assets[0]
-  //     const newSynthetic = await createToken({
-  //       connection,
-  //       payer: wallet,
-  //       mintAuthority: exchangeAuthority,
-  //       decimals: 8
-  //     })
-  //     const ix = await exchange.addSyntheticInstruction({
-  //       assetAddress: newSynthetic.publicKey,
-  //       assetsList: state.assetsList,
-  //       decimals: 8,
-  //       maxSupply: new BN(100),
-  //       priceFeed: assetForSynthetic.feedAddress
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(state.assetsList)
+      const assetForSynthetic = assetsList.assets[0]
+      const newSynthetic = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const ix = await exchange.addSyntheticInstruction({
+        assetAddress: newSynthetic.publicKey,
+        assetsList: state.assetsList,
+        decimals: 8,
+        maxSupply: new BN(100),
+        priceFeed: assetForSynthetic.feedAddress
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(state.assetsList)
+      addedSynthetic = afterAssetList.synthetics.find((a) =>
+        a.assetAddress.equals(newSynthetic.publicKey)
+      ) as Synthetic
+      if (!addedSynthetic) {
+        assert.ok(false)
+        return
+      }
+      assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
+    })
 
-  //     addedSynthetic = afterAssetList.synthetics.find((a) =>
-  //       a.assetAddress.equals(newSynthetic.publicKey)
-  //     )
-  //     if (!addedSynthetic) {
-  //       assert.ok(false)
-  //       return
-  //     }
-  //     assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
-  //   })
+    it('Fail without admin signature', async () => {
+      const ix = await exchange.setSettlementSlotInstruction(
+        addedSynthetic.assetAddress,
+        new BN(100)
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('change value', async () => {
+      const newSettlementSlot = new BN(100)
+      const ix = await exchange.setSettlementSlotInstruction(
+        addedSynthetic.assetAddress,
+        new BN(100)
+      )
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      const changedAssetsList = await exchange.getAssetsList(state.assetsList)
 
-  //   it('Fail without admin signature', async () => {
-  //     const ix = await exchange.setSettlementSlotInstruction(
-  //       addedSynthetic.assetAddress,
-  //       new BN(100)
-  //     )
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //   })
-  //   it('change value', async () => {
-  //     const newSettlementSlot = new BN(100)
-  //     const ix = await exchange.setSettlementSlotInstruction(
-  //       addedSynthetic.assetAddress,
-  //       new BN(100)
-  //     )
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     const changedAssetsList = await exchange.getAssetsList(state.assetsList)
-
-  //     const changedSynthetic = changedAssetsList.synthetics.find((a) =>
-  //       a.assetAddress.equals(addedSynthetic.assetAddress)
-  //     )
-  //     assert.ok(changedSynthetic?.settlementSlot.eq(newSettlementSlot))
-  //   })
-  // })
-  // describe('#setStakingAmountPerRound()', async () => {
-  //   it('Fail without admin signature', async () => {
-  //     const amount = new BN(12399)
-  //     const ix = await exchange.setStakingAmountPerRound(amount)
-  //     await assertThrowsAsync(
-  //       signAndSend(new Transaction().add(ix), [wallet], connection),
-  //       ERRORS.SIGNATURE
-  //     )
-  //     const state = await exchange.getState()
-  //     assert.ok(!state.staking.amountPerRound.eq(amount))
-  //   })
-  //   it('change value', async () => {
-  //     const amount = new BN(12399)
-  //     const ix = await exchange.setStakingAmountPerRound(amount)
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const state = await exchange.getState()
-  //     assert.ok(state.staking.amountPerRound.eq(amount))
-  //   })
-  // })
+      const changedSynthetic = changedAssetsList.synthetics.find((synthetic: Synthetic) =>
+        synthetic.assetAddress.equals(addedSynthetic.assetAddress)
+      )
+      assert.ok(changedSynthetic?.settlementSlot.eq(newSettlementSlot))
+    })
+  })
+  describe('#setStakingAmountPerRound()', async () => {
+    it('fail without admin signature', async () => {
+      const amount = toDecimal(new BN(12399), SNY_DECIMALS)
+      const ix = await exchange.setStakingAmountPerRound(amount)
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const state = await exchange.getState()
+      assert.isFalse(eqDecimals(state.staking.amountPerRound, amount))
+    })
+    it('change value', async () => {
+      const amount = toDecimal(new BN(12399), SNY_DECIMALS)
+      const ix = await exchange.setStakingAmountPerRound(amount)
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const state = await exchange.getState()
+      assert.ok(eqDecimals(state.staking.amountPerRound, amount))
+    })
+  })
   describe('#setStakingRoundLength()', async () => {
     it('Fail without admin signature', async () => {
       const length = 999912
@@ -517,44 +516,44 @@ describe('admin', () => {
       assert.ok(state.staking.roundLength === length)
     })
   })
-  // describe('#addNewAsset', async () => {
-  //   it('Should add new asset ', async () => {
-  //     const beforeAssetList = await exchange.getAssetsList(assetsList)
-  //     const newAssetFeedPublicKey = new Account().publicKey
-  //     const ix = await exchange.addNewAssetInstruction({
-  //       assetsList: assetsList,
-  //       assetFeedAddress: newAssetFeedPublicKey
-  //     })
-  //     await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
-  //     const afterAssetList = await exchange.getAssetsList(assetsList)
+  describe('#addNewAsset', async () => {
+    it('Should add new asset ', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const newAssetFeedPublicKey = new Account().publicKey
+      const ix = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: newAssetFeedPublicKey
+      })
+      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
 
-  //     // Length should be increased by 1
-  //     assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+      // Length should be increased by 1
+      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
 
-  //     // Check new asset is included in asset list
-  //     const addedNewAsset = afterAssetList.assets.find((a) =>
-  //       a.feedAddress.equals(newAssetFeedPublicKey)
-  //     ) as Asset
-  //     // Check new asset exist
-  //     assert.ok(addedNewAsset)
+      // Check new asset is included in asset list
+      const addedNewAsset = afterAssetList.assets.find((a) =>
+        a.feedAddress.equals(newAssetFeedPublicKey)
+      ) as Asset
+      // Check new asset exist
+      assert.ok(addedNewAsset)
 
-  //     // Check new asset initial fields
-  //     assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
-  //     assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
-  //     assert.ok(addedNewAsset.price.eq(new BN(0)))
-  //   }),
-  //     it('Should fail without admin signature', async () => {
-  //       const newAssetFeedPublicKey = new Account().publicKey
-  //       const ix = await exchange.addNewAssetInstruction({
-  //         assetsList: assetsList,
-  //         assetFeedAddress: newAssetFeedPublicKey
-  //       })
-  //       await assertThrowsAsync(
-  //         signAndSend(new Transaction().add(ix), [wallet], connection),
-  //         ERRORS.SIGNATURE
-  //       )
-  //     })
-  // })
+      // Check new asset initial fields
+      assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
+      assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
+      assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
+    }),
+      it('Should fail without admin signature', async () => {
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await assertThrowsAsync(
+          signAndSend(new Transaction().add(ix), [wallet], connection),
+          ERRORS.SIGNATURE
+        )
+      })
+  })
   // describe('#addSynthetic()', async () => {
   //   it('Should add new synthetic ', async () => {
   //     const beforeAssetList = await exchange.getAssetsList(assetsList)
