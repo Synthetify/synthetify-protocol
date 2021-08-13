@@ -16,11 +16,21 @@ import {
   calculateFee,
   calculateSwapTax,
   assertThrowsAsync,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { ERRORS, ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
+import {
+  decimalToPercent,
+  ERRORS,
+  ERRORS_EXCHANGE,
+  percentToDecimal,
+  toDecimal,
+  toEffectiveFee,
+  XUSD_DECIMALS
+} from '@synthetify/sdk/src/utils'
 import { Asset, Synthetic } from '@synthetify/sdk/src/exchange'
+import { Decimal } from '@synthetify/sdk/lib/exchange'
 
 describe('admin', () => {
   const provider = anchor.Provider.local()
@@ -108,21 +118,20 @@ describe('admin', () => {
   })
   it('should initialized interest debt and swap tax parameters', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
-    assert.ok(state.healthFactor === 50)
-    assert.ok(state.fee === 300)
-    assert.ok(state.swapTaxRatio === 20)
-    assert.ok(state.swapTaxReserve.eq(new BN(0)))
-    assert.ok(state.debtInterestRate === 10)
-    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
+    assert.ok(eqDecimals(state.healthFactor, percentToDecimal(50)))
+    assert.ok(eqDecimals(state.fee, percentToDecimal(0.3)))
+    assert.ok(eqDecimals(state.swapTaxRatio, percentToDecimal(20)))
+    assert.ok(eqDecimals(state.swapTaxReserve, toDecimal(new BN(0), XUSD_DECIMALS)))
+    assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
   })
   describe('#withdrawSwapTax()', async () => {
-    let healthFactor: BN
+    let healthFactor: Decimal
     let usdAsset: Asset
     let usdSynthetic: Synthetic
     let btcAsset: Asset
@@ -133,13 +142,14 @@ describe('admin', () => {
     let adminUsdTokenAccount: PublicKey
     let firstWithdrawTaxAmount: BN
     before(async () => {
-      healthFactor = new BN((await exchange.getState()).healthFactor)
+      healthFactor = (await exchange.getState()).healthFactor
       btcToken = await createToken({
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
+      // change 8 decimals
       const btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
@@ -167,7 +177,7 @@ describe('admin', () => {
       adminUsdTokenAccount = await usdToken.createAccount(new Account().publicKey)
     })
     it('swap should increase swap tax reserves', async () => {
-      const collateralAmount = new BN(90 * 1e6)
+      const collateralAmount = new BN(90 * 10 ** XUSD_DECIMALS)
       const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
         await createAccountWithCollateral({
           reserveAddress: reserveAccount,
@@ -183,7 +193,10 @@ describe('admin', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 9 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
+      const usdMintAmount = mulByPercentage(
+        new BN(9 * 10 ** XUSD_DECIMALS),
+        new BN(decimalToPercent(healthFactor))
+      )
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -246,7 +259,7 @@ describe('admin', () => {
 
       // swapTaxReserve should be equals swap tax
       const swapTaxReserveBeforeWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveBeforeWithdraw.eq(swapTax))
+      assert.ok(eqDecimals(swapTaxReserveBeforeWithdraw, { val: swapTax, scale: XUSD_DECIMALS }))
 
       // withdraw 1/10 swap tax
       firstWithdrawTaxAmount = swapTax.divn(10)
@@ -262,7 +275,12 @@ describe('admin', () => {
 
       // swapTaxReserve should be decreased by toWithdrawTax
       const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveAfterWithdraw.eq(swapTax.sub(firstWithdrawTaxAmount)))
+      assert.ok(
+        eqDecimals(swapTaxReserveAfterWithdraw, {
+          val: swapTax.sub(firstWithdrawTaxAmount),
+          scale: XUSD_DECIMALS
+        })
+      )
     })
     it('should withdraw all swap tax', async () => {
       // admin xUSD balance should equals firstWithdrawTaxAmount
@@ -271,7 +289,12 @@ describe('admin', () => {
 
       // swapTaxReserve should be equals swap tax minus firstWithdrawTaxAmount
       const swapTaxReserveBeforeWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveBeforeWithdraw.eq(swapTax.sub(firstWithdrawTaxAmount)))
+      assert.ok(
+        eqDecimals(swapTaxReserveBeforeWithdraw, {
+          val: swapTax.sub(firstWithdrawTaxAmount),
+          scale: XUSD_DECIMALS
+        })
+      )
 
       // withdraw rest of swap tax
       const toWithdrawTax = U64_MAX
@@ -287,7 +310,7 @@ describe('admin', () => {
 
       // swapTaxReserve should be 0
       const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveAfterWithdraw.eqn(0))
+      assert.ok(eqDecimals(swapTaxReserveAfterWithdraw, { val: new BN(0), scale: XUSD_DECIMALS }))
     })
     it('withdraw 0 swap tax should not have an effect', async () => {
       const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
@@ -305,7 +328,7 @@ describe('admin', () => {
 
       // swapTaxReserve should be 0
       const swapTaxReserveAfterWithdraw = (await exchange.getState()).swapTaxReserve
-      assert.ok(swapTaxReserveAfterWithdraw.eq(swapTaxReserveBeforeWithdraw))
+      assert.ok(eqDecimals(swapTaxReserveAfterWithdraw, swapTaxReserveBeforeWithdraw))
     })
     it('withdraw too much from admin tax reserve should result failed', async () => {
       const ix = await exchange.withdrawSwapTaxInstruction({
