@@ -2178,6 +2178,17 @@ pub struct Decimal {
     pub scale: u8,
 }
 
+#[zero_copy]
+#[derive(PartialEq, Default, Debug)]
+pub struct Vault {
+    pub halted: bool,
+    pub synthetic: Pubkey,
+    pub underlying: Pubkey,
+    pub debt_interest_rate: Decimal,
+    pub collateral_ratio: Decimal,
+    pub mint_amount: Decimal,
+}
+
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
