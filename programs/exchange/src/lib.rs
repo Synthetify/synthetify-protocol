@@ -2241,6 +2241,16 @@ pub struct Vault {
     pub last_update: i64,
 }
 
+#[account(zero_copy)]
+#[derive(PartialEq, Default, Debug)]
+pub struct VaultEntry {
+    pub owner: Pubkey,
+    pub vault: Vault,
+    pub last_accumulated_interest_rate: Decimal,
+    pub synthetic_amount: Decimal,
+    pub collateral_amount: Decimal,
+}
+
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct AddNewVault<'info> {
