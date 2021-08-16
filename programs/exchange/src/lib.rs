@@ -1495,6 +1495,15 @@ pub mod exchange {
 
         Ok(())
     }
+    // pub fn add_new_vault(
+    //     ctx: Context<AddNewVault>,
+    //     synthetic: Pubkey,
+    //     collateral: Pubkey,
+    //     debt_interest_rate: Decimal,
+    //     collateral_ratio: Decimal,
+    // ) -> Result<()> {
+    //     msg!("Synthetify: ADD NEW VAULT");
+    // }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
@@ -2178,15 +2187,34 @@ pub struct Decimal {
     pub scale: u8,
 }
 
-#[zero_copy]
+// #[derive(Default, Debug, AnchorSerialize)]
+#[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
 pub struct Vault {
     pub halted: bool,
     pub synthetic: Pubkey,
-    pub underlying: Pubkey,
+    pub collateral: Pubkey,
     pub debt_interest_rate: Decimal,
     pub collateral_ratio: Decimal,
+    pub accumulated_interest_rate: Decimal,
     pub mint_amount: Decimal,
+    pub bump: u8,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct AddNewVault<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(init, seeds = [b"vault", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
+    pub vault: Loader<'info, Vault>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub assets_list: Loader<'info, AssetsList>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
 }
 
 #[error]
