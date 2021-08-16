@@ -1504,10 +1504,9 @@ pub mod exchange {
         msg!("Synthetify: ADD NEW VAULT");
         let mut vault = ctx.accounts.vault.load_init()?;
 
-        let assets_list = ctx.accounts.assets_list.load_mut()?;
-        let (assets, collaterals_, synthetics) = assets_list.split_borrow();
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+        let (_, collaterals, synthetics) = assets_list.split_borrow();
 
-        // validate synthetic exist
         let synthetic_index = match synthetics
             .iter_mut()
             .position(|x| x.asset_address == *ctx.accounts.synthetic.key)
@@ -1516,6 +1515,15 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
         let synthetic = synthetics[synthetic_index];
+
+        let collateral = collaterals
+            .iter()
+            .position(|x| x.collateral_address == *ctx.accounts.collateral.key);
+
+        if collateral == None {
+            return Err(ErrorCode::NoAssetFound.into());
+        }
+        // collaterals.iter()
 
         // TODO: validate collateral ratio
         // TODO: validate collateral exists
@@ -2240,6 +2248,7 @@ pub struct AddNewVault<'info> {
     pub vault: Loader<'info, Vault>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
