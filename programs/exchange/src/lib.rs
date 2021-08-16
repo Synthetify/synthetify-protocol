@@ -1523,10 +1523,11 @@ pub mod exchange {
         if collateral == None {
             return Err(ErrorCode::NoAssetFound.into());
         }
-        // collaterals.iter()
 
-        // TODO: validate collateral ratio
-        // TODO: validate collateral exists
+        require!(
+            collateral_ratio.ltq(Decimal::from_percent(100))?,
+            ParameterOutOfRange
+        );
 
         // Init vault struct
         {
@@ -1539,7 +1540,6 @@ pub mod exchange {
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
             vault.bump = bump;
         }
-
         Ok(())
     }
 }
