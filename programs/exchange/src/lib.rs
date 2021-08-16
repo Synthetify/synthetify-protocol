@@ -1497,29 +1497,27 @@ pub mod exchange {
     }
     pub fn add_new_vault(
         ctx: Context<AddNewVault>,
+        bump: u8,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
-        bump: u8,
     ) -> Result<()> {
         msg!("Synthetify: ADD NEW VAULT");
-        let mut vault = ctx.accounts.vault.load_init()?;
 
+        let timestamp = Clock::get()?.unix_timestamp;
+        let mut vault = ctx.accounts.vault.load_init()?;
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic_index = match synthetics
-            .iter_mut()
-            .position(|x| x.asset_address == *ctx.accounts.synthetic.key)
+        let synthetic = match synthetics
+            .iter()
+            .find(|x| x.asset_address == *ctx.accounts.synthetic.key)
         {
             Some(asset) => asset,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let synthetic = synthetics[synthetic_index];
-
         let collateral = collaterals
             .iter()
-            .position(|x| x.collateral_address == *ctx.accounts.collateral.key);
-
+            .find(|x| x.collateral_address == *ctx.accounts.collateral.key);
         if collateral == None {
             return Err(ErrorCode::NoAssetFound.into());
         }
@@ -1531,14 +1529,16 @@ pub mod exchange {
 
         // Init vault struct
         {
+            vault.bump = bump;
             vault.halted = false;
             vault.synthetic = *ctx.accounts.synthetic.key;
             vault.collateral = *ctx.accounts.collateral.key;
             vault.debt_interest_rate = debt_interest_rate;
             vault.collateral_ratio = collateral_ratio;
-            vault.accumulated_interest_rate = Decimal::new(0, synthetic.max_supply.scale);
+            vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
+            vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
-            vault.bump = bump;
+            vault.last_update = timestamp;
         }
         Ok(())
     }
@@ -2229,14 +2229,16 @@ pub struct Decimal {
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
 pub struct Vault {
+    pub bump: u8,
     pub halted: bool,
     pub synthetic: Pubkey,
     pub collateral: Pubkey,
     pub debt_interest_rate: Decimal,
     pub collateral_ratio: Decimal,
+    pub accumulated_interest: Decimal,
     pub accumulated_interest_rate: Decimal,
     pub mint_amount: Decimal,
-    pub bump: u8,
+    pub last_update: i64,
 }
 
 #[derive(Accounts)]
