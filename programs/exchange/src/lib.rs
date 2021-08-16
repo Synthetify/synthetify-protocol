@@ -1495,15 +1495,45 @@ pub mod exchange {
 
         Ok(())
     }
-    // pub fn add_new_vault(
-    //     ctx: Context<AddNewVault>,
-    //     synthetic: Pubkey,
-    //     collateral: Pubkey,
-    //     debt_interest_rate: Decimal,
-    //     collateral_ratio: Decimal,
-    // ) -> Result<()> {
-    //     msg!("Synthetify: ADD NEW VAULT");
-    // }
+    pub fn add_new_vault(
+        ctx: Context<AddNewVault>,
+        debt_interest_rate: Decimal,
+        collateral_ratio: Decimal,
+        bump: u8,
+    ) -> Result<()> {
+        msg!("Synthetify: ADD NEW VAULT");
+        let mut vault = ctx.accounts.vault.load_init()?;
+
+        let assets_list = ctx.accounts.assets_list.load_mut()?;
+        let (assets, collaterals_, synthetics) = assets_list.split_borrow();
+
+        // validate synthetic exist
+        let synthetic_index = match synthetics
+            .iter_mut()
+            .position(|x| x.asset_address == *ctx.accounts.synthetic.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let synthetic = synthetics[synthetic_index];
+
+        // TODO: validate collateral ratio
+        // TODO: validate collateral exists
+
+        // Init vault struct
+        {
+            vault.halted = false;
+            vault.synthetic = *ctx.accounts.synthetic.key;
+            vault.collateral = *ctx.accounts.collateral.key;
+            vault.debt_interest_rate = debt_interest_rate;
+            vault.collateral_ratio = collateral_ratio;
+            vault.accumulated_interest_rate = Decimal::new(0, synthetic.max_supply.scale);
+            vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault.bump = bump;
+        }
+
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
