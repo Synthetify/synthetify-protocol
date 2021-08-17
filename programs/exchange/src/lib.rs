@@ -195,6 +195,7 @@ pub mod exchange {
         state.penalty_to_exchange = Decimal::from_percent(5); // 5%
         state.accumulated_debt_interest = Decimal::from_usd(0);
         state.liquidation_rate = Decimal::from_percent(20); // 20%
+        state.max_borrow = Decimal::from_usd(0);
 
         // TODO decide about length of buffer
         // Maybe just couple of minutes will be enough ?
@@ -1268,6 +1269,7 @@ pub mod exchange {
         }
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_max_borrow(ctx: Context<AdminAction>, max_borrow: Decimal ) -> Result<()> {
         msg!("Synthetify:Admin: SET MAX BORROW");
         let state = &mut ctx.accounts.state.load_mut()?;
