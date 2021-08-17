@@ -930,7 +930,7 @@ export class Exchange {
       [Buffer.from(utils.bytes.utf8.encode('vault')), synthetic.toBuffer(), collateral.toBuffer()],
       this.program.programId
     )
-    return await this.program.instruction.createNewVault(
+    return (await this.program.instruction.createNewVault(
       bump,
       debtInterestRate,
       collateralRatio,
@@ -945,7 +945,7 @@ export class Exchange {
           collateral: collateral
         }
       }
-    )
+    )) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)

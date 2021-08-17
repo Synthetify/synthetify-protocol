@@ -14,6 +14,7 @@
     "test:multi": "anchor test --skip-build tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test --skip-build tests/multicollateral.spec.ts",
     "test:settlement": "anchor test --skip-build tests/settlement.spec.ts",
+    "test:vaults": "anchor test --skip-build tests/vaults.spec.ts",
     "build": "cd sdk && npm run build",
     "postinstall": "anchor build && cd sdk && npm install && npm run build"
   },

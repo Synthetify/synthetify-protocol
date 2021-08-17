@@ -976,29 +976,6 @@
       ]
     },
     {
-      "name": "setMaxBorrow",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "admin",
-          "isMut": false,
-          "isSigner": true
-        }
-      ],
-      "args": [
-        {
-          "name": "maxBorrow",
-          "type": {
-            "defined": "Decimal"
-          }
-        }
-      ]
-    },
-    {
       "name": "setPriceFeed",
       "accounts": [
         {
@@ -1366,6 +1343,11 @@
       "name": "createNewVault",
       "accounts": [
         {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "vault",
           "isMut": true,
           "isSigner": false
@@ -1419,6 +1401,12 @@
         },
         {
           "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "maxBorrow",
           "type": {
             "defined": "Decimal"
           }
@@ -1668,12 +1656,6 @@
             }
           },
           {
-            "name": "maxBorrow",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
             "name": "lastDebtAdjustment",
             "type": "i64"
           },
@@ -1779,6 +1761,12 @@
           },
           {
             "name": "mintAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "maxBorrow",
             "type": {
               "defined": "Decimal"
             }
