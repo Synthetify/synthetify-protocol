@@ -143,6 +143,15 @@ export class Exchange {
     return account
   }
 
+  public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
+    const [vault, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(utils.bytes.utf8.encode('vault')), synthetic.toBuffer(), collateral.toBuffer()],
+      this.program.programId
+    )
+    const account = (await this.program.account.vault.fetch(vault)) as Vault
+    return account
+  }
+
   public async getUserCollateralBalance(exchangeAccount: PublicKey) {
     const userAccount = (await this.program.account.exchangeAccount.fetch(
       exchangeAccount
@@ -1248,6 +1257,19 @@ export interface Settlement {
   decimalsIn: number
   decimalsOut: number
   ratio: Decimal
+}
+
+export interface Vault {
+  synthetic: PublicKey
+  collateral: PublicKey
+  reserveAddress: PublicKey
+  collateralRatio: Decimal
+  debtInterestRate: Decimal
+  accumulatedInterest: Decimal
+  accumulatedInterestRate: Decimal
+  mintAmount: Decimal
+  maxBorrow: Decimal
+  lastUpdate: BN
 }
 export interface CollateralEntry {
   amount: BN

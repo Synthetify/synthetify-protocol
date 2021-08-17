@@ -141,5 +141,8 @@ describe('vaults', () => {
       collateralRatio,
       maxBorrow
     })
+
+    const vault = await exchange.getVaultForPair(xUSD.assetAddress, collateralToken.publicKey)
+    console.log(vault)
   })
 })
