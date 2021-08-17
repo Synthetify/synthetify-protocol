@@ -1509,8 +1509,8 @@ pub mod exchange {
 
         Ok(())
     }
-    pub fn add_new_vault(
-        ctx: Context<AddNewVault>,
+    pub fn create_new_vault(
+        ctx: Context<CreateNewVault>,
         bump: u8,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
@@ -2334,7 +2334,7 @@ pub struct VaultEntry {
 
 #[derive(Accounts)]
 #[instruction(bump: u8)]
-pub struct AddNewVault<'info> {
+pub struct CreateNewVault<'info> {
     // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     // pub state: Loader<'info, State>,
     #[account(init,seeds = [b"vault", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]

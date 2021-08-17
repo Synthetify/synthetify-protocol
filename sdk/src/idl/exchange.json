@@ -976,6 +976,29 @@
       ]
     },
     {
+      "name": "setMaxBorrow",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "maxBorrow",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
       "name": "setPriceFeed",
       "accounts": [
         {
@@ -1121,6 +1144,27 @@
           }
         }
       ]
+    },
+    {
+      "name": "setAdmin",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "newAdmin",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "setSettlementSlot",
@@ -1317,6 +1361,120 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "createNewVault",
+      "accounts": [
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "reserveAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "debtInterestRate",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createVaultEntry",
+      "accounts": [
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1510,6 +1668,12 @@
             }
           },
           {
+            "name": "maxBorrow",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
             "name": "lastDebtAdjustment",
             "type": "i64"
           },
@@ -1557,6 +1721,106 @@
           },
           {
             "name": "ratio",
+            "type": {
+              "defined": "Decimal"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "synthetic",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateral",
+            "type": "publicKey"
+          },
+          {
+            "name": "debtInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedInterest",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "mintAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "lastUpdate",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "lastAccumulatedInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "syntheticAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralAmount",
             "type": {
               "defined": "Decimal"
             }
@@ -1779,6 +2043,12 @@
           },
           {
             "name": "maxSupply",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "borrowedSupply",
             "type": {
               "defined": "Decimal"
             }

@@ -918,6 +918,29 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  public async createVault({
+    reserveAddress,
+    synthetic,
+    collateral,
+    debtInterestRate,
+    collateralRatio
+  }: CreateVault) {
+    const [vault, bump] = await PublicKey.findProgramAddress(
+      [Buffer.from(utils.bytes.utf8.encode('vault')), synthetic.toBuffer(), collateral.toBuffer()],
+      this.program.programId
+    )
+    return await this.program.instruction.createNewVault(debtInterestRate, collateralRatio, {
+      accounts: {
+        bump,
+        vault,
+        admin: this.state.admin,
+        assetsList: this.state.assetsList,
+        reserveAddress: reserveAddress,
+        synthetic: synthetic,
+        collateral: collateral
+      }
+    })
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1232,6 +1255,14 @@ export interface UserStaking {
   nextRoundPoints: BN
   lastUpdate: BN
 }
+export interface CreateVault {
+  reserveAddress: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  debtInterestRate: Decimal
+  collateralRatio: Decimal
+}
+
 export interface Decimal {
   val: BN
   scale: number
