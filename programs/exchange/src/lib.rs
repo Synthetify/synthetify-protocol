@@ -1762,7 +1762,11 @@ pub struct UseSwapLine<'info> {
     pub user_synthetic_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(mut, "&collateral_reserve.mint == collateral.key")]
+    #[account(
+        mut,
+        "&collateral_reserve.mint == collateral.key",
+        "collateral_reserve.to_account_info().key == &swap_line.load()?.collateral_reserve"
+    )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
