@@ -100,7 +100,8 @@ describe('staking', () => {
       nonce,
       amountPerRound: amountPerRound.val,
       stakingRoundLength: stakingRoundLength,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,

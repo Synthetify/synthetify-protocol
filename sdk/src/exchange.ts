@@ -100,12 +100,14 @@ export class Exchange {
     nonce,
     amountPerRound,
     stakingRoundLength,
-    stakingFundAccount
+    stakingFundAccount,
+    exchangeAuthority
   }: Init) {
     const [stateAddress, bump] = await PublicKey.findProgramAddress(
       [Buffer.from(utils.bytes.utf8.encode(STATE_SEED))],
       this.program.programId
     )
+
     await this.program.rpc.init(bump, nonce, stakingRoundLength, amountPerRound, {
       accounts: {
         state: stateAddress,
@@ -113,6 +115,7 @@ export class Exchange {
         assetsList: assetsList,
         stakingFundAccount: stakingFundAccount,
         payer: this.wallet.publicKey,
+        exchangeAuthority: exchangeAuthority,
         rent: SYSVAR_RENT_PUBKEY,
         systemProgram: SystemProgram.programId
       }
@@ -1271,9 +1274,11 @@ export interface Init {
   stakingFundAccount: PublicKey
   amountPerRound: BN
   assetsList: PublicKey
+  exchangeAuthority: PublicKey
 }
 export interface ExchangeState {
   admin: PublicKey
+  exchangeAuthority: PublicKey
   halted: boolean
   nonce: number
   debtShares: BN

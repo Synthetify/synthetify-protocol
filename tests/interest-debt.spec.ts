@@ -99,7 +99,8 @@ describe('Interest debt accumulation', () => {
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,

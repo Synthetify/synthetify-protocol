@@ -112,6 +112,11 @@
           "isSigner": false
         },
         {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "stakingFundAccount",
           "isMut": false,
           "isSigner": false
@@ -1779,6 +1784,10 @@
             "type": {
               "defined": "Staking"
             }
+          },
+          {
+            "name": "exchangeAuthority",
+            "type": "publicKey"
           },
           {
             "name": "bump",

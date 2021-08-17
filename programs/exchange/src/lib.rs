@@ -174,6 +174,7 @@ pub mod exchange {
         let mut state = ctx.accounts.state.load_init()?;
 
         state.bump = bump;
+        state.exchange_authority = *ctx.accounts.exchange_authority.key;
         state.admin = *ctx.accounts.admin.key;
         state.halted = false;
         state.nonce = nonce;
@@ -2299,6 +2300,7 @@ pub struct State {
     pub accumulated_debt_interest: Decimal, //64  Accumulated debt interest
     pub last_debt_adjustment: i64, //64
     pub staking: Staking, //116
+    pub exchange_authority: Pubkey, //32
     pub bump: u8,
 }
 #[derive(Accounts)]
@@ -2309,6 +2311,7 @@ pub struct Init<'info> {
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
     pub assets_list: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
