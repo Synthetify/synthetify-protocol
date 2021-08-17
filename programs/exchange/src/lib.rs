@@ -59,6 +59,7 @@ pub mod exchange {
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal::from_usd(0),
+            borrowed_supply: Decimal::from_usd(0),
             max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
             settlement_slot: u64::MAX,
             asset_index: 0,
@@ -1545,7 +1546,39 @@ pub mod exchange {
         Ok(())
     }
 
-    // pub fn create_vault() {}
+    // pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
+    //     let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+
+    //     //1. find collateral and synthetic based on vault
+    //     //2. validate synthetic and collateral still exist
+    //     //3. init vault entry
+
+        // ctx.accounts.vault.load_init()?;
+
+    //     let synthetic = assets_list
+    //         .synthetics
+    //         .iter()
+    //         .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+    //         .unwrap();
+    //     let collateral = assets_list
+    //         .collaterals
+    //         .iter()
+    //         .find(|x| x.collateral_address.eq(&ctx.accounts.collateral.key))
+    //         .unwrap();
+
+    //     // Init vault entry
+    //     {
+    //         vault_entry.bump = bump;
+    //         vault_entry.owner
+    //         vault_entry.vault
+    //         vault_entry.last_accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
+    //         vault_entry.synthetic_amount
+    //         vault_entry.collateral_amount
+    //     }
+
+    //     Ok(())
+
+    // }
 
     // pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
     //     msg!("Synthetify: DEPOSIT VAULT");
@@ -2266,7 +2299,6 @@ pub struct Decimal {
     pub scale: u8,
 }
 
-// #[derive(Default, Debug, AnchorSerialize)]
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
 pub struct Vault {
@@ -2286,6 +2318,7 @@ pub struct Vault {
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
 pub struct VaultEntry {
+    pub bump: u8,
     pub owner: Pubkey,
     pub vault: Pubkey,
     pub last_accumulated_interest_rate: Decimal,
@@ -2296,8 +2329,8 @@ pub struct VaultEntry {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct AddNewVault<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
-    pub state: Loader<'info, State>,
+    // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    // pub state: Loader<'info, State>,
     #[account(init)]
     pub vault: Loader<'info, Vault>,
     #[account(signer)]
@@ -2316,9 +2349,17 @@ pub struct AddNewVault<'info> {
 pub struct CreateVaultEntry<'info> {
     #[account(mut)]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
+    #[account(init,seeds = [b"vault_entry", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=owner )]
+    pub vault_entry: Loader<'info, VaultEntry>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    pub vault: AccountInfo<'info>,
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
 }
 
 // #[derive(Accounts)]
