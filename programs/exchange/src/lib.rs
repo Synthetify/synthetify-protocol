@@ -1733,7 +1733,7 @@ pub struct CreateSwapLine<'info> {
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("&collateral_reserve.mint == collateral.key")]
+    #[account(constraint = &collateral_reserve.mint == collateral.key)]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -1751,29 +1751,29 @@ pub struct UseSwapLine<'info> {
     pub collateral: AccountInfo<'info>,
     #[account(
         mut,
-        "&user_collateral_account.mint == collateral.key",
-        "&user_collateral_account.owner == signer.key"
+        constraint = &user_collateral_account.mint == collateral.key,
+        constraint = &user_collateral_account.owner == signer.key
     )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
-        "&user_synthetic_account.mint == synthetic.key",
-        "&user_synthetic_account.owner == signer.key"
+        constraint = &user_synthetic_account.mint == synthetic.key,
+        constraint = &user_synthetic_account.owner == signer.key
     )]
     pub user_synthetic_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
         mut,
-        "&collateral_reserve.mint == collateral.key",
-        "collateral_reserve.to_account_info().key == &swap_line.load()?.collateral_reserve"
+        constraint = &collateral_reserve.mint == collateral.key,
+        constraint = collateral_reserve.to_account_info().key == &swap_line.load()?.collateral_reserve
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&UseSwapLine<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
