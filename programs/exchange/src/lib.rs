@@ -195,7 +195,6 @@ pub mod exchange {
         state.penalty_to_exchange = Decimal::from_percent(5); // 5%
         state.accumulated_debt_interest = Decimal::from_usd(0);
         state.liquidation_rate = Decimal::from_percent(20); // 20%
-        state.max_borrow = Decimal::from_usd(0);
 
         // TODO decide about length of buffer
         // Maybe just couple of minutes will be enough ?
@@ -1269,14 +1268,6 @@ pub mod exchange {
         }
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_max_borrow(ctx: Context<AdminAction>, max_borrow: Decimal ) -> Result<()> {
-        msg!("Synthetify:Admin: SET MAX BORROW");
-        let state = &mut ctx.accounts.state.load_mut()?;
-
-        state.max_borrow = max_borrow;
-        Ok(())
-    }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
     pub fn set_price_feed(ctx: Context<SetPriceFeed>, old_feed_address: Pubkey) -> Result<()> {
@@ -1516,6 +1507,7 @@ pub mod exchange {
         bump: u8,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
+        max_borrow: Decimal
     ) -> Result<()> {
         msg!("Synthetify: ADD NEW VAULT");
 
@@ -1554,6 +1546,7 @@ pub mod exchange {
             vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
             vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault.max_borrow = max_borrow;
             vault.reserve_address = *ctx.accounts.reserve_address.to_account_info().key;
             vault.last_update = timestamp;
         }
@@ -2178,7 +2171,6 @@ pub struct State {
     pub liquidation_buffer: u32, //4   Time given user to fix collateralization ratio
     pub debt_interest_rate: Decimal, //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: Decimal, //64  Accumulated debt interest
-    pub max_borrow: Decimal,
     pub last_debt_adjustment: i64, //64
     pub staking: Staking, //116
     pub bump: u8,
@@ -2320,6 +2312,7 @@ pub struct Vault {
     pub accumulated_interest_rate: Decimal,
     pub reserve_address: Pubkey,
     pub mint_amount: Decimal,
+    pub max_borrow: Decimal,
     pub last_update: i64,
 }
 
