@@ -1771,6 +1771,7 @@ pub struct UseSwapLine<'info> {
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -1837,6 +1838,7 @@ pub struct AdminWithdraw<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
@@ -1987,6 +1989,7 @@ pub struct Withdraw<'info> {
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
@@ -2016,6 +2019,7 @@ pub struct Mint<'info> {
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
@@ -2056,6 +2060,7 @@ pub struct Deposit<'info> {
     // owner can deposit to any exchange_account
     #[account(signer)]
     pub owner: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -2073,6 +2078,7 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
 pub struct Liquidate<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
@@ -2097,6 +2103,7 @@ pub struct Liquidate<'info> {
 pub struct BurnToken<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
@@ -2126,6 +2133,7 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 pub struct Swap<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
@@ -2190,6 +2198,7 @@ pub struct WithdrawRewards<'info> {
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2204,6 +2213,7 @@ pub struct WithdrawLiquidationPenalty<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2350,6 +2360,7 @@ pub struct SettleSynthetic<'info> {
     pub usd_token: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2386,6 +2397,7 @@ pub struct SwapSettledSynthetic<'info> {
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account("usd_token.key == &settlement.load()?.token_out_address")]
     pub usd_token: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
