@@ -12,6 +12,8 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
+    use anchor_lang::Key;
+
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
@@ -1546,39 +1548,34 @@ pub mod exchange {
         Ok(())
     }
 
-    // pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
-    //     let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+    pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
+        let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_init()?;
+        let vault = ctx.accounts.vault.load()?;        
 
-    //     //1. find collateral and synthetic based on vault
-    //     //2. validate synthetic and collateral still exist
-    //     //3. init vault entry
+        let synthetic = assets_list
+            .synthetics
+            .iter()
+            .find(|x| x.asset_address.eq(&vault.synthetic))
+            .unwrap();
+        let collateral = assets_list
+            .collaterals
+            .iter()
+            .find(|x| x.collateral_address.eq(&vault.collateral))
+            .unwrap();
 
-        // ctx.accounts.vault.load_init()?;
+        // Init vault entry
+        {
+            vault_entry.bump = bump;
+            vault_entry.owner  = *ctx.accounts.owner.key;
+            vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
+            vault_entry.last_accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
+            vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+        }
 
-    //     let synthetic = assets_list
-    //         .synthetics
-    //         .iter()
-    //         .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
-    //         .unwrap();
-    //     let collateral = assets_list
-    //         .collaterals
-    //         .iter()
-    //         .find(|x| x.collateral_address.eq(&ctx.accounts.collateral.key))
-    //         .unwrap();
-
-    //     // Init vault entry
-    //     {
-    //         vault_entry.bump = bump;
-    //         vault_entry.owner
-    //         vault_entry.vault
-    //         vault_entry.last_accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
-    //         vault_entry.synthetic_amount
-    //         vault_entry.collateral_amount
-    //     }
-
-    //     Ok(())
-
-    // }
+        Ok(())
+    }
 
     // pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
     //     msg!("Synthetify: DEPOSIT VAULT");
@@ -2331,7 +2328,7 @@ pub struct VaultEntry {
 pub struct AddNewVault<'info> {
     // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     // pub state: Loader<'info, State>,
-    #[account(init)]
+    #[account(init,seeds = [b"vault", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2347,12 +2344,11 @@ pub struct AddNewVault<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVaultEntry<'info> {
-    #[account(mut)]
-    pub reserve_address: CpiAccount<'info, TokenAccount>,
-    #[account(init,seeds = [b"vault_entry", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=owner )]
+    #[account(init, seeds = [b"vault_entry", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vault", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
