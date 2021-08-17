@@ -185,6 +185,107 @@ export class Exchange {
     })
     return account
   }
+  public async createSwapLineInstruction({
+    collateral,
+    collateralReserve,
+    synthetic,
+    limit
+  }: CreateSwapLine) {
+    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const ix = await this.program.instruction.createSwapLine(bump, limit, {
+      accounts: {
+        state: this.stateAddress,
+        swapLine: swapLineAddress,
+        synthetic: synthetic,
+        collateral: collateral,
+        assetsList: this.state.assetsList,
+        collateralReserve: collateralReserve,
+        admin: this.state.admin,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })
+    return { swapLineAddress, ix }
+  }
+  public async nativeToSynthetic({
+    collateral,
+    synthetic,
+    signer,
+    userCollateralAccount,
+    userSyntheticAccount,
+    amount
+  }: UseSwapLine) {
+    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const swapline = await this.getSwapLine(swapLineAddress)
+    const ix = await this.program.instruction.nativeToSynthetic(amount, {
+      accounts: {
+        state: this.stateAddress,
+        swapLine: swapLineAddress,
+        synthetic: synthetic,
+        collateral: collateral,
+        userCollateralAccount: userCollateralAccount,
+        userSyntheticAccount: userSyntheticAccount,
+        assetsList: this.state.assetsList,
+        collateralReserve: swapline.collateralReserve,
+        signer: signer,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    })
+    return ix
+  }
+  public async syntheticToNative({
+    collateral,
+    synthetic,
+    signer,
+    userCollateralAccount,
+    userSyntheticAccount,
+    amount
+  }: UseSwapLine) {
+    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const swapline = await this.getSwapLine(swapLineAddress)
+    const ix = await this.program.instruction.syntheticToNative(amount, {
+      accounts: {
+        state: this.stateAddress,
+        swapLine: swapLineAddress,
+        synthetic: synthetic,
+        collateral: collateral,
+        userCollateralAccount: userCollateralAccount,
+        userSyntheticAccount: userSyntheticAccount,
+        assetsList: this.state.assetsList,
+        collateralReserve: swapline.collateralReserve,
+        signer: signer,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    })
+    return ix
+  }
+  public async getSwapLine(swapLine: PublicKey) {
+    const swapLineData = (await this.program.account.swapLine.fetch(swapLine)) as SwapLine
+    return swapLineData
+  }
   public async createExchangeAccountInstruction(owner: PublicKey) {
     const [account, bump] = await PublicKey.findProgramAddress(
       [Buffer.from(utils.bytes.utf8.encode('accountv1')), owner.toBuffer()],
@@ -991,6 +1092,7 @@ export interface Synthetic {
   assetAddress: PublicKey
   supply: Decimal
   maxSupply: Decimal
+  swaplineSupply: Decimal
   settlementSlot: BN
 }
 
@@ -1235,4 +1337,28 @@ export interface UserStaking {
 export interface Decimal {
   val: BN
   scale: number
+}
+export interface SwapLine {
+  synthetic: PublicKey
+  collateral: PublicKey
+  collateralReserve: PublicKey
+  fee: Decimal
+  accumulatedFee: Decimal
+  balance: Decimal
+  limit: Decimal
+  bump: number
+}
+export interface CreateSwapLine {
+  synthetic: PublicKey
+  collateral: PublicKey
+  collateralReserve: PublicKey
+  limit: BN
+}
+export interface UseSwapLine {
+  synthetic: PublicKey
+  collateral: PublicKey
+  userCollateralAccount: PublicKey
+  userSyntheticAccount: PublicKey
+  signer: PublicKey
+  amount: BN
 }

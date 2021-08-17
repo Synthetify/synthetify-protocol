@@ -56,7 +56,9 @@ export enum ERRORS_EXCHANGE {
   USD_SETTLEMENT = '0x146', //26
   PARAMETER_OUT_OF_RANGE = '0x147', //27
   OVERFLOW = '0x148', //28
-  DIFFERENT_SCALE = '0x149' //29
+  DIFFERENT_SCALE = '0x149', //29
+  MISSMATCHED_TOKENS = '0x14a', //30
+  SWAPLINE_LIMIT = '0x14b' //31
 }
 export const signAndSend = async (
   tx: Transaction,
@@ -139,6 +141,7 @@ export const calculateDebt = (assetsList: AssetsList) => {
     (acc, synthetic) =>
       acc.add(
         synthetic.supply.val
+          .sub(synthetic.swaplineSupply.val)
           .mul(assetsList.assets[synthetic.assetIndex].price.val)
           .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
       ),

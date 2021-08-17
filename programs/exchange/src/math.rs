@@ -32,7 +32,11 @@ pub fn calculate_debt(
         // rounding up to be sure that debt is not less than minted tokens
 
         debt = debt
-            .add(price.mul_up(synthetic.supply).to_usd_up())
+            .add(
+                price
+                    .mul_up(synthetic.supply.sub(synthetic.swapline_supply).unwrap())
+                    .to_usd_up(),
+            )
             .unwrap();
     }
     Ok(debt)
@@ -418,6 +422,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100).to_scale(6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -430,6 +435,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(200).to_scale(6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -442,6 +448,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(50).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -469,7 +476,8 @@ mod tests {
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
-                supply: Decimal::from_integer(100_000_000).to_scale(6),
+                supply: Decimal::from_integer(110_000_000).to_scale(6),
+                swapline_supply: Decimal::from_integer(10_000_000).to_scale(6),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -482,6 +490,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -494,6 +503,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1_000_000).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -520,6 +530,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000_000).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -532,6 +543,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -544,6 +556,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1).to_scale(6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -556,6 +569,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(12345678, 8).to_scale(8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -582,6 +596,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(126871562_97531672, 8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -594,6 +609,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(14262_842164, 6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -606,6 +622,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(1295_25386912, 8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -634,6 +651,7 @@ mod tests {
         });
         assets_list.append_synthetic(Synthetic {
             supply: Decimal::from_integer(100).to_scale(8),
+            swapline_supply: Decimal::from_integer(0).to_scale(8),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -646,6 +664,7 @@ mod tests {
         });
         assets_list.append_synthetic(Synthetic {
             supply: Decimal::from_integer(200).to_scale(8),
+            swapline_supply: Decimal::from_integer(0).to_scale(8),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });

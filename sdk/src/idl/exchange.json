@@ -1123,6 +1123,27 @@
       ]
     },
     {
+      "name": "setAdmin",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "newAdmin",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setSettlementSlot",
       "accounts": [
         {
@@ -1317,6 +1338,198 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "createSwapLine",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "swapLine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "limit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "nativeToSynthetic",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "swapLine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "userCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userSyntheticAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "syntheticToNative",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "swapLine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "userCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userSyntheticAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1369,6 +1582,54 @@
                 255
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SwapLine",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "synthetic",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateral",
+            "type": "publicKey"
+          },
+          {
+            "name": "fee",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedFee",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "balance",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "limit",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralReserve",
+            "type": "publicKey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -1784,6 +2045,12 @@
             }
           },
           {
+            "name": "swaplineSupply",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
             "name": "settlementSlot",
             "type": "u64"
           }
@@ -1957,6 +2224,16 @@
       "code": 329,
       "name": "DifferentScale",
       "msg": "Scale is different"
+    },
+    {
+      "code": 330,
+      "name": "MissmatchedTokens",
+      "msg": "Tokens does not represent same asset"
+    },
+    {
+      "code": 331,
+      "name": "SwaplineLimit",
+      "msg": "Limit crossed"
     }
   ]
 }

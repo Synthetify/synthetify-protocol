@@ -38,8 +38,6 @@ describe('staking', () => {
   let collateralTokenFeed: PublicKey
   let assetsList: PublicKey
   let exchangeAuthority: PublicKey
-  let collateralAccount: PublicKey
-  let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let reserveAddress: PublicKey
   let snyLiquidationFund: PublicKey
@@ -70,8 +68,6 @@ describe('staking', () => {
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    collateralAccount = await collateralToken.createAccount(exchangeAuthority)
-    liquidationAccount = await collateralToken.createAccount(exchangeAuthority)
     stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
     reserveAddress = await collateralToken.createAccount(exchangeAuthority)
     snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
