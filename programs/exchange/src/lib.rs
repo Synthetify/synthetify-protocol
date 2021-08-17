@@ -1268,6 +1268,14 @@ pub mod exchange {
         }
         Ok(())
     }
+    pub fn set_max_borrow(ctx: Context<AdminAction>, max_borrow: Decimal ) -> Result<()> {
+        msg!("Synthetify:Admin: SET MAX BORROW");
+        let state = &mut ctx.accounts.state.load_mut()?;
+
+        state.max_borrow = max_borrow;
+        Ok(())
+    }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
     pub fn set_price_feed(ctx: Context<SetPriceFeed>, old_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1573,7 +1581,6 @@ pub mod exchange {
             vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
             vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
         }
-
         Ok(())
     }
 
@@ -1609,7 +1616,6 @@ pub mod exchange {
     //     // Create new vault entry
     //     {}
     //     // Transfer collateral to reserve_address
-
     //     Ok(())
     // }
 }
@@ -2168,6 +2174,7 @@ pub struct State {
     pub liquidation_buffer: u32, //4   Time given user to fix collateralization ratio
     pub debt_interest_rate: Decimal, //8   In % range 0-20% [1 -> 0.1%]
     pub accumulated_debt_interest: Decimal, //64  Accumulated debt interest
+    pub max_borrow: Decimal,
     pub last_debt_adjustment: i64, //64
     pub staking: Staking, //116
     pub bump: u8,
@@ -2358,20 +2365,21 @@ pub struct CreateVaultEntry<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-// #[derive(Accounts)]
-// pub struct DepositVault<'info> {
-//     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
-//     pub state: Loader<'info, State>,
-//     pub vault: Loader<'info, Vault>,
-//     #[account(mut)]
-//     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
-//     #[account("token_program.key == &token::ID")]
-//     pub token_program: AccountInfo<'info>,
-//     #[account(mut)]
-//     pub assets_list: Loader<'info, AssetsList>,
-//     #[account(signer)]
-//     pub owner: AccountInfo<'info>,
-// }
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct DepositVault<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+}
 
 #[error]
 pub enum ErrorCode {
