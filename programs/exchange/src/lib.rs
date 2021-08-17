@@ -1509,6 +1509,8 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn create_new_vault(
         ctx: Context<CreateNewVault>,
         bump: u8,
@@ -2335,15 +2337,15 @@ pub struct VaultEntry {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateNewVault<'info> {
-    // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
-    // pub state: Loader<'info, State>,
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
     #[account(init,seeds = [b"vault", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(mut)]
+    #[account(mut)] // mut?
     pub reserve_address: CpiAccount<'info, TokenAccount>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
