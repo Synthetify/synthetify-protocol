@@ -6,7 +6,8 @@ import {
   Connection,
   ConfirmOptions,
   sendAndConfirmRawTransaction,
-  Account
+  Account,
+  Keypair
 } from '@solana/web3.js'
 import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './exchange'
 
@@ -60,7 +61,7 @@ export enum ERRORS_EXCHANGE {
 }
 export const signAndSend = async (
   tx: Transaction,
-  signers: Account[],
+  signers: Array<Account | Keypair>,
   connection: Connection,
   opts?: ConfirmOptions
 ) => {

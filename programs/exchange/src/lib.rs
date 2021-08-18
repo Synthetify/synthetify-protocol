@@ -1510,23 +1510,22 @@ pub mod exchange {
         msg!("Synthetify: ADD NEW VAULT");
 
         let mut vault = ctx.accounts.vault.load_init()?;
-        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
-        let (_, collaterals, synthetics) = assets_list.split_borrow();
+        let assets_list = ctx.accounts.assets_list.load()?;
         let timestamp = Clock::get()?.unix_timestamp;
 
-        let synthetic = match synthetics
+        let synthetic = assets_list
+            .synthetics
             .iter()
-            .find(|x| x.asset_address == *ctx.accounts.synthetic.key)
-        {
-            Some(asset) => asset,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
-        let collateral = collaterals
+            .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();    
+        let collateral = assets_list
+            .collaterals
             .iter()
-            .find(|x| x.collateral_address == *ctx.accounts.collateral.key);
+            .find(|x| x.collateral_address.eq(ctx.accounts.collateral.key));
         if collateral == None {
             return Err(ErrorCode::NoAssetFound.into());
         }
+
         require!(
             collateral_ratio.ltq(Decimal::from_percent(100))?,
             ParameterOutOfRange
@@ -1552,7 +1551,7 @@ pub mod exchange {
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
         let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
         let mut vault = ctx.accounts.vault.load_mut()?;        
-        let assets_list = ctx.accounts.assets_list.load_init()?;
+        let assets_list = ctx.accounts.assets_list.load()?;
         let timestamp = Clock::get()?.unix_timestamp;
 
         let synthetic = assets_list
@@ -2330,11 +2329,10 @@ pub struct VaultEntry {
 pub struct CreateVault<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
+    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account("&collateral_reserve.mint == collateral.key")]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
@@ -2352,7 +2350,7 @@ pub struct CreateVaultEntry<'info> {
     pub owner: AccountInfo<'info>,
     #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
-    #[account(mut)]
+    // #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,

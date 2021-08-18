@@ -966,14 +966,10 @@ export class Exchange {
         }
       }
     )
-    return { vaultAddress, ix }
+    return { ix, vaultAddress }
   }
-  public async createVaultEntry({
-    owner,
-    synthetic,
-    collateral
-  }: CreateVaultEntry) {
-    const [vaultAddress, bump] = await PublicKey.findProgramAddress(
+  public async createVaultEntryInstruction({ owner, synthetic, collateral }: CreateVaultEntry) {
+    const [vaultAddress] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vaultv1')),
         synthetic.toBuffer(),
@@ -981,10 +977,20 @@ export class Exchange {
       ],
       this.program.programId
     )
-    await this.program.instruction.createVaultEntry(bump, {
+    const [vaultEntryAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
+        owner.toBuffer(),
+        vaultAddress.toBuffer()
+      ],
+      this.program.programId
+    )
+
+    const ix = await this.program.instruction.createVaultEntry(bump, {
       accounts: {
         owner,
         vault: vaultAddress,
+        vaultEntry: vaultEntryAddress,
         assetsList: this.state.assetsList,
         synthetic: synthetic,
         collateral: collateral,
@@ -992,6 +998,8 @@ export class Exchange {
         systemProgram: SystemProgram.programId
       }
     })
+
+    return { ix, vaultEntryAddress }
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1309,6 +1317,13 @@ export interface Vault {
   mintAmount: Decimal
   maxBorrow: Decimal
   lastUpdate: BN
+}
+export interface VaultEntry {
+  owner: PublicKey
+  vault: PublicKey
+  lastAccumulatedInterestRate: PublicKey
+  syntheticAmount: PublicKey
+  collateralAmount: PublicKey
 }
 export interface CollateralEntry {
   amount: BN

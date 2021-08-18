@@ -3,6 +3,7 @@ import { Program } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Account,
+  Keypair,
   PublicKey,
   sendAndConfirmRawTransaction,
   Transaction,
@@ -174,5 +175,18 @@ describe('vaults', () => {
     assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
     assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
     assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
+  })
+  it('should create vault entry on usdc/xusd vault', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+    const accountOwner = Keypair.generate()
+
+    const { ix, vaultEntryAddress } = await exchange.createVaultEntryInstruction({
+      owner: accountOwner.publicKey,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress
+    })
+    await signAndSend(new Transaction().add(ix), [wallet, accountOwner], connection)
   })
 })
