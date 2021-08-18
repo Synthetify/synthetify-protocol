@@ -1097,11 +1097,16 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn withdraw_accumulated_debt_interest(
-        ctx: Context<AdminWithdraw>,
+        ctx: Context<WithdrawAccumulatedDebtInterest>,
         amount: u64,
     ) -> Result<()> {
         msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
+        let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let state = &mut ctx.accounts.state.load_mut()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        
+        adjust_interest_debt(state, assets_list, slot, timestamp);
 
         let mut actual_amount = Decimal {
             val: amount.into(),
@@ -1605,6 +1610,35 @@ impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
     for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
 {
     fn from(accounts: &AdminWithdraw<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.usd_token.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct WithdrawAccumulatedDebtInterest<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut)]
+    pub usd_token: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+{
+    fn from(accounts: &WithdrawAccumulatedDebtInterest<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
             mint: accounts.usd_token.to_account_info(),
             to: accounts.to.to_account_info(),
