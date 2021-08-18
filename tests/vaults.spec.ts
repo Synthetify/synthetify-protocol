@@ -74,7 +74,6 @@ describe('vaults', () => {
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
-    await sleep(2000)
 
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
@@ -162,7 +161,6 @@ describe('vaults', () => {
       maxBorrow
     })
     usdVaultAddress = vaultAddress
-    console.log(`vaultAddress: ${vaultAddress}`)
     const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
@@ -189,6 +187,7 @@ describe('vaults', () => {
     const usdc = assetsListData.collaterals[1]
     assetsListData.assets[usdc.assetIndex]
 
+    // APPROVE
     // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
     // const approveIx = await Token.createApproveInstruction(
     //   usdcToken.programId,
@@ -199,22 +198,22 @@ describe('vaults', () => {
     //   tou64(new anchor.BN(10 * 1e6))
     // )
     // await signAndSend(new Transaction().add(approveIx), [wallet, accountOwner], connection)
-    // await sleep(1000)
-    const { ix, vaultEntryAddress } = await exchange.createVaultEntryInstruction({
+
+    const { ix } = await exchange.createVaultEntryInstruction({
       owner: accountOwner.publicKey,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress
     })
     await signAndSend(new Transaction().add(ix), [accountOwner], connection)
 
-    // const vaultEntry = await exchange.getVaultEntryForOwner(
-    //   xusd.assetAddress,
-    //   usdc.collateralAddress,
-    //   accountOwner.publicKey
-    // )
-    // assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
-    // assert.ok(vaultEntry.vault.equals(usdVaultAddress))
-    // assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
+    const vaultEntry = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
+    assert.ok(vaultEntry.vault.equals(usdVaultAddress))
+    assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
     // TODO: compare collateral decimal
   })
 })

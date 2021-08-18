@@ -1549,32 +1549,32 @@ pub mod exchange {
     }
 
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
-        // let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
-        // let mut vault = ctx.accounts.vault.load_mut()?;        
-        // let assets_list = ctx.accounts.assets_list.load()?;
-        // let timestamp = Clock::get()?.unix_timestamp;
+        let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+        let mut vault = ctx.accounts.vault.load_mut()?;        
+        let assets_list = ctx.accounts.assets_list.load()?;
+        let timestamp = Clock::get()?.unix_timestamp;
 
-        // let synthetic = assets_list
-        //     .synthetics
-        //     .iter()
-        //     .find(|x| x.asset_address.eq(&vault.synthetic))
-        //     .unwrap();
-        // let collateral = assets_list
-        //     .collaterals
-        //     .iter()
-        //     .find(|x| x.collateral_address.eq(&vault.collateral))
-        //     .unwrap();
+        let synthetic = assets_list
+            .synthetics
+            .iter()
+            .find(|x| x.asset_address.eq(&vault.synthetic))
+            .unwrap();
+        let collateral = assets_list
+            .collaterals
+            .iter()
+            .find(|x| x.collateral_address.eq(&vault.collateral))
+            .unwrap();
         
-        // adjust_vault_debt(vault.borrow_mut(), timestamp);
-        // // Init vault entry
-        // {
-        //     vault_entry.bump = bump;
-        //     vault_entry.owner  = *ctx.accounts.owner.key;
-        //     vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
-        //     vault_entry.last_accumulated_interest_rate = vault.accumulated_interest_rate;
-        //     vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
-        //     vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
-        // }
+        adjust_vault_debt(vault.borrow_mut(), timestamp);
+        // Init vault entry
+        {
+            vault_entry.bump = bump;
+            vault_entry.owner  = *ctx.accounts.owner.key;
+            vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
+            vault_entry.last_accumulated_interest_rate = vault.accumulated_interest_rate;
+            vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+        }
         Ok(())
     }
 

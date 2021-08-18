@@ -176,7 +176,7 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const account = (await this.program.account.vault.fetch(vaultEntry)) as VaultEntry
+    const account = (await this.program.account.vaultEntry.fetch(vaultEntry)) as VaultEntry
     return account
   }
 
@@ -1001,7 +1001,6 @@ export class Exchange {
       ],
       this.program.programId
     )
-    console.log(`vaultAddress: ${vaultAddress}`)
     const [vaultEntryAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
@@ -1010,8 +1009,6 @@ export class Exchange {
       ],
       this.program.programId
     )
-    console.log(`vaultEntryAddress: ${vaultEntryAddress}`)
-
     const ix = await this.program.instruction.createVaultEntry(bump, {
       accounts: {
         owner: owner,
