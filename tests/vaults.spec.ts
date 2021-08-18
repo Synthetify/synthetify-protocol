@@ -54,16 +54,17 @@ describe('vaults', () => {
 
   const wallet = provider.wallet.payer as Account
 
-  let collateralToken: Token
+  let snyToken: Token
   let assetsList: PublicKey
-  let collateralTokenFeed: PublicKey
+  let snyTokenFeed: PublicKey
   let exchangeAuthority: PublicKey
-  let collateralReserve: PublicKey
-  let stakingFundAccount: PublicKey
   let snyReserve: PublicKey
+  let stakingFundAccount: PublicKey
   let snyLiquidationFund: PublicKey
   let nonce: number
   let CollateralTokenMinter: Account = wallet
+  let usdcToken: Token
+  let usdcReserve: PublicKey
 
   before(async () => {
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
@@ -72,22 +73,19 @@ describe('vaults', () => {
       exchangeProgram.programId
     )
     exchangeAuthority = _mintAuthority
-    // create stable coin
-    collateralTokenFeed = await createPriceFeed({
+    snyTokenFeed = await createPriceFeed({
       oracleProgram,
-      initPrice: 1,
-      expo: -8
+      initPrice: 2,
+      expo: -6
     })
-    collateralToken = await createToken({
+    snyToken = await createToken({
       connection,
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    collateralReserve = await collateralToken.createAccount(exchangeAuthority)
-
-    snyReserve = await collateralToken.createAccount(exchangeAuthority)
-    snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
-    stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
+    snyReserve = await snyToken.createAccount(exchangeAuthority)
+    snyLiquidationFund = await snyToken.createAccount(exchangeAuthority)
+    stakingFundAccount = await snyToken.createAccount(exchangeAuthority)
 
     // @ts-expect-error
     exchange = new Exchange(
@@ -100,8 +98,8 @@ describe('vaults', () => {
 
     const data = await createAssetsList({
       exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
+      collateralToken: snyToken,
+      collateralTokenFeed: snyTokenFeed,
       connection,
       wallet,
       exchange,
@@ -125,27 +123,41 @@ describe('vaults', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    // create USDC collateral token
+    const { feed, token } = await createCollateralToken({
+      collateralRatio: 50,
+      connection,
+      decimals: 6,
+      exchange,
+      exchangeAuthority,
+      oracleProgram,
+      price: 1,
+      wallet
+    })
+    usdcToken = token
+    usdcReserve = await usdcToken.createAccount(exchangeAuthority)
   })
-  it('should create new vault', async () => {
+  it('should create usdc/xusd vault', async () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
-    const xUSD = assetsListData.synthetics[0]
-    const collateral = assetsListData.collaterals[0]
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+
+    console.log(assetsListData.synthetics)
+    console.log(assetsListData.collaterals)
 
     const debtInterestRate = percentToDecimal(1)
     const collateralRatio = percentToDecimal(90)
-    const maxBorrow = { val: new BN(1_000_000_000), scale: xUSD.maxSupply.scale }
+    const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
     const { vaultAddress, ix } = await exchange.createVaultInstruction({
-      collateralReserve,
-      collateral: collateral.collateralAddress,
-      synthetic: xUSD.assetAddress,
+      collateralReserve: usdc.reserveAddress,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
       debtInterestRate,
       collateralRatio,
       maxBorrow
     })
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-
-    const vault = await exchange.getVaultForPair(xUSD.assetAddress, collateral.collateralAddress)
-    console.log(vault)
+    const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
   })
 })
