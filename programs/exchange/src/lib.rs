@@ -304,7 +304,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let mint_limit = max_debt.mul(state.health_factor);
@@ -371,7 +371,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -590,7 +590,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
@@ -730,7 +730,7 @@ pub mod exchange {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
 
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -910,7 +910,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
         let total_debt =
-            calculate_debt_with_interest(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
+            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 

@@ -143,16 +143,14 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
     return;
 }
 
-pub fn calculate_debt_with_interest(
+pub fn calculate_debt_with_adjustment(
     state: &mut State,
     assets_list: &mut RefMut<AssetsList>,
     slot: u64,
     timestamp: i64,
 ) -> Result<Decimal> {
     adjust_interest_debt(state, assets_list, slot, timestamp);
-
-    let total_debt_price = calculate_debt(assets_list, slot, state.max_delay, false).unwrap();
-    Ok(total_debt_price)
+    Ok(calculate_debt(assets_list, slot, state.max_delay, false).unwrap())
 }
 
 // Change total_twap_debt
@@ -862,7 +860,7 @@ mod tests {
             let assets_ref = RefCell::new(assets_list);
             // price debt 150_000 USD
             // twap debt 140_000 USD
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
@@ -894,7 +892,7 @@ mod tests {
 
             // price debt 150_000.005328 USD
             // twap debt 140_000.005328 USD
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
@@ -917,7 +915,7 @@ mod tests {
 
             let timestamp: i64 = 185;
 
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
