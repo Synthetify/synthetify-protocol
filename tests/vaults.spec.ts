@@ -66,6 +66,7 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
 
   before(async () => {
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
@@ -128,21 +129,23 @@ describe('vaults', () => {
   it('should create new vault', async () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xUSD = assetsListData.synthetics[0]
+    const collateral = assetsListData.collaterals[0]
 
     const debtInterestRate = percentToDecimal(1)
     const collateralRatio = percentToDecimal(90)
     const maxBorrow = { val: new BN(1_000_000_000), scale: xUSD.maxSupply.scale }
 
-    exchange.createNewVaultInstruction({
-      reserveAddress: collateralReserve,
-      collateral: collateralToken.publicKey,
+    const { vaultAddress, ix } = await exchange.createVaultInstruction({
+      collateralReserve,
+      collateral: collateral.collateralAddress,
       synthetic: xUSD.assetAddress,
       debtInterestRate,
       collateralRatio,
       maxBorrow
     })
+    await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-    const vault = await exchange.getVaultForPair(xUSD.assetAddress, collateralToken.publicKey)
+    const vault = await exchange.getVaultForPair(xUSD.assetAddress, collateral.collateralAddress)
     console.log(vault)
   })
 })

@@ -1340,7 +1340,7 @@
       ]
     },
     {
-      "name": "createNewVault",
+      "name": "createVault",
       "accounts": [
         {
           "name": "state",
@@ -1354,7 +1354,7 @@
         },
         {
           "name": "admin",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -1363,8 +1363,8 @@
           "isSigner": false
         },
         {
-          "name": "reserveAddress",
-          "isMut": true,
+          "name": "collateralReserve",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1410,57 +1410,6 @@
           "type": {
             "defined": "Decimal"
           }
-        }
-      ]
-    },
-    {
-      "name": "createVaultEntry",
-      "accounts": [
-        {
-          "name": "vaultEntry",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "owner",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "assetsList",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "synthetic",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "collateral",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "bump",
-          "type": "u8"
         }
       ]
     }
@@ -1716,10 +1665,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
             "name": "halted",
             "type": "bool"
           },
@@ -1756,7 +1701,7 @@
             }
           },
           {
-            "name": "reserveAddress",
+            "name": "collateralReserve",
             "type": "publicKey"
           },
           {
@@ -1774,44 +1719,10 @@
           {
             "name": "lastUpdate",
             "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "VaultEntry",
-      "type": {
-        "kind": "struct",
-        "fields": [
+          },
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "vault",
-            "type": "publicKey"
-          },
-          {
-            "name": "lastAccumulatedInterestRate",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "syntheticAmount",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "collateralAmount",
-            "type": {
-              "defined": "Decimal"
-            }
           }
         ]
       }
@@ -2218,6 +2129,6 @@
     }
   ],
   "metadata": {
-    "address": "5Ts7LNzjZNHMhVwSvSdkDSMKBgHK3RpFFgLwX78UDgSx"
+    "address": "6EBEzxtSz9nd4ZiLupA5o4tkmk1H9NWTZ1ecRHv3dc3q"
   }
 }

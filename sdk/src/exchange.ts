@@ -145,7 +145,11 @@ export class Exchange {
 
   public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
     const [vault, bump] = await PublicKey.findProgramAddress(
-      [Buffer.from(utils.bytes.utf8.encode('vault')), synthetic.toBuffer(), collateral.toBuffer()],
+      [
+        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
       this.program.programId
     )
     const account = (await this.program.account.vault.fetch(vault)) as Vault
@@ -927,34 +931,43 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async createNewVaultInstruction({
-    reserveAddress,
+  public async createVaultInstruction({
     synthetic,
     collateral,
+    collateralReserve,
     debtInterestRate,
     collateralRatio,
     maxBorrow
   }: CreateVault) {
-    const [vault, bump] = await PublicKey.findProgramAddress(
-      [Buffer.from(utils.bytes.utf8.encode('vault')), synthetic.toBuffer(), collateral.toBuffer()],
+    const [vaultAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
       this.program.programId
     )
-    return (await this.program.instruction.createNewVault(
+    const ix = await this.program.instruction.createVault(
       bump,
       debtInterestRate,
       collateralRatio,
       maxBorrow,
       {
         accounts: {
-          vault,
+          state: this.stateAddress,
+          vault: vaultAddress,
           admin: this.state.admin,
           assetsList: this.state.assetsList,
-          reserveAddress: reserveAddress,
+          collateralReserve: collateralReserve,
           synthetic: synthetic,
-          collateral: collateral
+          collateral: collateral,
+          rent: SYSVAR_RENT_PUBKEY,
+          systemProgram: SystemProgram.programId
         }
       }
-    )) as TransactionInstruction
+    )
+    console.log(vaultAddress)
+    return { vaultAddress, ix }
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1284,9 +1297,9 @@ export interface UserStaking {
   lastUpdate: BN
 }
 export interface CreateVault {
-  reserveAddress: PublicKey
   synthetic: PublicKey
   collateral: PublicKey
+  collateralReserve: PublicKey
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal
