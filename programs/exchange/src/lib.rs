@@ -2348,7 +2348,7 @@ pub struct CreateVaultEntry<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=owner )]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic: AccountInfo<'info>,
