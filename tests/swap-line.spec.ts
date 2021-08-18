@@ -122,6 +122,25 @@ describe('swap-line', () => {
   })
 
   describe('Create swap line', async () => {
+    it('fail without admin signature', async () => {
+      const limit = new BN(1000)
+
+      const state = await exchange.getState()
+      const assetsList = await exchange.getAssetsList(state.assetsList)
+      const synthetic = assetsList.synthetics[0].assetAddress
+      const collateral = assetsList.collaterals[0]
+      const collateralReserve = await usdToken.createAccount(exchangeAuthority)
+      const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
+        collateral: collateral.collateralAddress,
+        collateralReserve,
+        synthetic,
+        limit
+      })
+      assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS_EXCHANGE.UNAUTHORIZED
+      )
+    })
     it('success', async () => {
       const state = await exchange.getState()
       const limit = new BN(1000)
@@ -146,25 +165,6 @@ describe('swap-line', () => {
       assert.ok(eqDecimals(swapLine.balance, toDecimal(new BN(0), collateral.reserveBalance.scale)))
       assert.ok(
         eqDecimals(swapLine.accumulatedFee, toDecimal(new BN(0), collateral.reserveBalance.scale))
-      )
-    })
-    it('fail without admin signature', async () => {
-      const limit = new BN(1000)
-
-      const state = await exchange.getState()
-      const assetsList = await exchange.getAssetsList(state.assetsList)
-      const synthetic = assetsList.synthetics[0].assetAddress
-      const collateral = assetsList.collaterals[0]
-      const collateralReserve = await usdToken.createAccount(exchangeAuthority)
-      const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
-        collateral: collateral.collateralAddress,
-        collateralReserve,
-        synthetic,
-        limit
-      })
-      assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
-        ERRORS_EXCHANGE.UNAUTHORIZED
       )
     })
   })
@@ -405,6 +405,39 @@ describe('swap-line', () => {
       assert.ok(
         await (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(withdrawalAmount)
       )
+    })
+    it('set halted swapline', async () => {
+      const haltedTrueIx = await exchange.setHaltedSwapline({
+        collateral: collateralToken.publicKey,
+        synthetic: syntheticToken.publicKey,
+        halted: true
+      })
+      // fail without admin signature
+      assertThrowsAsync(
+        signAndSend(new Transaction().add(haltedTrueIx), [wallet], connection),
+        ERRORS_EXCHANGE.UNAUTHORIZED
+      )
+
+      await signAndSend(new Transaction().add(haltedTrueIx), [EXCHANGE_ADMIN], connection)
+
+      const swapLineHaltedTrue = await exchange.getSwapline(swapLinePubkey)
+      assert.ok(swapLineHaltedTrue.halted === true)
+
+      const haltedFalseIx = await exchange.setHaltedSwapline({
+        collateral: collateralToken.publicKey,
+        synthetic: syntheticToken.publicKey,
+        halted: false
+      })
+      // fail without admin signature
+      assertThrowsAsync(
+        signAndSend(new Transaction().add(haltedFalseIx), [wallet], connection),
+        ERRORS_EXCHANGE.UNAUTHORIZED
+      )
+
+      await signAndSend(new Transaction().add(haltedFalseIx), [EXCHANGE_ADMIN], connection)
+
+      const swapLineHaltedFalse = await exchange.getSwapline(swapLinePubkey)
+      assert.ok(swapLineHaltedFalse.halted === false)
     })
   })
 })

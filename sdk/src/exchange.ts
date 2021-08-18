@@ -242,6 +242,26 @@ export class Exchange {
     })
     return ix
   }
+  public async setHaltedSwapline({ collateral, synthetic, halted }: SetHaltedSwapline) {
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const ix = (await this.program.instruction.setHaltedSwapline(halted, {
+      accounts: {
+        state: this.stateAddress,
+        swapline: swaplineAddress,
+        synthetic: synthetic,
+        collateral: collateral,
+        admin: this.state.admin
+      }
+    })) as TransactionInstruction
+    return ix
+  }
   public async nativeToSynthetic({
     collateral,
     synthetic,
@@ -1398,4 +1418,9 @@ export interface WithdrawSwaplineFee {
   collateral: PublicKey
   to: PublicKey
   amount: BN
+}
+export interface SetHaltedSwapline {
+  synthetic: PublicKey
+  collateral: PublicKey
+  halted: boolean
 }

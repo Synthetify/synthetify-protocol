@@ -1566,6 +1566,14 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_halted_swapline(ctx: Context<SetHaltedSwapline>, halted: bool) -> Result<()> {
+        msg!("Synthetify: SET HALTED SWAPLINE");
+
+        let mut swapline = ctx.accounts.swapline.load_mut()?;
+        swapline.halted = halted;
+        Ok(())
+    }
     #[access_control(assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn native_to_synthetic(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
@@ -1573,6 +1581,9 @@ pub mod exchange {
 
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
+
+        require!(!swapline.halted, Halted);
+
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
@@ -1629,6 +1640,9 @@ pub mod exchange {
 
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
+
+        require!(!swapline.halted, Halted);
+
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
@@ -1872,6 +1886,17 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawSwaplineFee<'info>>
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
+}
+#[derive(Accounts)]
+pub struct SetHaltedSwapline<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    pub swapline: Loader<'info, Swapline>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
