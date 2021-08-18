@@ -129,18 +129,19 @@ describe('swap-line', () => {
       const synthetic = assetsList.synthetics[0].assetAddress
       const collateral = assetsList.collaterals[0]
       const collateralReserve = await usdToken.createAccount(exchangeAuthority)
-      const { ix, swapLineAddress } = await exchange.createSwapLineInstruction({
+      const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
         collateral: collateral.collateralAddress,
         collateralReserve,
         synthetic,
         limit
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-      const swapLine = await exchange.getSwapLine(swapLineAddress)
+      const swapLine = await exchange.getSwapline(swaplineAddress)
       assert.ok(swapLine.collateral.equals(collateral.collateralAddress))
       assert.ok(swapLine.limit.val.eq(limit))
       assert.ok(swapLine.synthetic.equals(synthetic))
       assert.ok(swapLine.collateralReserve.equals(collateralReserve))
+      assert.ok(swapLine.halted === false)
       assert.ok(eqDecimals(swapLine.fee, percentToDecimal(1)))
       assert.ok(eqDecimals(swapLine.balance, toDecimal(new BN(0), collateral.reserveBalance.scale)))
       assert.ok(
@@ -155,7 +156,7 @@ describe('swap-line', () => {
       const synthetic = assetsList.synthetics[0].assetAddress
       const collateral = assetsList.collaterals[0]
       const collateralReserve = await usdToken.createAccount(exchangeAuthority)
-      const { ix, swapLineAddress } = await exchange.createSwapLineInstruction({
+      const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
         collateral: collateral.collateralAddress,
         collateralReserve,
         synthetic,
@@ -202,14 +203,14 @@ describe('swap-line', () => {
       await signAndSend(new Transaction().add(addNativeSynthetic), [EXCHANGE_ADMIN], connection)
       const collateralReserve = await collateralToken.createAccount(exchangeAuthority)
 
-      const { ix, swapLineAddress } = await exchange.createSwapLineInstruction({
+      const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
         collateral: collateralToken.publicKey,
         collateralReserve,
         synthetic: syntheticToken.publicKey,
         limit
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-      swapLinePubkey = swapLineAddress
+      swapLinePubkey = swaplineAddress
     })
     it('swap native -> synthetic -> native -> withdraw fee ', async () => {
       const amountToSwap = 10 ** 9
@@ -239,7 +240,7 @@ describe('swap-line', () => {
       // swap native to synthetic
       await signAndSend(new Transaction().add(approveIx).add(ix), [ownerAccount], connection)
 
-      const swapLineAfterNativeSwap = await exchange.getSwapLine(swapLinePubkey)
+      const swapLineAfterNativeSwap = await exchange.getSwapline(swapLinePubkey)
       const assetsListAfterNativeSwap = await exchange.getAssetsList(state.assetsList)
 
       assert.ok(
@@ -340,7 +341,7 @@ describe('swap-line', () => {
           new BN(reserveAmountAfterNativeSwap).sub(nativeAmountOut)
         )
       )
-      const swapLineAfterSyntheticSwap = await exchange.getSwapLine(swapLinePubkey)
+      const swapLineAfterSyntheticSwap = await exchange.getSwapline(swapLinePubkey)
       assert.ok(
         almostEqual(
           swapLineAfterSyntheticSwap.balance.val,
@@ -398,7 +399,7 @@ describe('swap-line', () => {
       )
       await signAndSend(new Transaction().add(withdrawSwaplineFeeIX), [EXCHANGE_ADMIN], connection)
       // Fetch updated Swapline
-      const swapLineAfterWithdrawalFee = await exchange.getSwapLine(swapLinePubkey)
+      const swapLineAfterWithdrawalFee = await exchange.getSwapline(swapLinePubkey)
       // Withdrawal entire fee
       assert.ok(swapLineAfterWithdrawalFee.accumulatedFee.val.eq(new BN(0)))
       assert.ok(

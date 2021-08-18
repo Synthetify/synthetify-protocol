@@ -188,13 +188,13 @@ export class Exchange {
     })
     return account
   }
-  public async createSwapLineInstruction({
+  public async createSwaplineInstruction({
     collateral,
     collateralReserve,
     synthetic,
     limit
-  }: CreateSwapLine) {
-    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+  }: CreateSwapline) {
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
         synthetic.toBuffer(),
@@ -202,10 +202,10 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const ix = await this.program.instruction.createSwapLine(bump, limit, {
+    const ix = await this.program.instruction.createSwapline(bump, limit, {
       accounts: {
         state: this.stateAddress,
-        swapLine: swapLineAddress,
+        swapline: swaplineAddress,
         synthetic: synthetic,
         collateral: collateral,
         assetsList: this.state.assetsList,
@@ -215,10 +215,10 @@ export class Exchange {
         systemProgram: SystemProgram.programId
       }
     })
-    return { swapLineAddress, ix }
+    return { swaplineAddress, ix }
   }
   public async withdrawSwaplineFee({ collateral, synthetic, to, amount }: WithdrawSwaplineFee) {
-    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
         synthetic.toBuffer(),
@@ -226,11 +226,11 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const swapline = await this.getSwapLine(swapLineAddress)
+    const swapline = await this.getSwapline(swaplineAddress)
     const ix = await this.program.instruction.withdrawSwaplineFee(amount, {
       accounts: {
         state: this.stateAddress,
-        swapLine: swapLineAddress,
+        swapline: swaplineAddress,
         synthetic: synthetic,
         collateral: collateral,
         to: to,
@@ -249,8 +249,8 @@ export class Exchange {
     userCollateralAccount,
     userSyntheticAccount,
     amount
-  }: UseSwapLine) {
-    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+  }: UseSwapline) {
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
         synthetic.toBuffer(),
@@ -258,11 +258,11 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const swapline = await this.getSwapLine(swapLineAddress)
+    const swapline = await this.getSwapline(swaplineAddress)
     const ix = await this.program.instruction.nativeToSynthetic(amount, {
       accounts: {
         state: this.stateAddress,
-        swapLine: swapLineAddress,
+        swapline: swaplineAddress,
         synthetic: synthetic,
         collateral: collateral,
         userCollateralAccount: userCollateralAccount,
@@ -283,8 +283,8 @@ export class Exchange {
     userCollateralAccount,
     userSyntheticAccount,
     amount
-  }: UseSwapLine) {
-    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+  }: UseSwapline) {
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
         synthetic.toBuffer(),
@@ -292,11 +292,11 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const swapline = await this.getSwapLine(swapLineAddress)
+    const swapline = await this.getSwapline(swaplineAddress)
     const ix = await this.program.instruction.syntheticToNative(amount, {
       accounts: {
         state: this.stateAddress,
-        swapLine: swapLineAddress,
+        swapline: swaplineAddress,
         synthetic: synthetic,
         collateral: collateral,
         userCollateralAccount: userCollateralAccount,
@@ -310,9 +310,9 @@ export class Exchange {
     })
     return ix
   }
-  public async getSwapLine(swapLine: PublicKey) {
-    const swapLineData = (await this.program.account.swapLine.fetch(swapLine)) as SwapLine
-    return swapLineData
+  public async getSwapline(swapline: PublicKey) {
+    const swaplineData = (await this.program.account.swapline.fetch(swapline)) as Swapline
+    return swaplineData
   }
   public async createExchangeAccountInstruction(owner: PublicKey) {
     const [account, bump] = await PublicKey.findProgramAddress(
@@ -1368,7 +1368,7 @@ export interface Decimal {
   val: BN
   scale: number
 }
-export interface SwapLine {
+export interface Swapline {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
@@ -1377,14 +1377,15 @@ export interface SwapLine {
   balance: Decimal
   limit: Decimal
   bump: number
+  halted: boolean
 }
-export interface CreateSwapLine {
+export interface CreateSwapline {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
   limit: BN
 }
-export interface UseSwapLine {
+export interface UseSwapline {
   synthetic: PublicKey
   collateral: PublicKey
   userCollateralAccount: PublicKey

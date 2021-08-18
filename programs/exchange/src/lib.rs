@@ -1502,11 +1502,10 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin) assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
-    pub fn create_swap_line(ctx: Context<CreateSwapLine>, bump: u8, limit: u64) -> Result<()> {
-        msg!("Synthetify: CREATE SWAP LINE");
+    pub fn create_swapline(ctx: Context<CreateSwapline>, bump: u8, limit: u64) -> Result<()> {
+        msg!("Synthetify: CREATE SWAPLINE");
 
-        let mut swap_line = ctx.accounts.swap_line.load_init()?;
-        let state = ctx.accounts.state.load()?;
+        let mut swapline = ctx.accounts.swapline.load_init()?;
         let assets_list = ctx.accounts.assets_list.load()?;
 
         let synthetic = assets_list
@@ -1524,40 +1523,41 @@ pub mod exchange {
             MissmatchedTokens
         );
         let collateral_reserve = &ctx.accounts.collateral_reserve;
-        swap_line.balance = Decimal {
+        swapline.balance = Decimal {
             val: 0,
             scale: collateral.reserve_balance.scale,
         };
-        swap_line.collateral = collateral.collateral_address;
-        swap_line.collateral_reserve = *collateral_reserve.to_account_info().key;
-        swap_line.fee = Decimal::from_percent(1);
-        swap_line.accumulated_fee = Decimal {
+        swapline.collateral = collateral.collateral_address;
+        swapline.collateral_reserve = *collateral_reserve.to_account_info().key;
+        swapline.fee = Decimal::from_percent(1);
+        swapline.accumulated_fee = Decimal {
             val: 0,
             scale: collateral.reserve_balance.scale,
         };
-        swap_line.limit = Decimal {
+        swapline.limit = Decimal {
             val: limit.into(),
             scale: collateral.reserve_balance.scale,
         };
-        swap_line.synthetic = synthetic.asset_address;
-        swap_line.bump = bump;
+        swapline.synthetic = synthetic.asset_address;
+        swapline.halted = false;
+        swapline.bump = bump;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn withdraw_swapline_fee(ctx: Context<WithdrawSwaplineFee>, amount: u64) -> Result<()> {
-        msg!("Synthetify: CREATE SWAP LINE");
+        msg!("Synthetify: WITHDRAW SWAPLINE FEE");
 
-        let mut swap_line = ctx.accounts.swap_line.load_mut()?;
+        let mut swapline = ctx.accounts.swapline.load_mut()?;
         let state = ctx.accounts.state.load()?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let amount = Decimal {
             val: amount.into(),
-            scale: swap_line.accumulated_fee.scale,
+            scale: swapline.accumulated_fee.scale,
         };
 
-        swap_line.accumulated_fee = swap_line.accumulated_fee.sub(amount).unwrap();
+        swapline.accumulated_fee = swapline.accumulated_fee.sub(amount).unwrap();
 
         // Mint synthetic to user
         let cpi_ctx_transfer: CpiContext<Transfer> =
@@ -1572,7 +1572,7 @@ pub mod exchange {
         msg!("Synthetify: NATIVE TO SYNTHETIC");
 
         let state = ctx.accounts.state.load()?;
-        let mut swap_line = ctx.accounts.swap_line.load_mut()?;
+        let mut swapline = ctx.accounts.swapline.load_mut()?;
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
@@ -1595,19 +1595,16 @@ pub mod exchange {
             scale: collateral.reserve_balance.scale,
         };
 
-        let fee = amount.mul(swap_line.fee);
+        let fee = amount.mul(swapline.fee);
         let amount_out = amount.sub(fee).unwrap().to_scale(synthetic.supply.scale);
         let new_supply = synthetic.supply.add(amount_out).unwrap();
 
         set_synthetic_supply(synthetic, new_supply).unwrap();
         synthetic.swapline_supply = synthetic.swapline_supply.add(amount_out).unwrap();
 
-        swap_line.accumulated_fee = swap_line.accumulated_fee.add(fee).unwrap();
-        swap_line.balance = swap_line.balance.add(amount).unwrap();
-        require!(
-            swap_line.balance.ltq(swap_line.limit).unwrap(),
-            SwaplineLimit
-        );
+        swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
+        swapline.balance = swapline.balance.add(amount).unwrap();
+        require!(swapline.balance.ltq(swapline.limit).unwrap(), SwaplineLimit);
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1631,7 +1628,7 @@ pub mod exchange {
         msg!("Synthetify: SYNTHETIC TO NATIVE");
 
         let state = ctx.accounts.state.load()?;
-        let mut swap_line = ctx.accounts.swap_line.load_mut()?;
+        let mut swapline = ctx.accounts.swapline.load_mut()?;
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
@@ -1655,13 +1652,13 @@ pub mod exchange {
         };
         // fee is removed from synthetic supply
         // this causes pro rata distribution to stakers
-        let fee = amount.mul(swap_line.fee);
-        let amount_out = amount.sub(fee).unwrap().to_scale(swap_line.balance.scale);
+        let fee = amount.mul(swapline.fee);
+        let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
         let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
 
         set_synthetic_supply(synthetic, new_supply_synthetic).unwrap();
         synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
-        swap_line.balance = swap_line.balance.sub(amount_out).unwrap();
+        swapline.balance = swapline.balance.sub(amount_out).unwrap();
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1748,11 +1745,11 @@ impl AssetsList {
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
-pub struct CreateSwapLine<'info> {
+pub struct CreateSwapline<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
     #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
-    pub swap_line: Loader<'info, SwapLine>,
+    pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
     pub assets_list: Loader<'info, AssetsList>,
@@ -1767,8 +1764,8 @@ pub struct CreateSwapLine<'info> {
 pub struct UseSwapLine<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swap_line.load()?.bump]] )]
-    pub swap_line: Loader<'info, SwapLine>,
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    pub swapline: Loader<'info, Swapline>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -1789,7 +1786,7 @@ pub struct UseSwapLine<'info> {
     #[account(
         mut,
         constraint = &collateral_reserve.mint == collateral.key,
-        constraint = collateral_reserve.to_account_info().key == &swap_line.load()?.collateral_reserve
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -1823,7 +1820,7 @@ impl<'a, 'b, 'c, 'info> From<&UseSwapLine<'info>> for CpiContext<'a, 'b, 'c, 'in
 }
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct SwapLine {
+pub struct Swapline {
     synthetic: Pubkey,
     collateral: Pubkey,
     fee: Decimal,
@@ -1831,14 +1828,15 @@ pub struct SwapLine {
     balance: Decimal,
     limit: Decimal,
     collateral_reserve: Pubkey,
+    halted: bool,
     bump: u8,
 }
 #[derive(Accounts)]
 pub struct WithdrawSwaplineFee<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swap_line.load()?.bump]] )]
-    pub swap_line: Loader<'info, SwapLine>,
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
     #[account(signer)]
@@ -1848,7 +1846,7 @@ pub struct WithdrawSwaplineFee<'info> {
     #[account(
         mut,
         constraint = collateral_reserve.owner == state.load()?.exchange_authority,
-        constraint = collateral_reserve.to_account_info().key == &swap_line.load()?.collateral_reserve,
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
         constraint = &collateral_reserve.mint == collateral.key
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
