@@ -217,6 +217,31 @@ export class Exchange {
     })
     return { swapLineAddress, ix }
   }
+  public async withdrawSwaplineFee({ collateral, synthetic, to, amount }: WithdrawSwaplineFee) {
+    const [swapLineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const swapline = await this.getSwapLine(swapLineAddress)
+    const ix = await this.program.instruction.withdrawSwaplineFee(amount, {
+      accounts: {
+        state: this.stateAddress,
+        swapLine: swapLineAddress,
+        synthetic: synthetic,
+        collateral: collateral,
+        to: to,
+        collateralReserve: swapline.collateralReserve,
+        admin: this.state.admin,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    })
+    return ix
+  }
   public async nativeToSynthetic({
     collateral,
     synthetic,
@@ -1365,5 +1390,11 @@ export interface UseSwapLine {
   userCollateralAccount: PublicKey
   userSyntheticAccount: PublicKey
   signer: PublicKey
+  amount: BN
+}
+export interface WithdrawSwaplineFee {
+  synthetic: PublicKey
+  collateral: PublicKey
+  to: PublicKey
   amount: BN
 }

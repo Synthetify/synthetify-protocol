@@ -211,7 +211,7 @@ describe('swap-line', () => {
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       swapLinePubkey = swapLineAddress
     })
-    it('native -> synthetic -> native', async () => {
+    it('swap native -> synthetic -> native -> withdraw fee ', async () => {
       const amountToSwap = 10 ** 9
       const ownerAccount = await newAccountWithLamports(connection)
       const userCollateralAccount = await collateralToken.createAccount(ownerAccount.publicKey)
@@ -376,6 +376,33 @@ describe('swap-line', () => {
           calculateDebt(assetsListAfterSyntheticSwap),
           calculateDebt(assetsListAfterNativeSwap)
         )
+      )
+
+      // Withdraw Fee
+      const withdrawalAccount = await collateralToken.createAccount(exchangeAuthority)
+      assert.ok(
+        await (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(new BN(0))
+      )
+      const withdrawalAmount = swapLineAfterSyntheticSwap.accumulatedFee.val
+      // withdrawal IX
+      const withdrawSwaplineFeeIX = await exchange.withdrawSwaplineFee({
+        collateral: collateralToken.publicKey,
+        synthetic: syntheticToken.publicKey,
+        amount: withdrawalAmount,
+        to: withdrawalAccount
+      })
+      // Try swap over limit
+      assertThrowsAsync(
+        signAndSend(new Transaction().add(withdrawSwaplineFeeIX), [wallet], connection),
+        ERRORS_EXCHANGE.UNAUTHORIZED
+      )
+      await signAndSend(new Transaction().add(withdrawSwaplineFeeIX), [EXCHANGE_ADMIN], connection)
+      // Fetch updated Swapline
+      const swapLineAfterWithdrawalFee = await exchange.getSwapLine(swapLinePubkey)
+      // Withdrawal entire fee
+      assert.ok(swapLineAfterWithdrawalFee.accumulatedFee.val.eq(new BN(0)))
+      assert.ok(
+        await (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(withdrawalAmount)
       )
     })
   })

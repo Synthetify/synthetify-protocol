@@ -1405,6 +1405,62 @@
       ]
     },
     {
+      "name": "withdrawSwaplineFee",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "swapLine",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "nativeToSynthetic",
       "accounts": [
         {
@@ -2244,5 +2300,8 @@
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "FyK34rACZhjCJAqDibaKfQVVMDSeHYXvgFNBY7Dezjtf"
+  }
 }
