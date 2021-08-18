@@ -29,15 +29,18 @@ import {
   calculateSwapTax,
   U64_MAX,
   eqDecimals,
-  mulByDecimal
+  mulByDecimal,
+  almostEqual
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   ERRORS,
+  INTEREST_RATE_DECIMALS,
   percentToDecimal,
   SNY_DECIMALS,
   toDecimal,
+  toScale,
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
@@ -51,7 +54,6 @@ describe('vaults', () => {
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
-
   const wallet = provider.wallet.payer as Account
 
   let snyToken: Token
@@ -141,11 +143,7 @@ describe('vaults', () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
-
-    console.log(assetsListData.synthetics)
-    console.log(assetsListData.collaterals)
-
-    const debtInterestRate = percentToDecimal(1)
+    const debtInterestRate = percentToDecimal(5)
     const collateralRatio = percentToDecimal(90)
     const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
@@ -157,7 +155,24 @@ describe('vaults', () => {
       collateralRatio,
       maxBorrow
     })
+    const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+
+    assert.ok(vault.synthetic.equals(xusd.assetAddress))
+    assert.ok(vault.collateral.equals(usdc.collateralAddress))
+    assert.ok(vault.collateralReserve.equals(usdc.reserveAddress))
+    assert.ok(eqDecimals(vault.collateralRatio, collateralRatio))
+    assert.ok(eqDecimals(vault.debtInterestRate, debtInterestRate))
+    assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
+    assert.ok(
+      eqDecimals(
+        vault.accumulatedInterestRate,
+        toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
+      )
+    )
+    assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
+    assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
+    assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
   })
 })

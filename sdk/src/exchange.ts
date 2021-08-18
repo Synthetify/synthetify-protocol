@@ -966,7 +966,7 @@ export class Exchange {
         }
       }
     )
-    console.log(vaultAddress)
+
     return { vaultAddress, ix }
   }
   public async updatePrices(assetsList: PublicKey) {
@@ -1273,8 +1273,10 @@ export interface Settlement {
 }
 
 export interface Vault {
+  halted: boolean
   synthetic: PublicKey
   collateral: PublicKey
+  collateralReserve: PublicKey
   reserveAddress: PublicKey
   collateralRatio: Decimal
   debtInterestRate: Decimal
