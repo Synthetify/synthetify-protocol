@@ -68,9 +68,15 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
   let usdcReserve: PublicKey
+  let usdVaultAddress: PublicKey
+  const accountOwner = Keypair.generate()
 
   before(async () => {
+    // airdrop sol
+    await connection.requestAirdrop(accountOwner.publicKey, 10e9)
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
+    // await sleep(10000)
+
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
@@ -156,6 +162,8 @@ describe('vaults', () => {
       collateralRatio,
       maxBorrow
     })
+    usdVaultAddress = vaultAddress
+    console.log(`vaultAddress: ${vaultAddress}`)
     const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
@@ -180,13 +188,37 @@ describe('vaults', () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
-    const accountOwner = Keypair.generate()
+    assetsListData.assets[usdc.assetIndex]
 
+    console.log(assetsListData.synthetics)
+    console.log(assetsListData.collaterals)
+    // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+    // const approveIx = await Token.createApproveInstruction(
+    //   usdcToken.programId,
+    //   userUsdcTokenAccount,
+    //   exchangeAuthority,
+    //   accountOwner.publicKey,
+    //   [],
+    //   tou64(new anchor.BN(10 * 1e6))
+    // )
+    // await signAndSend(new Transaction().add(approveIx), [wallet, accountOwner], connection)
+    // await sleep(1000)
     const { ix, vaultEntryAddress } = await exchange.createVaultEntryInstruction({
       owner: accountOwner.publicKey,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress
     })
-    await signAndSend(new Transaction().add(ix), [wallet, accountOwner], connection)
+    await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+
+    const vaultEntry = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
+    assert.ok(vaultEntry.vault.equals(usdVaultAddress))
+    assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
+    // TODO: How to find collateral decimal
+    // assert.ok(eqDecimals(vaultEntry.collateralAmount, toDecimal(new BN(0), usdc..scale)))
   })
 })

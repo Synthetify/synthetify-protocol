@@ -144,7 +144,7 @@ export class Exchange {
   }
 
   public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
-    const [vault, bump] = await PublicKey.findProgramAddress(
+    const [vault] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vaultv1')),
         synthetic.toBuffer(),
@@ -153,6 +153,30 @@ export class Exchange {
       this.program.programId
     )
     const account = (await this.program.account.vault.fetch(vault)) as Vault
+    return account
+  }
+  public async getVaultEntryForOwner(
+    synthetic: PublicKey,
+    collateral: PublicKey,
+    owner: PublicKey
+  ) {
+    const [vaultAddress] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    const [vaultEntry] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
+        owner.toBuffer(),
+        vaultAddress.toBuffer()
+      ],
+      this.program.programId
+    )
+    const account = (await this.program.account.vault.fetch(vaultEntry)) as VaultEntry
     return account
   }
 
@@ -977,6 +1001,7 @@ export class Exchange {
       ],
       this.program.programId
     )
+    console.log(`vaultAddress: ${vaultAddress}`)
     const [vaultEntryAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
@@ -985,12 +1010,13 @@ export class Exchange {
       ],
       this.program.programId
     )
+    console.log(`vaultEntryAddress: ${vaultEntryAddress}`)
 
     const ix = await this.program.instruction.createVaultEntry(bump, {
       accounts: {
-        owner,
-        vault: vaultAddress,
+        owner: owner,
         vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
         assetsList: this.state.assetsList,
         synthetic: synthetic,
         collateral: collateral,
@@ -998,7 +1024,6 @@ export class Exchange {
         systemProgram: SystemProgram.programId
       }
     })
-
     return { ix, vaultEntryAddress }
   }
   public async updatePrices(assetsList: PublicKey) {
@@ -1321,9 +1346,9 @@ export interface Vault {
 export interface VaultEntry {
   owner: PublicKey
   vault: PublicKey
-  lastAccumulatedInterestRate: PublicKey
-  syntheticAmount: PublicKey
-  collateralAmount: PublicKey
+  lastAccumulatedInterestRate: Decimal
+  syntheticAmount: Decimal
+  collateralAmount: Decimal
 }
 export interface CollateralEntry {
   amount: BN
