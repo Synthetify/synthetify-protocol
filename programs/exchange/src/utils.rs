@@ -187,6 +187,23 @@ pub fn adjust_interest_debt(
             .unwrap();
     }
 }
+pub fn adjust_vault_debt(vault: &mut Vault, timestamp: i64,) {
+    const ADJUSTMENT_PERIOD: i64 = 60;
+    let diff = timestamp
+    .checked_sub(vault.last_update)
+    .unwrap()
+    .checked_div(ADJUSTMENT_PERIOD)
+    .unwrap();
+
+    if diff >= 1 {
+        let minute_interest_rate = calculate_minute_interest_rate(vault.debt_interest_rate);
+        vault.accumulated_interest_rate = vault.accumulated_interest_rate.add(minute_interest_rate).unwrap();
+        vault.last_update = diff
+        .checked_mul(ADJUSTMENT_PERIOD)
+        .unwrap()
+        .checked_add(vault.last_update).unwrap();
+    }
+}
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
     if new_supply.gt(synthetic.max_supply).unwrap() {

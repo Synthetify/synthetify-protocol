@@ -1412,6 +1412,57 @@
           }
         }
       ]
+    },
+    {
+      "name": "createVaultEntry",
+      "accounts": [
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1719,6 +1770,44 @@
           {
             "name": "lastUpdate",
             "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "lastAccumulatedInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "syntheticAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralAmount",
+            "type": {
+              "defined": "Decimal"
+            }
           },
           {
             "name": "bump",
@@ -2127,8 +2216,5 @@
       "name": "DifferentScale",
       "msg": "Scale is different"
     }
-  ],
-  "metadata": {
-    "address": "9oUmKkoNGgcfxmFsjq2h2Vmex8mPw9LNEQdUqAt92jEz"
-  }
+  ]
 }

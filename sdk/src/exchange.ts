@@ -966,8 +966,32 @@ export class Exchange {
         }
       }
     )
-
     return { vaultAddress, ix }
+  }
+  public async createVaultEntry({
+    owner,
+    synthetic,
+    collateral
+  }: CreateVaultEntry) {
+    const [vaultAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    await this.program.instruction.createVaultEntry(bump, {
+      accounts: {
+        owner,
+        vault: vaultAddress,
+        assetsList: this.state.assetsList,
+        synthetic: synthetic,
+        collateral: collateral,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1305,6 +1329,12 @@ export interface CreateVault {
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal
+}
+
+export interface CreateVaultEntry {
+  synthetic: PublicKey
+  collateral: PublicKey
+  owner: PublicKey
 }
 
 export interface Decimal {
