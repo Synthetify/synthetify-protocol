@@ -314,20 +314,22 @@ pub mod exchange {
         // We can only mint xUSD
         // Both xUSD and collateral token have static index in assets array
         let mut xusd_synthetic = &mut synthetics[0];
-
-        let amount_decimal = Decimal {
-            val: amount.into(),
-            scale: xusd_synthetic.supply.scale,
+        let amount: Decimal = match amount {
+            u64::MAX => mint_limit.sub(user_debt).unwrap(),
+            _ => Decimal {
+                val: amount.into(),
+                scale: xusd_synthetic.supply.scale,
+            },
         };
-        let debt_after_mint = user_debt.add(amount_decimal).unwrap();
+        let debt_after_mint = user_debt.add(amount).unwrap();
+
         if mint_limit.lt(debt_after_mint).unwrap() {
             return Err(ErrorCode::MintLimit.into());
         }
 
         // Adjust program and user debt_shares
         // Rounding up - debt is created in favor of the system
-        let new_shares =
-            calculate_new_shares_by_rounding_up(state.debt_shares, total_debt, amount_decimal);
+        let new_shares = calculate_new_shares_by_rounding_up(state.debt_shares, total_debt, amount);
         state.debt_shares = state.debt_shares.checked_add(new_shares).unwrap();
         exchange_account.debt_shares = exchange_account
             .debt_shares
@@ -337,13 +339,13 @@ pub mod exchange {
         exchange_account.user_staking_data.next_round_points = exchange_account.debt_shares;
         state.staking.next_round.all_points = state.debt_shares;
 
-        let new_supply = xusd_synthetic.supply.add(amount_decimal).unwrap();
+        let new_supply = xusd_synthetic.supply.add(amount).unwrap();
         set_synthetic_supply(&mut xusd_synthetic, new_supply)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         // Mint xUSD to user
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, amount)?;
+        token::mint_to(mint_cpi_ctx, amount.to_u64())?;
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
@@ -351,7 +353,6 @@ pub mod exchange {
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW");
         let mut state = &mut ctx.accounts.state.load_mut()?;
-
         let slot = Clock::get()?.slot;
         let timestamp = Clock::get()?.unix_timestamp;
 
@@ -418,7 +419,7 @@ pub mod exchange {
                 collateral.reserve_balance.scale,
             );
 
-            if max_withdrawable_in_token.lt(amount_collateral).unwrap() {
+            if max_withdrawable_in_token.gt(amount_collateral).unwrap() {
                 amount_to_withdraw = amount_collateral;
             } else {
                 amount_to_withdraw = max_withdrawable_in_token;
@@ -578,6 +579,7 @@ pub mod exchange {
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn burn(ctx: Context<BurnToken>, amount: u64) -> Result<()> {
         msg!("Synthetify: BURN");
+
         let slot = Clock::get()?.slot;
         let timestamp = Clock::get()?.unix_timestamp;
         let mut state = &mut ctx.accounts.state.load_mut()?;
