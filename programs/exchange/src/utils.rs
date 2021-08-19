@@ -839,6 +839,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_usd(),
+                swapline_supply: Decimal::from_integer(0).to_usd(),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -852,6 +853,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(10_000).to_usd(),
+                swapline_supply: Decimal::from_integer(0).to_usd(),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
