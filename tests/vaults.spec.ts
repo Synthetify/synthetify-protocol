@@ -185,18 +185,6 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
 
-    // APPROVE
-    // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
-    // const approveIx = await Token.createApproveInstruction(
-    //   usdcToken.programId,
-    //   userUsdcTokenAccount,
-    //   exchangeAuthority,
-    //   accountOwner.publicKey,
-    //   [],
-    //   tou64(new anchor.BN(10 * 1e6))
-    // )
-    // await signAndSend(new Transaction().add(approveIx), [wallet, accountOwner], connection)
-
     const { ix } = await exchange.createVaultEntryInstruction({
       owner: accountOwner.publicKey,
       collateral: usdc.collateralAddress,
@@ -225,5 +213,22 @@ describe('vaults', () => {
         toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
       )
     )
+  })
+  it('should deposit to usdc/xusd vault entry', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+
+    // APPROVE
+    // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+    // const approveIx = await Token.createApproveInstruction(
+    //   usdcToken.programId,
+    //   userUsdcTokenAccount,
+    //   exchangeAuthority,
+    //   accountOwner.publicKey,
+    //   [],
+    //   tou64(new anchor.BN(10 * 1e6))
+    // )
+    // await signAndSend(new Transaction().add(approveIx), [wallet, accountOwner], connection)
   })
 })

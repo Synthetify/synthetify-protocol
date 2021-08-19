@@ -1583,7 +1583,7 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
-        let state = &mut ctx.accounts.state.load_mut()?;
+        let state = &ctx.accounts.state.load_mut()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let mut vault_entry = ctx.accounts.vault_entry.load_mut()?;
         let mut vault = ctx.accounts.vault.load_mut()?;
@@ -2369,7 +2369,8 @@ pub struct CreateVaultEntry<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct DepositVault<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // mebye 
     pub state: Loader<'info, State>,
     #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
@@ -2383,7 +2384,6 @@ pub struct DepositVault<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>, // check is required
     #[account(signer)]
     pub owner: AccountInfo<'info>,

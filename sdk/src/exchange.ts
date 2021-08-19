@@ -153,6 +153,21 @@ export class Exchange {
     )
     return { vaultAddress, bump }
   }
+  public async getVaultEntryAddress(synthetic: PublicKey, collateral: PublicKey, owner: PublicKey) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const [vaultEntryAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
+        owner.toBuffer(),
+        vaultAddress.toBuffer()
+      ],
+      this.program.programId
+    )
+    return {
+      vaultEntryAddress,
+      bump
+    }
+  }
   public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const account = (await this.program.account.vault.fetch(vaultAddress)) as Vault
@@ -163,16 +178,8 @@ export class Exchange {
     collateral: PublicKey,
     owner: PublicKey
   ) {
-    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
-    const [vaultEntry] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
-        owner.toBuffer(),
-        vaultAddress.toBuffer()
-      ],
-      this.program.programId
-    )
-    const account = (await this.program.account.vaultEntry.fetch(vaultEntry)) as VaultEntry
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+    const account = (await this.program.account.vaultEntry.fetch(vaultEntryAddress)) as VaultEntry
     return account
   }
 
@@ -1019,6 +1026,35 @@ export class Exchange {
     })
     return { ix, vaultEntryAddress }
   }
+  public async vaultDepositInstruction({
+    owner,
+    synthetic,
+    collateral,
+    userCollateralAccount,
+    reserveAddress,
+    amount
+  }: VaultDepositInstruction) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    const ix = await this.program.instruction.depositVault(amount, {
+      synthetic,
+      collateral,
+      reserveAddress,
+      userCollateralAccount,
+      owner,
+      state: this.stateAddress,
+      vaultEntry: vaultEntryAddress,
+      vault: vaultAddress,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      assetsList: this.state.assetsList,
+      exchangeAuthority: this.exchangeAuthority
+      // rent: SYSVAR_RENT_PUBKEY,
+      // systemProgram: SystemProgram.programId
+    })
+    return ix
+  }
+  public async vaultDeposit() {}
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1248,6 +1284,14 @@ export interface DepositInstruction {
   exchangeAccount: PublicKey
   userCollateralAccount: PublicKey
   owner: PublicKey
+  reserveAddress: PublicKey
+  amount: BN
+}
+export interface VaultDepositInstruction {
+  owner: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  userCollateralAccount: PublicKey
   reserveAddress: PublicKey
   amount: BN
 }
