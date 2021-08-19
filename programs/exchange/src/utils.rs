@@ -746,6 +746,7 @@ mod tests {
         });
         assets_list.append_synthetic(Synthetic {
             supply: Decimal::from_integer(100_000).to_usd(),
+            swapline_supply: Decimal::from_usd(0),
             asset_index: assets_list.head_assets - 1,
             ..Default::default()
         });
