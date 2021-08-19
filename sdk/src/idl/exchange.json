@@ -1469,7 +1469,7 @@
       "accounts": [
         {
           "name": "state",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1509,12 +1509,12 @@
         },
         {
           "name": "assetsList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -2298,8 +2298,5 @@
       "name": "DifferentScale",
       "msg": "Scale is different"
     }
-  ],
-  "metadata": {
-    "address": "J7wr19mgjLyTXxMreUvVPfm1PzqihHqFjWv4aTMDDD2k"
-  }
+  ]
 }

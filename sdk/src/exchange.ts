@@ -1063,7 +1063,6 @@ export class Exchange {
     userCollateralAccount,
     reserveAddress,
     collateralToken,
-    exchangeAuthority,
     signers
   }: DepositVault) {
     const depositVaultIx = await this.vaultDepositInstruction({
@@ -1077,7 +1076,7 @@ export class Exchange {
     const approveIx = Token.createApproveInstruction(
       collateralToken.programId,
       userCollateralAccount,
-      exchangeAuthority,
+      this.exchangeAuthority,
       owner,
       [],
       tou64(amount)
@@ -1430,7 +1429,6 @@ export interface DepositVault {
   userCollateralAccount: PublicKey
   reserveAddress: PublicKey
   collateralToken: Token
-  exchangeAuthority: PublicKey
   signers: Array<Account | Keypair>
 }
 export interface CollateralEntry {

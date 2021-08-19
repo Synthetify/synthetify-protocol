@@ -1583,17 +1583,16 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
-        let state = &ctx.accounts.state.load_mut()?;
+        let state = &mut ctx.accounts.state.load_mut()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let mut vault_entry = ctx.accounts.vault_entry.load_mut()?;
-        let mut vault = ctx.accounts.vault.load_mut()?;
-
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        
         let collateral_index = assets_list
             .collaterals
             .iter_mut()
             .position(|x| {
-                x.reserve_address
-                    .eq(ctx.accounts.reserve_address.to_account_info().key)
+                x.collateral_address.eq(ctx.accounts.collateral.key)
             })
             .unwrap();
         let collateral = &mut assets_list.collaterals[collateral_index];
@@ -2367,25 +2366,24 @@ pub struct CreateVaultEntry<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
 pub struct DepositVault<'info> {
-    // #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // mebye 
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // maybe immutable
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut, constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key)]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>, // check is required
-    #[account(signer)]
+    #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,

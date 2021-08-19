@@ -67,7 +67,7 @@ describe('vaults', () => {
   let nonce: number
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
-  let usdcReserve: PublicKey
+  let usdcVaultReserve: PublicKey
   const accountOwner = Keypair.generate()
 
   before(async () => {
@@ -141,7 +141,7 @@ describe('vaults', () => {
       wallet
     })
     usdcToken = token
-    usdcReserve = await usdcToken.createAccount(exchangeAuthority)
+    usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
   })
   it('should create usdc/xusd vault', async () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
@@ -152,7 +152,7 @@ describe('vaults', () => {
     const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
     const { ix } = await exchange.createVaultInstruction({
-      collateralReserve: usdc.reserveAddress,
+      collateralReserve: usdcVaultReserve,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
       debtInterestRate,
@@ -166,7 +166,7 @@ describe('vaults', () => {
     assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
     assert.ok(vault.synthetic.equals(xusd.assetAddress))
     assert.ok(vault.collateral.equals(usdc.collateralAddress))
-    assert.ok(vault.collateralReserve.equals(usdc.reserveAddress))
+    assert.ok(vault.collateralReserve.equals(usdcVaultReserve))
     assert.ok(eqDecimals(vault.collateralRatio, collateralRatio))
     assert.ok(eqDecimals(vault.debtInterestRate, debtInterestRate))
     assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
@@ -228,9 +228,8 @@ describe('vaults', () => {
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
       userCollateralAccount: userCollateralTokenAccount,
-      reserveAddress: usdcReserve,
+      reserveAddress: usdcVaultReserve,
       collateralToken: usdcToken,
-      exchangeAuthority,
       signers: [accountOwner]
     })
   })
