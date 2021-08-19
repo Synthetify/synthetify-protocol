@@ -1037,22 +1037,23 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    const ix = await this.program.instruction.depositVault(amount, {
-      synthetic,
-      collateral,
-      reserveAddress,
-      userCollateralAccount,
-      owner,
-      state: this.stateAddress,
-      vaultEntry: vaultEntryAddress,
-      vault: vaultAddress,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      assetsList: this.state.assetsList,
-      exchangeAuthority: this.exchangeAuthority
-      // rent: SYSVAR_RENT_PUBKEY,
-      // systemProgram: SystemProgram.programId
-    })
-    return ix
+    return (await this.program.instruction.depositVault(amount, {
+      accounts: {
+        synthetic,
+        collateral,
+        reserveAddress,
+        userCollateralAccount,
+        owner,
+        state: this.stateAddress,
+        vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })) as TransactionInstruction
   }
   public async vaultDeposit({
     amount,
@@ -1430,7 +1431,7 @@ export interface DepositVault {
   reserveAddress: PublicKey
   collateralToken: Token
   exchangeAuthority: PublicKey
-  signers: Array<Account>
+  signers: Array<Account | Keypair>
 }
 export interface CollateralEntry {
   amount: BN

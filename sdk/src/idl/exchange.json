@@ -1469,7 +1469,7 @@
       "accounts": [
         {
           "name": "state",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1509,7 +1509,7 @@
         },
         {
           "name": "assetsList",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2300,6 +2300,6 @@
     }
   ],
   "metadata": {
-    "address": "3AxArXyFGh9HCkLfP5Zn3584hCN9esxZDoe5wFHfPCb4"
+    "address": "J7wr19mgjLyTXxMreUvVPfm1PzqihHqFjWv4aTMDDD2k"
   }
 }

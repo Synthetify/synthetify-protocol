@@ -219,16 +219,19 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
 
-    // APPROVE
-    // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
-    // const approveIx = await Token.createApproveInstruction(
-    //   usdcToken.programId,
-    //   userUsdcTokenAccount,
-    //   exchangeAuthority,
-    //   accountOwner.publicKey,
-    //   [],
-    //   tou64(new anchor.BN(10 * 1e6))
-    // )
-    // await signAndSend(new Transaction().add(approveIx), [wallet, accountOwner], connection)
+    const userCollateralTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+    const amount = new BN(10 ** usdc.reserveBalance.scale) //.mul(new BN(100))
+
+    await exchange.vaultDeposit({
+      amount,
+      owner: accountOwner.publicKey,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
+      userCollateralAccount: userCollateralTokenAccount,
+      reserveAddress: usdcReserve,
+      collateralToken: usdcToken,
+      exchangeAuthority,
+      signers: [accountOwner]
+    })
   })
 })
