@@ -1525,6 +1525,7 @@ pub mod exchange {
         if collateral == None {
             return Err(ErrorCode::NoAssetFound.into());
         }
+        let collateral =  collateral.unwrap();
 
         require!(
             collateral_ratio.ltq(Decimal::from_percent(100))?,
@@ -1541,6 +1542,7 @@ pub mod exchange {
             vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
             vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault.collateral_amount = Decimal::new(0,collateral.reserve_balance.scale);
             vault.max_borrow = max_borrow;
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
@@ -1577,41 +1579,47 @@ pub mod exchange {
         }
         Ok(())
     }
+    #[access_control(vault_halted(&ctx.accounts.vault)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: DEPOSIT VAULT");
+        let state = &mut ctx.accounts.state.load_mut()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let mut vault_entry = ctx.accounts.vault_entry.load_mut()?;
+        let mut vault = ctx.accounts.vault.load_mut()?;
 
-    // pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
-    //     msg!("Synthetify: DEPOSIT VAULT");
-    //     let state = &mut ctx.accounts.state.load_mut()?;
-    //     let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-    //     let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let collateral_index = assets_list
+            .collaterals
+            .iter_mut()
+            .position(|x| {
+                x.reserve_address
+                    .eq(ctx.accounts.reserve_address.to_account_info().key)
+            })
+            .unwrap();
+        let collateral = &mut assets_list.collaterals[collateral_index];
+        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
 
-    //     let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+        let tx_signer = ctx.accounts.owner.key;
+        // Signer need to be owner of source account
+        if !tx_signer.eq(&user_collateral_account.owner) {
+            return Err(ErrorCode::InvalidSigner.into());
+        };
 
-    //     let tx_signer = ctx.accounts.owner.key;
-    //     // Signer need to be owner of source account
-    //     if !tx_signer.eq(&user_collateral_account.owner) {
-    //         return Err(ErrorCode::InvalidSigner.into());
-    //     }
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: collateral.reserve_balance.scale,
+        };
+        vault_entry.collateral_amount = vault_entry.collateral_amount.add(amount_decimal)?;
+        vault.collateral_amount = vault.collateral_amount.add(amount_decimal)?;
 
-    //     let collateral = collaterals
-    //         .iter()
-    //         .find(|x| {
-    //             x.reserve_address
-    //                 .eq(ctx.accounts.reserve_address.to_account_info().key)
-    //         })
-    //         .unwrap();
-    //     // let synthetic = synthetics.iter_mut().find(|x| {}).unwrap();
+        // Transfer token
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
 
-    //     let amount_decimal = Decimal {
-    //         val: amount.into(),
-    //         scale: collateral.reserve_balance.scale,
-    //     };
-
-    //     let mut vault = ctx.accounts.vault.load_init()?;
-    //     // Create new vault entry
-    //     {}
-    //     // Transfer collateral to reserve_address
-    //     Ok(())
-    // }
+        token::transfer(cpi_ctx, amount)?;
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
@@ -2308,6 +2316,7 @@ pub struct Vault {
     pub accumulated_interest_rate: Decimal,
     pub collateral_reserve: Pubkey,
     pub mint_amount: Decimal,
+    pub collateral_amount: Decimal,
     pub max_borrow: Decimal,
     pub last_update: i64,
     pub bump: u8,
@@ -2357,21 +2366,42 @@ pub struct CreateVaultEntry<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-// #[derive(Accounts)]
-// #[instruction(bump: u8)]
-// pub struct DepositVault<'info> {
-//     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
-//     pub state: Loader<'info, State>,
-//     pub vault: Loader<'info, Vault>,
-//     #[account(mut)]
-//     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
-//     #[account("token_program.key == &token::ID")]
-//     pub token_program: AccountInfo<'info>,
-//     #[account(mut)]
-//     pub assets_list: Loader<'info, AssetsList>,
-//     #[account(signer)]
-//     pub owner: AccountInfo<'info>,
-// }
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct DepositVault<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut)]
+    pub reserve_address: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>, // check is required
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+    fn from(accounts: &DepositVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.user_collateral_account.to_account_info(),
+            to: accounts.reserve_address.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 
 #[error]
 pub enum ErrorCode {
@@ -2472,6 +2502,12 @@ fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -
     {
         return Err(ErrorCode::NotSyntheticUsd.into());
     }
+    Ok(())
+}
+// Vault containers
+fn vault_halted<'info>(vault_loader: &Loader<Vault>) -> Result<()> {
+    let vault = vault_loader.load()?;
+    require!(!vault.halted, Halted);
     Ok(())
 }
 

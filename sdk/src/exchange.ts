@@ -1333,6 +1333,7 @@ export interface Vault {
   accumulatedInterest: Decimal
   accumulatedInterestRate: Decimal
   mintAmount: Decimal
+  collateralAmount: Decimal
   maxBorrow: Decimal
   lastUpdate: BN
 }

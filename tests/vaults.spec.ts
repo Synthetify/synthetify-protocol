@@ -163,6 +163,7 @@ describe('vaults', () => {
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
 
+    assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
     assert.ok(vault.synthetic.equals(xusd.assetAddress))
     assert.ok(vault.collateral.equals(usdc.collateralAddress))
     assert.ok(vault.collateralReserve.equals(usdc.reserveAddress))
@@ -215,7 +216,9 @@ describe('vaults', () => {
     assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
     assert.ok(vaultEntry.vault.equals(vaultAddress))
     assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
-    assert.ok(eqDecimals(vaultEntry.collateralAmount, usdc.reserveBalance))
+    assert.ok(
+      eqDecimals(vaultEntry.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale))
+    )
     assert.ok(
       eqDecimals(
         vaultEntry.lastAccumulatedInterestRate,
