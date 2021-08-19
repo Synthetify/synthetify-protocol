@@ -108,7 +108,8 @@ const main = async () => {
     nonce,
     amountPerRound: new BN(100 * 1e6),
     stakingRoundLength: 100,
-    stakingFundAccount: stakingFundAccount
+    stakingFundAccount: stakingFundAccount,
+    exchangeAuthority: exchangeAuthority
   })
   while (true) {
     await sleep(2000)
