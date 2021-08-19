@@ -68,7 +68,6 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
   let usdcReserve: PublicKey
-  let usdVaultAddress: PublicKey
   const accountOwner = Keypair.generate()
 
   before(async () => {
@@ -152,7 +151,7 @@ describe('vaults', () => {
     const collateralRatio = percentToDecimal(90)
     const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
-    const { vaultAddress, ix } = await exchange.createVaultInstruction({
+    const { ix } = await exchange.createVaultInstruction({
       collateralReserve: usdc.reserveAddress,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
@@ -160,7 +159,6 @@ describe('vaults', () => {
       collateralRatio,
       maxBorrow
     })
-    usdVaultAddress = vaultAddress
     const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
@@ -185,7 +183,6 @@ describe('vaults', () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
-    assetsListData.assets[usdc.assetIndex]
 
     // APPROVE
     // const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
@@ -211,9 +208,19 @@ describe('vaults', () => {
       usdc.collateralAddress,
       accountOwner.publicKey
     )
+    const { vaultAddress } = await exchange.getVaultAddress(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
     assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
-    assert.ok(vaultEntry.vault.equals(usdVaultAddress))
+    assert.ok(vaultEntry.vault.equals(vaultAddress))
     assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
-    // TODO: compare collateral decimal
+    assert.ok(eqDecimals(vaultEntry.collateralAmount, usdc.reserveBalance))
+    assert.ok(
+      eqDecimals(
+        vaultEntry.lastAccumulatedInterestRate,
+        toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
+      )
+    )
   })
 })

@@ -142,9 +142,8 @@ export class Exchange {
     const account = (await this.program.account.settlement.fetch(settlement)) as Settlement
     return account
   }
-
-  public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
-    const [vault] = await PublicKey.findProgramAddress(
+  public async getVaultAddress(synthetic: PublicKey, collateral: PublicKey) {
+    const [vaultAddress, bump] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vaultv1')),
         synthetic.toBuffer(),
@@ -152,7 +151,11 @@ export class Exchange {
       ],
       this.program.programId
     )
-    const account = (await this.program.account.vault.fetch(vault)) as Vault
+    return { vaultAddress, bump }
+  }
+  public async getVaultForPair(synthetic: PublicKey, collateral: PublicKey) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const account = (await this.program.account.vault.fetch(vaultAddress)) as Vault
     return account
   }
   public async getVaultEntryForOwner(
@@ -160,14 +163,7 @@ export class Exchange {
     collateral: PublicKey,
     owner: PublicKey
   ) {
-    const [vaultAddress] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
-        synthetic.toBuffer(),
-        collateral.toBuffer()
-      ],
-      this.program.programId
-    )
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const [vaultEntry] = await PublicKey.findProgramAddress(
       [
         Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
