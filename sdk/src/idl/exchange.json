@@ -1211,9 +1211,7 @@
       "args": [
         {
           "name": "maxSupply",
-          "type": {
-            "defined": "Decimal"
-          }
+          "type": "u64"
         }
       ]
     },
@@ -1345,7 +1343,7 @@
       ]
     },
     {
-      "name": "createSwapLine",
+      "name": "createSwapline",
       "accounts": [
         {
           "name": "state",
@@ -1353,7 +1351,7 @@
           "isSigner": false
         },
         {
-          "name": "swapLine",
+          "name": "swapline",
           "isMut": true,
           "isSigner": false
         },
@@ -1413,7 +1411,7 @@
           "isSigner": false
         },
         {
-          "name": "swapLine",
+          "name": "swapline",
           "isMut": true,
           "isSigner": false
         },
@@ -1461,6 +1459,42 @@
       ]
     },
     {
+      "name": "setHaltedSwapline",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "swapline",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "halted",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "nativeToSynthetic",
       "accounts": [
         {
@@ -1469,7 +1503,7 @@
           "isSigner": false
         },
         {
-          "name": "swapLine",
+          "name": "swapline",
           "isMut": true,
           "isSigner": false
         },
@@ -1535,7 +1569,7 @@
           "isSigner": false
         },
         {
-          "name": "swapLine",
+          "name": "swapline",
           "isMut": true,
           "isSigner": false
         },
@@ -1648,7 +1682,7 @@
       }
     },
     {
-      "name": "SwapLine",
+      "name": "Swapline",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1687,6 +1721,10 @@
           {
             "name": "collateralReserve",
             "type": "publicKey"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
           },
           {
             "name": "bump",
@@ -2300,8 +2338,5 @@
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
     }
-  ],
-  "metadata": {
-    "address": "FyK34rACZhjCJAqDibaKfQVVMDSeHYXvgFNBY7Dezjtf"
-  }
+  ]
 }

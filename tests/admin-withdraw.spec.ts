@@ -166,7 +166,6 @@ describe('admin', () => {
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
-        decimals: 8,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })

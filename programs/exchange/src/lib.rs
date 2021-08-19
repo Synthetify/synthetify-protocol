@@ -1398,7 +1398,7 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: Decimal) -> Result<()> {
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64) -> Result<()> {
         msg!("Synthetify: ADD SYNTHETIC");
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1412,16 +1412,19 @@ pub mod exchange {
         };
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
-            asset_address: *ctx.accounts.asset_address.key,
-            max_supply,
+            asset_address: *ctx.accounts.asset_address.to_account_info().key,
+            max_supply: Decimal {
+                val: max_supply.into(),
+                scale: ctx.accounts.asset_address.decimals,
+            },
             settlement_slot: u64::MAX,
             supply: Decimal {
                 val: 0,
-                scale: max_supply.scale,
+                scale: ctx.accounts.asset_address.decimals,
             },
             swapline_supply: Decimal {
                 val: 0,
-                scale: max_supply.scale,
+                scale: ctx.accounts.asset_address.decimals,
             },
         };
         assets_list.append_synthetic(new_synthetic);
@@ -2024,7 +2027,7 @@ pub struct AddSynthetic<'info> {
     pub admin: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    pub asset_address: AccountInfo<'info>,
+    pub asset_address: CpiAccount<'info, anchor_spl::token::Mint>,
     pub feed_address: AccountInfo<'info>,
 }
 
