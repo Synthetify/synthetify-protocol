@@ -743,6 +743,11 @@ pub mod exchange {
         // Cannot payback more than liquidation_rate of user debt
         let max_repay = user_debt.mul(state.liquidation_rate).to_usd().to_u64();
 
+        let amount: u64 = match amount {
+            u64::MAX => max_repay,
+            _ => amount,
+        };
+
         if amount.gt(&max_repay) {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
