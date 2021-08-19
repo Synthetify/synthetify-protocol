@@ -1054,7 +1054,39 @@ export class Exchange {
     })
     return ix
   }
-  public async vaultDeposit() {}
+  public async vaultDeposit({
+    amount,
+    owner,
+    synthetic,
+    collateral,
+    userCollateralAccount,
+    reserveAddress,
+    collateralToken,
+    exchangeAuthority,
+    signers
+  }: DepositVault) {
+    const depositVaultIx = await this.vaultDepositInstruction({
+      owner,
+      synthetic,
+      collateral,
+      userCollateralAccount,
+      reserveAddress,
+      amount
+    })
+    const approveIx = Token.createApproveInstruction(
+      collateralToken.programId,
+      userCollateralAccount,
+      exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    await signAndSend(
+      new Transaction().add(approveIx).add(depositVaultIx),
+      signers,
+      this.connection
+    )
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1287,14 +1319,7 @@ export interface DepositInstruction {
   reserveAddress: PublicKey
   amount: BN
 }
-export interface VaultDepositInstruction {
-  owner: PublicKey
-  synthetic: PublicKey
-  collateral: PublicKey
-  userCollateralAccount: PublicKey
-  reserveAddress: PublicKey
-  amount: BN
-}
+
 export interface SettleSyntheticInstruction {
   payer: PublicKey
   tokenToSettle: PublicKey
@@ -1387,6 +1412,25 @@ export interface VaultEntry {
   lastAccumulatedInterestRate: Decimal
   syntheticAmount: Decimal
   collateralAmount: Decimal
+}
+export interface VaultDepositInstruction {
+  owner: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  userCollateralAccount: PublicKey
+  reserveAddress: PublicKey
+  amount: BN
+}
+export interface DepositVault {
+  amount: BN
+  owner: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  userCollateralAccount: PublicKey
+  reserveAddress: PublicKey
+  collateralToken: Token
+  exchangeAuthority: PublicKey
+  signers: Array<Account>
 }
 export interface CollateralEntry {
   amount: BN
