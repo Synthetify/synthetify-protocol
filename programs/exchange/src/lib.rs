@@ -1549,7 +1549,6 @@ pub mod exchange {
         }
         Ok(())
     }
-
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
         let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
         let mut vault = ctx.accounts.vault.load_mut()?;        
@@ -1617,6 +1616,31 @@ pub mod exchange {
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
 
         token::transfer(cpi_ctx, amount)?;
+        Ok(())
+    }
+    #[access_control(vault_halted(&ctx.accounts.vault)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: BORROW VAULT");
+        // adjust debt
+        // calculate user_vault_debt_with_adjustment
+        // calculate mint_limit
+        // check mint_limit
+        // check limit_borrow
+        // mint
+        let state = &ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        let xusd_synthetic = &mut assets_list.synthetics[0];
+
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: xusd_synthetic.supply.scale,
+        };
+
+
         Ok(())
     }
 }
@@ -2385,8 +2409,6 @@ pub struct DepositVault<'info> {
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
     fn from(accounts: &DepositVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -2398,6 +2420,27 @@ impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>> for CpiContext<'a, 'b, 'c, 'i
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
+}
+
+#[derive(Accounts)]
+pub struct BorrowVault<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: AccountInfo<'info>, // not must be owner
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
 }
 
 #[error]
