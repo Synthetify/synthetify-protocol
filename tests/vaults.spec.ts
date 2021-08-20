@@ -219,15 +219,21 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
 
-    const userCollateralTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
-    const amount = new BN(10 ** usdc.reserveBalance.scale) //.mul(new BN(100))
+    const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+    const amount = new BN(10).pow(new BN(usdc.reserveBalance.scale))
+    await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(amount))
+    const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+    const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
+
+    assert.ok(userUsdcTokenAccountInfo.amount.eq(amount))
+    assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(new BN(0)))
 
     await exchange.vaultDeposit({
       amount,
       owner: accountOwner.publicKey,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
-      userCollateralAccount: userCollateralTokenAccount,
+      userCollateralAccount: userUsdcTokenAccount,
       reserveAddress: usdcVaultReserve,
       collateralToken: usdcToken,
       signers: [accountOwner]
