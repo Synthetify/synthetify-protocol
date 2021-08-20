@@ -78,6 +78,8 @@ describe('vaults', () => {
       [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
+    nonce = _nonce
+
     exchangeAuthority = _mintAuthority
     snyTokenFeed = await createPriceFeed({
       oracleProgram,
