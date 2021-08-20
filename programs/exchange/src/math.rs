@@ -32,7 +32,11 @@ pub fn calculate_debt(
         // rounding up to be sure that debt is not less than minted tokens
 
         debt = debt
-            .add(price.mul_up(synthetic.supply).to_usd_up())
+            .add(
+                price
+                    .mul_up(synthetic.supply.sub(synthetic.swapline_supply).unwrap())
+                    .to_usd_up(),
+            )
             .unwrap();
     }
     Ok(debt)
@@ -410,49 +414,64 @@ mod tests {
                 ..Default::default()
             };
 
-            // debt 1000
+            // price debt 1000 USD
+            // twap debt 1100 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(10).to_price(),
+                twap: Decimal::from_integer(11).to_price(),
                 last_update: slot - 10,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100).to_scale(6),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 2400
+            // price debt 2400 USD
+            // twap debt 2000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(12).to_price(),
+                twap: Decimal::from_integer(10).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(200).to_scale(6),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 1000
+            // price debt 1000 USD
+            // twap debt 750 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(20).to_price(),
+                twap: Decimal::from_integer(15).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(50).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 4400
+            // total price debt 4400 USD
+            // total twap debt 3850 USD
             let assets_ref = RefCell::new(assets_list);
             let assets_ref = assets_ref.borrow_mut();
 
-            let result = calculate_debt(&assets_ref, slot, 100, false);
-            match result {
+            let price_debt = calculate_debt(&assets_ref, slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref, slot, 100, true);
+            match price_debt {
                 Ok(debt) => assert_eq!(debt, Decimal::from_integer(4400).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(3850).to_usd()),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
@@ -462,46 +481,60 @@ mod tests {
                 ..Default::default()
             };
 
-            // debt 200_000_000
+            // price debt 200_000_000 USD
+            // twap debt 100_000_000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(2).to_price(),
+                twap: Decimal::from_integer(1).to_price(),
                 last_update: slot - 10,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
-                supply: Decimal::from_integer(100_000_000).to_scale(6),
-                asset_index: assets_list.head_assets as u8 - 1,
+                supply: Decimal::from_integer(110_000_000).to_scale(6),
+                swapline_supply: Decimal::from_integer(10_000_000).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 5_000_000_000
+            // price debt 5_000_000_000 USD
+            // twap debt 5_100_000_000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(50_000).to_price(),
+                twap: Decimal::from_integer(51_000).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 1_000_000
+            // price debt 1_000_000 USD
+            // twap debt 1_000_000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(1).to_price(),
+                twap: Decimal::from_integer(1).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1_000_000).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
-            match result {
+            let price_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, true);
+            match price_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(5201000000).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
                 Ok(debt) => assert_eq!(debt, Decimal::from_integer(5201000000).to_usd()),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
@@ -512,59 +545,76 @@ mod tests {
                 ..Default::default()
             };
 
-            // debt 200_000_000
+            // price debt 200_000_000 USD
+            // twap debt 200_000_000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(2).to_price(),
+                twap: Decimal::from_integer(2).to_price(),
                 last_update: slot - 10,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000_000).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 5_000_000_000
+            // price debt 5_000_000_000 USD
+            // twap debt 4_800_000_000 USD
             assets_list.append_asset(Asset {
                 price: Decimal::from_integer(50_000).to_price(),
+                twap: Decimal::from_integer(45_000).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 0.0001
+            // price debt 0.0001 USD
+            // twap debt 0.00015 USD
             assets_list.append_asset(Asset {
                 price: Decimal::new(1, 4).to_price(),
+                twap: Decimal::new(15, 5).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1).to_scale(6),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 0.152407...
+            // price debt 0.152407... USD
+            // twap debt  0.152407... USD
             assets_list.append_asset(Asset {
                 price: Decimal::new(1_2345, 4).to_price(),
+                twap: Decimal::new(1_2345, 4).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(12345678, 8).to_scale(8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
-            match result {
+            let price_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, true);
+            match price_debt {
                 Ok(debt) => assert_eq!({ debt.val }, 5200000000_152508),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
+                Ok(debt) => assert_eq!({ debt.val }, 4700000000_152558),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
@@ -574,47 +624,61 @@ mod tests {
                 ..Default::default()
             };
 
-            // debt 198807739,182321
+            // price debt 198807739,182321 USD
+            // twap debt  152245875,570381 USD
             assets_list.append_asset(Asset {
                 price: Decimal::new(1_567, 3).to_price(),
+                twap: Decimal::new(1_200, 3).to_price(),
                 last_update: slot - 10,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(126871562_97531672, 8),
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
 
-            // debt 733398054,012891
+            // price debt 733398054,012891 USD
+            // twap debt  713142108,2 USD
             assets_list.append_asset(Asset {
                 price: Decimal::new(51420_19, 2).to_price(),
+                twap: Decimal::new(50000, 0).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(14262_842164, 6),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
-            // debt 5138,531149
+            // price debt 5138,531149 USD
+            // twap debt  5181,015477 USD
             assets_list.append_asset(Asset {
                 price: Decimal::new(3_9672, 4).to_price(),
+                twap: Decimal::from_integer(4).to_price(),
                 last_update: 100,
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(1295_25386912, 8),
-                asset_index: assets_list.head_assets as u8 - 1,
+                swapline_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
 
             let assets_ref = RefCell::new(assets_list);
 
-            let result = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
-            match result {
+            let price_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref.borrow_mut(), slot, 100, true);
+            match price_debt {
                 Ok(debt) => assert_eq!({ debt.val }, 932210931_726364),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
+                Ok(debt) => assert_eq!({ debt.val }, 865393164_785858),
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
@@ -634,6 +698,7 @@ mod tests {
         });
         assets_list.append_synthetic(Synthetic {
             supply: Decimal::from_integer(100).to_scale(8),
+            swapline_supply: Decimal::from_integer(0).to_scale(8),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });
@@ -646,6 +711,7 @@ mod tests {
         });
         assets_list.append_synthetic(Synthetic {
             supply: Decimal::from_integer(200).to_scale(8),
+            swapline_supply: Decimal::from_integer(0).to_scale(8),
             asset_index: assets_list.head_assets as u8 - 1,
             ..Default::default()
         });

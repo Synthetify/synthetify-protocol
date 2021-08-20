@@ -99,7 +99,8 @@ describe('staking with multiple users', () => {
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,

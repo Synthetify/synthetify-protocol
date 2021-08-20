@@ -474,3 +474,30 @@ export const waitForBeggingOfASlot = async (connection: Connection) => {
   const startSlot = await connection.getSlot()
   while (startSlot == (await connection.getSlot())) {}
 }
+
+export const getSwapLineAmountOut = async ({
+  amountIn,
+  fee,
+  inDecimals,
+  outDecimals
+}: SwapLineAmountOut) => {
+  const decimalsDif = inDecimals - outDecimals
+  if (decimalsDif <= 0) {
+    const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
+    const swapAmountOut = new BN(amountIn).sub(swapFee)
+    const scaledAmountOut = swapAmountOut.mul(new BN(10 ** -decimalsDif))
+
+    return { fee: swapFee, amountOut: scaledAmountOut }
+  } else {
+    const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
+    const swapAmountOut = new BN(amountIn).sub(swapFee)
+    const scaledAmountOut = swapAmountOut.div(new BN(10 ** decimalsDif))
+    return { fee: swapFee, amountOut: scaledAmountOut }
+  }
+}
+export interface SwapLineAmountOut {
+  fee: Decimal
+  amountIn: BN
+  outDecimals: number
+  inDecimals: number
+}

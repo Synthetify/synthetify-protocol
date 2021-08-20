@@ -143,25 +143,21 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
     return;
 }
 
-pub fn calculate_debt_with_interest(
+pub fn calculate_debt_with_adjustment(
     state: &mut State,
     assets_list: &mut RefMut<AssetsList>,
     slot: u64,
     timestamp: i64,
 ) -> Result<Decimal> {
-    let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
-    let usd = &mut assets_list.borrow_mut().synthetics[0];
-    adjust_interest_debt(state, usd, total_debt_twap, timestamp);
-
-    let total_debt_price = calculate_debt(assets_list, slot, state.max_delay, false).unwrap();
-    Ok(total_debt_price)
+    adjust_interest_debt(state, assets_list, slot, timestamp);
+    Ok(calculate_debt(assets_list, slot, state.max_delay, false).unwrap())
 }
 
 // Change total_twap_debt
 pub fn adjust_interest_debt(
     state: &mut State,
-    usd: &mut Synthetic,
-    total_debt_twap: Decimal,
+    assets_list: &mut RefMut<AssetsList>,
+    slot: u64,
     timestamp: i64,
 ) {
     const ADJUSTMENT_PERIOD: i64 = 60;
@@ -171,9 +167,11 @@ pub fn adjust_interest_debt(
         .checked_div(ADJUSTMENT_PERIOD)
         .unwrap();
     if diff >= 1 {
+        let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
         let minute_interest_rate = calculate_minute_interest_rate(state.debt_interest_rate);
         let compounded_interest =
             calculate_compounded_interest(total_debt_twap, minute_interest_rate, diff as u128);
+        let usd = &mut assets_list.borrow_mut().synthetics[0];
 
         usd.supply = usd.supply.add(compounded_interest).unwrap();
         state.accumulated_debt_interest = state
@@ -229,7 +227,7 @@ pub fn get_user_sny_collateral_balance(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{cell::RefCell, u64};
+    use std::{borrow::Borrow, cell::RefCell, u64};
 
     #[test]
     fn adjust_staking_account_test() {
@@ -743,92 +741,95 @@ mod tests {
     }
     #[test]
     fn test_adjust_interest_debt() {
-        // 1%
+        // 1% debt interest rate
         let state = State {
-            debt_interest_rate: Decimal::new(1, 2).to_interest_rate(),
+            debt_interest_rate: Decimal::from_percent(1).to_interest_rate(),
             accumulated_debt_interest: Decimal::from_usd(0),
             last_debt_adjustment: 0,
             ..Default::default()
         };
-        let usd = Synthetic {
-            supply: Decimal::from_integer(100_000).to_usd(),
+        // slot and timestamp could be out of sync - no effect in this test
+        let current_timestamp = 65;
+        let current_slot = 100;
+
+        let mut assets_list = AssetsList {
             ..Default::default()
         };
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(1).to_price(),
+            twap: Decimal::from_integer(1).to_price(),
+            last_update: current_slot,
+            ..Default::default()
+        });
+        assets_list.append_synthetic(Synthetic {
+            supply: Decimal::from_integer(100_000).to_usd(),
+            swapline_supply: Decimal::from_usd(0),
+            asset_index: assets_list.head_assets - 1,
+            ..Default::default()
+        });
+    
         // single period adjustment
         {
-            let total_debt = Decimal::from_integer(100_000).to_usd();
-            let current_timestamp = 65;
             let mut state = state.clone();
-            let mut usd = usd.clone();
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
-
+            let assets_ref = RefCell::new(assets_list);
             // real     0.0019025... $
             // expected 0.001903     $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_001_903));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(1903));
-            assert_eq!(last_debt_adjustment, 60);
+            adjust_interest_debt(&mut state,&mut assets_ref.borrow_mut(),current_slot, current_timestamp);
+
+            let usd = assets_ref.borrow().synthetics[0];
+            assert_eq!(usd.supply, Decimal::from_usd(100_000_001_903));
+            assert_eq!(state.accumulated_debt_interest, Decimal::from_usd(1903));
+            assert_eq!({state.last_debt_adjustment}, 60);
         }
         // multiple period adjustment
         {
-            let total_debt = Decimal::from_integer(100_000).to_usd();
+
             let current_timestamp = 120;
             let mut state = state.clone();
-            let mut usd = usd.clone();
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
-
+            let assets_ref = RefCell::new(assets_list);
             // real     0.0038051... $
             // expected 0.003806     $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_003_806));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(3806));
-            assert_eq!(last_debt_adjustment, 120);
+            adjust_interest_debt(&mut state,&mut assets_ref.borrow_mut(),current_slot, current_timestamp);
+
+            let usd = assets_ref.borrow().synthetics[0];
+            assert_eq!(usd.supply, Decimal::from_usd(100_000_003_806));
+            assert_eq!(state.accumulated_debt_interest, Decimal::from_usd(3806));
+            assert_eq!({state.last_debt_adjustment}, 120);
         }
         // multiple adjustment
         {
-            // timestamp [90 -> 121 -> 183]
-            let total_debt = Decimal::from_integer(100_000).to_usd();
+            // timestamp adjustment points [90 -> 121 -> 183]
             let current_timestamp = 90;
             let mut state = state.clone();
-            let mut usd = usd.clone();
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            let assets_ref = RefCell::new(assets_list);
+            adjust_interest_debt(&mut state,&mut assets_ref.borrow_mut(),current_slot, current_timestamp);
 
             // real     0.0019025... $
             // expected 0.001903     $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_001_903));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(1903));
-            assert_eq!(last_debt_adjustment, 60);
+            let usd = assets_ref.borrow().synthetics[0];
+            assert_eq!(usd.supply, Decimal::from_usd(100_000_001_903));
+            assert_eq!(state.accumulated_debt_interest, Decimal::from_usd(1903));
+            assert_eq!({state.last_debt_adjustment}, 60);
 
             let current_timestamp = 121;
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            adjust_interest_debt(&mut state,&mut assets_ref.borrow_mut(),current_slot, current_timestamp);
 
             // real     0.0038051... $
             // expected 0.003806     $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_003_806));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(3806));
-            assert_eq!(last_debt_adjustment, 120);
+            let usd = assets_ref.borrow().synthetics[0];
+            assert_eq!(usd.supply, Decimal::from_usd(100_000_003_806));
+            assert_eq!(state.accumulated_debt_interest, Decimal::from_usd(3806));
+            assert_eq!({state.last_debt_adjustment}, 120);
 
             let current_timestamp = 183;
-            adjust_interest_debt(&mut state, &mut usd, total_debt, current_timestamp);
+            adjust_interest_debt(&mut state,&mut assets_ref.borrow_mut(),current_slot, current_timestamp);
 
             // real     0.005707... $
             // expected 0.005709    $
-            let usd_supply = usd.supply;
-            let accumulated_debt_interest = state.accumulated_debt_interest;
-            let last_debt_adjustment = state.last_debt_adjustment;
-            assert_eq!(usd_supply, Decimal::from_usd(100_000_005_709));
-            assert_eq!(accumulated_debt_interest, Decimal::from_usd(5709));
-            assert_eq!(last_debt_adjustment, 180);
+            let usd = assets_ref.borrow().synthetics[0];
+            assert_eq!(usd.supply, Decimal::from_usd(100_000_005_709));
+            assert_eq!(state.accumulated_debt_interest, Decimal::from_usd(5709));
+            assert_eq!({state.last_debt_adjustment}, 180);
         }
     }
     #[test]
@@ -856,6 +857,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_usd(),
+                swapline_supply: Decimal::from_integer(0).to_usd(),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -869,6 +871,7 @@ mod tests {
             });
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(10_000).to_usd(),
+                swapline_supply: Decimal::from_integer(0).to_usd(),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -877,7 +880,7 @@ mod tests {
             let assets_ref = RefCell::new(assets_list);
             // price debt 150_000 USD
             // twap debt 140_000 USD
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
@@ -909,7 +912,7 @@ mod tests {
 
             // price debt 150_000.005328 USD
             // twap debt 140_000.005328 USD
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
@@ -932,7 +935,7 @@ mod tests {
 
             let timestamp: i64 = 185;
 
-            let total_debt = calculate_debt_with_interest(
+            let total_debt = calculate_debt_with_adjustment(
                 &mut state,
                 &mut assets_ref.borrow_mut(),
                 slot,
