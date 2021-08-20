@@ -1584,19 +1584,19 @@ pub mod exchange {
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
         let state = &ctx.accounts.state.load()?;
-        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let assets_list = &ctx.accounts.assets_list.load()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
         
         let collateral_index = assets_list
             .collaterals
-            .iter_mut()
+            .iter()
             .position(|x| {
                 x.collateral_address.eq(ctx.accounts.collateral.key)
             })
             .unwrap();
-        let collateral = &mut assets_list.collaterals[collateral_index];
-        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+        let collateral = &assets_list.collaterals[collateral_index];
+        let user_collateral_account = &ctx.accounts.user_collateral_account;
 
         let tx_signer = ctx.accounts.owner.key;
         // Signer need to be owner of source account
@@ -2381,8 +2381,7 @@ pub struct DepositVault<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
-    pub assets_list: Loader<'info, AssetsList>, // check is required
+    pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
