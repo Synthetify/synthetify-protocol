@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
-use crate::decimal::{Add, Compare, Div, Mul};
+use crate::decimal::{Add, Compare, Div, Mul, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate, calculate_value_in_usd, usd_to_token_amount};
 use crate::*;
 
@@ -185,7 +185,7 @@ pub fn adjust_interest_debt(
     }
 }
 
-fn adjust_vault_accumulated_interest_rate(vault: &mut Vault, timestamp: i64,) {
+fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64,) {
     const ADJUSTMENT_PERIOD: i64 = 60;
     let diff = timestamp
     .checked_sub(vault.last_update)
@@ -203,22 +203,34 @@ fn adjust_vault_accumulated_interest_rate(vault: &mut Vault, timestamp: i64,) {
     }
 }
 pub fn adjust_vault_entry_interest_debt(vault: &mut Vault, vault_entry: &mut VaultEntry, assets_list: &mut AssetsList,timestamp: i64) {
-    let interest_denominator = vault_entry.last_accumulated_interest_rate;
-    adjust_vault_accumulated_interest_rate(vault, timestamp);
-    let interest_numerator = vault_entry.last_accumulated_interest_rate;
-    let (assets, _, synthetics) = assets_list.split_borrow();
+    adjust_vault_interest_rate(vault, timestamp);
 
+    let interest_denominator = vault_entry.last_accumulated_interest_rate;
+    let interest_numerator = vault.accumulated_interest_rate;
+    let interest_debt = interest_numerator.div(interest_denominator);
+
+    let (assets, _, synthetics) = assets_list.split_borrow();
     let synthetic_index = assets_list.synthetics
         .iter_mut()
-        .position(|x| x.asset_address == vault.collateral)
+        .position(|x| x.asset_address == vault.synthetic)
         .unwrap();
     let synthetic = assets_list.synthetics[synthetic_index];
     let asset = assets[synthetics[synthetic_index].asset_index as usize];
-    let actual_interest = interest_numerator.div(interest_denominator);
+
     let vault_entry_debt = calculate_value_in_usd(asset.price, vault_entry.synthetic_amount);
-    let new_vault_entry_debt = vault_entry_debt.mul(actual_interest);
+    let new_vault_entry_debt = vault_entry_debt.mul(interest_debt);
     let new_synthetic_amount = usd_to_token_amount(&asset, new_vault_entry_debt, vault_entry.synthetic_amount.scale);
-    vault_entry.synthetic_amount = new_synthetic_amount;
+
+    // perform vault entry adjustment only if debt difference is greater than the smallest unit of the token
+    if new_synthetic_amount.gt(vault_entry.synthetic_amount).unwrap() {
+        let additional_tokens = new_synthetic_amount.sub(vault_entry.synthetic_amount).unwrap();
+        // increase vault accumulated_interest
+        vault.accumulated_interest = vault.accumulated_interest.add(additional_tokens).unwrap();
+        // increase vault mint_amount
+        vault.mint_amount = vault.mint_amount.add(additional_tokens).unwrap();
+        // increase vault entry synthetic_amount
+        vault_entry.synthetic_amount = new_synthetic_amount;
+    }
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
@@ -980,5 +992,9 @@ mod tests {
             assert_eq!(accumulated_debt_interest, Decimal::from_usd(7992));
             assert_eq!(last_debt_adjustment, 180);
         }
+    }
+    #[test]
+    fn test_adjust_vault_entry_interest_debt() {
+        // adjust_vault_entry_interest_debt(vault, vault_entry, assets_list, timestamp)
     }
 }
