@@ -1583,7 +1583,7 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
-        let state = &mut ctx.accounts.state.load_mut()?;
+        let state = &ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
@@ -2367,7 +2367,7 @@ pub struct CreateVaultEntry<'info> {
 
 #[derive(Accounts)]
 pub struct DepositVault<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // maybe immutable
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // maybe immutable
     pub state: Loader<'info, State>,
     #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
