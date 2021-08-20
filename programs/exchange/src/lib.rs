@@ -923,6 +923,10 @@ pub mod exchange {
             let burn = CpiContext::new(token_program, burn_accounts).with_signer(signer_seeds);
             token::burn(burn, liquidation_amount.to_u64())?;
         }
+        // Clean user collateral if empty
+        if exchange_account.collaterals[exchange_account_collateral_index].amount == 0 {
+            exchange_account.remove(exchange_account_collateral_index);
+        }
 
         Ok(())
     }
