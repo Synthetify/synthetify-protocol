@@ -223,8 +223,7 @@ pub mod exchange {
         };
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-        assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT");
         let state = &mut ctx.accounts.state.load_mut()?;
@@ -239,14 +238,6 @@ pub mod exchange {
 
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
-
-        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
-
-        let tx_signer = ctx.accounts.owner.key;
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
 
         let collateral_index = assets_list
             .collaterals
@@ -287,9 +278,7 @@ pub mod exchange {
         token::transfer(cpi_ctx, amount)?;
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn mint(ctx: Context<Mint>, amount: u64) -> Result<()> {
         msg!("Synthetify: MINT");
         let mut state = &mut ctx.accounts.state.load_mut()?;
@@ -350,8 +339,7 @@ pub mod exchange {
         token::mint_to(mint_cpi_ctx, amount.to_u64())?;
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW");
         let mut state = &mut ctx.accounts.state.load_mut()?;
@@ -365,12 +353,7 @@ pub mod exchange {
         let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
         adjust_staking_account(exchange_account, &state.staking);
 
-        // Check signer
         let user_collateral_account = &mut ctx.accounts.user_collateral_account;
-        let tx_signer = ctx.accounts.owner.key;
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -464,8 +447,7 @@ pub mod exchange {
         token::transfer(cpi_ctx, amount_to_withdraw.val.try_into().unwrap())?;
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-        assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn swap(ctx: Context<Swap>, amount: u64) -> Result<()> {
         msg!("Synthetify: SWAP");
         let mut state = &mut ctx.accounts.state.load_mut()?;
@@ -576,9 +558,7 @@ pub mod exchange {
         token::mint_to(cpi_ctx_mint, amount_for.into())?;
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list)
-    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn burn(ctx: Context<BurnToken>, amount: u64) -> Result<()> {
         msg!("Synthetify: BURN");
 
@@ -597,14 +577,6 @@ pub mod exchange {
         let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
-        let tx_signer = ctx.accounts.owner.key;
-        let user_token_account_burn = &ctx.accounts.user_token_account_burn;
-        msg!("121");
-
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_token_account_burn.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
         // xUSD got static index 0
         let burn_asset = &mut assets[0];
         let burn_synthetic = &mut synthetics[0];
@@ -702,9 +674,7 @@ pub mod exchange {
             Ok(())
         }
     }
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list)
-    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn liquidate(ctx: Context<Liquidate>, amount: u64) -> Result<()> {
         msg!("Synthetify: LIQUIDATE");
 
@@ -1943,7 +1913,7 @@ pub struct AdminWithdraw<'info> {
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
@@ -2085,7 +2055,9 @@ impl ExchangeAccount {
 pub struct Withdraw<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
@@ -2093,7 +2065,7 @@ pub struct Withdraw<'info> {
     pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2115,15 +2087,21 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 pub struct Mint<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
-    pub to: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(mut,
+        constraint = &to.mint == usd_token.key
+    )]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2145,20 +2123,26 @@ impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 pub struct Deposit<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut)]
+    #[account(mut,has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &reserve_address.owner == exchange_authority.key
+    )]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_collateral_account.owner == owner.key,
+    )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     // owner can deposit to any exchange_account
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
@@ -2178,21 +2162,30 @@ pub struct Liquidate<'info> {
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &liquidator_usd_account.mint == usd_token.key,
+        constraint = &liquidator_usd_account.owner == signer.key
+    )]
     pub liquidator_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
-    pub liquidator_collateral_account: AccountInfo<'info>,
+    pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = liquidation_fund.mint == liquidator_collateral_account.mint
+    )]
     pub liquidation_fund: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
@@ -2201,15 +2194,22 @@ pub struct Liquidate<'info> {
 pub struct BurnToken<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint= exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_token_account_burn.mint == usd_token.key,
+        constraint = &user_token_account_burn.owner == owner.key
+    )]
     pub user_token_account_burn: CpiAccount<'info, TokenAccount>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2233,18 +2233,24 @@ pub struct Swap<'info> {
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub token_in: AccountInfo<'info>,
     #[account(mut)]
     pub token_for: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_token_account_in.mint == token_in.key
+    )]
     pub user_token_account_in: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
-    pub user_token_account_for: AccountInfo<'info>,
+    #[account(mut,
+        constraint = &user_token_account_for.mint == token_for.key
+    )]
+    pub user_token_account_for: CpiAccount<'info, TokenAccount>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
@@ -2279,6 +2285,9 @@ pub struct CheckCollateralization<'info> {
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
@@ -2296,13 +2305,16 @@ pub struct WithdrawRewards<'info> {
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub user_token_account: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = user_token_account.mint == staking_fund_account.mint,
+        constraint = &staking_fund_account.owner == exchange_authority.key
+    )]
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]
@@ -2311,15 +2323,20 @@ pub struct WithdrawLiquidationPenalty<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = liquidation_fund.mint == to.mint,
+        constraint = &liquidation_fund.owner == exchange_authority.key
+    )]
     pub liquidation_fund: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
@@ -2444,23 +2461,27 @@ pub struct SettleSynthetic<'info> {
     pub settlement: Loader<'info, Settlement>,
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub payer: AccountInfo<'info>,
     pub token_to_settle: AccountInfo<'info>,
     #[account(
         mut,
-        "&settlement_reserve.owner == exchange_authority.key",
-        "&settlement_reserve.mint == usd_token.key"
+        constraint = &settlement_reserve.owner == exchange_authority.key,
+        constraint = &settlement_reserve.mint == usd_token.key
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&SettleSynthetic<'info>>
@@ -2482,24 +2503,32 @@ pub struct SwapSettledSynthetic<'info> {
     pub settlement: Loader<'info, Settlement>,
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut, "token_to_settle.key == &settlement.load()?.token_in_address")]
+    #[account(mut,
+        constraint = token_to_settle.key == &settlement.load()?.token_in_address
+    )]
     pub token_to_settle: AccountInfo<'info>,
     #[account(mut)]
     pub user_settled_token_account: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &user_usd_account.mint
+    )]
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
         "settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address"
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
-    #[account("usd_token.key == &settlement.load()?.token_out_address")]
+    #[account(
+        constraint = usd_token.key == &settlement.load()?.token_out_address
+    )]
     pub usd_token: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(signer, "&user_settled_token_account.owner == signer.key")]
+    #[account(signer,
+        constraint = &user_settled_token_account.owner == signer.key
+    )]
     pub signer: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>

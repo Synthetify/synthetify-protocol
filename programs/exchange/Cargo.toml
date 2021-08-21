@@ -16,8 +16,8 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.11.1"
-anchor-spl = "0.11.1"
+anchor-lang = "0.13.2"
+anchor-spl = "0.13.2"
 thincollections = "0.5"
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
 pyth = { path = "../pyth", features = ["cpi"] }
