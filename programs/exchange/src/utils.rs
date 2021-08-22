@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
-use crate::decimal::{Add, Compare, Div, Mul, Sub};
+use crate::decimal::{Add, Compare, Mul, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
 use crate::*;
 
@@ -225,12 +225,6 @@ pub fn adjust_vault_entry_interest_debt(
         .add(interest_minuend.sub(interest_subtrahend).unwrap())
         .unwrap();
     let new_synthetic_amount = vault_entry.synthetic_amount.mul(interest_debt_diff);
-    println!("interest_debt = {:?}", interest_debt_diff);
-    println!(
-        "previous synthetic supply = {:?}",
-        vault_entry.synthetic_amount
-    );
-    println!("new synthetic supply = {:?}", new_synthetic_amount);
 
     // perform vault entry adjustment only if debt difference is greater than the smallest unit of the token
     if new_synthetic_amount
@@ -240,7 +234,6 @@ pub fn adjust_vault_entry_interest_debt(
         let additional_tokens = new_synthetic_amount
             .sub(vault_entry.synthetic_amount)
             .unwrap();
-        println!("additional_tokens: {:?}", additional_tokens);
         // increase synthetic supply
         synthetic.supply = synthetic.supply.add(additional_tokens).unwrap();
         // increase synthetic borrowed_supply
@@ -280,7 +273,7 @@ pub fn get_user_sny_collateral_balance(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{borrow::Borrow, cell::RefCell, u64};
+    use std::{cell::RefCell, u64};
 
     #[test]
     fn adjust_staking_account_test() {
@@ -1089,11 +1082,10 @@ mod tests {
             let synthetic = &mut assets_list.borrow_mut().synthetics[0];
             adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-            // accumulated_interest_rate
+            // interest_new_minuend
             // real     1.000000732496194824...
             // expected 1.000000732496194822
-            let expected_interest_new_denominator =
-                Decimal::from_interest_rate(1000000732496194822);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1000000732496194822);
             let expected_supply_increase = Decimal::new(146506, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
@@ -1106,7 +1098,7 @@ mod tests {
             assert_eq!({ vault.last_update }, 420);
             assert_eq!(
                 vault.accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(vault.mint_amount, expected_synthetic_borrowed_supply);
             assert_eq!(vault.accumulated_interest, expected_supply_increase);
@@ -1114,7 +1106,7 @@ mod tests {
             // verify vault entry adjustment
             assert_eq!(
                 vault_entry.last_accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(
                 vault_entry.synthetic_amount,
@@ -1161,11 +1153,10 @@ mod tests {
             let timestamp = 124;
             adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-            // accumulated_interest_rate
+            // interest_new_minuend
             // real     1.0000002092846270928...
             // expected 1.000000209284627092
-            let expected_interest_new_denominator =
-                Decimal::from_interest_rate(1000000209284627092);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1000000209284627092);
             let expected_supply_increase = Decimal::new(41859, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
@@ -1178,7 +1169,7 @@ mod tests {
             assert_eq!({ vault.last_update }, 120);
             assert_eq!(
                 vault.accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(vault.mint_amount, expected_synthetic_borrowed_supply);
             assert_eq!(vault.accumulated_interest, expected_supply_increase);
@@ -1186,7 +1177,7 @@ mod tests {
             // verify vault entry adjustment
             assert_eq!(
                 vault_entry.last_accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(
                 vault_entry.synthetic_amount,
@@ -1203,15 +1194,14 @@ mod tests {
             let timestamp = 40269;
             adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-            // accumulated_interest_rate
+            // interest_new_minuend
             // real     1.000070214992389649...
             // expected 1.000070214992389366
 
             // additional tokens
             // real     14.0018445...
             // expected 14.001844
-            let expected_interest_new_denominator =
-                Decimal::from_interest_rate(1000070214992389366);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1000070214992389366);
             let accumulated_interest_before_adjustment = expected_supply_increase;
             let expected_supply_increase = Decimal::new(14001844, synthetic_total_supply.scale);
             let expected_accumulated_interest = accumulated_interest_before_adjustment
@@ -1224,15 +1214,11 @@ mod tests {
                 .add(expected_accumulated_interest)
                 .unwrap();
 
-            // println!("last adjustment timestamp = {:?}", { vault.last_update });
-            // println!("new denominator = {:?}", vault.accumulated_interest_rate);
-            // println!("accumulated interest = {:?}", vault.accumulated_interest);
-
             // verify vault adjustment
             assert_eq!({ vault.last_update }, 40260);
             assert_eq!(
                 vault.accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(vault.mint_amount, expected_synthetic_borrowed_supply);
             assert_eq!(vault.accumulated_interest, expected_accumulated_interest);
@@ -1240,7 +1226,7 @@ mod tests {
             // verify vault entry adjustment
             assert_eq!(
                 vault_entry.last_accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(
                 vault_entry.synthetic_amount,
@@ -1255,11 +1241,9 @@ mod tests {
             );
 
             let timestamp = 48325;
-            println!("LAST ADJUSTMENT");
-            println!("================");
             adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-            // interest_new_denominator
+            // interest_new_minuend
             // real     1.000084237062404586...
             // expected 1.000084237062404530
 
@@ -1271,8 +1255,7 @@ mod tests {
             // real     2.804751...
             // expected 2.804751
 
-            let expected_interest_new_denominator =
-                Decimal::from_interest_rate(1000084237062404530);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1000084237062404530);
             let accumulated_interest_before_adjustment = expected_accumulated_interest;
             let expected_supply_increase = Decimal::new(2804751, synthetic_total_supply.scale);
             let expected_accumulated_interest = accumulated_interest_before_adjustment
@@ -1285,15 +1268,11 @@ mod tests {
                 .add(expected_accumulated_interest)
                 .unwrap();
 
-            // println!("last adjustment timestamp = {:?}", { vault.last_update });
-            // println!("new denominator = {:?}", vault.accumulated_interest_rate);
-            // println!("accumulated interest = {:?}", vault.accumulated_interest);
-
             // verify vault adjustment
             assert_eq!({ vault.last_update }, 48300);
             assert_eq!(
                 vault.accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(vault.mint_amount, expected_synthetic_borrowed_supply);
             assert_eq!(vault.accumulated_interest, expected_accumulated_interest);
@@ -1301,7 +1280,7 @@ mod tests {
             // verify vault entry adjustment
             assert_eq!(
                 vault_entry.last_accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(
                 vault_entry.synthetic_amount,
@@ -1313,11 +1292,6 @@ mod tests {
             assert_eq!(
                 synthetic.borrowed_supply,
                 expected_synthetic_borrowed_supply
-            );
-
-            println!(
-                "synthetic borrowed supply = {:?}",
-                synthetic.borrowed_supply
             );
         }
         // adjust vault entry with working for a while vault
@@ -1333,12 +1307,9 @@ mod tests {
             vault_entry.last_accumulated_interest_rate =
                 Decimal::from_percent(132).to_interest_rate();
 
-            println!("VAULT ENTRY");
-            println!("================");
-
             adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-            // interest_new_denominator
+            // interest_new_minuend
             // real     1.320084237062404870...
             // expected 1.320084237062404530
 
@@ -1350,8 +1321,7 @@ mod tests {
             // real     16.8482548...
             // expected 16.848254
 
-            let expected_interest_new_denominator =
-                Decimal::from_interest_rate(1320084237062404530);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1320084237062404530);
             let expected_supply_increase = Decimal::new(16848254, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
@@ -1364,7 +1334,7 @@ mod tests {
             assert_eq!({ vault.last_update }, 48300);
             assert_eq!(
                 vault.accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(vault.mint_amount, expected_synthetic_borrowed_supply);
             assert_eq!(vault.accumulated_interest, expected_supply_increase);
@@ -1372,7 +1342,7 @@ mod tests {
             // verify vault entry adjustment
             assert_eq!(
                 vault_entry.last_accumulated_interest_rate,
-                expected_interest_new_denominator
+                expected_interest_new_minuend
             );
             assert_eq!(
                 vault_entry.synthetic_amount,
@@ -1385,13 +1355,6 @@ mod tests {
                 synthetic.borrowed_supply,
                 expected_synthetic_borrowed_supply
             );
-            println!(
-                "synthetic borrowed supply = {:?}",
-                synthetic.borrowed_supply
-            );
-            // println!("last adjustment timestamp = {:?}", { vault.last_update });
-            // println!("new denominator = {:?}", vault.accumulated_interest_rate);
-            // println!("accumulated interest = {:?}", vault.accumulated_interest);
         }
     }
 }
