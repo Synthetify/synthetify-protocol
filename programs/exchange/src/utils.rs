@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
-use crate::decimal::{Add, Compare, Mul, Sub};
+use crate::decimal::{Add, Compare, Mul, MulUp, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
 use crate::*;
 
@@ -224,29 +224,23 @@ pub fn adjust_vault_entry_interest_debt(
         .to_interest_rate()
         .add(interest_minuend.sub(interest_subtrahend).unwrap())
         .unwrap();
-    let new_synthetic_amount = vault_entry.synthetic_amount.mul(interest_debt_diff);
+    let new_synthetic_amount = vault_entry.synthetic_amount.mul_up(interest_debt_diff);
+    let additional_tokens = new_synthetic_amount
+        .sub(vault_entry.synthetic_amount)
+        .unwrap();
 
-    // perform vault entry adjustment only if debt difference is greater than the smallest unit of the token
-    if new_synthetic_amount
-        .gt(vault_entry.synthetic_amount)
-        .unwrap()
-    {
-        let additional_tokens = new_synthetic_amount
-            .sub(vault_entry.synthetic_amount)
-            .unwrap();
-        // increase synthetic supply
-        synthetic.supply = synthetic.supply.add(additional_tokens).unwrap();
-        // increase synthetic borrowed_supply
-        synthetic.borrowed_supply = synthetic.borrowed_supply.add(additional_tokens).unwrap();
-        // increase vault accumulated_interest
-        vault.accumulated_interest = vault.accumulated_interest.add(additional_tokens).unwrap();
-        // increase vault mint_amount
-        vault.mint_amount = vault.mint_amount.add(additional_tokens).unwrap();
-        // increase vault entry synthetic_amount
-        vault_entry.synthetic_amount = new_synthetic_amount;
-        // commit adjustment by setting interest minuend as new interest subtrahend
-        vault_entry.last_accumulated_interest_rate = interest_minuend;
-    }
+    // increase synthetic supply
+    synthetic.supply = synthetic.supply.add(additional_tokens).unwrap();
+    // increase synthetic borrowed_supply
+    synthetic.borrowed_supply = synthetic.borrowed_supply.add(additional_tokens).unwrap();
+    // increase vault accumulated_interest
+    vault.accumulated_interest = vault.accumulated_interest.add(additional_tokens).unwrap();
+    // increase vault mint_amount
+    vault.mint_amount = vault.mint_amount.add(additional_tokens).unwrap();
+    // increase vault entry synthetic_amount
+    vault_entry.synthetic_amount = new_synthetic_amount;
+    // commit adjustment by setting interest minuend as new interest subtrahend
+    vault_entry.last_accumulated_interest_rate = interest_minuend;
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
@@ -1086,7 +1080,7 @@ mod tests {
             // real     1.000000732496194824...
             // expected 1.000000732496194822
             let expected_interest_new_minuend = Decimal::from_interest_rate(1000000732496194822);
-            let expected_supply_increase = Decimal::new(146506, synthetic_total_supply.scale);
+            let expected_supply_increase = Decimal::new(146507, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
                 .unwrap();
@@ -1195,7 +1189,7 @@ mod tests {
             // real     1.0000002092846270928...
             // expected 1.000000209284627092
             let expected_interest_new_minuend = Decimal::from_interest_rate(1000000209284627092);
-            let expected_supply_increase = Decimal::new(41859, synthetic_total_supply.scale);
+            let expected_supply_increase = Decimal::new(41860, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
                 .unwrap();
@@ -1238,10 +1232,10 @@ mod tests {
 
             // additional tokens
             // real     14.0018445...
-            // expected 14.001844
+            // expected 14.001845
             let expected_interest_new_minuend = Decimal::from_interest_rate(1000070214992389366);
             let accumulated_interest_before_adjustment = expected_supply_increase;
-            let expected_supply_increase = Decimal::new(14001844, synthetic_total_supply.scale);
+            let expected_supply_increase = Decimal::new(14001845, synthetic_total_supply.scale);
             let expected_accumulated_interest = accumulated_interest_before_adjustment
                 .add(expected_supply_increase)
                 .unwrap();
@@ -1291,11 +1285,11 @@ mod tests {
 
             // additional_tokens
             // real     2.804751...
-            // expected 2.804751
+            // expected 2.804752
 
             let expected_interest_new_minuend = Decimal::from_interest_rate(1000084237062404530);
             let accumulated_interest_before_adjustment = expected_accumulated_interest;
-            let expected_supply_increase = Decimal::new(2804751, synthetic_total_supply.scale);
+            let expected_supply_increase = Decimal::new(2804752, synthetic_total_supply.scale);
             let expected_accumulated_interest = accumulated_interest_before_adjustment
                 .add(expected_supply_increase)
                 .unwrap();
@@ -1357,10 +1351,10 @@ mod tests {
 
             // additional_tokens
             // real     16.8482548...
-            // expected 16.848254
+            // expected 16.848255
 
             let expected_interest_new_minuend = Decimal::from_interest_rate(1320084237062404530);
-            let expected_supply_increase = Decimal::new(16848254, synthetic_total_supply.scale);
+            let expected_supply_increase = Decimal::new(16848255, synthetic_total_supply.scale);
             let expected_synthetic_borrowed_supply = synthetic_borrowed_supply
                 .add(expected_supply_increase)
                 .unwrap();
