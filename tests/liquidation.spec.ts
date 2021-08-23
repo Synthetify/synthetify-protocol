@@ -851,6 +851,12 @@ describe('liquidation', () => {
       const userDebtBalanceBefore = await exchange.getUserDebtBalance(exchangeAccount)
       const collateral = assetsListDataUpdated.collaterals[0]
       const collateralAsset = assetsListDataUpdated.assets[collateral.assetIndex]
+      const liquidationFundAccountDataBefore = await collateralToken.getAccountInfo(
+        collateral.liquidationFund
+      )
+      const liquidatorLiquidationAccountDataBefore = await collateralToken.getAccountInfo(
+        liquidatorCollateralAccount
+      )
 
       // Trigger liquidation
       await exchange.liquidate({
@@ -881,9 +887,11 @@ describe('liquidation', () => {
         liquidatorCollateralAccount
       )
       const liquidationFundAccountData = await collateralToken.getAccountInfo(snyLiquidationFund)
-      const collateralTaken = liquidatorLiquidationAccountData.amount.add(
-        liquidationFundAccountData.amount
-      )
+      const collateralTaken = liquidatorLiquidationAccountData.amount
+        .sub(liquidatorLiquidationAccountDataBefore.amount)
+        .add(liquidationFundAccountData.amount)
+        .sub(liquidationFundAccountDataBefore.amount)
+
       // Overall amount of collateral stay the same
       assert.ok(collateralTaken.eq(collateralAmount))
 
