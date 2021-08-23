@@ -700,7 +700,7 @@
         },
         {
           "name": "assetsList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
