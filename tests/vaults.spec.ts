@@ -58,6 +58,7 @@ describe('vaults', () => {
   const wallet = provider.wallet.payer as Account
 
   let snyToken: Token
+  let xusdToken: Token
   let assetsList: PublicKey
   let snyTokenFeed: PublicKey
   let exchangeAuthority: PublicKey
@@ -115,6 +116,7 @@ describe('vaults', () => {
       snyLiquidationFund
     })
     assetsList = data.assetsList
+    xusdToken = data.usdToken
 
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
@@ -223,7 +225,7 @@ describe('vaults', () => {
     const usdc = assetsListData.collaterals[1]
 
     const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
-    const amount = new BN(10).pow(new BN(usdc.reserveBalance.scale))
+    const amount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(100) // mint 100 USD
     await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(amount))
     const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
     const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
@@ -239,6 +241,22 @@ describe('vaults', () => {
       userCollateralAccount: userUsdcTokenAccount,
       reserveAddress: usdcVaultReserve,
       collateralToken: usdcToken,
+      signers: [accountOwner]
+    })
+  })
+  it('should borrow xusd from usdc/xusd vault entry', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+
+    const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
+
+    await exchange.borrowVault({
+      amount: new BN(1),
+      owner: accountOwner.publicKey,
+      to: xusdTokenAmount,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
       signers: [accountOwner]
     })
   })
