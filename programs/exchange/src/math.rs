@@ -29,15 +29,14 @@ pub fn calculate_debt(
             true => asset.twap,
             _ => asset.price,
         };
-        let supply = synthetic.supply.sub(synthetic.swapline_supply).unwrap().sub(synthetic.borrowed_supply).unwrap();
-        // rounding up to be sure that debt is not less than minted tokens
-        debt = debt
-            .add(
-                price
-                    .mul_up(supply)
-                    .to_usd_up(),
-            )
+        let supply = synthetic
+            .supply
+            .sub(synthetic.swapline_supply)
+            .unwrap()
+            .sub(synthetic.borrowed_supply)
             .unwrap();
+        // rounding up to be sure that debt is not less than minted tokens
+        debt = debt.add(price.mul_up(supply).to_usd_up()).unwrap();
     }
     Ok(debt)
 }
@@ -238,6 +237,20 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
+}
+pub fn calculate_vault_borrow_limit(
+    collateral_asset: Asset,
+    synthetic_asset: Asset,
+    synthetic: Synthetic,
+    collateral_amount: Decimal,
+    collateral_ratio: Decimal,
+) -> Decimal {
+    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let max_debt = collateral_value.mul(collateral_ratio);
+    let max_synthetic_amount =
+        usd_to_token_amount(&synthetic_asset, max_debt, synthetic.supply.scale);
+
+    return max_synthetic_amount;
 }
 
 #[cfg(test)]
