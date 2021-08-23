@@ -10,7 +10,6 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
-    use std::borrow::Borrow;
     use std::{borrow::BorrowMut, convert::TryInto};
 
     use crate::math::{
@@ -1851,6 +1850,7 @@ pub mod exchange {
     pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: BORROW VAULT");
         let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
 
         let state = ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -1873,7 +1873,10 @@ pub mod exchange {
         let collateral_asset = assets[collateral_position];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-        // should update oracle price
+
+        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
 
         let amount_borrow_limit = calculate_vault_borrow_limit(
             collateral_asset,
