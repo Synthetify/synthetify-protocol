@@ -1236,6 +1236,44 @@ export class Exchange {
       this.connection
     )
   }
+  public async borrowVaultInstruction({
+    owner,
+    to,
+    synthetic,
+    collateral,
+    amount
+  }: BorrowVaultInstruction) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    return (await this.program.instruction.depositVault(amount, {
+      accounts: {
+        synthetic,
+        collateral,
+        owner,
+        to,
+        state: this.stateAddress,
+        vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })) as TransactionInstruction
+  }
+  public async borrowVault({ owner, to, synthetic, collateral, amount, signers }: BorrowVault) {
+    await this.getState()
+    const borrowVaultIx = await this.borrowVaultInstruction({
+      owner,
+      to,
+      synthetic,
+      collateral,
+      amount
+    })
+    return this.updatePricesAndSend([borrowVaultIx], signers, this.assetsList.headAssets >= 20)
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1581,6 +1619,22 @@ export interface DepositVault {
   userCollateralAccount: PublicKey
   reserveAddress: PublicKey
   collateralToken: Token
+  signers: Array<Account | Keypair>
+}
+
+export interface BorrowVaultInstruction {
+  owner: PublicKey
+  to: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  amount: BN
+}
+export interface BorrowVault {
+  owner: PublicKey
+  to: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  amount: BN
   signers: Array<Account | Keypair>
 }
 export interface CollateralEntry {
