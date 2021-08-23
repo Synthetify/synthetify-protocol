@@ -10,13 +10,15 @@ use utils::*;
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 #[program]
 pub mod exchange {
+    use std::borrow::Borrow;
     use std::{borrow::BorrowMut, convert::TryInto};
 
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount,
+        calculate_user_debt_in_usd, calculate_value_in_usd, calculate_vault_borrow_limit,
+        usd_to_token_amount,
     };
 
     use crate::decimal::{
@@ -1767,6 +1769,7 @@ pub mod exchange {
     }
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
+
         let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
         let mut vault = ctx.accounts.vault.load_mut()?;
         let assets_list = ctx.accounts.assets_list.load()?;
@@ -1801,6 +1804,7 @@ pub mod exchange {
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
         let timestamp = Clock::get()?.unix_timestamp;
+
         let state = &ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
@@ -1846,23 +1850,76 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: BORROW VAULT");
-        // adjust debt
-        // calculate user_vault_debt_with_adjustment
+        // adjust_vault_entry_interest_debt
+        // should update oracle price
         // calculate mint_limit
         // check mint_limit
         // check limit_borrow
         // mint
+        let timestamp = Clock::get()?.unix_timestamp;
+
         let state = &ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let xusd_synthetic = &mut assets_list.synthetics[0];
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
 
-        let amount_decimal = Decimal {
-            val: amount.into(),
-            scale: xusd_synthetic.supply.scale,
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = &mut synthetics[synthetic_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = assets[synthetic_position];
+        let collateral_asset = assets[collateral_position];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+        // should update oracle price
+
+        let amount_borrow_limit = calculate_vault_borrow_limit(
+            collateral_asset,
+            synthetic_asset,
+            *synthetic,
+            vault_entry.collateral_amount,
+            vault.collateral_ratio,
+        );
+
+        let borrow_amount = match amount {
+            u64::MAX => amount_borrow_limit
+                .sub(vault_entry.synthetic_amount)
+                .unwrap(),
+            _ => Decimal::new(amount.into(), synthetic.supply.scale),
         };
+        let amount_after_borrow = vault_entry.synthetic_amount.add(borrow_amount).unwrap();
+
+        if amount_borrow_limit.lt(amount_after_borrow)? {
+            return Err(ErrorCode::UserBorrowLimit.into());
+        }
+        if vault.max_borrow.lt(amount_after_borrow)? {
+            return Err(ErrorCode::VaultBorrowLimit.into());
+        }
+
+        // update vault
+        vault.mint_amount = vault.mint_amount.add(borrow_amount)?;
+
+        // update vault_entry
+        vault_entry.synthetic_amount = amount_after_borrow;
+
+        // update synthetic
+        synthetic.borrowed_supply = synthetic.borrowed_supply.add(borrow_amount)?;
+        let new_synthetic_supply = synthetic.supply.add(borrow_amount).unwrap();
+        set_synthetic_supply(synthetic, new_synthetic_supply)?;
+
+        // let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        // let signer = &[&seeds[..]];
+        // let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        // token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
 
         Ok(())
     }
@@ -2917,6 +2974,10 @@ pub enum ErrorCode {
     MissmatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
+    #[msg("User borrow limit")]
+    UserBorrowLimit = 32,
+    #[msg("Vault borrow limit")]
+    VaultBorrowLimit = 33,
 }
 
 // Access control modifiers.
