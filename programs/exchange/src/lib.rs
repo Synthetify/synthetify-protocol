@@ -1850,15 +1850,9 @@ pub mod exchange {
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: BORROW VAULT");
-        // adjust_vault_entry_interest_debt
-        // should update oracle price
-        // calculate mint_limit
-        // check mint_limit
-        // check limit_borrow
-        // mint
         let timestamp = Clock::get()?.unix_timestamp;
 
-        let state = &ctx.accounts.state.load()?;
+        let state = ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
@@ -1875,7 +1869,6 @@ pub mod exchange {
             .unwrap();
 
         let synthetic = &mut synthetics[synthetic_position];
-        let collateral = &mut collaterals[collateral_position];
         let synthetic_asset = assets[synthetic_position];
         let collateral_asset = assets[collateral_position];
 
@@ -1901,12 +1894,10 @@ pub mod exchange {
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
         }
-        if vault.max_borrow.lt(amount_after_borrow)? {
-            return Err(ErrorCode::VaultBorrowLimit.into());
-        }
 
         // update vault
-        vault.mint_amount = vault.mint_amount.add(borrow_amount)?;
+        let new_mint_amount = vault.mint_amount.add(borrow_amount).unwrap();
+        set_new_vault_mint_amount(vault, new_mint_amount)?;
 
         // update vault_entry
         vault_entry.synthetic_amount = amount_after_borrow;
@@ -1916,10 +1907,10 @@ pub mod exchange {
         let new_synthetic_supply = synthetic.supply.add(borrow_amount).unwrap();
         set_synthetic_supply(synthetic, new_synthetic_supply)?;
 
-        // let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
-        // let signer = &[&seeds[..]];
-        // let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        // token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
 
         Ok(())
     }
@@ -2906,6 +2897,17 @@ pub struct BorrowVault<'info> {
     pub token_program: AccountInfo<'info>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &BorrowVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.synthetic.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
 }
 
 #[error]

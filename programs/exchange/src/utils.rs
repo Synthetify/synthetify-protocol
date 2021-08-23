@@ -250,6 +250,13 @@ pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> P
     synthetic.supply = new_supply;
     Ok(())
 }
+pub fn set_new_vault_mint_amount(vault: &mut Vault, new_mint_amount: Decimal) -> ProgramResult {
+    if vault.max_borrow.lt(new_mint_amount).unwrap() {
+        return Err(ErrorCode::VaultBorrowLimit.into());
+    }
+    vault.mint_amount = new_mint_amount;
+    Ok(())
+}
 pub fn get_user_sny_collateral_balance(
     exchange_account: &ExchangeAccount,
     sny_asset: &Collateral,
