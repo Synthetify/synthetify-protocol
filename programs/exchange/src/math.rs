@@ -1382,4 +1382,33 @@ mod tests {
             assert_eq!(minute_interest_rate, expected);
         }
     }
+
+    #[test]
+    fn test_calculate_vault_borrow_limit() {
+        let btc_decimal = 8;
+        let btc_asset = Asset {
+            price: Decimal::from_integer(49_862).to_price(),
+            ..Default::default()
+        };
+        let xusd_asset = Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        };
+        let xusd_synthetic = Synthetic {
+            supply: Decimal::from_integer(100).to_usd(),
+            ..Default::default()
+        };
+        let collateral_amount = Decimal::from_integer(2).to_scale(btc_decimal);
+        let collateral_ratio = Decimal::from_percent(70);
+
+        let borrow_limit = calculate_vault_borrow_limit(
+            btc_asset,
+            xusd_asset,
+            xusd_synthetic,
+            collateral_amount,
+            collateral_ratio,
+        );
+        let expected_borrow_limit = Decimal::new(698068, 1).to_usd();
+        assert_eq!(borrow_limit, expected_borrow_limit);
+    }
 }
