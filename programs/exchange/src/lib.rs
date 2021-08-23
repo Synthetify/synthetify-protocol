@@ -307,7 +307,8 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let mint_limit = max_debt.mul(state.health_factor);
@@ -375,7 +376,8 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -595,7 +597,8 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
         let tx_signer = ctx.accounts.owner.key;
@@ -735,7 +738,8 @@ pub mod exchange {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
 
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -920,7 +924,8 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
         let total_debt =
-            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
+            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp)
+                .unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -1113,7 +1118,7 @@ pub mod exchange {
         let timestamp = Clock::get()?.unix_timestamp;
         let state = &mut ctx.accounts.state.load_mut()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        
+
         adjust_interest_debt(state, assets_list, slot, timestamp);
 
         let mut actual_amount = Decimal {
@@ -1646,6 +1651,7 @@ pub mod exchange {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx_transfer = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
         token::transfer(cpi_ctx_transfer, amount.to_u64())?;
+
         Ok(())
     }
     #[access_control(assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
@@ -1703,6 +1709,7 @@ pub mod exchange {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx_transfer = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
         token::transfer(cpi_ctx_transfer, amount_out.to_u64())?;
+
         Ok(())
     }
 
@@ -1725,7 +1732,7 @@ pub mod exchange {
             .synthetics
             .iter()
             .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
-            .unwrap();    
+            .unwrap();
         let collateral = assets_list
             .collaterals
             .iter()
@@ -1733,7 +1740,7 @@ pub mod exchange {
         if collateral == None {
             return Err(ErrorCode::NoAssetFound.into());
         }
-        let collateral =  collateral.unwrap();
+        let collateral = collateral.unwrap();
 
         require!(
             collateral_ratio.ltq(Decimal::from_percent(100))?,
@@ -1750,18 +1757,19 @@ pub mod exchange {
             vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
             vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
-            vault.collateral_amount = Decimal::new(0,collateral.reserve_balance.scale);
+            vault.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
             vault.max_borrow = max_borrow;
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
         }
+
         Ok(())
     }
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
-        let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
-        let mut vault = ctx.accounts.vault.load_mut()?;        
-        let assets_list = ctx.accounts.assets_list.load()?;
         let timestamp = Clock::get()?.unix_timestamp;
+        let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+        let mut vault = ctx.accounts.vault.load_mut()?;
+        let assets_list = ctx.accounts.assets_list.load()?;
 
         let synthetic = assets_list
             .synthetics
@@ -1773,37 +1781,45 @@ pub mod exchange {
             .iter()
             .find(|x| x.collateral_address.eq(&vault.collateral))
             .unwrap();
-        
-        adjust_vault_debt(vault.borrow_mut(), timestamp);
+
+        adjust_vault_interest_rate(&mut vault, timestamp);
         // Init vault entry
         {
             vault_entry.bump = bump;
-            vault_entry.owner  = *ctx.accounts.owner.key;
+            vault_entry.owner = *ctx.accounts.owner.key;
             vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
             vault_entry.last_accumulated_interest_rate = vault.accumulated_interest_rate;
             vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
             vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
         }
+
         Ok(())
     }
+
     #[access_control(vault_halted(&ctx.accounts.vault)
     assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
+        let timestamp = Clock::get()?.unix_timestamp;
         let state = &ctx.accounts.state.load()?;
-        let assets_list = &ctx.accounts.assets_list.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
-        
-        let collateral_index = assets_list
-            .collaterals
+        let (_, collaterals, synthetics) = assets_list.split_borrow();
+
+        let collateral = collaterals
             .iter()
-            .position(|x| {
-                x.collateral_address.eq(ctx.accounts.collateral.key)
-            })
+            .find(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
             .unwrap();
-        let collateral = &assets_list.collaterals[collateral_index];
+
+        let synthetic = synthetics
+            .iter_mut()
+            .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
         let user_collateral_account = &ctx.accounts.user_collateral_account;
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         let tx_signer = ctx.accounts.owner.key;
         // Signer need to be owner of source account
@@ -1822,8 +1838,8 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-
         token::transfer(cpi_ctx, amount)?;
+
         Ok(())
     }
     #[access_control(vault_halted(&ctx.accounts.vault)
@@ -1847,7 +1863,6 @@ pub mod exchange {
             val: amount.into(),
             scale: xusd_synthetic.supply.scale,
         };
-
 
         Ok(())
     }
@@ -2129,7 +2144,9 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
 impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
     for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
 {
-    fn from(accounts: &WithdrawAccumulatedDebtInterest<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(
+        accounts: &WithdrawAccumulatedDebtInterest<'info>,
+    ) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
             mint: accounts.usd_token.to_account_info(),
             to: accounts.to.to_account_info(),
@@ -2794,12 +2811,15 @@ pub struct DepositVault<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
 }
-impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>> for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+{
     fn from(accounts: &DepositVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: accounts.user_collateral_account.to_account_info(),

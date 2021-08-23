@@ -185,7 +185,7 @@ pub fn adjust_interest_debt(
     }
 }
 
-fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64) {
+pub fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64) {
     const ADJUSTMENT_PERIOD: i64 = 60;
     let diff = timestamp
         .checked_sub(vault.last_update)
