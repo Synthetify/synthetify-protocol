@@ -229,11 +229,23 @@ describe('vaults', () => {
     const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
     collateralAmount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(100) // mint 100 USD
     await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(collateralAmount))
+
     const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
     const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
+    const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+    const vaultEntry = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
 
     assert.ok(userUsdcTokenAccountInfo.amount.eq(collateralAmount))
     assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(new BN(0)))
+
+    // vault collateral should be empty
+    const expectedCollateralAmount = toDecimal(new BN(0), usdc.reserveBalance.scale)
+    assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
+    assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
     await exchange.vaultDeposit({
       amount: collateralAmount,
@@ -245,6 +257,36 @@ describe('vaults', () => {
       collateralToken: usdcToken,
       signers: [accountOwner]
     })
+
+    const userUsdcTokenAccountInfoAfterDeposit = await usdcToken.getAccountInfo(
+      userUsdcTokenAccount
+    )
+    const usdcVaultReserveTokenAccountInfoAfterDeposit = await usdcToken.getAccountInfo(
+      usdcVaultReserve
+    )
+    const vaultAfterDeposit = await exchange.getVaultForPair(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
+    const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    const expectedCollateralAmountAfterDeposit = toDecimal(
+      collateralAmount,
+      usdc.reserveBalance.scale
+    )
+
+    // swap balances
+    assert.ok(userUsdcTokenAccountInfoAfterDeposit.amount.eq(new BN(0)))
+    assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(collateralAmount))
+
+    // deposit to vault
+    assert.ok(eqDecimals(vaultAfterDeposit.collateralAmount, expectedCollateralAmountAfterDeposit))
+    assert.ok(
+      eqDecimals(vaultEntryAfterDeposit.collateralAmount, expectedCollateralAmountAfterDeposit)
+    )
   })
   it('should borrow xusd from usdc/xusd vault entry', async () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
