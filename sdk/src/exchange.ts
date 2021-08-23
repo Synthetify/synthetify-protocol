@@ -1347,6 +1347,7 @@ export interface Synthetic {
   assetAddress: PublicKey
   supply: Decimal
   maxSupply: Decimal
+  borrowedSupply: Decimal
   swaplineSupply: Decimal
   settlementSlot: BN
 }
