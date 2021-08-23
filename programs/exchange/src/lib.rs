@@ -37,7 +37,6 @@ pub mod exchange {
         exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
-    // #[access_control(admin(&self, &ctx.accounts.signer))]
     pub fn create_list(
         ctx: Context<InitializeAssetsList>,
         collateral_token: Pubkey,
@@ -294,7 +293,8 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let mint_limit = max_debt.mul(state.health_factor);
@@ -356,7 +356,8 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -573,7 +574,8 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
         // xUSD got static index 0
@@ -703,7 +705,8 @@ pub mod exchange {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
 
-        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
+        let total_debt =
+            calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -888,7 +891,8 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
         let total_debt =
-            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
+            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp)
+                .unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -1081,7 +1085,7 @@ pub mod exchange {
         let timestamp = Clock::get()?.unix_timestamp;
         let state = &mut ctx.accounts.state.load_mut()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        
+
         adjust_interest_debt(state, assets_list, slot, timestamp);
 
         let mut actual_amount = Decimal {
@@ -1901,7 +1905,9 @@ pub struct AddNewAsset<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
@@ -1912,6 +1918,9 @@ pub struct AdminWithdraw<'info> {
     pub admin: AccountInfo<'info>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
+    #[account(
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
     pub usd_token: AccountInfo<'info>,
@@ -1952,7 +1961,9 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
 impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
     for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
 {
-    fn from(accounts: &WithdrawAccumulatedDebtInterest<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(
+        accounts: &WithdrawAccumulatedDebtInterest<'info>,
+    ) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
             mint: accounts.usd_token.to_account_info(),
             to: accounts.to.to_account_info(),
@@ -1968,7 +1979,9 @@ pub struct SetMaxSupply<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
@@ -1977,7 +1990,9 @@ pub struct SetPriceFeed<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub price_feed: AccountInfo<'info>,
 }
@@ -1987,7 +2002,9 @@ pub struct AddCollateral<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
     pub liquidation_fund: AccountInfo<'info>,
@@ -2000,7 +2017,9 @@ pub struct SetCollateralRatio<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub collateral_address: AccountInfo<'info>,
 }
@@ -2018,7 +2037,9 @@ pub struct SetSettlementSlot<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic_address: AccountInfo<'info>,
 }
@@ -2028,18 +2049,14 @@ pub struct AddSynthetic<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: CpiAccount<'info, anchor_spl::token::Mint>,
     pub feed_address: AccountInfo<'info>,
 }
 
-#[derive(Accounts)]
-pub struct New<'info> {
-    pub admin: AccountInfo<'info>,
-    pub assets_list: AccountInfo<'info>,
-    pub staking_fund_account: CpiAccount<'info, TokenAccount>,
-}
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
@@ -2335,7 +2352,7 @@ pub struct CheckCollateralization<'info> {
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
-    #[account(mut,
+    #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
