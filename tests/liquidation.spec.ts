@@ -624,7 +624,7 @@ describe('liquidation', () => {
       exchange.wallet.signAllTransactions(txs)
       txs[0].partialSign(liquidator)
       const promisesTx = txs.map((tx) => sendAndConfirmRawTransaction(connection, tx.serialize()))
-      await assertThrowsAsync(Promise.all(promisesTx), ERRORS_EXCHANGE.INVALID_ASSETS_LIST)
+      await assertThrowsAsync(Promise.all(promisesTx))
     })
   })
 })

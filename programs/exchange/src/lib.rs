@@ -872,8 +872,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn check_account_collateralization(ctx: Context<CheckCollateralization>) -> Result<()> {
         msg!("Synthetify: CHECK ACCOUNT COLLATERALIZATION");
 
@@ -955,8 +954,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state)
-    fund_account(&ctx.accounts.state,&ctx.accounts.staking_fund_account))]
+    #[access_control(halted(&ctx.accounts.state))]
     pub fn withdraw_rewards(ctx: Context<WithdrawRewards>) -> Result<()> {
         msg!("Synthetify: WITHDRAW REWARDS");
 
@@ -993,8 +991,7 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state)
-    admin(&ctx.accounts.state, &ctx.accounts.admin)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn withdraw_liquidation_penalty(
         ctx: Context<WithdrawLiquidationPenalty>,
         amount: Decimal,
@@ -1025,8 +1022,7 @@ pub mod exchange {
         Ok(())
     }
     // admin methods
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
     pub fn add_new_asset(ctx: Context<AddNewAsset>, new_asset_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
 
@@ -1043,8 +1039,7 @@ pub mod exchange {
         assets_list.append_asset(new_asset);
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
-    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn withdraw_swap_tax(ctx: Context<AdminWithdraw>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW SWAP TAX");
         let state = &mut ctx.accounts.state.load_mut()?;
@@ -1074,8 +1069,7 @@ pub mod exchange {
         token::mint_to(mint_cpi_ctx, actual_amount.to_usd().to_u64())?;
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
-    usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn withdraw_accumulated_debt_interest(
         ctx: Context<WithdrawAccumulatedDebtInterest>,
         amount: u64,
@@ -1354,8 +1348,7 @@ pub mod exchange {
         state.admin = *ctx.accounts.new_admin.key;
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_settlement_slot(
         ctx: Context<SetSettlementSlot>,
         settlement_slot: u64,
@@ -1408,8 +1401,6 @@ pub mod exchange {
         assets_list.append_synthetic(new_synthetic);
         Ok(())
     }
-    #[access_control(usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn settle_synthetic(ctx: Context<SettleSynthetic>, bump: u8) -> Result<()> {
         let slot = Clock::get()?.slot;
 
@@ -1489,7 +1480,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin) assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn create_swapline(ctx: Context<CreateSwapline>, bump: u8, limit: u64) -> Result<()> {
         msg!("Synthetify: CREATE SWAPLINE");
 
@@ -1562,7 +1553,6 @@ pub mod exchange {
         swapline.halted = halted;
         Ok(())
     }
-    #[access_control(assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn native_to_synthetic(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: NATIVE TO SYNTHETIC");
@@ -1621,7 +1611,6 @@ pub mod exchange {
         token::transfer(cpi_ctx_transfer, amount.to_u64())?;
         Ok(())
     }
-    #[access_control(assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn synthetic_to_native(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: SYNTHETIC TO NATIVE");
@@ -1754,6 +1743,9 @@ pub struct CreateSwapline<'info> {
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(constraint = &collateral_reserve.mint == collateral.key)]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
@@ -1783,7 +1775,9 @@ pub struct UseSwapLine<'info> {
         constraint = &user_synthetic_account.owner == signer.key
     )]
     pub user_synthetic_account: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
         mut,
@@ -1922,7 +1916,9 @@ pub struct AdminWithdraw<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
@@ -1949,9 +1945,13 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+    )]
     pub usd_token: AccountInfo<'info>,
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
@@ -2380,7 +2380,8 @@ pub struct WithdrawRewards<'info> {
     pub user_token_account: CpiAccount<'info, TokenAccount>,
     #[account(mut,
         constraint = user_token_account.mint == staking_fund_account.mint,
-        constraint = &staking_fund_account.owner == exchange_authority.key
+        constraint = &staking_fund_account.owner == exchange_authority.key,
+        constraint = staking_fund_account.to_account_info().key == &state.load()?.staking.fund_account
     )]
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
 }
@@ -2714,46 +2715,6 @@ fn admin(state_loader: &Loader<State>, signer: &AccountInfo) -> Result<()> {
 fn halted<'info>(state_loader: &Loader<State>) -> Result<()> {
     let state = state_loader.load()?;
     require!(!state.halted, Halted);
-    Ok(())
-}
-// Assert right assets_list
-fn assets_list<'info>(
-    state_loader: &Loader<State>,
-    assets_list: &Loader<'info, AssetsList>,
-) -> Result<()> {
-    let state = state_loader.load()?;
-    require!(
-        assets_list.to_account_info().key.eq(&state.assets_list),
-        InvalidAssetsList
-    );
-    Ok(())
-}
-// Assert right usd_token
-fn usd_token<'info>(usd_token: &AccountInfo, assets_list: &Loader<AssetsList>) -> Result<()> {
-    if !usd_token
-        .to_account_info()
-        .key
-        .eq(&assets_list.load()?.synthetics[0].asset_address)
-    {
-        return Err(ErrorCode::NotSyntheticUsd.into());
-    }
-    Ok(())
-}
-
-// Assert right fundAccount
-fn fund_account<'info>(
-    state_loader: &Loader<State>,
-    fund_account: &CpiAccount<'info, TokenAccount>,
-) -> Result<()> {
-    let state = state_loader.load()?;
-
-    require!(
-        fund_account
-            .to_account_info()
-            .key
-            .eq(&state.staking.fund_account),
-        FundAccountError
-    );
     Ok(())
 }
 
