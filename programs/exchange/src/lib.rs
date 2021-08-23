@@ -2889,17 +2889,19 @@ pub struct BorrowVault<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
+    #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub to: AccountInfo<'info>, // not must be owner
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(signer)]
+    #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    pub exchange_authority: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
     fn from(accounts: &BorrowVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {

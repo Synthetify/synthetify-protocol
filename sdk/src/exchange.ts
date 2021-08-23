@@ -1246,7 +1246,7 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    return (await this.program.instruction.depositVault(amount, {
+    return (await this.program.instruction.borrowVault(amount, {
       accounts: {
         synthetic,
         collateral,

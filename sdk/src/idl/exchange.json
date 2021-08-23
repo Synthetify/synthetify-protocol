@@ -1839,7 +1839,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1850,11 +1850,6 @@
         {
           "name": "assetsList",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "exchangeAuthority",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1869,8 +1864,13 @@
         },
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -2709,6 +2709,19 @@
       "code": 331,
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
+    },
+    {
+      "code": 332,
+      "name": "UserBorrowLimit",
+      "msg": "User borrow limit"
+    },
+    {
+      "code": 333,
+      "name": "VaultBorrowLimit",
+      "msg": "Vault borrow limit"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "6qPJdMuQdnYGUQkGC3dgHrkvv6a89HiTHUEy4Hy4EJUe"
+  }
 }
