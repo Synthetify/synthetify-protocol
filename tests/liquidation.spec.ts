@@ -777,9 +777,9 @@ describe('liquidation', () => {
       // debt of exchange should reduce
       assert.ok(exchangeDebtAfter.eq(exchangeDebt.sub(maxAmount)))
     })
-    it.only('max liquidate with multiple collaterals', async () => {
+    it('max liquidate with multiple collaterals', async () => {
       const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
-      const { exchangeAccount, usdMintAmount, accountOwner, usdTokenAccount } =
+      const { exchangeAccount, accountOwner, usdTokenAccount } =
         await createAccountWithCollateralAndMaxMintUsd({
           reserveAddress: snyReserve,
           collateralToken,
@@ -791,7 +791,7 @@ describe('liquidation', () => {
         })
 
       // depositing BTC
-      const btcAmount = new BN(1e10).muln(1e7) // 50t USD
+      const btcAmount = new BN(1e10).muln(1e6) // 50t USD
       const btcAccount = await btcToken.createAccount(accountOwner.publicKey)
       await btcToken.mintTo(btcAccount, wallet, [], tou64(btcAmount))
       await exchange.deposit({
@@ -814,13 +814,13 @@ describe('liquidation', () => {
         signers: [accountOwner]
       })
 
+      // Change price of BTC to
       const assetsListData = await exchange.getAssetsList(assetsList)
       assert.ok(assetsListData.assets[2].price.val.eq(new BN(10 ** ORACLE_OFFSET).muln(50000)))
       const newCollateralPrice = 10
       await setFeedPrice(oracleProgram, newCollateralPrice, btcTokenFeed)
-      // update prices
+      // Update prices
       await exchange.updatePrices(assetsList)
-      const state = await exchange.getState()
       const assetsListDataUpdated = await exchange.getAssetsList(assetsList)
 
       assert.ok(
@@ -829,52 +829,30 @@ describe('liquidation', () => {
         )
       )
 
-      const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
-      assert.ok(userCollateralBalance.eq(collateralAmount))
-      const collateralUsdValue = tokenToUsdValue(
-        userCollateralBalance,
-        assetsListDataUpdated.assets[assetsListDataUpdated.collaterals[0].assetIndex],
-        assetsListDataUpdated.collaterals[0]
-      )
-
-      const exchangeDebt = calculateDebt(assetsListDataUpdated)
-      const userDebtBalance = await exchange.getUserDebtBalance(exchangeAccount)
-      const exchangeAccountData = await exchange.getExchangeAccount(exchangeAccount)
-      const userMaxDebt = calculateUserMaxDebt(exchangeAccountData, assetsListDataUpdated)
-      const collateral = assetsListDataUpdated.collaterals[0]
-      const collateralAsset = assetsListDataUpdated.assets[collateral.assetIndex]
-      // const { collateralToExchange, collateralToLiquidator } = calculateLiquidation(
-      //   userMaxDebt,
-      //   userDebtBalance,
-      //   state.penaltyToLiquidator,
-      //   state.penaltyToExchange,
-      //   state.liquidationRate,
-      //   collateralAsset,
-      //   collateral
-      // )
-
       const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
-      // change liquidation buffer for sake of test
+
+      // Change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const updatedState = await exchange.getState()
       assert.ok((updatedState.liquidationBuffer = newLiquidationBuffer))
-      // set account liquidation deadline
+      // Set account liquidation deadline
       await exchange.checkAccount(exchangeAccount)
       const slot = await connection.getSlot()
       const exchangeAccountDataAfterCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataAfterCheck.liquidationDeadline.eqn(slot + newLiquidationBuffer))
 
-      // wait for liquidation deadline
+      // Wait for liquidation deadline
       await sleep(6000)
-      console.log(
-        'before:',
-        (await usdToken.getAccountInfo(liquidatorUsdAccount)).amount.toString()
-      )
 
-      // trigger liquidation
+      const exchangeDebtBefore = calculateDebt(assetsListDataUpdated)
+      const userDebtBalanceBefore = await exchange.getUserDebtBalance(exchangeAccount)
+      const collateral = assetsListDataUpdated.collaterals[0]
+      const collateralAsset = assetsListDataUpdated.assets[collateral.assetIndex]
+
+      // Trigger liquidation
       await exchange.liquidate({
         exchangeAccount,
         signer: liquidator.publicKey,
@@ -889,24 +867,12 @@ describe('liquidation', () => {
       const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       await exchange.checkAccount(exchangeAccount)
       const exchangeAccountDataAfterLiquidation = await exchange.getExchangeAccount(exchangeAccount)
-      // user debt should be reduced
-      const maxAmount = tokenToUsdValue(collateralAmount, collateralAsset, collateral)
-      const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
 
-      console.log(
-        userDebtBalance.toString(),
-        userDebtBalanceAfter.toString(),
-        maxAmount.toString(),
-        userDebtBalance.sub(userDebtBalanceAfter).toString()
-        // assetsListDataAfter.assets[collateral.assetIndex].price.val.toString(),
-        // collateralAmount.toString()
-      )
-
-      console.log('after:', (await usdToken.getAccountInfo(liquidatorUsdAccount)).amount.toString())
-      // assert.ok(userDebtBalanceAfter.eq(userDebtBalance.sub(maxAmount)))
+      // Amount of burned xUSD
+      const amountInUSD = tokenToUsdValue(collateralAmount, collateralAsset, collateral)
 
       const exchangeDebtAfter = calculateDebt(assetsListDataAfter)
-      assert.ok(exchangeDebtAfter.eq(exchangeDebt.sub(maxAmount)))
+      assert.ok(exchangeDebtAfter.eq(exchangeDebtBefore.sub(amountInUSD)))
 
       // Ensure that CollateralEntry was removed
       assert.ok(exchangeAccountDataAfterLiquidation.head === 1)
@@ -918,9 +884,12 @@ describe('liquidation', () => {
       const collateralTaken = liquidatorLiquidationAccountData.amount.add(
         liquidationFundAccountData.amount
       )
+      // Overall amount of collateral stay the same
       assert.ok(collateralTaken.eq(collateralAmount))
 
-      // debt of exchange should reduce
+      // Check amount of user debt
+      const userDebtBalanceAfter = await exchange.getUserDebtBalance(exchangeAccount)
+      assert.ok(userDebtBalanceAfter.eq(userDebtBalanceBefore.sub(amountInUSD)))
     })
   })
 })

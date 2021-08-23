@@ -818,8 +818,11 @@ pub mod exchange {
         };
         // Rounding down - debt is burned in favor of the system
 
-        let burned_debt_shares =
-            amount_to_shares_by_rounding_down(state.debt_shares, total_debt.to_u64(), amount);
+        let burned_debt_shares = amount_to_shares_by_rounding_down(
+            state.debt_shares,
+            total_debt.to_u64(),
+            liquidation_amount.to_u64(),
+        );
         state.debt_shares = state.debt_shares.checked_sub(burned_debt_shares).unwrap();
 
         exchange_account.debt_shares = exchange_account
