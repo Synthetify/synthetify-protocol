@@ -37,7 +37,6 @@ pub mod exchange {
         exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
-
     // #[access_control(admin(&self, &ctx.accounts.signer))]
     pub fn create_list(
         ctx: Context<InitializeAssetsList>,
@@ -295,7 +294,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
         let mint_limit = max_debt.mul(state.health_factor);
@@ -357,7 +356,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -574,7 +573,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
 
         // xUSD got static index 0
@@ -704,7 +703,7 @@ pub mod exchange {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
 
-        let total_debt = calculate_debt_with_interest(state, assets_list, slot, timestamp).unwrap();
+        let total_debt = calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -889,7 +888,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
         let total_debt =
-            calculate_debt_with_interest(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
+            calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
@@ -1074,11 +1073,16 @@ pub mod exchange {
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
     usd_token(&ctx.accounts.usd_token,&ctx.accounts.assets_list))]
     pub fn withdraw_accumulated_debt_interest(
-        ctx: Context<AdminWithdraw>,
+        ctx: Context<WithdrawAccumulatedDebtInterest>,
         amount: u64,
     ) -> Result<()> {
         msg!("Synthetify: WITHDRAW ACCUMULATED DEBT INTEREST");
+        let slot = Clock::get()?.slot;
+        let timestamp = Clock::get()?.unix_timestamp;
         let state = &mut ctx.accounts.state.load_mut()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        
+        adjust_interest_debt(state, assets_list, slot, timestamp);
 
         let mut actual_amount = Decimal {
             val: amount.into(),
@@ -1930,6 +1934,35 @@ impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
     }
 }
 #[derive(Accounts)]
+pub struct WithdrawAccumulatedDebtInterest<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut)]
+    pub usd_token: AccountInfo<'info>,
+    #[account(mut)]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>>
+{
+    fn from(accounts: &WithdrawAccumulatedDebtInterest<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.usd_token.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
@@ -2019,8 +2052,8 @@ pub struct CreateExchangeAccount<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-#[associated(zero_copy)]
-#[derive(PartialEq, Default, Debug)]
+#[account(zero_copy)]
+#[derive(PartialEq)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controlling account
     pub version: u8,                    // Version of account struct
@@ -2030,6 +2063,23 @@ pub struct ExchangeAccount {
     pub head: u8,
     pub bump: u8,
     pub collaterals: [CollateralEntry; 32],
+}
+impl Default for ExchangeAccount {
+    #[inline]
+    fn default() -> ExchangeAccount {
+        ExchangeAccount {
+            bump: 0,
+            head: 0,
+            version: 0,
+            debt_shares: 0,
+            liquidation_deadline: 0,
+            owner: Pubkey::default(),
+            user_staking_data: UserStaking::default(),
+            collaterals: [CollateralEntry {
+                ..Default::default()
+            }; 32],
+        }
+    }
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
