@@ -37,7 +37,6 @@ pub mod exchange {
         exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
-
     // #[access_control(admin(&self, &ctx.accounts.signer))]
     pub fn create_list(
         ctx: Context<InitializeAssetsList>,
@@ -2080,8 +2079,8 @@ pub struct CreateExchangeAccount<'info> {
     pub system_program: AccountInfo<'info>,
 }
 
-#[associated(zero_copy)]
-#[derive(PartialEq, Default, Debug)]
+#[account(zero_copy)]
+#[derive(PartialEq)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controlling account
     pub version: u8,                    // Version of account struct
@@ -2091,6 +2090,23 @@ pub struct ExchangeAccount {
     pub head: u8,
     pub bump: u8,
     pub collaterals: [CollateralEntry; 32],
+}
+impl Default for ExchangeAccount {
+    #[inline]
+    fn default() -> ExchangeAccount {
+        ExchangeAccount {
+            bump: 0,
+            head: 0,
+            version: 0,
+            debt_shares: 0,
+            liquidation_deadline: 0,
+            owner: Pubkey::default(),
+            user_staking_data: UserStaking::default(),
+            collaterals: [CollateralEntry {
+                ..Default::default()
+            }; 32],
+        }
+    }
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
