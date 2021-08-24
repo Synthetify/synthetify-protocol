@@ -17,7 +17,7 @@ pub mod exchange {
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
         calculate_user_debt_in_usd, calculate_value_in_usd, calculate_vault_borrow_limit,
-        usd_to_token_amount,
+        calculate_vault_withdraw_limit, usd_to_token_amount,
     };
 
     use crate::decimal::{
@@ -1918,11 +1918,62 @@ pub mod exchange {
         Ok(())
     }
 
+    #[access_control(halted(&ctx.accounts.state)
+    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
     pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
-        // calculate max withdrawable
-        // calculate actual withdraw
+        msg!("Synthetify: WITHDRAW_VAULT");
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = &mut synthetics[synthetic_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = assets[synthetic_position];
+        let collateral_asset = assets[collateral_position];
+
+        let vault_withdraw_limit = calculate_vault_withdraw_limit(
+            collateral_asset,
+            synthetic_asset,
+            vault_entry.collateral_amount,
+            vault_entry.synthetic_amount,
+            vault.collateral_ratio,
+        )
+        .unwrap();
+
+        let amount_to_withdraw = match amount {
+            u64::MAX => vault_withdraw_limit,
+            _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
+        };
+
+        if amount_to_withdraw.gt(vault_withdraw_limit)? {
+            return Err(ErrorCode::VaultWithdrawLimit.into());
+        }
+
         // update vault, vault_entry balances
-        // transfer collateral from reserve to user
+        vault.collateral_amount = vault.collateral_amount.sub(amount_to_withdraw).unwrap();
+        vault_entry.collateral_amount = vault_entry
+            .collateral_amount
+            .sub(vault_entry.collateral_amount)
+            .unwrap();
+
+        // Send withdrawn collateral to user
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::transfer(cpi_ctx, amount_to_withdraw.val.try_into().unwrap())?;
 
         Ok(())
     }
@@ -2946,6 +2997,19 @@ pub struct WithdrawVault<'info> {
     pub owner: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
 }
+impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+{
+    fn from(accounts: &WithdrawVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.reserve_address.to_account_info(),
+            to: accounts.user_collateral_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
 
 #[error]
 pub enum ErrorCode {
@@ -3017,6 +3081,8 @@ pub enum ErrorCode {
     UserBorrowLimit = 32,
     #[msg("Vault borrow limit")]
     VaultBorrowLimit = 33,
+    #[msg("Vault withdraw limit")]
+    VaultWithdrawLimit = 34,
 }
 
 // Access control modifiers.
