@@ -17,12 +17,10 @@ import {
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import { ERRORS, INTEREST_RATE_DECIMALS, toScale } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, Decimal, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
+import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import {
-  decimalToPercent,
   ERRORS_EXCHANGE,
   percentToDecimal,
-  sleep,
   SNY_DECIMALS,
   toDecimal,
   XUSD_DECIMALS
@@ -445,7 +443,9 @@ describe('admin', () => {
 
       // Revert back for next tests
       const ixBack = await exchange.setAdmin(EXCHANGE_ADMIN.publicKey)
-      await signAndSend(new Transaction().add(ixBack), [wallet, newAdmin], connection)
+      const signature = await connection.requestAirdrop(newAdmin.publicKey, 1e4)
+      await connection.confirmTransaction(signature)
+      await signAndSend(new Transaction().add(ixBack), [newAdmin], connection)
       const stateAfterChangingBack = await exchange.getState()
       assert.ok(stateAfterChangingBack.admin.equals(EXCHANGE_ADMIN.publicKey))
     })
