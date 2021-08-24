@@ -1876,12 +1876,16 @@ pub mod exchange {
             .unwrap();
 
         let synthetic = &mut synthetics[synthetic_position];
-        let synthetic_asset = assets[synthetic_position];
-        let collateral_asset = assets[collateral_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = assets[synthetic.asset_index as usize];
+        let collateral_asset = assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
