@@ -645,7 +645,7 @@ describe('liquidation', () => {
       exchange.wallet.signAllTransactions(txs)
       txs[0].partialSign(liquidator)
       const promisesTx = txs.map((tx) => sendAndConfirmRawTransaction(connection, tx.serialize()))
-      await assertThrowsAsync(Promise.all(promisesTx), ERRORS_EXCHANGE.INVALID_ASSETS_LIST)
+      await assertThrowsAsync(Promise.all(promisesTx))
     })
     it('max liquidate', async () => {
       const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
