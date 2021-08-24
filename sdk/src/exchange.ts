@@ -1279,11 +1279,12 @@ export class Exchange {
     owner,
     collateral,
     synthetic,
-    collateralReserve,
     userCollateralAccount
   }: WithdrawVault) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    const vault = await this.getVaultForPair(synthetic, collateral)
 
     const ix = await this.program.instruction.withdrawVault(amount, {
       accounts: {
@@ -1294,7 +1295,7 @@ export class Exchange {
         state: this.stateAddress,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
-        reserveAddress: collateralReserve,
+        reserveAddress: vault.collateralReserve,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
         exchangeAuthority: this.exchangeAuthority,
@@ -1674,7 +1675,6 @@ export interface WithdrawVault {
   owner: PublicKey
   collateral: PublicKey
   synthetic: PublicKey
-  collateralReserve: PublicKey
   userCollateralAccount: PublicKey
 }
 export interface CollateralEntry {

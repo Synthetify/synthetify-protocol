@@ -69,6 +69,7 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
   let usdcVaultReserve: PublicKey
+  let userUsdcTokenAccount: PublicKey
   let collateralAmount: BN
   let borrowAmount: BN
   const accountOwner = Keypair.generate()
@@ -155,7 +156,7 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
     const debtInterestRate = percentToDecimal(5)
-    const collateralRatio = percentToDecimal(90)
+    const collateralRatio = percentToDecimal(80)
     const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
     const { ix } = await exchange.createVaultInstruction({
@@ -226,7 +227,7 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
 
-    const userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+    userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
     collateralAmount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(100) // mint 100 USD
     await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(collateralAmount))
 
@@ -309,7 +310,7 @@ describe('vaults', () => {
     assert.ok(eqDecimals(xusd.supply, borrowAmountBeforeBorrow))
     assert.ok(eqDecimals(xusd.borrowedSupply, borrowAmountBeforeBorrow))
 
-    borrowAmount = collateralAmount.muln((decimalToPercent(vault.collateralRatio) - 10) / 100)
+    borrowAmount = collateralAmount.muln((decimalToPercent(vault.collateralRatio) - 20) / 100)
 
     await exchange.borrowVault({
       amount: borrowAmount,
@@ -339,5 +340,60 @@ describe('vaults', () => {
     // synthetic supply after borrow
     assert.ok(eqDecimals(xusdAfterBorrow.supply, expectedBorrowAmount))
     assert.ok(eqDecimals(xusdAfterBorrow.borrowedSupply, expectedBorrowAmount))
+  })
+  it('should withdraw usdc from usdc/xusd vault entry', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+
+    const vaultBeforeWithdraw = await exchange.getVaultForPair(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
+    const vaultEntryBeforeWithdraw = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    const toWithdraw = new BN(1e6).muln(10)
+    const userUsdcTokenAccountBeforeWithdraw = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+
+    const ix = await exchange.withdrawVaultInstruction({
+      amount: toWithdraw,
+      owner: accountOwner.publicKey,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
+      userCollateralAccount: userUsdcTokenAccount
+    })
+    await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+
+    const vaultAfterWithdraw = await exchange.getVaultForPair(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
+    const vaultEntryAfterWithdraw = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    const userUsdcTokenAccountAfterWithdraw = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+
+    assert.ok(
+      toWithdraw.eq(
+        userUsdcTokenAccountAfterWithdraw.amount.sub(userUsdcTokenAccountBeforeWithdraw.amount)
+      )
+    )
+    assert.ok(
+      toWithdraw.eq(
+        vaultBeforeWithdraw.collateralAmount.val.sub(vaultAfterWithdraw.collateralAmount.val)
+      )
+    )
+    assert.ok(
+      toWithdraw.eq(
+        vaultEntryBeforeWithdraw.collateralAmount.val.sub(
+          vaultEntryAfterWithdraw.collateralAmount.val
+        )
+      )
+    )
   })
 })

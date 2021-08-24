@@ -1966,7 +1966,7 @@ pub mod exchange {
         vault.collateral_amount = vault.collateral_amount.sub(amount_to_withdraw).unwrap();
         vault_entry.collateral_amount = vault_entry
             .collateral_amount
-            .sub(vault_entry.collateral_amount)
+            .sub(amount_to_withdraw)
             .unwrap();
 
         // Send withdrawn collateral to user
