@@ -1211,9 +1211,7 @@
       "args": [
         {
           "name": "maxSupply",
-          "type": {
-            "defined": "Decimal"
-          }
+          "type": "u64"
         }
       ]
     },

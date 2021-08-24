@@ -763,25 +763,65 @@ pub mod exchange {
         };
 
         let liquidated_asset = &assets[liquidated_collateral.asset_index as usize];
-        let liquidation_amount = Decimal {
+        let liquidation_amount_preflight = Decimal {
             val: amount.into(),
             scale: XUSD_SCALE,
         };
 
-        let seized_collateral_in_usd = liquidation_amount
+        let seized_collateral_in_usd_preflight = liquidation_amount_preflight
             .mul_up(
                 state
                     .penalty_to_liquidator
                     .add(state.penalty_to_exchange)
                     .unwrap(),
             )
-            .add(liquidation_amount)
+            .add(liquidation_amount_preflight)
             .unwrap();
 
+        let seized_collateral_in_token_preflight = usd_to_token_amount(
+            liquidated_asset,
+            seized_collateral_in_usd_preflight,
+            liquidated_collateral.reserve_balance.scale,
+        );
+        let exchange_account_collateral_index =
+            match exchange_account.collaterals.iter().position(|x| {
+                x.collateral_address
+                    .eq(&liquidated_collateral.collateral_address)
+            }) {
+                Some(v) => v,
+                None => return Err(ErrorCode::NoAssetFound.into()),
+            };
+
+        let preflight_check = seized_collateral_in_token_preflight.val
+            <= exchange_account.collaterals[exchange_account_collateral_index]
+                .amount
+                .into();
+
+        let (seized_collateral_in_token, liquidation_amount) = match preflight_check {
+            true => (
+                seized_collateral_in_token_preflight,
+                liquidation_amount_preflight,
+            ),
+            false => {
+                let seized_collateral_in_token = Decimal {
+                    val: exchange_account.collaterals[exchange_account_collateral_index]
+                        .amount
+                        .into(),
+                    scale: liquidated_collateral.reserve_balance.scale,
+                };
+                (
+                    seized_collateral_in_token,
+                    calculate_value_in_usd(liquidated_asset.price, seized_collateral_in_token),
+                )
+            }
+        };
         // Rounding down - debt is burned in favor of the system
 
-        let burned_debt_shares =
-            amount_to_shares_by_rounding_down(state.debt_shares, total_debt.to_u64(), amount);
+        let burned_debt_shares = amount_to_shares_by_rounding_down(
+            state.debt_shares,
+            total_debt.to_u64(),
+            liquidation_amount.to_u64(),
+        );
         state.debt_shares = state.debt_shares.checked_sub(burned_debt_shares).unwrap();
 
         exchange_account.debt_shares = exchange_account
@@ -789,20 +829,9 @@ pub mod exchange {
             .checked_sub(burned_debt_shares)
             .unwrap();
 
-        let seized_collateral_in_token = usd_to_token_amount(
-            liquidated_asset,
-            seized_collateral_in_usd,
-            liquidated_collateral.reserve_balance.scale,
-        );
+        let exchange_account_collateral =
+            &mut exchange_account.collaterals[exchange_account_collateral_index];
 
-        let mut exchange_account_collateral =
-            match exchange_account.collaterals.iter_mut().find(|x| {
-                x.collateral_address
-                    .eq(&liquidated_collateral.collateral_address)
-            }) {
-                Some(v) => v,
-                None => return Err(ErrorCode::NoAssetFound.into()),
-            };
         exchange_account_collateral.amount = exchange_account_collateral
             .amount
             .checked_sub(seized_collateral_in_token.to_u64())
@@ -895,6 +924,10 @@ pub mod exchange {
             let token_program = ctx.accounts.token_program.to_account_info();
             let burn = CpiContext::new(token_program, burn_accounts).with_signer(signer_seeds);
             token::burn(burn, liquidation_amount.to_u64())?;
+        }
+        // Clean user collateral if empty
+        if exchange_account.collaterals[exchange_account_collateral_index].amount == 0 {
+            exchange_account.remove(exchange_account_collateral_index);
         }
 
         Ok(())
@@ -1402,7 +1435,7 @@ pub mod exchange {
     }
 
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: Decimal) -> Result<()> {
+    pub fn add_synthetic(ctx: Context<AddSynthetic>, max_supply: u64) -> Result<()> {
         msg!("Synthetify: ADD SYNTHETIC");
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1416,16 +1449,19 @@ pub mod exchange {
         };
         let new_synthetic = Synthetic {
             asset_index: asset_index as u8,
-            asset_address: *ctx.accounts.asset_address.key,
-            max_supply,
+            asset_address: *ctx.accounts.asset_address.to_account_info().key,
+            max_supply: Decimal {
+                val: max_supply.into(),
+                scale: ctx.accounts.asset_address.decimals,
+            },
             settlement_slot: u64::MAX,
             supply: Decimal {
                 val: 0,
-                scale: max_supply.scale,
+                scale: ctx.accounts.asset_address.decimals,
             },
             swapline_supply: Decimal {
                 val: 0,
-                scale: max_supply.scale,
+                scale: ctx.accounts.asset_address.decimals,
             },
         };
         assets_list.append_synthetic(new_synthetic);
@@ -2057,7 +2093,7 @@ pub struct AddSynthetic<'info> {
     pub admin: AccountInfo<'info>,
     #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
-    pub asset_address: AccountInfo<'info>,
+    pub asset_address: CpiAccount<'info, anchor_spl::token::Mint>,
     pub feed_address: AccountInfo<'info>,
 }
 

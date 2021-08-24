@@ -146,7 +146,6 @@ describe('settlement', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: decimals,
         maxSupply: new BN(1e12),
         priceFeed: assetForSynthetic.feedAddress
       })

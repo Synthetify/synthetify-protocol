@@ -457,7 +457,6 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList: state.assetsList,
-        decimals: 8,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
@@ -589,7 +588,6 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
@@ -626,7 +624,6 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
