@@ -26,6 +26,7 @@ import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   ERRORS,
   percentToDecimal,
+  sleep,
   SNY_DECIMALS,
   toDecimal,
   XUSD_DECIMALS
@@ -116,6 +117,7 @@ describe('exchange', () => {
     )
     const state = await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    await sleep(10000)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()

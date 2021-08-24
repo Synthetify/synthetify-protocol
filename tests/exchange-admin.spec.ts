@@ -115,7 +115,8 @@ describe('admin', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    await connection.confirmTransaction(signature)
   })
   it('Initialize state', async () => {
     const state = await exchange.getState()

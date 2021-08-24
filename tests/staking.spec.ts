@@ -112,6 +112,7 @@ describe('staking', () => {
     )
     const state = await exchange.getState()
     nextRoundStart = state.staking.nextRound.start
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
