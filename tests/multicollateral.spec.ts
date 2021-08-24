@@ -241,7 +241,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('mint', async () => {
+  it('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 

@@ -422,7 +422,7 @@ describe('admin', () => {
       assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
     })
   })
-  describe.only('#setAdmin()', async () => {
+  describe('#setAdmin()', async () => {
     it('Fail without admin signature', async () => {
       const newAdmin = Keypair.generate().publicKey
       const ix = await exchange.setAdmin(newAdmin)
@@ -434,11 +434,16 @@ describe('admin', () => {
       assert.isFalse(state.admin.equals(newAdmin))
     })
     it('change value', async () => {
-      const newAdmin = Keypair.generate().publicKey
-      const ix = await exchange.setAdmin(newAdmin)
+      const newAdmin = new Account()
+      const ix = await exchange.setAdmin(newAdmin.publicKey)
       await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.admin.equals(newAdmin))
+      assert.ok(state.admin.equals(newAdmin.publicKey))
+
+      // Revert back for next tests
+      const ixBack = await exchange.setAdmin(EXCHANGE_ADMIN.publicKey)
+      await signAndSend(new Transaction().add(ixBack), [wallet, newAdmin], connection)
+      assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     })
   })
   describe('#setSettlementSlot()', async () => {
