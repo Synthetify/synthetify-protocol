@@ -252,6 +252,28 @@ pub fn calculate_vault_borrow_limit(
 
     return max_synthetic_amount;
 }
+pub fn calculate_vault_withdraw_limit(
+    collateral_asset: Asset,
+    synthetic_asset: Asset,
+    collateral_amount: Decimal,
+    synthetic_amount: Decimal,
+    collateral_ratio: Decimal,
+) -> Result<Decimal> {
+    let vault_debt_value = calculate_value_in_usd(synthetic_asset.price, synthetic_amount);
+    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let max_debt_value = collateral_value.mul(collateral_ratio);
+
+    if vault_debt_value.gte(max_debt_value)? {
+        return Err(ErrorCode::VaultWithdrawLimit.into());
+    }
+    let max_withdraw_value = max_debt_value.sub(vault_debt_value).unwrap();
+    let max_withdraw_amount = usd_to_token_amount(
+        &collateral_asset,
+        max_withdraw_value,
+        collateral_amount.scale,
+    );
+    return Ok(max_withdraw_amount);
+}
 
 #[cfg(test)]
 mod tests {
