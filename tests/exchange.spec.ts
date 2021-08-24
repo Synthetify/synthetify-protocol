@@ -1,6 +1,6 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
-import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { Token } from '@solana/spl-token'
 import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'

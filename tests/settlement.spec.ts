@@ -11,17 +11,13 @@ import {
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
-  DEFAULT_PUBLIC_KEY,
-  U64_MAX,
   createAccountWithCollateralAndMaxMintUsd,
-  tokenToUsdValue,
   almostEqual,
   calculateDebt
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { ACCURACY, ERRORS_EXCHANGE, ORACLE_OFFSET, sleep } from '@synthetify/sdk/lib/utils'
+import { Synthetic } from '@synthetify/sdk/lib/exchange'
+import { ACCURACY, ERRORS_EXCHANGE, sleep } from '@synthetify/sdk/lib/utils'
 
 describe('settlement', () => {
   const provider = anchor.Provider.local()

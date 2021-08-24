@@ -1,9 +1,10 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, PublicKey, Transaction } from '@solana/web3.js'
+import { Account, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
-import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
+import { BN, Exchange, Network } from '@synthetify/sdk'
+import { toDecimal } from '@synthetify/sdk/lib/utils'
 
 import {
   createAssetsList,
@@ -20,8 +21,6 @@ import {
   waitForBeggingOfASlot
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { Collateral } from '../sdk/lib/exchange'
-import { toDecimal } from '../sdk/lib/utils'
 
 describe('staking', () => {
   const provider = anchor.Provider.local()
@@ -116,7 +115,7 @@ describe('staking', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
