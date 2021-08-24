@@ -116,6 +116,8 @@ describe('admin', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   it('should initialized interest debt and swap tax parameters', async () => {
     const state = await exchange.getState()
@@ -162,18 +164,14 @@ describe('admin', () => {
         assetsList: assetsList,
         assetFeedAddress: btcFeed
       })
-      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addBtcIx), [EXCHANGE_ADMIN], connection)
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })
-      await signAndSend(
-        new Transaction().add(addBtcSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
       adminUsdTokenAccount = await usdToken.createAccount(new Account().publicKey)
     })
     it('swap should increase swap tax reserves', async () => {
@@ -267,7 +265,7 @@ describe('admin', () => {
         amount: firstWithdrawTaxAmount,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       // admin xUSD balance should be increased by swap tax
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
@@ -302,7 +300,7 @@ describe('admin', () => {
         amount: toWithdrawTax,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       // admin xUSD balance should be equals all swap tax
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
@@ -320,7 +318,7 @@ describe('admin', () => {
         amount: new BN(0),
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       // admin xUSD balance should be equals all swap tax
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
@@ -336,7 +334,7 @@ describe('admin', () => {
         to: adminUsdTokenAccount
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
       )
     })

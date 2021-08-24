@@ -119,6 +119,8 @@ describe('swap-line', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
 
   describe('Create swap line', async () => {

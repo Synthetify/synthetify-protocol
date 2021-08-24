@@ -110,6 +110,7 @@ describe('settlement', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   describe('Settlement', async () => {
     const price = 7
@@ -127,7 +128,7 @@ describe('settlement', () => {
         assetsList,
         assetFeedAddress: oracleAddress
       })
-      await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
       const assetListData = await exchange.getAssetsList(assetsList)
 
       const assetForSynthetic = assetListData.assets.find((a) =>
@@ -149,7 +150,7 @@ describe('settlement', () => {
         maxSupply: new BN(1e12),
         priceFeed: assetForSynthetic.feedAddress
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       const addedSynthetic = afterAssetList.synthetics.find((a) =>
@@ -222,7 +223,7 @@ describe('settlement', () => {
         syntheticToSettle.assetAddress,
         new BN(slot)
       )
-      await signAndSend(new Transaction().add(changeSlotIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(changeSlotIx), [EXCHANGE_ADMIN], connection)
 
       const assetsListBeforeSettlement = await exchange.getAssetsList(assetsList)
       const { oracleUpdateIx, settleIx } = await exchange.settleSynthetic({

@@ -385,7 +385,7 @@ export const createCollateralToken = async ({
     assetsList,
     assetFeedAddress: oracleAddress
   })
-  await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
 
   const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
   const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
@@ -402,7 +402,7 @@ export const createCollateralToken = async ({
     collateralRatio: collateralRatioDecimal,
     reserveBalance: reserveBalanceDecimal
   })
-  await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addCollateralIx), [EXCHANGE_ADMIN], connection)
 
   return {
     token: collateralToken,

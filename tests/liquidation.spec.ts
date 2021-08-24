@@ -26,16 +26,9 @@ import {
   eqDecimals,
   createCollateralToken
 } from './utils'
-import { createPriceFeed, getFeedData, setFeedPrice } from './oracleUtils'
+import { createPriceFeed, setFeedPrice } from './oracleUtils'
 import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
-import {
-  ACCURACY,
-  calculateUserCollateral,
-  calculateUserMaxDebt,
-  divUp,
-  percentToDecimal,
-  SNY_DECIMALS
-} from '@synthetify/sdk/lib/utils'
+import { calculateUserMaxDebt, percentToDecimal, SNY_DECIMALS } from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 import { Collateral } from '@synthetify/sdk/lib/exchange'
 
@@ -130,6 +123,7 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     snyCollateral = (await exchange.getAssetsList(assetsList)).collaterals[0]
     const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
@@ -177,7 +171,7 @@ describe('liquidation', () => {
       // change liquidation buffor for sake of tests
       const newLiquidationBuffer = 0
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     })
     it('should liquidate', async () => {
       const collateralAmount = new BN(1000 * 10 ** SNY_DECIMALS)
@@ -265,7 +259,7 @@ describe('liquidation', () => {
       // change liquidation buffor for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const updatedState = await exchange.getState()
       assert.ok((updatedState.liquidationBuffer = newLiquidationBuffer))
 
@@ -360,11 +354,7 @@ describe('liquidation', () => {
         signAndSend(new Transaction().add(withdrawPenaltyIx), [wallet], connection),
         ERRORS.SIGNATURE
       )
-      await signAndSend(
-        new Transaction().add(withdrawPenaltyIx),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(withdrawPenaltyIx), [EXCHANGE_ADMIN], connection)
       assert.ok(
         (await collateralToken.getAccountInfo(collateral.liquidationFund)).amount.eq(new BN(0))
       )
@@ -413,7 +403,7 @@ describe('liquidation', () => {
       // change liquidation buffor for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       // set account liquidation deadline
       await exchange.checkAccount(exchangeAccount)
@@ -435,7 +425,7 @@ describe('liquidation', () => {
       await sleep(6000)
       // halt program
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -455,7 +445,7 @@ describe('liquidation', () => {
       )
       // unlock
       const ixUnlock = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ixUnlock), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixUnlock), [EXCHANGE_ADMIN], connection)
       const stateUnlocked = await exchange.getState()
       assert.ok(stateUnlocked.halted === false)
 
@@ -712,7 +702,7 @@ describe('liquidation', () => {
       // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const updatedState = await exchange.getState()
       assert.ok((updatedState.liquidationBuffer = newLiquidationBuffer))
       // set account liquidation deadline
@@ -835,7 +825,7 @@ describe('liquidation', () => {
       // Change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const updatedState = await exchange.getState()
       assert.ok((updatedState.liquidationBuffer = newLiquidationBuffer))
       // Set account liquidation deadline
