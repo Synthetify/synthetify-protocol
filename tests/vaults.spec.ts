@@ -157,6 +157,10 @@ describe('vaults', () => {
     const usdc = assetsListData.collaterals[1]
     const debtInterestRate = percentToDecimal(5)
     const collateralRatio = percentToDecimal(80)
+    const liquidationRatio = percentToDecimal(90)
+    const liquidationPenaltyExchange = percentToDecimal(5)
+    const liquidationPenaltyLiquidator = percentToDecimal(5)
+
     const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
     const { ix } = await exchange.createVaultInstruction({
@@ -165,7 +169,10 @@ describe('vaults', () => {
       synthetic: xusd.assetAddress,
       debtInterestRate,
       collateralRatio,
-      maxBorrow
+      maxBorrow,
+      liquidationPenaltyExchange,
+      liquidationPenaltyLiquidator,
+      liquidationRatio
     })
     const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
     await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -177,6 +184,9 @@ describe('vaults', () => {
     assert.ok(vault.collateralReserve.equals(usdcVaultReserve))
     assert.ok(eqDecimals(vault.collateralRatio, collateralRatio))
     assert.ok(eqDecimals(vault.debtInterestRate, debtInterestRate))
+    assert.ok(eqDecimals(vault.liquidationRatio, liquidationRatio))
+    assert.ok(eqDecimals(vault.liquidationPenaltyExchange, liquidationPenaltyExchange))
+    assert.ok(eqDecimals(vault.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
     assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
     assert.ok(
       eqDecimals(

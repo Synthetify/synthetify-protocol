@@ -1722,6 +1722,9 @@ pub mod exchange {
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
         max_borrow: Decimal,
+        liquidation_ratio: Decimal,
+        penalty_to_liquidator: Decimal,
+        penalty_to_exchange: Decimal,
     ) -> Result<()> {
         msg!("Synthetify: ADD NEW VAULT");
 
@@ -1762,6 +1765,10 @@ pub mod exchange {
             vault.max_borrow = max_borrow;
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
+            // Liquidation parameters
+            vault.liquidation_ratio = liquidation_ratio;
+            vault.liquidation_penalty_liquidator = penalty_to_liquidator;
+            vault.liquidation_penalty_exchange = penalty_to_exchange;
         }
 
         Ok(())
@@ -2855,6 +2862,9 @@ pub struct Vault {
     pub collateral: Pubkey,
     pub debt_interest_rate: Decimal,
     pub collateral_ratio: Decimal,
+    pub liquidation_ratio: Decimal,
+    pub liquidation_penalty_liquidator: Decimal,
+    pub liquidation_penalty_exchange: Decimal,
     pub accumulated_interest: Decimal,
     pub accumulated_interest_rate: Decimal,
     pub collateral_reserve: Pubkey,
