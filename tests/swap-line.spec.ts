@@ -124,18 +124,44 @@ describe('swap-line', () => {
   })
 
   describe('Create swap line', async () => {
+    let syntheticToken: Token
+    let collateralToken: Token
+    const limit = new BN(10 ** 9)
+    before(async () => {
+      syntheticToken = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals: 8
+      })
+      const newAssetLimit = new BN(10).pow(new BN(18))
+      const { feed, token } = await createCollateralToken({
+        collateralRatio: 50,
+        connection,
+        decimals: 6,
+        exchange,
+        exchangeAuthority,
+        oracleProgram,
+        price: 2,
+        wallet
+      })
+      collateralToken = token
+      const addNativeSynthetic = await exchange.addSyntheticInstruction({
+        assetAddress: syntheticToken.publicKey,
+        assetsList,
+        maxSupply: newAssetLimit,
+        priceFeed: feed
+      })
+      await signAndSend(new Transaction().add(addNativeSynthetic), [EXCHANGE_ADMIN], connection)
+    })
     it('fail without admin signature', async () => {
       const limit = new BN(1000)
 
-      const state = await exchange.getState()
-      const assetsList = await exchange.getAssetsList(state.assetsList)
-      const synthetic = assetsList.synthetics[0].assetAddress
-      const collateral = assetsList.collaterals[0]
-      const collateralReserve = await usdToken.createAccount(exchangeAuthority)
+      const collateralReserve = await collateralToken.createAccount(exchangeAuthority)
       const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
-        collateral: collateral.collateralAddress,
+        collateral: collateralToken.publicKey,
         collateralReserve,
-        synthetic,
+        synthetic: syntheticToken.publicKey,
         limit
       })
       assertThrowsAsync(
@@ -145,22 +171,29 @@ describe('swap-line', () => {
     })
     it('success', async () => {
       const state = await exchange.getState()
-      const limit = new BN(1000)
+
+      const collateralReserve = await collateralToken.createAccount(exchangeAuthority)
       const assetsList = await exchange.getAssetsList(state.assetsList)
-      const synthetic = assetsList.synthetics[0].assetAddress
-      const collateral = assetsList.collaterals[0]
-      const collateralReserve = await usdToken.createAccount(exchangeAuthority)
+      const synthetic = assetsList.synthetics.find((s) =>
+        s.assetAddress.equals(syntheticToken.publicKey)
+      )
+      const collateral = assetsList.collaterals.find((s) =>
+        s.collateralAddress.equals(collateralToken.publicKey)
+      )
+      if (!synthetic || !collateral) {
+        throw new Error('Synthetic not found')
+      }
       const { ix, swaplineAddress } = await exchange.createSwaplineInstruction({
-        collateral: collateral.collateralAddress,
+        collateral: collateralToken.publicKey,
         collateralReserve,
-        synthetic,
+        synthetic: syntheticToken.publicKey,
         limit
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const swapLine = await exchange.getSwapline(swaplineAddress)
-      assert.ok(swapLine.collateral.equals(collateral.collateralAddress))
+      assert.ok(swapLine.collateral.equals(collateralToken.publicKey))
       assert.ok(swapLine.limit.val.eq(limit))
-      assert.ok(swapLine.synthetic.equals(synthetic))
+      assert.ok(swapLine.synthetic.equals(syntheticToken.publicKey))
       assert.ok(swapLine.collateralReserve.equals(collateralReserve))
       assert.ok(swapLine.halted === false)
       assert.ok(eqDecimals(swapLine.fee, percentToDecimal(1)))
@@ -170,7 +203,7 @@ describe('swap-line', () => {
       )
     })
   })
-  describe.only('Swap', async () => {
+  describe('Swap', async () => {
     let syntheticToken: Token
     let collateralToken: Token
     let swapLinePubkey: PublicKey
@@ -198,7 +231,6 @@ describe('swap-line', () => {
       const addNativeSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: syntheticToken.publicKey,
         assetsList,
-        decimals: (await syntheticToken.getMintInfo()).decimals,
         maxSupply: newAssetLimit,
         priceFeed: feed
       })
