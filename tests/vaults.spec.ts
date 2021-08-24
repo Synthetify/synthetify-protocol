@@ -406,4 +406,26 @@ describe('vaults', () => {
       )
     )
   })
+  it('should repay xusd from usdc/xusd vault entry', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+    const vaultEntry = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+
+    const repayAmount = vaultEntry.syntheticAmount.val.divn(2)
+
+    const ix = await exchange.repayVaultInstruction({
+      amount: repayAmount,
+      owner: accountOwner.publicKey,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
+      userTokenAccountRepay: userUsdcTokenAccount
+    })
+
+    await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+  })
 })

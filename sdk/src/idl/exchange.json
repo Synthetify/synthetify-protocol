@@ -1699,6 +1699,24 @@
           "type": {
             "defined": "Decimal"
           }
+        },
+        {
+          "name": "liquidationRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "penaltyToLiquidator",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "penaltyToExchange",
+          "type": {
+            "defined": "Decimal"
+          }
         }
       ]
     },
@@ -1926,6 +1944,67 @@
         {
           "name": "assetsList",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "repayVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userTokenAccountRepay",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2273,6 +2352,24 @@
           },
           {
             "name": "collateralRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationPenaltyLiquidator",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationPenaltyExchange",
             "type": {
               "defined": "Decimal"
             }
@@ -2791,8 +2888,5 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ],
-  "metadata": {
-    "address": "CL38aRhFbrcVnG2VsQGH5QEn8P99WYvZuhaXh1MxhhKU"
-  }
+  ]
 }

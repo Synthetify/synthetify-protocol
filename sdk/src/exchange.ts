@@ -1312,6 +1312,38 @@ export class Exchange {
 
     return ix
   }
+  public async repayVaultInstruction({
+    amount,
+    owner,
+    synthetic,
+    collateral,
+    userTokenAccountRepay
+  }: RepayVault) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    const vault = await this.getVaultForPair(synthetic, collateral)
+
+    const ix = await this.program.instruction.repayVault(amount, {
+      accounts: {
+        owner,
+        synthetic,
+        collateral,
+        userTokenAccountRepay,
+        state: this.stateAddress,
+        vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
+        reserveAddress: vault.collateralReserve,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })
+
+    return ix
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1685,6 +1717,14 @@ export interface WithdrawVault {
   collateral: PublicKey
   synthetic: PublicKey
   userCollateralAccount: PublicKey
+}
+
+export interface RepayVault {
+  amount: BN
+  owner: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  userTokenAccountRepay: PublicKey
 }
 export interface CollateralEntry {
   amount: BN

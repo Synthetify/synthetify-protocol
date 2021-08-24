@@ -2044,7 +2044,7 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::burn(cpi_ctx, amount)?;
+        token::burn(cpi_ctx, repay_amount.to_u64())?;
 
         Ok(())
     }
