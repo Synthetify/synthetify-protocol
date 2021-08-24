@@ -1155,7 +1155,7 @@ pub mod exchange {
 
         // max swap_tax_ratio must be less or equals 30%
         let same_scale = swap_tax_ratio.scale == state.swap_tax_ratio.scale;
-        let in_range = swap_tax_ratio.ltq(Decimal::from_percent(30))?;
+        let in_range = swap_tax_ratio.lte(Decimal::from_percent(30))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.swap_tax_ratio = swap_tax_ratio;
@@ -1171,7 +1171,7 @@ pub mod exchange {
 
         // max debt_interest_rate must be less or equals 20%
         let same_scale = debt_interest_rate.scale == state.debt_interest_rate.scale;
-        let in_range = debt_interest_rate.ltq(Decimal::from_percent(20).to_interest_rate())?;
+        let in_range = debt_interest_rate.lte(Decimal::from_percent(20).to_interest_rate())?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.debt_interest_rate = debt_interest_rate;
@@ -1199,7 +1199,7 @@ pub mod exchange {
 
         // liquidation_rate should be less or equals 100%
         let same_scale = liquidation_rate.scale == state.liquidation_rate.scale;
-        let in_range = liquidation_rate.ltq(Decimal::from_percent(100))?;
+        let in_range = liquidation_rate.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.liquidation_rate = liquidation_rate;
@@ -1213,7 +1213,7 @@ pub mod exchange {
 
         //  fee must be less or equals 1%
         let same_scale = fee.scale == state.fee.scale;
-        let in_range = fee.ltq(Decimal::from_percent(1))?;
+        let in_range = fee.lte(Decimal::from_percent(1))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.fee = fee;
@@ -1242,7 +1242,7 @@ pub mod exchange {
 
         // factor must be less or equals 100%
         let same_scale = factor.scale == state.health_factor.scale;
-        let in_range = factor.ltq(Decimal::from_percent(100))?;
+        let in_range = factor.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
         state.health_factor = factor;
         Ok(())
@@ -1313,11 +1313,11 @@ pub mod exchange {
 
         // penalty_to_exchange and penalty_to_liquidator must be less or equals 25%
         let same_scale = penalty_to_exchange.scale == state.penalty_to_exchange.scale;
-        let in_range = penalty_to_exchange.ltq(Decimal::from_percent(25))?;
+        let in_range = penalty_to_exchange.lte(Decimal::from_percent(25))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         let same_scale = penalty_to_liquidator.scale == state.penalty_to_liquidator.scale;
-        let in_range = penalty_to_liquidator.ltq(Decimal::from_percent(25))?;
+        let in_range = penalty_to_liquidator.lte(Decimal::from_percent(25))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.penalty_to_exchange = penalty_to_exchange;
@@ -1343,7 +1343,7 @@ pub mod exchange {
         };
         // collateral_ratio must be less or equals 100%
         let same_scale = collateral_ratio.scale == UNIFIED_PERCENT_SCALE;
-        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
+        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         let new_collateral = Collateral {
@@ -1375,7 +1375,7 @@ pub mod exchange {
         };
         // collateral_ratio must be less or equals 100%
         let same_scale = collateral.collateral_ratio.scale == collateral_ratio.scale;
-        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
+        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         collateral.collateral_ratio = collateral_ratio;
@@ -1636,7 +1636,7 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.ltq(swapline.limit).unwrap(), SwaplineLimit);
+        require!(swapline.balance.lte(swapline.limit).unwrap(), SwaplineLimit);
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1744,7 +1744,7 @@ pub mod exchange {
         let collateral = collateral.unwrap();
 
         require!(
-            collateral_ratio.ltq(Decimal::from_percent(100))?,
+            collateral_ratio.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
         );
         // Init vault struct
@@ -1914,6 +1914,15 @@ pub mod exchange {
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
+
+        Ok(())
+    }
+
+    pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
+        // calculate max withdrawable
+        // calculate actual withdraw
+        // update vault, vault_entry balances
+        // transfer collateral from reserve to user
 
         Ok(())
     }
@@ -2848,7 +2857,7 @@ pub struct CreateVaultEntry<'info> {
 }
 #[derive(Accounts)]
 pub struct DepositVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])] // maybe immutable
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
     #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
@@ -2913,6 +2922,29 @@ impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'in
         let cpi_program = accounts.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
+}
+
+#[derive(Accounts)]
+pub struct WithdrawVault<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut, constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key)]
+    pub reserve_address: CpiAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
 }
 
 #[error]
