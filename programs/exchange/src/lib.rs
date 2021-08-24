@@ -12,6 +12,8 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
+    use anchor_lang::Key;
+
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
@@ -1939,8 +1941,6 @@ pub mod exchange {
             .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
             .unwrap();
 
-        let synthetic = &mut synthetics[synthetic_position];
-        let collateral = &mut collaterals[collateral_position];
         let synthetic_asset = assets[synthetic_position];
         let collateral_asset = assets[collateral_position];
 
@@ -1952,6 +1952,13 @@ pub mod exchange {
             vault.collateral_ratio,
         )
         .unwrap();
+
+        // Check signer
+        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
+        let tx_signer = ctx.accounts.owner.key;
+        if !tx_signer.eq(&user_collateral_account.owner) {
+            return Err(ErrorCode::InvalidSigner.into());
+        }
 
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
@@ -1977,6 +1984,20 @@ pub mod exchange {
 
         Ok(())
     }
+
+    // #[access_control(halted(&ctx.accounts.state)
+    // assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    // pub fn repay_vault(ctx: Context<RepayVault>, amount: u64) -> Result<()> {
+    //     msg!("Synthetify: REPAY_VAULT");
+
+    //     let state = ctx.accounts.state.load()?;
+    //     let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+    //     let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+    //     let vault = &mut ctx.accounts.vault.load_mut()?;
+    //     let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+    //     Ok(())
+    // }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
@@ -3004,6 +3025,40 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
         let cpi_accounts = Transfer {
             from: accounts.reserve_address.to_account_info(),
             to: accounts.user_collateral_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+#[derive(Accounts)]
+pub struct RepayVault<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut)]
+    pub user_token_account_burn: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&RepayVault<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+    fn from(accounts: &RepayVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: accounts.synthetic.to_account_info(),
+            to: accounts.user_token_account_burn.to_account_info(),
             authority: accounts.exchange_authority.to_account_info(),
         };
         let cpi_program = accounts.token_program.to_account_info();
