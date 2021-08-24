@@ -1724,6 +1724,9 @@ pub mod exchange {
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
         max_borrow: Decimal,
+        liquidation_ratio: Decimal,
+        penalty_to_liquidator: Decimal,
+        penalty_to_exchange: Decimal,
     ) -> Result<()> {
         msg!("Synthetify: ADD NEW VAULT");
 
@@ -1764,6 +1767,10 @@ pub mod exchange {
             vault.max_borrow = max_borrow;
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
+            // Liquidation parameters
+            vault.liquidation_ratio = liquidation_ratio;
+            vault.liquidation_penalty_liquidator = penalty_to_liquidator;
+            vault.liquidation_penalty_exchange = penalty_to_exchange;
         }
 
         Ok(())
@@ -1871,12 +1878,16 @@ pub mod exchange {
             .unwrap();
 
         let synthetic = &mut synthetics[synthetic_position];
-        let synthetic_asset = assets[synthetic_position];
-        let collateral_asset = assets[collateral_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = assets[synthetic.asset_index as usize];
+        let collateral_asset = assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -2915,6 +2926,9 @@ pub struct Vault {
     pub collateral: Pubkey,
     pub debt_interest_rate: Decimal,
     pub collateral_ratio: Decimal,
+    pub liquidation_ratio: Decimal,
+    pub liquidation_penalty_liquidator: Decimal,
+    pub liquidation_penalty_exchange: Decimal,
     pub accumulated_interest: Decimal,
     pub accumulated_interest_rate: Decimal,
     pub collateral_reserve: Pubkey,

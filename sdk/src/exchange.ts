@@ -1113,7 +1113,10 @@ export class Exchange {
     collateralReserve,
     debtInterestRate,
     collateralRatio,
-    maxBorrow
+    maxBorrow,
+    liquidationRatio,
+    liquidationPenaltyLiquidator,
+    liquidationPenaltyExchange
   }: CreateVault) {
     const [vaultAddress, bump] = await PublicKey.findProgramAddress(
       [
@@ -1128,6 +1131,9 @@ export class Exchange {
       debtInterestRate,
       collateralRatio,
       maxBorrow,
+      liquidationRatio,
+      liquidationPenaltyLiquidator,
+      liquidationPenaltyExchange,
       {
         accounts: {
           state: this.stateAddress,
@@ -1620,6 +1626,9 @@ export interface Vault {
   collateral: PublicKey
   collateralReserve: PublicKey
   collateralRatio: Decimal
+  liquidationRatio: Decimal
+  liquidationPenaltyLiquidator: Decimal
+  liquidationPenaltyExchange: Decimal
   debtInterestRate: Decimal
   accumulatedInterest: Decimal
   accumulatedInterestRate: Decimal
@@ -1696,6 +1705,9 @@ export interface CreateVault {
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal
+  liquidationRatio: Decimal
+  liquidationPenaltyLiquidator: Decimal
+  liquidationPenaltyExchange: Decimal
 }
 
 export interface CreateVaultEntry {
