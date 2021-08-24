@@ -1274,6 +1274,37 @@ export class Exchange {
     })
     return this.updatePricesAndSend([borrowVaultIx], signers, this.assetsList.headAssets >= 20)
   }
+  public async withdrawVaultInstruction({
+    amount,
+    owner,
+    collateral,
+    synthetic,
+    collateralReserve,
+    userCollateralAccount
+  }: WithdrawVault) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    const ix = await this.program.instruction.withdrawVault(amount, {
+      accounts: {
+        userCollateralAccount,
+        owner,
+        collateral,
+        synthetic,
+        state: this.stateAddress,
+        vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
+        reserveAddress: collateralReserve,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })
+
+    return ix
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1587,7 +1618,6 @@ export interface Vault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
-  reserveAddress: PublicKey
   collateralRatio: Decimal
   debtInterestRate: Decimal
   accumulatedInterest: Decimal
@@ -1637,6 +1667,15 @@ export interface BorrowVault {
   collateral: PublicKey
   amount: BN
   signers: Array<Account | Keypair>
+}
+
+export interface WithdrawVault {
+  amount: BN
+  owner: PublicKey
+  collateral: PublicKey
+  synthetic: PublicKey
+  collateralReserve: PublicKey
+  userCollateralAccount: PublicKey
 }
 export interface CollateralEntry {
   amount: BN
