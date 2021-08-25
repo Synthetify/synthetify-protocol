@@ -17,12 +17,10 @@ import {
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import { ERRORS, INTEREST_RATE_DECIMALS, toScale } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, Decimal, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
+import { Asset, Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import {
-  decimalToPercent,
   ERRORS_EXCHANGE,
   percentToDecimal,
-  sleep,
   SNY_DECIMALS,
   toDecimal,
   XUSD_DECIMALS
@@ -115,6 +113,8 @@ describe('admin', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    await connection.confirmTransaction(signature)
   })
   it('Initialize state', async () => {
     const state = await exchange.getState()
@@ -187,7 +187,8 @@ describe('admin', () => {
     it('change value', async () => {
       const newLiquidationBuffer = 999
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.liquidationBuffer === newLiquidationBuffer)
     })
@@ -206,7 +207,7 @@ describe('admin', () => {
     it('change value', async () => {
       const newLiquidationRate = percentToDecimal(15)
       const ix = await exchange.setLiquidationRateInstruction(newLiquidationRate)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.liquidationRate, newLiquidationRate))
     })
@@ -214,7 +215,7 @@ describe('admin', () => {
       const outOfRange = percentToDecimal(101)
       const ix = await exchange.setLiquidationRateInstruction(outOfRange)
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
@@ -225,7 +226,7 @@ describe('admin', () => {
     it('should change', async () => {
       const newSwapTaxRatio = percentToDecimal(25)
       const ix = await exchange.setSwapTaxRatioInstruction(newSwapTaxRatio)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.swapTaxRatio, newSwapTaxRatio))
     })
@@ -243,7 +244,7 @@ describe('admin', () => {
       const outOfRange = percentToDecimal(31)
       const ix = await exchange.setSwapTaxRatioInstruction(outOfRange)
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
@@ -254,7 +255,7 @@ describe('admin', () => {
     it('should change', async () => {
       const newDebtInterestRate = toScale(percentToDecimal(5), INTEREST_RATE_DECIMALS)
       const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.debtInterestRate, newDebtInterestRate))
     })
@@ -272,7 +273,7 @@ describe('admin', () => {
       const newDebtInterestRate = toScale(percentToDecimal(27), INTEREST_RATE_DECIMALS)
       const ix = await exchange.setDebtInterestRateInstruction(newDebtInterestRate)
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
@@ -303,7 +304,7 @@ describe('admin', () => {
         penaltyToExchange,
         penaltyToLiquidator
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.penaltyToExchange, penaltyToExchange))
@@ -317,7 +318,7 @@ describe('admin', () => {
         penaltyToLiquidator
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
 
@@ -340,7 +341,7 @@ describe('admin', () => {
     it('change value', async () => {
       const newFee = percentToDecimal(0.999)
       const ix = await exchange.setFeeInstruction(newFee)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.fee, newFee))
     })
@@ -348,7 +349,7 @@ describe('admin', () => {
       const newFee = percentToDecimal(2)
       const ix = await exchange.setFeeInstruction(newFee)
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
@@ -369,7 +370,7 @@ describe('admin', () => {
     it('change value', async () => {
       const newMaxDelay = 999
       const ix = await exchange.setMaxDelayInstruction(newMaxDelay)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.maxDelay === newMaxDelay)
     })
@@ -388,7 +389,7 @@ describe('admin', () => {
     it('change value', async () => {
       const halted = true
       const ix = await exchange.setHaltedInstruction(halted)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === halted)
     })
@@ -407,7 +408,7 @@ describe('admin', () => {
     it('change value', async () => {
       const healthFactor = percentToDecimal(70)
       const ix = await exchange.setHealthFactorInstruction(healthFactor)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.healthFactor, healthFactor))
     })
@@ -415,14 +416,14 @@ describe('admin', () => {
       const outOfRange = percentToDecimal(120)
       const ix = await exchange.setHealthFactorInstruction(outOfRange)
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
       assert.isFalse(eqDecimals(state.healthFactor, outOfRange))
     })
   })
-  describe.only('#setAdmin()', async () => {
+  describe('#setAdmin()', async () => {
     it('Fail without admin signature', async () => {
       const newAdmin = Keypair.generate().publicKey
       const ix = await exchange.setAdmin(newAdmin)
@@ -434,11 +435,19 @@ describe('admin', () => {
       assert.isFalse(state.admin.equals(newAdmin))
     })
     it('change value', async () => {
-      const newAdmin = Keypair.generate().publicKey
-      const ix = await exchange.setAdmin(newAdmin)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      const newAdmin = new Account()
+      const ix = await exchange.setAdmin(newAdmin.publicKey)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
-      assert.ok(state.admin.equals(newAdmin))
+      assert.ok(state.admin.equals(newAdmin.publicKey))
+
+      // Revert back for next tests
+      const ixBack = await exchange.setAdmin(EXCHANGE_ADMIN.publicKey)
+      const signature = await connection.requestAirdrop(newAdmin.publicKey, 1e4)
+      await connection.confirmTransaction(signature)
+      await signAndSend(new Transaction().add(ixBack), [newAdmin], connection)
+      const stateAfterChangingBack = await exchange.getState()
+      assert.ok(stateAfterChangingBack.admin.equals(EXCHANGE_ADMIN.publicKey))
     })
   })
   describe('#setSettlementSlot()', async () => {
@@ -457,11 +466,10 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList: state.assetsList,
-        decimals: 8,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(state.assetsList)
       addedSynthetic = afterAssetList.synthetics.find((a) =>
         a.assetAddress.equals(newSynthetic.publicKey)
@@ -489,7 +497,7 @@ describe('admin', () => {
         addedSynthetic.assetAddress,
         new BN(100)
       )
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       const changedAssetsList = await exchange.getAssetsList(state.assetsList)
 
@@ -513,7 +521,7 @@ describe('admin', () => {
     it('change value', async () => {
       const amount = toDecimal(new BN(12399), SNY_DECIMALS)
       const ix = await exchange.setStakingAmountPerRound(amount)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.staking.amountPerRound, amount))
     })
@@ -532,7 +540,7 @@ describe('admin', () => {
     it('change value', async () => {
       const length = 999912
       const ix = await exchange.setStakingRoundLength(length)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.staking.roundLength === length)
     })
@@ -545,7 +553,7 @@ describe('admin', () => {
         assetsList: assetsList,
         assetFeedAddress: newAssetFeedPublicKey
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       // Length should be increased by 1
@@ -589,11 +597,10 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       const addedSynthetic = afterAssetList.synthetics.find((a) =>
@@ -626,7 +633,6 @@ describe('admin', () => {
       const ix = await exchange.addSyntheticInstruction({
         assetAddress: newSynthetic.publicKey,
         assetsList,
-        decimals: syntheticDecimal,
         maxSupply: new BN(100),
         priceFeed: assetForSynthetic.feedAddress
       })
@@ -661,7 +667,7 @@ describe('admin', () => {
         reserveBalance,
         collateralRatio
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       const addedCollateral = afterAssetList.collaterals.find((a) =>
@@ -730,7 +736,7 @@ describe('admin', () => {
         collateralRatio
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
     })
@@ -791,7 +797,7 @@ describe('admin', () => {
         priceFeed: newPriceFeed,
         oldPriceFeed: beforeAsset.feedAddress
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       assert.ok(
@@ -814,7 +820,7 @@ describe('admin', () => {
         assetsList: assetsList,
         assetFeedAddress: assetFeed
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const assetListAfterAdded = await exchange.getAssetsList(assetsList)
       const asset = assetListAfterAdded.assets.find((a: Asset) => {
         return a.feedAddress.equals(assetFeed)
@@ -855,7 +861,7 @@ describe('admin', () => {
         collateralBefore.collateralAddress,
         newCollateralRatio
       )
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
       const collateralAfter = afterAssetList.collaterals[0]
       assert.ok(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
@@ -870,7 +876,7 @@ describe('admin', () => {
         newCollateralRatio
       )
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const afterAssetList = await exchange.getAssetsList(assetsList)

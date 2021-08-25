@@ -997,21 +997,17 @@ export class Exchange {
     assetsList,
     assetAddress,
     priceFeed,
-    decimals,
     maxSupply
   }: AddSyntheticInstruction) {
-    return (await this.program.instruction.addSynthetic(
-      { val: maxSupply, scale: decimals },
-      {
-        accounts: {
-          state: this.stateAddress,
-          admin: this.state.admin,
-          assetsList,
-          assetAddress: assetAddress,
-          feedAddress: priceFeed
-        }
+    return (await this.program.instruction.addSynthetic(maxSupply, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList,
+        assetAddress: assetAddress,
+        feedAddress: priceFeed
       }
-    )) as TransactionInstruction
+    })) as TransactionInstruction
   }
 
   public async initializeAssetsList({
@@ -1174,6 +1170,7 @@ export class Exchange {
         owner: owner,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
+        state: this.stateAddress,
         assetsList: this.state.assetsList,
         synthetic: synthetic,
         collateral: collateral,
@@ -1354,7 +1351,7 @@ export class Exchange {
     synthetic,
     collateral,
     userTokenAccountRepay
-  }: RepayVault) {
+  }: RepayVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
@@ -1379,6 +1376,32 @@ export class Exchange {
     })
 
     return ix
+  }
+  public async repayVault({
+    amount,
+    owner,
+    synthetic,
+    collateral,
+    userTokenAccountRepay,
+    signers
+  }: RepayVault) {
+    const approveIx = Token.createApproveInstruction(
+      TOKEN_PROGRAM_ID,
+      userTokenAccountRepay,
+      this.exchangeAuthority,
+      owner,
+      [],
+      tou64(amount)
+    )
+    const repayIx = await this.repayVaultInstruction({
+      amount,
+      owner,
+      synthetic,
+      collateral,
+      userTokenAccountRepay
+    })
+
+    await signAndSend(new Transaction().add(approveIx).add(repayIx), signers, this.connection)
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1504,7 +1527,6 @@ export interface AddSyntheticInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
   maxSupply: BN
-  decimals: number
 }
 export interface AddCollateralInstruction {
   assetsList: PublicKey
@@ -1774,12 +1796,15 @@ export interface WithdrawVault {
   userCollateralAccount: PublicKey
 }
 
-export interface RepayVault {
+export interface RepayVaultInstruction {
   amount: BN
   owner: PublicKey
   synthetic: PublicKey
   collateral: PublicKey
   userTokenAccountRepay: PublicKey
+}
+export interface RepayVault extends RepayVaultInstruction {
+  signers: Array<Account | Keypair>
 }
 export interface CollateralEntry {
   amount: BN

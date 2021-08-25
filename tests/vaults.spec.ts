@@ -70,6 +70,7 @@ describe('vaults', () => {
   let usdcToken: Token
   let usdcVaultReserve: PublicKey
   let userUsdcTokenAccount: PublicKey
+  let userXusdTokenAccount: PublicKey
   let collateralAmount: BN
   let borrowAmount: BN
   const accountOwner = Keypair.generate()
@@ -304,7 +305,7 @@ describe('vaults', () => {
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
 
-    const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
+    userXusdTokenAccount = await xusdToken.createAccount(accountOwner.publicKey)
     const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
     const vaultEntry = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
@@ -325,7 +326,7 @@ describe('vaults', () => {
     await exchange.borrowVault({
       amount: borrowAmount,
       owner: accountOwner.publicKey,
-      to: xusdTokenAmount,
+      to: userXusdTokenAccount,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
       signers: [accountOwner]
@@ -418,14 +419,13 @@ describe('vaults', () => {
 
     const repayAmount = vaultEntry.syntheticAmount.val.divn(2)
 
-    const ix = await exchange.repayVaultInstruction({
+    await exchange.repayVault({
       amount: repayAmount,
       owner: accountOwner.publicKey,
       collateral: usdc.collateralAddress,
       synthetic: xusd.assetAddress,
-      userTokenAccountRepay: userUsdcTokenAccount
+      userTokenAccountRepay: userXusdTokenAccount,
+      signers: [accountOwner]
     })
-
-    await signAndSend(new Transaction().add(ix), [accountOwner], connection)
   })
 })

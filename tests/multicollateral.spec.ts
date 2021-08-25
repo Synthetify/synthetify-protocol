@@ -109,6 +109,7 @@ describe('max collaterals', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     healthFactor = (await exchange.getState()).healthFactor
     const createCollateralProps = {
@@ -141,11 +142,10 @@ describe('max collaterals', () => {
     const addBtcSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: xbtcToken.publicKey,
       assetsList,
-      decimals: 8,
       maxSupply: new BN(10).pow(new BN(16)),
       priceFeed: feed
     })
-    await signAndSend(new Transaction().add(addBtcSynthetic), [wallet, EXCHANGE_ADMIN], connection)
+    await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
     const assetsListBefore = await exchange.getAssetsList(assetsList)
     assert.ok((await assetsListBefore).assets.length)
 
@@ -242,7 +242,7 @@ describe('max collaterals', () => {
       })
     )
   })
-  it.only('mint', async () => {
+  it('mint', async () => {
     const accountOwner = new Account()
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
