@@ -153,6 +153,36 @@ describe('vaults', () => {
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
   })
+  it('create usdc/xusd vault should failed because admin signature', async () => {
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    const usdc = assetsListData.collaterals[1]
+    const debtInterestRate = percentToDecimal(5)
+    const collateralRatio = percentToDecimal(80)
+    const liquidationRatio = percentToDecimal(50)
+    const liquidationThreshold = percentToDecimal(90)
+    const liquidationPenaltyExchange = percentToDecimal(5)
+    const liquidationPenaltyLiquidator = percentToDecimal(5)
+    const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
+
+    const { ix } = await exchange.createVaultInstruction({
+      collateralReserve: usdcVaultReserve,
+      collateral: usdc.collateralAddress,
+      synthetic: xusd.assetAddress,
+      debtInterestRate,
+      collateralRatio,
+      maxBorrow,
+      liquidationPenaltyExchange,
+      liquidationPenaltyLiquidator,
+      liquidationThreshold,
+      liquidationRatio
+    })
+
+    await assertThrowsAsync(
+      signAndSend(new Transaction().add(ix), [wallet], connection),
+      ERRORS.SIGNATURE
+    )
+  })
   it('should create usdc/xusd vault', async () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
