@@ -15,6 +15,7 @@
     "atype",
     "blockhash",
     "collateralization",
+    "collateralized",
     "divn",
     "entryv",
     "keygen",

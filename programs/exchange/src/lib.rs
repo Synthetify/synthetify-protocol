@@ -1708,7 +1708,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    #[access_control(halted(&ctx.accounts.state) admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn create_vault(
         ctx: Context<CreateVault>,
         bump: u8,
@@ -1768,7 +1768,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(vault_halted(&ctx.accounts.vault))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
 
@@ -1801,8 +1801,7 @@ pub mod exchange {
         Ok(())
     }
 
-    #[access_control(vault_halted(&ctx.accounts.vault)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: DEPOSIT VAULT");
         let timestamp = Clock::get()?.unix_timestamp;
@@ -1848,8 +1847,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(vault_halted(&ctx.accounts.vault)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: BORROW VAULT");
         let timestamp = Clock::get()?.unix_timestamp;
@@ -1923,8 +1921,7 @@ pub mod exchange {
         Ok(())
     }
 
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW_VAULT");
 
@@ -1993,8 +1990,7 @@ pub mod exchange {
         Ok(())
     }
 
-    #[access_control(halted(&ctx.accounts.state)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn repay_vault(ctx: Context<RepayVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: REPAY_VAULT");
 
@@ -3257,7 +3253,9 @@ pub struct DepositVault<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
@@ -3287,7 +3285,9 @@ pub struct BorrowVault<'info> {
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
     pub to: AccountInfo<'info>, // not must be owner
@@ -3326,7 +3326,9 @@ pub struct WithdrawVault<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
@@ -3356,7 +3358,9 @@ pub struct RepayVault<'info> {
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut)]
     pub user_token_account_repay: CpiAccount<'info, TokenAccount>,
@@ -3389,7 +3393,9 @@ pub struct LiquidateVault<'info> {
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
@@ -3493,7 +3499,6 @@ pub enum ErrorCode {
 }
 
 // Access control modifiers.
-
 // Only admin access
 fn admin(state_loader: &Loader<State>, signer: &AccountInfo) -> Result<()> {
     let state = state_loader.load()?;
@@ -3506,19 +3511,6 @@ fn halted<'info>(state_loader: &Loader<State>) -> Result<()> {
     require!(!state.halted, Halted);
     Ok(())
 }
-// Assert right assets_list
-fn assets_list<'info>(
-    state_loader: &Loader<State>,
-    assets_list: &Loader<'info, AssetsList>,
-) -> Result<()> {
-    let state = state_loader.load()?;
-    require!(
-        assets_list.to_account_info().key.eq(&state.assets_list),
-        InvalidAssetsList
-    );
-    Ok(())
-}
-
 // Vault containers
 fn vault_halted<'info>(vault_loader: &Loader<Vault>) -> Result<()> {
     let vault = vault_loader.load()?;
