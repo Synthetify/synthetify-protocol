@@ -220,7 +220,7 @@ describe('vaults', () => {
     // deposit collateral
     const userEthTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
-    const collateralAmount = new BN(10 * 1e6) // 100 ETH
+    const collateralAmount = new BN(10 * 1e6) // 10 ETH
     await ethToken.mintTo(userEthTokenAccount, wallet, [], tou64(collateralAmount))
 
     await exchange.vaultDeposit({
