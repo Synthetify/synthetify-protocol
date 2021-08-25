@@ -342,8 +342,6 @@ describe('vaults', () => {
         vaultEntryDataBefore.syntheticAmount.val.sub(new BN(8_000_000_000))
       )
     )
-    console.log(vaultEntryDataAfter.collateralAmount.val.toString())
-    console.log(vaultEntryDataAfter.syntheticAmount.val.toString())
     // Synthetic should be burned so supply should decrease
     const assetsListDataAfter = await exchange.getAssetsList(assetsList)
     const xusdAfter = assetsListDataAfter.synthetics[0]
