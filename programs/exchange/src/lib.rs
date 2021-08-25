@@ -2040,7 +2040,7 @@ pub mod exchange {
 
         Ok(())
     }
-    #[access_control(halted(&ctx.accounts.state))]
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn liquidate_vault(ctx: Context<LiquidateVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: LIQUIDATE VAULT");
 
