@@ -234,7 +234,7 @@ describe('vaults', () => {
       signers: [accountOwner]
     })
 
-    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6) // 2000(ETH price) * 100(ETH amount) * 0.8(collateral ratio)
+    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6) // 2000(ETH price) * 10(ETH amount) * 0.8(collateral ratio)
     const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
 
     // borrow xusd
