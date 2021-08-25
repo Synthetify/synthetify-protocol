@@ -1168,6 +1168,7 @@ export class Exchange {
         owner: owner,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
+        state: this.stateAddress,
         assetsList: this.state.assetsList,
         synthetic: synthetic,
         collateral: collateral,

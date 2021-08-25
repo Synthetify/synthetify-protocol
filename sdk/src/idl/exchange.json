@@ -1722,6 +1722,11 @@
       "name": "createVaultEntry",
       "accounts": [
         {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "vaultEntry",
           "isMut": true,
           "isSigner": false
@@ -2888,6 +2893,6 @@
     }
   ],
   "metadata": {
-    "address": "E1DFoe56EZNAfUdhuzq3FtHMeVUhFL9Jo39auGYkp26s"
+    "address": "9k2hQfUpfH6WMVcP5sPq9LjpoMfvfeDYULNKgPWse7zb"
   }
 }

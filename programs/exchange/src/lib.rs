@@ -1708,9 +1708,7 @@ pub mod exchange {
 
         Ok(())
     }
-
-    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin)
-    assets_list(&ctx.accounts.state,&ctx.accounts.assets_list))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn create_vault(
         ctx: Context<CreateVault>,
         bump: u8,
@@ -1768,6 +1766,7 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(vault_halted(&ctx.accounts.vault))]
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
 
@@ -3049,6 +3048,7 @@ pub struct CreateVault<'info> {
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account("&collateral_reserve.mint == collateral.key")]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
@@ -3060,12 +3060,15 @@ pub struct CreateVault<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVaultEntry<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
     #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
     #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
     pub vault: Loader<'info, Vault>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
