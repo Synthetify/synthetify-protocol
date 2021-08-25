@@ -1720,7 +1720,7 @@ pub mod exchange {
         penalty_to_exchange: Decimal,
         liquidation_ratio: Decimal,
     ) -> Result<()> {
-        msg!("Synthetify: ADD NEW VAULT");
+        msg!("Synthetify: CREATE VAULT");
 
         let mut vault = ctx.accounts.vault.load_init()?;
         let assets_list = ctx.accounts.assets_list.load()?;
