@@ -1715,9 +1715,10 @@ pub mod exchange {
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
         max_borrow: Decimal,
-        liquidation_ratio: Decimal,
+        liquidation_threshold: Decimal,
         penalty_to_liquidator: Decimal,
         penalty_to_exchange: Decimal,
+        liquidation_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify: ADD NEW VAULT");
 
@@ -1759,6 +1760,7 @@ pub mod exchange {
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
             // Liquidation parameters
+            vault.liquidation_threshold = liquidation_threshold;
             vault.liquidation_ratio = liquidation_ratio;
             vault.liquidation_penalty_liquidator = penalty_to_liquidator;
             vault.liquidation_penalty_exchange = penalty_to_exchange;
@@ -1875,7 +1877,6 @@ pub mod exchange {
         let collateral_asset = assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-
         if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
             return Err(ErrorCode::OutdatedOracle.into());
         }
@@ -1898,7 +1899,6 @@ pub mod exchange {
             _ => Decimal::new(amount.into(), synthetic.supply.scale),
         };
         let amount_after_borrow = vault_entry.synthetic_amount.add(borrow_amount).unwrap();
-
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
         }
@@ -2038,6 +2038,171 @@ pub mod exchange {
         let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::burn(cpi_ctx, repay_amount.to_u64())?;
 
+        Ok(())
+    }
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn liquidate_vault(ctx: Context<LiquidateVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: LIQUIDATE VAULT");
+
+        let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = &mut synthetics[synthetic_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = &assets[synthetic.asset_index as usize];
+        let collateral_asset = &assets[collateral.asset_index as usize];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+
+        // Amount of synthetic safely collateralized
+        let amount_liquidation_limit = calculate_vault_borrow_limit(
+            *collateral_asset,
+            *synthetic_asset,
+            *synthetic,
+            vault_entry.collateral_amount,
+            vault.liquidation_threshold,
+        );
+        // Fail if user is safe
+        require!(
+            amount_liquidation_limit
+                .lt(vault_entry.synthetic_amount)
+                .unwrap(),
+            InvalidLiquidation
+        );
+        // Amount of synthetic to repay
+        // U64::MAX mean debt * liquidation_ratio (percent of position able to liquidate in single liquidation)
+        let liquidation_amount = match amount {
+            u64::MAX => vault_entry.synthetic_amount.mul(vault.liquidation_ratio),
+            _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
+        };
+        // Fail if liquidator wants to liquidate more than allowed number
+        require!(
+            liquidation_amount
+                .lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))
+                .unwrap(),
+            InvalidLiquidation
+        );
+        // Amount seized in usd
+        let seized_collateral_in_usd = liquidation_amount
+            .mul_up(
+                vault
+                    .liquidation_penalty_liquidator
+                    .add(vault.liquidation_penalty_exchange)
+                    .unwrap(),
+            )
+            .add(liquidation_amount)
+            .unwrap()
+            .mul(synthetic_asset.price);
+
+        // Amount seized in token
+        let seized_collateral_in_token = usd_to_token_amount(
+            &collateral_asset,
+            seized_collateral_in_usd,
+            collateral.reserve_balance.scale,
+        );
+
+        let collateral_to_exchange = seized_collateral_in_token
+            .mul(vault.liquidation_penalty_exchange)
+            .div_up(
+                Decimal::from_percent(100)
+                    .add(vault.liquidation_penalty_liquidator)
+                    .unwrap()
+                    .add(vault.liquidation_penalty_exchange)
+                    .unwrap(),
+            );
+
+        let collateral_to_liquidator = seized_collateral_in_token
+            .sub(collateral_to_exchange)
+            .unwrap();
+
+        // Adjust vault_entry variables
+        vault_entry.collateral_amount = vault_entry
+            .collateral_amount
+            .sub(seized_collateral_in_token)
+            .unwrap();
+
+        vault_entry.synthetic_amount = vault_entry
+            .synthetic_amount
+            .sub(liquidation_amount)
+            .unwrap();
+        // Adjust vault variables
+        vault.collateral_amount = vault
+            .collateral_amount
+            .sub(seized_collateral_in_token)
+            .unwrap();
+        vault.mint_amount = vault.mint_amount.sub(liquidation_amount).unwrap();
+        // Change supply of burned synthetic
+        set_synthetic_supply(synthetic, synthetic.supply.sub(liquidation_amount).unwrap()).unwrap();
+
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer_seeds = &[&seeds[..]];
+        {
+            // Transfer collateral to liquidator
+            let liquidator_accounts = Transfer {
+                from: ctx.accounts.collateral_reserve.to_account_info(),
+                to: ctx.accounts.liquidator_collateral_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let transfer =
+                CpiContext::new(token_program, liquidator_accounts).with_signer(signer_seeds);
+            token::transfer(transfer, collateral_to_liquidator.to_u64())?;
+        }
+        {
+            if !ctx
+                .accounts
+                .liquidation_fund
+                .to_account_info()
+                .key
+                .eq(&collateral.liquidation_fund)
+            {
+                return Err(ErrorCode::ExchangeLiquidationAccount.into());
+            }
+            // Transfer collateral to liquidation_fund
+            let exchange_accounts = Transfer {
+                from: ctx.accounts.collateral_reserve.to_account_info(),
+                to: ctx.accounts.liquidation_fund.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let transfer =
+                CpiContext::new(token_program, exchange_accounts).with_signer(signer_seeds);
+            token::transfer(transfer, collateral_to_exchange.try_into().unwrap())?;
+        }
+        {
+            // Burn repaid synthetic
+            let exchange_accounts = Burn {
+                mint: ctx.accounts.synthetic.to_account_info(),
+                to: ctx.accounts.liquidator_synthetic_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let burn = CpiContext::new(token_program, exchange_accounts).with_signer(signer_seeds);
+            token::burn(burn, liquidation_amount.to_u64())?;
+        }
         Ok(())
     }
 }
@@ -2443,7 +2608,7 @@ pub struct CreateExchangeAccount<'info> {
 }
 
 #[account(zero_copy)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct ExchangeAccount {
     pub owner: Pubkey,                  // Identity controlling account
     pub version: u8,                    // Version of account struct
@@ -3017,6 +3182,7 @@ pub struct Vault {
     pub collateral: Pubkey,
     pub debt_interest_rate: Decimal,
     pub collateral_ratio: Decimal,
+    pub liquidation_threshold: Decimal,
     pub liquidation_ratio: Decimal,
     pub liquidation_penalty_liquidator: Decimal,
     pub liquidation_penalty_exchange: Decimal,
@@ -3212,7 +3378,46 @@ impl<'a, 'b, 'c, 'info> From<&RepayVault<'info>> for CpiContext<'a, 'b, 'c, 'inf
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
-
+#[derive(Accounts)]
+pub struct LiquidateVault<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(mut,has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]] )]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut,
+        constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
+        constraint = &collateral_reserve.mint == collateral.key
+    )]
+    pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidator_synthetic_account.mint == synthetic.key
+    )]
+    pub liquidator_synthetic_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidator_collateral_account.owner == liquidator.key,
+        constraint = &liquidator_collateral_account.mint == collateral.key
+    )]
+    pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
+        constraint = &liquidation_fund.mint == collateral.key
+    )]
+    pub liquidation_fund: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+    #[account(signer)]
+    pub liquidator: AccountInfo<'info>,
+    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    pub exchange_authority: AccountInfo<'info>,
+}
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]

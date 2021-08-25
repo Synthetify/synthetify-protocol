@@ -1699,7 +1699,7 @@
           }
         },
         {
-          "name": "liquidationRatio",
+          "name": "liquidationThreshold",
           "type": {
             "defined": "Decimal"
           }
@@ -1712,6 +1712,12 @@
         },
         {
           "name": "penaltyToExchange",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "liquidationRatio",
           "type": {
             "defined": "Decimal"
           }
@@ -2012,6 +2018,87 @@
         },
         {
           "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "liquidateVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidatorSyntheticAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidatorCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidationFund",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "liquidator",
           "isMut": false,
           "isSigner": true
         },
@@ -2355,6 +2442,12 @@
           },
           {
             "name": "collateralRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationThreshold",
             "type": {
               "defined": "Decimal"
             }
@@ -2893,6 +2986,6 @@
     }
   ],
   "metadata": {
-    "address": "9k2hQfUpfH6WMVcP5sPq9LjpoMfvfeDYULNKgPWse7zb"
+    "address": "3ZS8nBMdc8aDZ86DfsVoYT2fve18KwgmWSYkanchJGFR"
   }
 }

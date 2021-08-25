@@ -16,6 +16,7 @@
     "test:settlement": "anchor test --skip-build tests/settlement.spec.ts",
     "test:vaults": "anchor test --skip-build tests/vaults.spec.ts",
     "test:swapline": "anchor test --skip-build tests/swap-line.spec.ts",
+    "test:vaultsliquidation": "anchor test --skip-build tests/vaults-liquidation.spec.ts",
     "build": "cd sdk && npm run build",
     "postinstall": "anchor build && cd sdk && npm install && npm run build"
   },
