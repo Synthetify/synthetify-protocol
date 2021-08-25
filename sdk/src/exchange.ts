@@ -1269,6 +1269,33 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  public async liquidateVaultInstruction({
+    owner,
+    to,
+    synthetic,
+    collateral,
+    amount
+  }: BorrowVaultInstruction) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    return (await this.program.instruction.borrowVault(amount, {
+      accounts: {
+        synthetic,
+        collateral,
+        owner,
+        to,
+        state: this.stateAddress,
+        vaultEntry: vaultEntryAddress,
+        vault: vaultAddress,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        assetsList: this.state.assetsList,
+        exchangeAuthority: this.exchangeAuthority,
+        rent: SYSVAR_RENT_PUBKEY,
+        systemProgram: SystemProgram.programId
+      }
+    })) as TransactionInstruction
+  }
   public async borrowVault({ owner, to, synthetic, collateral, amount, signers }: BorrowVault) {
     await this.getState()
     const borrowVaultIx = await this.borrowVaultInstruction({
