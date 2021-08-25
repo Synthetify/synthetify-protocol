@@ -1084,10 +1084,6 @@ mod tests {
             // real     1.0000007324964247752...
             // expected 1.000000732496424772
 
-            // new interest denominator
-            // real     1.0000007324964247752...
-            // expected 1.000000732496424772
-
             // supply increase
             // real     0.1465066...
             // expected 0.146507
@@ -1128,44 +1124,48 @@ mod tests {
                 expected_synthetic_borrowed_supply
             );
         }
-        // // empty vault entry adjustment
-        // {
-        //     let timestamp = 1200000;
-        //     let vault = &mut vault.clone();
-        //     let vault_entry = &mut vault_entry.clone();
-        //     let assets_list = RefCell::new(assets_list);
-        //     let synthetic = &mut assets_list.borrow_mut().synthetics[0];
-        //     let synthetic_borrowed_supply = Decimal::from_usd(0);
+        // empty vault entry adjustment
+        {
+            let timestamp = 1200000;
+            let vault = &mut vault.clone();
+            let vault_entry = &mut vault_entry.clone();
+            let assets_list = RefCell::new(assets_list);
+            let synthetic = &mut assets_list.borrow_mut().synthetics[0];
+            let synthetic_borrowed_supply = Decimal::from_usd(0);
 
-        //     // update borrowed supply
-        //     vault.mint_amount = synthetic_borrowed_supply;
-        //     vault_entry.synthetic_amount = synthetic_borrowed_supply;
-        //     synthetic.borrowed_supply = synthetic_borrowed_supply;
-        //     synthetic.supply = synthetic_debt_pool_supply;
+            // update borrowed supply
+            vault.mint_amount = synthetic_borrowed_supply;
+            vault_entry.synthetic_amount = synthetic_borrowed_supply;
+            synthetic.borrowed_supply = synthetic_borrowed_supply;
+            synthetic.supply = synthetic_debt_pool_supply;
 
-        //     adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-        //     let expected_interest_new_minuend = Decimal::from_interest_rate(1002092846270920000);
+            // period interest
+            // real     1.0020950376925351829...
+            // expected 1.002095037692524283
 
-        //     // verify vault adjustment
-        //     assert_eq!({ vault.last_update }, 1200000);
-        //     assert_eq!(
-        //         vault.accumulated_interest_rate,
-        //         expected_interest_new_minuend
-        //     );
-        //     assert_eq!(vault.mint_amount, Decimal::from_usd(0));
-        //     assert_eq!(vault.accumulated_interest, Decimal::from_usd(0));
+            adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+            let expected_interest_new_minuend = Decimal::from_interest_rate(1002095037692524283);
 
-        //     // verify vault entry adjustment
-        //     assert_eq!(
-        //         vault_entry.last_accumulated_interest_rate,
-        //         expected_interest_new_minuend
-        //     );
-        //     assert_eq!(vault_entry.synthetic_amount, Decimal::from_usd(0));
+            // verify vault adjustment
+            assert_eq!({ vault.last_update }, 1200000);
+            assert_eq!(
+                vault.accumulated_interest_rate,
+                expected_interest_new_minuend
+            );
+            assert_eq!(vault.mint_amount, Decimal::from_usd(0));
+            assert_eq!(vault.accumulated_interest, Decimal::from_usd(0));
 
-        //     // verify synthetic adjustment
-        //     assert_eq!(synthetic.supply, synthetic_debt_pool_supply);
-        //     assert_eq!(synthetic.borrowed_supply, Decimal::from_usd(0));
-        // }
+            // verify vault entry adjustment
+            assert_eq!(
+                vault_entry.last_accumulated_interest_rate,
+                expected_interest_new_minuend
+            );
+            assert_eq!(vault_entry.synthetic_amount, Decimal::from_usd(0));
+
+            // verify synthetic adjustment
+            assert_eq!(synthetic.supply, synthetic_debt_pool_supply);
+            assert_eq!(synthetic.borrowed_supply, Decimal::from_usd(0));
+        }
         // // multi time adjustment
         // {
         //     let timestamp = 59;
