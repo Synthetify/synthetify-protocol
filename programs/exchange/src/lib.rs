@@ -3053,9 +3053,9 @@ impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'in
 pub struct WithdrawVault<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
     pub vault: Loader<'info, Vault>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -3084,14 +3084,13 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
-
 #[derive(Accounts)]
 pub struct RepayVault<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]], payer=owner)]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]], payer=owner )]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -3102,7 +3101,7 @@ pub struct RepayVault<'info> {
     pub user_token_account_repay: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
-    #[account(mut, signer)]
+    #[account(signer)]
     pub owner: AccountInfo<'info>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
