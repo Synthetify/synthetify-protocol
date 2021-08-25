@@ -1,20 +1,13 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
-import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import {
-  Account,
-  PublicKey,
-  sendAndConfirmRawTransaction,
-  Transaction,
-  TransactionInstruction
-} from '@solana/web3.js'
+import { Token } from '@solana/spl-token'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
-  sleep,
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
@@ -23,8 +16,6 @@ import {
   calculateAmountAfterFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
-  mulByPercentage,
-  createCollateralToken,
   calculateFee,
   calculateSwapTax,
   U64_MAX,
@@ -35,12 +26,13 @@ import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   ERRORS,
   percentToDecimal,
+  sleep,
   SNY_DECIMALS,
   toDecimal,
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('exchange', () => {
@@ -124,6 +116,8 @@ describe('exchange', () => {
       exchangeProgram.programId
     )
     const state = await exchange.getState()
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    await sleep(10000)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -663,41 +657,33 @@ describe('exchange', () => {
         assetsList: assetsList,
         assetFeedAddress: btcFeed
       })
-      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addBtcIx), [EXCHANGE_ADMIN], connection)
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })
-      await signAndSend(
-        new Transaction().add(addBtcSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
       const addEthIx = await exchange.addNewAssetInstruction({
         assetsList: assetsList,
         assetFeedAddress: ethFeed
       })
-      await signAndSend(new Transaction().add(addEthIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addEthIx), [EXCHANGE_ADMIN], connection)
       const addEthSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: ethToken.publicKey,
         assetsList,
         maxSupply: newAssetLimit,
         priceFeed: ethFeed
       })
-      await signAndSend(
-        new Transaction().add(addEthSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addEthSynthetic), [EXCHANGE_ADMIN], connection)
       const addZeroMaxSupplyTokenIx = await exchange.addNewAssetInstruction({
         assetsList: assetsList,
         assetFeedAddress: zeroMaxSupplyTokenFeed
       })
       await signAndSend(
         new Transaction().add(addZeroMaxSupplyTokenIx),
-        [wallet, EXCHANGE_ADMIN],
+        [EXCHANGE_ADMIN],
         connection
       )
       const addZeroMaxSupplySynthetic = await exchange.addSyntheticInstruction({
@@ -708,7 +694,7 @@ describe('exchange', () => {
       })
       await signAndSend(
         new Transaction().add(addZeroMaxSupplySynthetic),
-        [wallet, EXCHANGE_ADMIN],
+        [EXCHANGE_ADMIN],
         connection
       )
     })
@@ -1688,7 +1674,7 @@ describe('exchange', () => {
       )
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1703,7 +1689,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1730,7 +1716,7 @@ describe('exchange', () => {
       const usdMintAmount = new BN(5 * 1e6)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1747,7 +1733,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1774,7 +1760,7 @@ describe('exchange', () => {
       const withdrawAmount = new BN(20 * 1e6)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1792,7 +1778,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1827,7 +1813,7 @@ describe('exchange', () => {
         usdToken
       })
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1844,7 +1830,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1876,18 +1862,14 @@ describe('exchange', () => {
         assetsList: assetsList,
         assetFeedAddress: btcFeed
       })
-      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addBtcIx), [EXCHANGE_ADMIN], connection)
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })
-      await signAndSend(
-        new Transaction().add(addBtcSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
       await exchange.getState()
 
       const collateralAmount = new BN(100 * 1e6)
@@ -1910,7 +1892,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1930,7 +1912,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 

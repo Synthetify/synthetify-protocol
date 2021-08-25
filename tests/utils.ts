@@ -1,6 +1,6 @@
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
-import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
+import { Token, u64 } from '@solana/spl-token'
 import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
@@ -385,7 +385,7 @@ export const createCollateralToken = async ({
     assetsList,
     assetFeedAddress: oracleAddress
   })
-  await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
 
   const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
   const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
@@ -402,7 +402,7 @@ export const createCollateralToken = async ({
     collateralRatio: collateralRatioDecimal,
     reserveBalance: reserveBalanceDecimal
   })
-  await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addCollateralIx), [EXCHANGE_ADMIN], connection)
 
   return {
     token: collateralToken,

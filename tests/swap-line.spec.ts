@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Account, Keypair, PublicKey, Transaction } from '@solana/web3.js'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
@@ -11,20 +11,14 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   SYNTHETIFY_ECHANGE_SEED,
-  createAccountWithCollateralAndMaxMintUsd,
-  createAccountWithMultipleCollaterals,
-  skipToSlot,
   createCollateralToken,
   eqDecimals,
-  mulByDecimal,
-  waitForBeggingOfASlot,
   assertThrowsAsync,
   newAccountWithLamports,
   almostEqual,
   getSwapLineAmountOut
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { Collateral } from '@synthetify/sdk/lib/exchange'
 import {
   calculateDebt,
   ERRORS_EXCHANGE,
@@ -119,6 +113,8 @@ describe('swap-line', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
 
   describe('Create swap line', async () => {

@@ -112,6 +112,7 @@ describe('Interest debt accumulation', () => {
 
     accountOwner = new Account().publicKey
     exchangeAccount = await exchange.createExchangeAccount(accountOwner)
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   describe('Accumulate debt interest', async () => {
     it('should initialized interest debt parameters', async () => {
@@ -248,7 +249,7 @@ describe('Interest debt accumulation', () => {
         amount: firstWithdrawAmount,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(firstWithdrawAmount))
@@ -274,7 +275,7 @@ describe('Interest debt accumulation', () => {
         amount: toWithdrawTax,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(expectedDebtInterest))
@@ -292,7 +293,7 @@ describe('Interest debt accumulation', () => {
         amount: new BN(0),
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(userUsdAccountBeforeWithdraw.amount))
@@ -310,7 +311,7 @@ describe('Interest debt accumulation', () => {
         to: adminUsdTokenAccount
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
       )
     })

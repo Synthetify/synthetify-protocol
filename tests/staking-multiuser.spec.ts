@@ -13,7 +13,6 @@ import {
   SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   skipToSlot,
-  mulByPercentage,
   mulByDecimal
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
@@ -23,7 +22,6 @@ describe('staking with multiple users', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
-  const managerProgram = anchor.workspace.Manager as Program
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program

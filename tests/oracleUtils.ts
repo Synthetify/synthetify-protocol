@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer'
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { parsePriceData } from '@pythnetwork/client'
 import { PriceStatus } from '@synthetify/sdk/lib/exchange'

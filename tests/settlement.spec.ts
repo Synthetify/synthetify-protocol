@@ -11,17 +11,13 @@ import {
   EXCHANGE_ADMIN,
   SYNTHETIFY_ECHANGE_SEED,
   assertThrowsAsync,
-  DEFAULT_PUBLIC_KEY,
-  U64_MAX,
   createAccountWithCollateralAndMaxMintUsd,
-  tokenToUsdValue,
   almostEqual,
   calculateDebt
 } from './utils'
 import { createPriceFeed, setFeedPrice } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/src/utils'
-import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { ACCURACY, ERRORS_EXCHANGE, ORACLE_OFFSET, sleep } from '@synthetify/sdk/lib/utils'
+import { Synthetic } from '@synthetify/sdk/lib/exchange'
+import { ACCURACY, ERRORS_EXCHANGE, sleep } from '@synthetify/sdk/lib/utils'
 
 describe('settlement', () => {
   const provider = anchor.Provider.local()
@@ -110,6 +106,7 @@ describe('settlement', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   describe('Settlement', async () => {
     const price = 7
@@ -127,7 +124,7 @@ describe('settlement', () => {
         assetsList,
         assetFeedAddress: oracleAddress
       })
-      await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
       const assetListData = await exchange.getAssetsList(assetsList)
 
       const assetForSynthetic = assetListData.assets.find((a) =>
@@ -149,7 +146,7 @@ describe('settlement', () => {
         maxSupply: new BN(1e12),
         priceFeed: assetForSynthetic.feedAddress
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
 
       const addedSynthetic = afterAssetList.synthetics.find((a) =>
@@ -222,7 +219,7 @@ describe('settlement', () => {
         syntheticToSettle.assetAddress,
         new BN(slot)
       )
-      await signAndSend(new Transaction().add(changeSlotIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(changeSlotIx), [EXCHANGE_ADMIN], connection)
 
       const assetsListBeforeSettlement = await exchange.getAssetsList(assetsList)
       const { oracleUpdateIx, settleIx } = await exchange.settleSynthetic({
