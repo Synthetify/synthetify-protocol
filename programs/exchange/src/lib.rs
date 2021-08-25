@@ -2070,10 +2070,12 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if (synthetic_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
+        {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if (collateral_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
+        {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -3389,7 +3391,9 @@ pub struct LiquidateVault<'info> {
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
@@ -3397,7 +3401,8 @@ pub struct LiquidateVault<'info> {
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut,
-        constraint = &liquidator_synthetic_account.mint == synthetic.key
+        constraint = &liquidator_synthetic_account.mint == synthetic.key,
+        constraint = &liquidator_synthetic_account.owner == liquidator.key
     )]
     pub liquidator_synthetic_account: CpiAccount<'info, TokenAccount>,
     #[account(mut,
@@ -3410,12 +3415,12 @@ pub struct LiquidateVault<'info> {
         constraint = &liquidation_fund.mint == collateral.key
     )]
     pub liquidation_fund: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
     #[account(signer)]
     pub liquidator: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
 #[error]
