@@ -415,13 +415,18 @@ describe('vaults', () => {
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
     const usdc = assetsListData.collaterals[1]
-    const vaultEntry = await exchange.getVaultEntryForOwner(
+
+    const vaultBeforeRepay = await exchange.getVaultForPair(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
+    const vaultEntryBeforeRepay = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
       usdc.collateralAddress,
       accountOwner.publicKey
     )
-
-    const repayAmount = vaultEntry.syntheticAmount.val.divn(2)
+    const userXusdTokenAccountBeforeRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
+    const repayAmount = vaultEntryBeforeRepay.syntheticAmount.val.divn(2)
 
     await exchange.repayVault({
       amount: repayAmount,
@@ -431,5 +436,28 @@ describe('vaults', () => {
       userTokenAccountRepay: userXusdTokenAccount,
       signers: [accountOwner]
     })
+
+    const vaultAfterRepay = await exchange.getVaultForPair(
+      xusd.assetAddress,
+      usdc.collateralAddress
+    )
+    const vaultEntryAfterRepay = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      usdc.collateralAddress,
+      accountOwner.publicKey
+    )
+    const userXusdTokenAccountAfterRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
+
+    assert.ok(
+      repayAmount.eq(
+        userXusdTokenAccountBeforeRepay.amount.sub(userXusdTokenAccountAfterRepay.amount)
+      )
+    )
+    assert.ok(repayAmount.eq(vaultBeforeRepay.mintAmount.val.sub(vaultAfterRepay.mintAmount.val)))
+    assert.ok(
+      repayAmount.eq(
+        vaultEntryBeforeRepay.syntheticAmount.val.sub(vaultEntryAfterRepay.syntheticAmount.val)
+      )
+    )
   })
 })
