@@ -1728,6 +1728,7 @@ export interface Vault {
   collateralReserve: PublicKey
   collateralRatio: Decimal
   liquidationThreshold: Decimal
+  liquidationRatio: Decimal
   liquidationPenaltyLiquidator: Decimal
   liquidationPenaltyExchange: Decimal
   debtInterestRate: Decimal

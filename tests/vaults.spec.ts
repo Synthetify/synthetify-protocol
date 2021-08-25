@@ -55,6 +55,7 @@ describe('vaults', () => {
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
+  //@ts-ignore
   const wallet = provider.wallet.payer as Account
 
   let snyToken: Token
@@ -158,7 +159,8 @@ describe('vaults', () => {
     const usdc = assetsListData.collaterals[1]
     const debtInterestRate = percentToDecimal(5)
     const collateralRatio = percentToDecimal(80)
-    const liquidationRatio = percentToDecimal(90)
+    const liquidationRatio = percentToDecimal(50)
+    const liquidationThreshold = percentToDecimal(90)
     const liquidationPenaltyExchange = percentToDecimal(5)
     const liquidationPenaltyLiquidator = percentToDecimal(5)
 
@@ -173,6 +175,7 @@ describe('vaults', () => {
       maxBorrow,
       liquidationPenaltyExchange,
       liquidationPenaltyLiquidator,
+      liquidationThreshold,
       liquidationRatio
     })
     const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
@@ -186,6 +189,7 @@ describe('vaults', () => {
     assert.ok(eqDecimals(vault.collateralRatio, collateralRatio))
     assert.ok(eqDecimals(vault.debtInterestRate, debtInterestRate))
     assert.ok(eqDecimals(vault.liquidationRatio, liquidationRatio))
+    assert.ok(eqDecimals(vault.liquidationThreshold, liquidationThreshold))
     assert.ok(eqDecimals(vault.liquidationPenaltyExchange, liquidationPenaltyExchange))
     assert.ok(eqDecimals(vault.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
     assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
