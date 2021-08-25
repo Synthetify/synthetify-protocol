@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 
-use crate::decimal::{Add, Compare, Mul, MulUp, Sub};
+use crate::decimal::{Add, Compare, Div, Mul, MulUp, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
 use crate::*;
 
@@ -195,11 +195,11 @@ pub fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64) {
 
     if diff >= 1 {
         let minute_interest_rate = calculate_minute_interest_rate(vault.debt_interest_rate);
-        let increase_interest_rate = minute_interest_rate.mul(diff as u128);
-        vault.accumulated_interest_rate = vault
-            .accumulated_interest_rate
-            .add(increase_interest_rate)
-            .unwrap();
+        let one = Decimal::from_percent(100).to_interest_rate();
+        let compounded_interest =
+            calculate_compounded_interest(one, minute_interest_rate, diff as u128);
+
+        vault.accumulated_interest_rate = vault.accumulated_interest_rate.mul(compounded_interest);
         vault.last_update = diff
             .checked_mul(ADJUSTMENT_PERIOD)
             .unwrap()
@@ -214,16 +214,14 @@ pub fn adjust_vault_entry_interest_debt(
     timestamp: i64,
 ) {
     adjust_vault_interest_rate(vault, timestamp);
-    let interest_subtrahend = vault_entry.last_accumulated_interest_rate;
-    let interest_minuend = vault.accumulated_interest_rate;
-    if interest_minuend == interest_subtrahend {
+    let interest_denominator = vault_entry.last_accumulated_interest_rate;
+    let interest_nominator = vault.accumulated_interest_rate;
+
+    if interest_nominator == interest_denominator {
         return;
     }
 
-    let interest_debt_diff = Decimal::from_percent(100)
-        .to_interest_rate()
-        .add(interest_minuend.sub(interest_subtrahend).unwrap())
-        .unwrap();
+    let interest_debt_diff = interest_nominator.div(interest_denominator);
     let new_synthetic_amount = vault_entry.synthetic_amount.mul_up(interest_debt_diff);
     let additional_tokens = new_synthetic_amount
         .sub(vault_entry.synthetic_amount)
@@ -239,8 +237,8 @@ pub fn adjust_vault_entry_interest_debt(
     vault.mint_amount = vault.mint_amount.add(additional_tokens).unwrap();
     // increase vault entry synthetic_amount
     vault_entry.synthetic_amount = new_synthetic_amount;
-    // commit adjustment by setting interest minuend as new interest subtrahend
-    vault_entry.last_accumulated_interest_rate = interest_minuend;
+    // commit adjustment by setting interest nominator as new interest denominator
+    vault_entry.last_accumulated_interest_rate = interest_nominator;
 }
 
 pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
