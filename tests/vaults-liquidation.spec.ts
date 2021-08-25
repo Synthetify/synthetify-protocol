@@ -33,7 +33,7 @@ import {
   mulByDecimal,
   almostEqual
 } from './utils'
-import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
+import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   ERRORS,
@@ -49,8 +49,7 @@ import { Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('vaults', () => {
-  console.log(1)
-  const provider = anchor.Provider.local(undefined, { commitment: 'single', skipPreflight: true })
+  const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
   let exchange: Exchange
@@ -70,17 +69,17 @@ describe('vaults', () => {
   let snyLiquidationFund: PublicKey
   let nonce: number
   let CollateralTokenMinter: Account = wallet
-  let usdcToken: Token
-  let usdcVaultReserve: PublicKey
-  let userUsdcTokenAccount: PublicKey
-  let collateralAmount: BN
-  let borrowAmount: BN
+  let ethToken: Token
+  let ethVaultReserve: PublicKey
+  let ethPriceFeed: PublicKey
+
   const accountOwner = Keypair.generate()
+  let liquidator: Account
+  let liquidatorXusdAccount: PublicKey
 
   before(async () => {
-    // await connection.requestAirdrop(accountOwner.publicKey, 10e9)
-    // await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
-    console.log(2)
+    await connection.requestAirdrop(accountOwner.publicKey, 10e9)
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
 
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
       [SYNTHETIFY_ECHANGE_SEED],
@@ -94,23 +93,16 @@ describe('vaults', () => {
       initPrice: 2,
       expo: -6
     })
-    console.log(3)
 
     snyToken = await createToken({
       connection,
       payer: wallet,
       mintAuthority: CollateralTokenMinter.publicKey
     })
-    console.log(4)
 
     snyReserve = await snyToken.createAccount(exchangeAuthority)
-    console.log(4)
-
     snyLiquidationFund = await snyToken.createAccount(exchangeAuthority)
-    console.log(4)
-
     stakingFundAccount = await snyToken.createAccount(exchangeAuthority)
-    console.log(5)
 
     // @ts-expect-error
     exchange = new Exchange(
@@ -120,7 +112,6 @@ describe('vaults', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    console.log(6)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -134,8 +125,6 @@ describe('vaults', () => {
     })
     assetsList = data.assetsList
     xusdToken = data.usdToken
-
-    console.log(7)
 
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
@@ -161,91 +150,203 @@ describe('vaults', () => {
       exchange,
       exchangeAuthority,
       oracleProgram,
-      price: 1,
+      price: 2000,
       wallet
     })
-    usdcToken = token
-    usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+    ethPriceFeed = feed
+    ethToken = token
+    ethVaultReserve = await ethToken.createAccount(exchangeAuthority)
+
+    const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
+      usdToken: xusdToken,
+      collateralToken: snyToken,
+      exchangeAuthority,
+      exchange,
+      reserveAddress: snyReserve,
+      collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+      amount: new BN(100000 * 10 ** SNY_DECIMALS) // give enough for liquidations
+    })
+
+    liquidator = liquidatorData.accountOwner
+    liquidatorXusdAccount = liquidatorData.usdTokenAccount
+    await connection.requestAirdrop(liquidator.publicKey, 10e9)
   })
-  it('should create usdc/xusd vault', async () => {
+  it('liquidation flow', async () => {
+    // create vault
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
-    const usdc = assetsListData.collaterals[1]
-    const debtInterestRate = percentToDecimal(5)
+    const eth = assetsListData.collaterals.find((c) =>
+      c.collateralAddress.equals(ethToken.publicKey)
+    )
+    if (!eth) {
+      throw new Error('eth not found')
+    }
+    const ethAsset = assetsListData.assets[eth.assetIndex]
+    const xusdAsset = assetsListData.assets[xusd.assetIndex]
+
+    const debtInterestRate = percentToDecimal(0) // zero interest for sake of tests
     const collateralRatio = percentToDecimal(80)
-    const liquidationRatio = percentToDecimal(90)
+    const liquidationThreshold = percentToDecimal(90)
+    const liquidationRatio = percentToDecimal(50)
     const liquidationPenaltyExchange = percentToDecimal(5)
     const liquidationPenaltyLiquidator = percentToDecimal(5)
 
-    const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
+    const maxBorrow = { val: new BN(1e14), scale: xusd.maxSupply.scale }
 
-    const { ix } = await exchange.createVaultInstruction({
-      collateralReserve: usdcVaultReserve,
-      collateral: usdc.collateralAddress,
+    const { ix: createVaultInstruction } = await exchange.createVaultInstruction({
+      collateralReserve: ethVaultReserve,
+      collateral: eth.collateralAddress,
       synthetic: xusd.assetAddress,
       debtInterestRate,
       collateralRatio,
       maxBorrow,
       liquidationPenaltyExchange,
       liquidationPenaltyLiquidator,
+      liquidationThreshold,
       liquidationRatio
     })
-    const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
-    await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-    const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
-
-    assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
-    assert.ok(vault.synthetic.equals(xusd.assetAddress))
-    assert.ok(vault.collateral.equals(usdc.collateralAddress))
-    assert.ok(vault.collateralReserve.equals(usdcVaultReserve))
-    assert.ok(eqDecimals(vault.collateralRatio, collateralRatio))
-    assert.ok(eqDecimals(vault.debtInterestRate, debtInterestRate))
-    assert.ok(eqDecimals(vault.liquidationRatio, liquidationRatio))
-    assert.ok(eqDecimals(vault.liquidationPenaltyExchange, liquidationPenaltyExchange))
-    assert.ok(eqDecimals(vault.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
-    assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
-    assert.ok(
-      eqDecimals(
-        vault.accumulatedInterestRate,
-        toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
-      )
-    )
-    assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
-    assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
-    assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
-  })
-  it('should create vault entry on usdc/xusd vault', async () => {
-    const assetsListData = await exchange.getAssetsList(assetsList)
-    const xusd = assetsListData.synthetics[0]
-    const usdc = assetsListData.collaterals[1]
-
-    const { ix } = await exchange.createVaultEntryInstruction({
+    await signAndSend(new Transaction().add(createVaultInstruction), [EXCHANGE_ADMIN], connection)
+    // create vaultEntry
+    const { ix: createVaultEntryInstruction } = await exchange.createVaultEntryInstruction({
       owner: accountOwner.publicKey,
-      collateral: usdc.collateralAddress,
+      collateral: eth.collateralAddress,
       synthetic: xusd.assetAddress
     })
-    await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+    await signAndSend(
+      new Transaction().add(createVaultEntryInstruction),
+      [accountOwner],
+      connection
+    )
+    // deposit collateral
+    const userEthTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
-    const vaultEntry = await exchange.getVaultEntryForOwner(
+    const collateralAmount = new BN(10 * 1e6) // 100 ETH
+    await ethToken.mintTo(userEthTokenAccount, wallet, [], tou64(collateralAmount))
+
+    await exchange.vaultDeposit({
+      amount: collateralAmount,
+      owner: accountOwner.publicKey,
+      collateral: eth.collateralAddress,
+      synthetic: xusd.assetAddress,
+      userCollateralAccount: userEthTokenAccount,
+      reserveAddress: ethVaultReserve,
+      collateralToken: ethToken,
+      signers: [accountOwner]
+    })
+
+    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6) // 2000(ETH price) * 100(ETH amount) * 0.8(collateral ratio)
+    const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
+
+    // borrow xusd
+    await exchange.borrowVault({
+      amount: borrowAmount,
+      owner: accountOwner.publicKey,
+      to: xusdTokenAmount,
+      collateral: eth.collateralAddress,
+      synthetic: xusd.assetAddress,
+      signers: [accountOwner]
+    })
+    //liquidate
+    const liquidatorCollateralAccount = await ethToken.createAccount(liquidator.publicKey)
+
+    const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
+      amount: U64_MAX,
+      collateral: eth.collateralAddress,
+      synthetic: xusd.assetAddress,
+      liquidator: liquidator.publicKey,
+      liquidatorCollateralAccount,
+      liquidatorSyntheticAccount: liquidatorXusdAccount,
+      owner: accountOwner.publicKey
+    })
+    const updatePricesIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+      ethAsset.feedAddress
+    ])
+    const approveIx = await Token.createApproveInstruction(
+      TOKEN_PROGRAM_ID,
+      liquidatorXusdAccount,
+      exchange.exchangeAuthority,
+      liquidator.publicKey,
+      [],
+      tou64(U64_MAX)
+    )
+    // Fail liquidation for safe user
+    await assertThrowsAsync(
+      signAndSend(
+        new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+        [liquidator],
+        connection
+      ),
+      ERRORS_EXCHANGE.INVALID_LIQUIDATION
+    )
+
+    const liquidatorXusdAccountBefore = await xusdToken.getAccountInfo(liquidatorXusdAccount)
+    const liquidationFundBefore = await ethToken.getAccountInfo(eth.liquidationFund)
+    const vaultDataBefore = await exchange.getVaultForPair(xusd.assetAddress, eth.collateralAddress)
+    const vaultEntryDataBefore = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
-      usdc.collateralAddress,
+      eth.collateralAddress,
       accountOwner.publicKey
     )
-    const { vaultAddress } = await exchange.getVaultAddress(
-      xusd.assetAddress,
-      usdc.collateralAddress
+    const assetsListDataBefore = await exchange.getAssetsList(assetsList)
+    const xusdBefore = assetsListDataBefore.synthetics[0]
+
+    // Change price of ETH from 2000 -> 1750
+    await setFeedPrice(oracleProgram, 1750, ethPriceFeed)
+    // Liquidate
+    await signAndSend(
+      new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+      [liquidator],
+      connection
     )
-    assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
-    assert.ok(vaultEntry.vault.equals(vaultAddress))
-    assert.ok(eqDecimals(vaultEntry.syntheticAmount, toDecimal(new BN(0), xusd.maxSupply.scale)))
-    assert.ok(
-      eqDecimals(vaultEntry.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale))
+    // Post liquidation checks
+    // Liquidator should receive collateral
+    const liquidatorCollateralAccountDataAfter = await ethToken.getAccountInfo(
+      liquidatorCollateralAccount
     )
+    assert.ok(liquidatorCollateralAccountDataAfter.amount.eq(new BN(4_800_000)))
+    // Liquidator should repay synthetic
+    const liquidatorXusdAccountDataAfter = await xusdToken.getAccountInfo(liquidatorXusdAccount)
     assert.ok(
-      eqDecimals(
-        vaultEntry.lastAccumulatedInterestRate,
-        toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
+      liquidatorXusdAccountDataAfter.amount.eq(
+        liquidatorXusdAccountBefore.amount.sub(new BN(8_000_000_000))
       )
     )
+    // Liquidation fund should receive collateral
+    const liquidationFundAfter = await ethToken.getAccountInfo(eth.liquidationFund)
+    assert.ok(liquidationFundAfter.amount.eq(liquidationFundBefore.amount.add(new BN(228_571))))
+
+    // Vault should adjust collateral and synthetic amounts
+    const vaultDataAfter = await exchange.getVaultForPair(xusd.assetAddress, eth.collateralAddress)
+    assert.ok(
+      vaultDataAfter.collateralAmount.val.eq(
+        vaultDataBefore.collateralAmount.val.sub(new BN(228_571 + 4_800_000))
+      )
+    )
+    assert.ok(
+      vaultDataAfter.mintAmount.val.eq(vaultDataBefore.mintAmount.val.sub(new BN(8_000_000_000)))
+    )
+    // Vault entry should adjust collateral and synthetic amounts
+    const vaultEntryDataAfter = await exchange.getVaultEntryForOwner(
+      xusd.assetAddress,
+      eth.collateralAddress,
+      accountOwner.publicKey
+    )
+
+    assert.ok(
+      vaultEntryDataAfter.collateralAmount.val.eq(
+        vaultEntryDataBefore.collateralAmount.val.sub(new BN(228_571 + 4_800_000))
+      )
+    )
+    assert.ok(
+      vaultEntryDataAfter.syntheticAmount.val.eq(
+        vaultEntryDataBefore.syntheticAmount.val.sub(new BN(8_000_000_000))
+      )
+    )
+    console.log(vaultEntryDataAfter.collateralAmount.val.toString())
+    console.log(vaultEntryDataAfter.syntheticAmount.val.toString())
+    // Synthetic should be burned so supply should decrease
+    const assetsListDataAfter = await exchange.getAssetsList(assetsList)
+    const xusdAfter = assetsListDataAfter.synthetics[0]
+    assert.ok(xusdAfter.supply.val.eq(xusdBefore.supply.val.sub(new BN(8_000_000_000))))
   })
 })

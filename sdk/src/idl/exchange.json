@@ -1405,230 +1405,6 @@
       ]
     },
     {
-      "name": "withdrawSwaplineFee",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapline",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "synthetic",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "collateral",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "admin",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "exchangeAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "collateralReserve",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "to",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "setHaltedSwapline",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapline",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "synthetic",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "collateral",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "admin",
-          "isMut": false,
-          "isSigner": true
-        }
-      ],
-      "args": [
-        {
-          "name": "halted",
-          "type": "bool"
-        }
-      ]
-    },
-    {
-      "name": "nativeToSynthetic",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapline",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "synthetic",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "collateral",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "userCollateralAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userSyntheticAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "assetsList",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "collateralReserve",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "exchangeAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "syntheticToNative",
-      "accounts": [
-        {
-          "name": "state",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "swapline",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "synthetic",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "collateral",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "userCollateralAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "userSyntheticAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "assetsList",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "collateralReserve",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "exchangeAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "createVault",
       "accounts": [
         {
@@ -1701,7 +1477,7 @@
           }
         },
         {
-          "name": "liquidationRatio",
+          "name": "liquidationThreshold",
           "type": {
             "defined": "Decimal"
           }
@@ -1714,6 +1490,12 @@
         },
         {
           "name": "penaltyToExchange",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "liquidationRatio",
           "type": {
             "defined": "Decimal"
           }
@@ -2045,7 +1827,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2059,12 +1841,22 @@
           "isSigner": false
         },
         {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "liquidatorSyntheticAccount",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "liquidatorCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidationFund",
           "isMut": true,
           "isSigner": false
         },
@@ -2423,6 +2215,12 @@
           },
           {
             "name": "collateralRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationThreshold",
             "type": {
               "defined": "Decimal"
             }

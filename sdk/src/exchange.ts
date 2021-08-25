@@ -1114,9 +1114,10 @@ export class Exchange {
     debtInterestRate,
     collateralRatio,
     maxBorrow,
-    liquidationRatio,
+    liquidationThreshold,
     liquidationPenaltyLiquidator,
-    liquidationPenaltyExchange
+    liquidationPenaltyExchange,
+    liquidationRatio
   }: CreateVault) {
     const [vaultAddress, bump] = await PublicKey.findProgramAddress(
       [
@@ -1131,9 +1132,10 @@ export class Exchange {
       debtInterestRate,
       collateralRatio,
       maxBorrow,
-      liquidationRatio,
+      liquidationThreshold,
       liquidationPenaltyLiquidator,
       liquidationPenaltyExchange,
+      liquidationRatio,
       {
         accounts: {
           state: this.stateAddress,
@@ -1271,28 +1273,35 @@ export class Exchange {
   }
   public async liquidateVaultInstruction({
     owner,
-    to,
     synthetic,
     collateral,
-    amount
-  }: BorrowVaultInstruction) {
+    amount,
+    liquidator,
+    liquidatorCollateralAccount,
+    liquidatorSyntheticAccount
+  }: LiquidateVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
-
-    return (await this.program.instruction.borrowVault(amount, {
+    const vaultData = await this.getVaultForPair(synthetic, collateral)
+    const collateralData = this.assetsList.collaterals.find((c) =>
+      c.collateralAddress.equals(collateral)
+    )
+    return (await this.program.instruction.liquidateVault(amount, {
       accounts: {
-        synthetic,
-        collateral,
-        owner,
-        to,
         state: this.stateAddress,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        collateralReserve: vaultData.collateralReserve,
+        liquidationFund: collateralData.liquidationFund,
+        synthetic,
+        collateral,
         assetsList: this.state.assetsList,
-        exchangeAuthority: this.exchangeAuthority,
-        rent: SYSVAR_RENT_PUBKEY,
-        systemProgram: SystemProgram.programId
+        liquidatorSyntheticAccount,
+        liquidatorCollateralAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        owner,
+        liquidator,
+        exchangeAuthority: this.exchangeAuthority
       }
     })) as TransactionInstruction
   }
@@ -1392,6 +1401,17 @@ export class Exchange {
       .map((asset) => {
         return { pubkey: asset.feedAddress, isWritable: false, isSigner: false }
       })
+    return (await this.program.instruction.setAssetsPrices({
+      remainingAccounts: feedAddresses,
+      accounts: {
+        assetsList: assetsList
+      }
+    })) as TransactionInstruction
+  }
+  public async updateSelectedPricesInstruction(assetsList: PublicKey, selectedAssets: PublicKey[]) {
+    const feedAddresses = selectedAssets.map((feedAddress) => {
+      return { pubkey: feedAddress, isWritable: false, isSigner: false }
+    })
     return (await this.program.instruction.setAssetsPrices({
       remainingAccounts: feedAddresses,
       accounts: {
@@ -1685,7 +1705,7 @@ export interface Vault {
   collateral: PublicKey
   collateralReserve: PublicKey
   collateralRatio: Decimal
-  liquidationRatio: Decimal
+  liquidationThreshold: Decimal
   liquidationPenaltyLiquidator: Decimal
   liquidationPenaltyExchange: Decimal
   debtInterestRate: Decimal
@@ -1721,7 +1741,15 @@ export interface DepositVault {
   collateralToken: Token
   signers: Array<Account | Keypair>
 }
-
+export interface LiquidateVaultInstruction {
+  owner: PublicKey
+  liquidator: PublicKey
+  liquidatorSyntheticAccount: PublicKey
+  liquidatorCollateralAccount: PublicKey
+  synthetic: PublicKey
+  collateral: PublicKey
+  amount: BN
+}
 export interface BorrowVaultInstruction {
   owner: PublicKey
   to: PublicKey
@@ -1772,9 +1800,10 @@ export interface CreateVault {
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal
-  liquidationRatio: Decimal
+  liquidationThreshold: Decimal
   liquidationPenaltyLiquidator: Decimal
   liquidationPenaltyExchange: Decimal
+  liquidationRatio: Decimal
 }
 
 export interface CreateVaultEntry {
