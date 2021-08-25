@@ -997,21 +997,17 @@ export class Exchange {
     assetsList,
     assetAddress,
     priceFeed,
-    decimals,
     maxSupply
   }: AddSyntheticInstruction) {
-    return (await this.program.instruction.addSynthetic(
-      { val: maxSupply, scale: decimals },
-      {
-        accounts: {
-          state: this.stateAddress,
-          admin: this.state.admin,
-          assetsList,
-          assetAddress: assetAddress,
-          feedAddress: priceFeed
-        }
+    return (await this.program.instruction.addSynthetic(maxSupply, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList,
+        assetAddress: assetAddress,
+        feedAddress: priceFeed
       }
-    )) as TransactionInstruction
+    })) as TransactionInstruction
   }
 
   public async initializeAssetsList({
@@ -1483,7 +1479,6 @@ export interface AddSyntheticInstruction {
   assetsList: PublicKey
   priceFeed: PublicKey
   maxSupply: BN
-  decimals: number
 }
 export interface AddCollateralInstruction {
   assetsList: PublicKey

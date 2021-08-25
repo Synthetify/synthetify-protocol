@@ -1211,9 +1211,7 @@
       "args": [
         {
           "name": "maxSupply",
-          "type": {
-            "defined": "Decimal"
-          }
+          "type": "u64"
         }
       ]
     },
@@ -1369,7 +1367,7 @@
         },
         {
           "name": "assetsList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2888,5 +2886,8 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "E1DFoe56EZNAfUdhuzq3FtHMeVUhFL9Jo39auGYkp26s"
+  }
 }
