@@ -224,10 +224,7 @@ pub fn calculate_compounded_interest(
     periods_number: u128,
 ) -> Decimal {
     // base_price * ((1 + periodic_interest_rate) ^ periods_number - 1)
-    let one = Decimal {
-        val: periodic_interest_rate.denominator(),
-        scale: periodic_interest_rate.scale,
-    };
+    let one = Decimal::from_integer(1).to_interest_rate();
     let interest = periodic_interest_rate.add(one).unwrap();
     let compounded = interest.pow_with_accuracy(periods_number).sub(one).unwrap();
     base_value.mul_up(compounded)
@@ -1432,5 +1429,10 @@ mod tests {
         );
         let expected_borrow_limit = Decimal::new(698068, 1).to_usd();
         assert_eq!(borrow_limit, expected_borrow_limit);
+    }
+
+    #[test]
+    fn test_calculate_vault_withdraw_limit() {
+        // TODO
     }
 }
