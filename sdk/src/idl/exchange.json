@@ -1087,6 +1087,12 @@
           }
         },
         {
+          "name": "maxCollateral",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
           "name": "collateralRatio",
           "type": {
             "defined": "Decimal"
@@ -1121,6 +1127,39 @@
       "args": [
         {
           "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setMaxCollateral",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxCollateral",
           "type": {
             "defined": "Decimal"
           }
@@ -2118,6 +2157,12 @@
             "type": {
               "defined": "Decimal"
             }
+          },
+          {
+            "name": "maxCollateral",
+            "type": {
+              "defined": "Decimal"
+            }
           }
         ]
       }
@@ -2337,9 +2382,11 @@
       "code": 331,
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
+    },
+    {
+      "code": 332,
+      "name": "CollateralLimitExceeded",
+      "msg": "Limit of collateral exceeded"
     }
-  ],
-  "metadata": {
-    "address": "E1DFoe56EZNAfUdhuzq3FtHMeVUhFL9Jo39auGYkp26s"
-  }
+  ]
 }

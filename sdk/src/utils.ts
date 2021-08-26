@@ -58,7 +58,8 @@ export enum ERRORS_EXCHANGE {
   OVERFLOW = '0x148', //28
   DIFFERENT_SCALE = '0x149', //29
   MISSMATCHED_TOKENS = '0x14a', //30
-  SWAPLINE_LIMIT = '0x14b' //31
+  SWAPLINE_LIMIT = '0x14b', //31
+  COLLATERAL_LIMIT_EXCEEDED = '0x14c' //32
 }
 export const signAndSend = async (
   tx: Transaction,

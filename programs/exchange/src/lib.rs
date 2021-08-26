@@ -78,6 +78,7 @@ pub mod exchange {
             reserve_balance: Decimal::from_sny(0),
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
+            max_collateral: Decimal::from_sny(u64::MAX.into()),
         };
 
         assets_list.append_asset(usd_asset);
@@ -251,7 +252,11 @@ pub mod exchange {
             val: amount.into(),
             scale: collateral.reserve_balance.scale,
         };
-        collateral.reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
+        let new_reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
+        if new_reserve_balance.gt(collateral.max_collateral).unwrap() {
+            return Err(ErrorCode::CollateralLimitExceeded.into());
+        }
+        collateral.reserve_balance = new_reserve_balance;
 
         let exchange_account_collateral = exchange_account
             .collaterals
@@ -1320,6 +1325,7 @@ pub mod exchange {
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
         reserve_balance: Decimal,
+        max_collateral: Decimal,
         collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
@@ -1338,6 +1344,11 @@ pub mod exchange {
         let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
+        require!(
+            reserve_balance.scale == max_collateral.scale,
+            DifferentScale
+        );
+
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
@@ -1345,6 +1356,7 @@ pub mod exchange {
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
+            max_collateral,
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
@@ -1371,6 +1383,31 @@ pub mod exchange {
         require!(same_scale && in_range, ParameterOutOfRange);
 
         collateral.collateral_ratio = collateral_ratio;
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_max_collateral(
+        ctx: Context<SetMaxCollateral>,
+        max_collateral: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET COLLATERAL RATIO");
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+        let collateral = match assets_list
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address == *ctx.accounts.collateral_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        require!(
+            collateral.max_collateral.scale == max_collateral.scale,
+            DifferentScale
+        );
+
+        collateral.max_collateral = max_collateral;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
@@ -2057,6 +2094,18 @@ pub struct SetCollateralRatio<'info> {
     pub collateral_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
+pub struct SetMaxCollateral<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub collateral_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
 pub struct SetAdmin<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
@@ -2493,6 +2542,7 @@ pub struct Collateral {
     pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: Decimal,   // 8
     pub collateral_ratio: Decimal,  // 1 in %
+    pub max_collateral: Decimal,    // 8
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
@@ -2734,6 +2784,8 @@ pub enum ErrorCode {
     MissmatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
+    #[msg("Limit of collateral exceeded")]
+    CollateralLimitExceeded = 32,
 }
 
 // Access control modifiers.

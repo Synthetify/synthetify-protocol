@@ -34,7 +34,8 @@ const main = async () => {
     feedAddress: assetsList.assets[3].feedAddress,
     liquidationFund,
     reserveAccount,
-    reserveBalance: toDecimal(new BN(0), tokenInfo.decimals)
+    reserveBalance: toDecimal(new BN(0), tokenInfo.decimals),
+    maxCollateral: toDecimal(new BN(0), tokenInfo.decimals)
   })
   const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
   console.log(tx)
