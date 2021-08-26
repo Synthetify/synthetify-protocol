@@ -465,6 +465,53 @@ describe('vaults', () => {
     })
   })
   describe('#withdrawVault', async () => {
+    it('withdraw over limit should failed', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      const withdrawAmount = allUserCollateralAmount.addn(1)
+
+      const userUsdcTokenAccountInfoBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+      const usdcVaultReserveTokenAccountInfoBefore = await usdcToken.getAccountInfo(
+        usdcVaultReserve
+      )
+      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultEntryBefore = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+
+      const ix = await exchange.withdrawVaultInstruction({
+        amount: withdrawAmount,
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userCollateralAccount: userUsdcTokenAccount
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [accountOwner], connection),
+        ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
+      )
+      const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+      const usdcVaultReserveTokenAccountInfoAfter = await usdcToken.getAccountInfo(usdcVaultReserve)
+      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultEntryAfter = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      assert.ok(userUsdcTokenAccountInfoBefore.amount.eq(userUsdcTokenAccountInfoAfter.amount))
+      assert.ok(
+        usdcVaultReserveTokenAccountInfoBefore.amount.eq(
+          usdcVaultReserveTokenAccountInfoAfter.amount
+        )
+      )
+      assert.ok(eqDecimals(vaultBefore.collateralAmount, vaultAfter.collateralAmount))
+      assert.ok(eqDecimals(vaultEntryBefore.collateralAmount, vaultEntryAfter.collateralAmount))
+    })
     it('should withdraw usdc from usdc/xusd vault entry', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -522,6 +569,7 @@ describe('vaults', () => {
         )
       )
     })
+    it('should withdraw rest of collateral', async () => {})
   })
   describe('#repayVault', async () => {
     it('should repay xusd from usdc/xusd vault entry', async () => {
