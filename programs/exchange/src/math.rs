@@ -258,12 +258,14 @@ pub fn calculate_vault_withdraw_limit(
 ) -> Result<Decimal> {
     let vault_debt_value = calculate_value_in_usd(synthetic_asset.price, synthetic_amount);
     let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let min_collateralized_value = vault_debt_value.div(collateral_ratio);
     let max_debt_value = collateral_value.mul(collateral_ratio);
 
     if vault_debt_value.gte(max_debt_value)? {
         return Err(ErrorCode::VaultWithdrawLimit.into());
     }
-    let max_withdraw_value = max_debt_value.sub(vault_debt_value).unwrap();
+
+    let max_withdraw_value = collateral_value.sub(min_collateralized_value).unwrap();
     let max_withdraw_amount = usd_to_token_amount(
         &collateral_asset,
         max_withdraw_value,
@@ -1460,11 +1462,12 @@ mod tests {
             .unwrap();
 
             // collateral value = 57117.6 USD
-            // max borrow value = 37126.44 USD
             // current borrow value = 20100 USD
-            // max withdraw value =  17026.44 USD
-            // max withdraw amount = 0.35771334 BTC
-            let expected_max_withdraw_amount = Decimal::new(35771334, btc_decimal);
+            // debt require to collateralized = 30923.076923 USD
+
+            // max withdraw value =  26194.523076 USD
+            // max withdraw amount = 0.55032822 BTC
+            let expected_max_withdraw_amount = Decimal::new(55032822, btc_decimal);
             assert_eq!(vault_withdraw_limit, expected_max_withdraw_amount);
         }
         // value withdraw limit error
@@ -1479,8 +1482,24 @@ mod tests {
                 xsol_amount,
                 btc_xsol_collateral_ratio,
             );
-
+            // should contain error
             assert!(vault_withdraw_limit.is_err())
+        }
+        // no borrowed synthetic
+        {
+            let btc_amount = Decimal::from_integer(1).to_scale(btc_decimal);
+            let xsol_amount = Decimal::new(0, xsol_decimal);
+            let vault_withdraw_limit = calculate_vault_withdraw_limit(
+                btc_asset,
+                xsol_asset,
+                btc_amount,
+                xsol_amount,
+                btc_xsol_collateral_ratio,
+            )
+            .unwrap();
+
+            // withdraw 1 btc
+            assert_eq!(vault_withdraw_limit, btc_amount);
         }
     }
 }
