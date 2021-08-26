@@ -1048,20 +1048,26 @@ export class Exchange {
     reserveAccount,
     feedAddress,
     collateralRatio,
-    reserveBalance
+    reserveBalance,
+    maxCollateral
   }: AddCollateralInstruction) {
-    return (await this.program.instruction.addCollateral(reserveBalance, collateralRatio, {
-      accounts: {
-        admin: this.state.admin,
-        state: this.stateAddress,
-        signer: this.state.admin,
-        assetsList,
-        assetAddress,
-        liquidationFund,
-        feedAddress,
-        reserveAccount
+    return (await this.program.instruction.addCollateral(
+      reserveBalance,
+      maxCollateral,
+      collateralRatio,
+      {
+        accounts: {
+          admin: this.state.admin,
+          state: this.stateAddress,
+          signer: this.state.admin,
+          assetsList,
+          assetAddress,
+          liquidationFund,
+          feedAddress,
+          reserveAccount
+        }
       }
-    })) as TransactionInstruction
+    )) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1184,6 +1190,7 @@ export interface AddCollateralInstruction {
   reserveBalance: Decimal
   reserveAccount: PublicKey
   collateralRatio: Decimal
+  maxCollateral: Decimal
 }
 
 export interface Mint {

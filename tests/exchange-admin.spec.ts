@@ -665,7 +665,8 @@ describe('admin', () => {
         feedAddress: assetForCollateral.feedAddress,
         reserveAccount,
         reserveBalance,
-        collateralRatio
+        collateralRatio,
+        maxCollateral: toDecimal(U64_MAX, decimals)
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
@@ -705,7 +706,8 @@ describe('admin', () => {
           feedAddress: assetForCollateral.feedAddress,
           reserveAccount: reserveAccount.publicKey,
           reserveBalance: reserveBalance,
-          collateralRatio
+          collateralRatio,
+          maxCollateral: toDecimal(U64_MAX, decimals)
         })
         await assertThrowsAsync(
           signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -733,7 +735,8 @@ describe('admin', () => {
         feedAddress: assetForCollateral.feedAddress,
         reserveAccount: reserveAccount.publicKey,
         reserveBalance: reserveBalance,
-        collateralRatio
+        collateralRatio,
+        maxCollateral: toDecimal(U64_MAX, decimals)
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),

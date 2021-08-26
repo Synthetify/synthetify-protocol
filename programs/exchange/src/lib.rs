@@ -78,6 +78,7 @@ pub mod exchange {
             reserve_balance: Decimal::from_sny(0),
             reserve_address: *ctx.accounts.sny_reserve.key,
             liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
+            max_collateral: Decimal::from_sny(u64::MAX.into()),
         };
 
         assets_list.append_asset(usd_asset);
@@ -1320,6 +1321,7 @@ pub mod exchange {
     pub fn add_collateral(
         ctx: Context<AddCollateral>,
         reserve_balance: Decimal,
+        max_collateral: Decimal,
         collateral_ratio: Decimal,
     ) -> Result<()> {
         msg!("Synthetify:Admin: ADD COLLATERAL");
@@ -1345,6 +1347,7 @@ pub mod exchange {
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
+            max_collateral: max_collateral.to_scale(reserve_balance.scale),
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
@@ -2493,6 +2496,7 @@ pub struct Collateral {
     pub liquidation_fund: Pubkey,   // 32
     pub reserve_balance: Decimal,   // 8
     pub collateral_ratio: Decimal,  // 1 in %
+    pub max_collateral: Decimal,    // 8
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]

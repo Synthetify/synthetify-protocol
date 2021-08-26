@@ -1087,6 +1087,12 @@
           }
         },
         {
+          "name": "maxCollateral",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
           "name": "collateralRatio",
           "type": {
             "defined": "Decimal"
@@ -2118,6 +2124,12 @@
             "type": {
               "defined": "Decimal"
             }
+          },
+          {
+            "name": "maxCollateral",
+            "type": {
+              "defined": "Decimal"
+            }
           }
         ]
       }
@@ -2338,8 +2350,5 @@
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
     }
-  ],
-  "metadata": {
-    "address": "E1DFoe56EZNAfUdhuzq3FtHMeVUhFL9Jo39auGYkp26s"
-  }
+  ]
 }
