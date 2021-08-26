@@ -682,5 +682,42 @@ describe('vaults', () => {
         )
       )
     })
+    it('repay over limit should repay rest of borrowed synthetic', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultEntryBefore = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      const userXusdTokenAccountBefore = await xusdToken.getAccountInfo(userXusdTokenAccount)
+      const maxRepayAmount = vaultEntryBefore.syntheticAmount.val
+
+      await exchange.repayVault({
+        amount: maxRepayAmount.addn(1),
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userTokenAccountRepay: userXusdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultEntryAfter = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
+
+      // TODO: fix synthetic borrowed supply bug
+      const expectedBorrowedSupply = toDecimal(new BN(0), xusd.supply.scale)
+      assert.ok(eqDecimals(vaultAfter.mintAmount, expectedBorrowedSupply))
+      assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedBorrowedSupply))
+      assert.ok(eqDecimals(xusd.borrowedSupply, expectedBorrowedSupply))
+      assert.ok(userXusdTokenAccountAfter.amount.eq(expectedBorrowedSupply.val))
+    })
   })
 })

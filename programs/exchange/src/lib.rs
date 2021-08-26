@@ -2020,9 +2020,13 @@ pub mod exchange {
         }
 
         // determine repay_amount
-        let repay_amount = match amount {
+        let mut repay_amount = match amount {
             u64::MAX => vault_entry.synthetic_amount,
             _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
+        };
+
+        if repay_amount.gt(vault_entry.synthetic_amount)? {
+            repay_amount = vault_entry.synthetic_amount;
         };
 
         // update synthetic, vault, vault_entry supply
@@ -2277,7 +2281,7 @@ impl AssetsList {
 pub struct CreateSwapline<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -2598,7 +2602,7 @@ pub struct AddSynthetic<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], bump =bump, payer=payer )]
+    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -3038,7 +3042,7 @@ pub struct State {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], payer = payer)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
@@ -3064,7 +3068,7 @@ pub struct Settlement {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct SettleSynthetic<'info> {
-    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], payer = payer)]
     pub settlement: Loader<'info, Settlement>,
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
@@ -3210,7 +3214,7 @@ pub struct VaultEntry {
 pub struct CreateVault<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -3231,7 +3235,7 @@ pub struct CreateVault<'info> {
 pub struct CreateVaultEntry<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], bump =bump, payer=owner)]
+    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
