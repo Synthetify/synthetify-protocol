@@ -72,7 +72,7 @@ describe('vaults', () => {
   let usdcVaultReserve: PublicKey
   let userUsdcTokenAccount: PublicKey
   let userXusdTokenAccount: PublicKey
-  let collateralAmount: BN
+  let allUserCollateralAmount: BN
   let borrowAmount: BN
   const accountOwner = Keypair.generate()
 
@@ -272,14 +272,14 @@ describe('vaults', () => {
     })
   })
   describe('#depositVault', async () => {
-    it('should deposit to usdc/xusd vault entry', async () => {
+    it('should perform 1st deposit to usdc/xusd vault entry', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
 
       userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
-      collateralAmount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(100) // mint 100 USD
-      await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(collateralAmount))
+      allUserCollateralAmount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(100) // mint 100 USD
+      await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(allUserCollateralAmount))
 
       const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
@@ -290,7 +290,7 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
-      assert.ok(userUsdcTokenAccountInfo.amount.eq(collateralAmount))
+      assert.ok(userUsdcTokenAccountInfo.amount.eq(allUserCollateralAmount))
       assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(new BN(0)))
 
       // vault collateral should be empty
@@ -299,7 +299,7 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
       await exchange.vaultDeposit({
-        amount: collateralAmount,
+        amount: allUserCollateralAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
         synthetic: xusd.assetAddress,
@@ -325,13 +325,13 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
       const expectedCollateralAmountAfterDeposit = toDecimal(
-        collateralAmount,
+        allUserCollateralAmount,
         usdc.reserveBalance.scale
       )
 
       // swap balances
       assert.ok(userUsdcTokenAccountInfoAfterDeposit.amount.eq(new BN(0)))
-      assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(collateralAmount))
+      assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(allUserCollateralAmount))
 
       // deposit to vault
       assert.ok(
@@ -340,6 +340,72 @@ describe('vaults', () => {
       assert.ok(
         eqDecimals(vaultEntryAfterDeposit.collateralAmount, expectedCollateralAmountAfterDeposit)
       )
+    })
+    it('should perform 2st deposit to usdc/xusd vault entry', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      userUsdcTokenAccount = await usdcToken.createAccount(accountOwner.publicKey)
+      const depositAmount = new BN(10).pow(new BN(usdc.reserveBalance.scale)).muln(50) // mint 50 USD
+      await usdcToken.mintTo(userUsdcTokenAccount, wallet, [], tou64(depositAmount))
+
+      const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+      const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
+      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultEntry = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+
+      assert.ok(userUsdcTokenAccountInfo.amount.eq(depositAmount))
+      assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(allUserCollateralAmount))
+
+      const expectedCollateralAmount = toDecimal(allUserCollateralAmount, usdc.reserveBalance.scale)
+      assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
+      assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
+
+      await exchange.vaultDeposit({
+        amount: depositAmount,
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userCollateralAccount: userUsdcTokenAccount,
+        reserveAddress: usdcVaultReserve,
+        collateralToken: usdcToken,
+        signers: [accountOwner]
+      })
+
+      allUserCollateralAmount = allUserCollateralAmount.add(depositAmount)
+      const userUsdcTokenAccountInfoAfterDeposit = await usdcToken.getAccountInfo(
+        userUsdcTokenAccount
+      )
+      const usdcVaultReserveTokenAccountInfoAfterDeposit = await usdcToken.getAccountInfo(
+        usdcVaultReserve
+      )
+      const vaultAfterDeposit = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress
+      )
+      const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      const expectedCollateralAmountAfterDeposit = toDecimal(
+        depositAmount,
+        usdc.reserveBalance.scale
+      )
+
+      // swap balances
+      assert.ok(userUsdcTokenAccountInfoAfterDeposit.amount.eq(new BN(0)))
+      assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(allUserCollateralAmount))
+
+      // deposit to vault
+      const expectedVaultDecimal = toDecimal(allUserCollateralAmount, vault.collateralAmount.scale)
+      assert.ok(eqDecimals(vaultAfterDeposit.collateralAmount, expectedVaultDecimal))
+      assert.ok(eqDecimals(vaultEntryAfterDeposit.collateralAmount, expectedVaultDecimal))
     })
   })
   describe('#borrowVault', async () => {
@@ -364,7 +430,9 @@ describe('vaults', () => {
       assert.ok(eqDecimals(xusd.supply, borrowAmountBeforeBorrow))
       assert.ok(eqDecimals(xusd.borrowedSupply, borrowAmountBeforeBorrow))
 
-      borrowAmount = collateralAmount.muln((decimalToPercent(vault.collateralRatio) - 20) / 100)
+      borrowAmount = allUserCollateralAmount.muln(
+        (decimalToPercent(vault.collateralRatio) - 20) / 100
+      )
 
       await exchange.borrowVault({
         amount: borrowAmount,

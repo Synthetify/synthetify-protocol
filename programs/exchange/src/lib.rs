@@ -2017,7 +2017,6 @@ pub mod exchange {
         }
 
         // determine repay_amount
-        // TODO: u64::MAX mean user balance
         let repay_amount = match amount {
             u64::MAX => vault_entry.synthetic_amount,
             _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
