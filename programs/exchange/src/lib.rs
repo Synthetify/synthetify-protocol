@@ -252,7 +252,11 @@ pub mod exchange {
             val: amount.into(),
             scale: collateral.reserve_balance.scale,
         };
-        collateral.reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
+        let new_reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
+        if new_reserve_balance.gt(collateral.max_collateral).unwrap() {
+            return Err(ErrorCode::CollateralLimitExceeded.into());
+        }
+        collateral.reserve_balance = new_reserve_balance;
 
         let exchange_account_collateral = exchange_account
             .collaterals
@@ -2738,6 +2742,8 @@ pub enum ErrorCode {
     MissmatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
+    #[msg("Limit of collateral exceeded")]
+    CollateralLimitExceeded = 32,
 }
 
 // Access control modifiers.
