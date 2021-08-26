@@ -2032,6 +2032,7 @@ pub mod exchange {
         // update synthetic, vault, vault_entry supply
         vault.mint_amount = vault.mint_amount.sub(repay_amount).unwrap();
         vault_entry.synthetic_amount = vault_entry.synthetic_amount.sub(repay_amount).unwrap();
+        synthetic.supply = synthetic.supply.sub(repay_amount).unwrap();
         synthetic.borrowed_supply = synthetic.borrowed_supply.sub(repay_amount).unwrap();
 
         // burn tokens
