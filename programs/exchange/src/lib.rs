@@ -1346,7 +1346,7 @@ pub mod exchange {
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
-            liquidation_fund: *ctx.accounts.liquidation_fund.key,
+            liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
@@ -2277,7 +2277,7 @@ impl AssetsList {
 pub struct CreateSwapline<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -2285,7 +2285,10 @@ pub struct CreateSwapline<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = &collateral_reserve.mint == collateral.key)]
+    #[account(
+        constraint = &collateral_reserve.mint == collateral.key,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
+    )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -2320,7 +2323,8 @@ pub struct UseSwapLine<'info> {
     #[account(
         mut,
         constraint = &collateral_reserve.mint == collateral.key,
-        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -2448,7 +2452,7 @@ pub struct AdminWithdraw<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2482,6 +2486,7 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2491,7 +2496,9 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
         constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &to.mint == usd_token.key
+    )]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2545,8 +2552,10 @@ pub struct AddCollateral<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub liquidation_fund: AccountInfo<'info>,
-    pub reserve_account: AccountInfo<'info>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub liquidation_fund: CpiAccount<'info,TokenAccount>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub reserve_account: CpiAccount<'info,TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -2598,7 +2607,7 @@ pub struct AddSynthetic<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], bump =bump, payer=payer )]
+    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -2664,7 +2673,7 @@ pub struct Withdraw<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
@@ -3038,7 +3047,7 @@ pub struct State {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], payer = payer)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
@@ -3064,7 +3073,7 @@ pub struct Settlement {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct SettleSynthetic<'info> {
-    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], payer = payer)]
     pub settlement: Loader<'info, Settlement>,
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
@@ -3122,7 +3131,7 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
-        "settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address"
+        constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account(
@@ -3210,7 +3219,7 @@ pub struct VaultEntry {
 pub struct CreateVault<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -3231,7 +3240,7 @@ pub struct CreateVault<'info> {
 pub struct CreateVaultEntry<'info> {
     #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], bump =bump, payer=owner)]
+    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
@@ -3343,7 +3352,9 @@ pub struct WithdrawVault<'info> {
         constraint = &reserve_address.mint == collateral.key,
     )]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_collateral_account.mint == collateral.key
+    )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
