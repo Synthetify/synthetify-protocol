@@ -6,10 +6,9 @@ slug: /technical/collateral
 
 ### Why is there a need for collateral?
 
-Collateral is needed to ensure that platform doesn't suffer losses. User's collateral is kept as a _CollateralEntry_ in an array of up to 32 different ones. It and an index to array is kept inside [_ExchangeAccount_](http://localhost:3000/docs/technical/account#structure-of-account).
+Collateral is needed to ensure that platform doesn't suffer losses. User's collateral is kept as a _CollateralEntry_ in an array of up to 32 different ones. It is kept inside [_ExchangeAccount_](http://localhost:3000/docs/technical/account#structure-of-account) together with index to it.
 
-Collateral allows user to have debt and to mint tokens up to 
-Based on collateral program calculates [_mint limit_](/docs/glossary#mint-limit)
+Collateral allows user to have debt and to mint tokens up to [_mint limit_](/docs/glossary#mint-limit) calculated based on it.
 
 ## Deposit
 

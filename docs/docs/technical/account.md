@@ -24,9 +24,9 @@ The data structure is defined like this:
     }
 
 Which are responsible for:
-* **owner** - public key belonging to owner of the account, one owner can have only one account
+* **owner** - public key belonging to owner of the account, one owner will have only one account
 * **version** - version of the structure, when it changes old accounts will be migrated to the new one
-* **debt_shares** - amount of user debt shares, when divided by all shares allows to calculate debt. More on that [here](/docs/technical/minting#debt)
+* **debt_shares** - amount of user debt shares, used to calculate debt. More on that [here](/docs/technical/synthetics#debt)
 * **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when user can be [liquidated](/docs/technical/collateral#liquidation)
 * **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
 * **bump** - used with [generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
