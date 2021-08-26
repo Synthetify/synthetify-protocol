@@ -1875,6 +1875,7 @@ pub mod exchange {
         let collateral_asset = assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
         if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
             return Err(ErrorCode::OutdatedOracle.into());
         }
@@ -1942,10 +1943,12 @@ pub mod exchange {
             .iter()
             .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
             .unwrap();
-
-        let synthetic_asset = assets[synthetic_position];
+        
+        let synthetic_asset = assets[synthetics[synthetic_position].asset_index as usize];
+        let collateral_asset = assets[collaterals[collateral_position].asset_index as usize];
         let synthetic = &mut synthetics[synthetic_position];
-        let collateral_asset = assets[collateral_position];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_asset,
