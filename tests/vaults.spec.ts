@@ -635,15 +635,15 @@ describe('vaults', () => {
   describe('#repayVault', async () => {
     it('should repay xusd from usdc/xusd vault entry', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
+      const xusdBefore = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
 
       const vaultBeforeRepay = await exchange.getVaultForPair(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress
       )
       const vaultEntryBeforeRepay = await exchange.getVaultEntryForOwner(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress,
         accountOwner.publicKey
       )
@@ -654,41 +654,52 @@ describe('vaults', () => {
         amount: repayAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress,
+        synthetic: xusdBefore.assetAddress,
         userTokenAccountRepay: userXusdTokenAccount,
         signers: [accountOwner]
       })
 
+      const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfterRepay = await exchange.getVaultForPair(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress
       )
       const vaultEntryAfterRepay = await exchange.getVaultEntryForOwner(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress,
         accountOwner.publicKey
       )
       const userXusdTokenAccountAfterRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
+      // check account balance
       assert.ok(
         repayAmount.eq(
           userXusdTokenAccountBeforeRepay.amount.sub(userXusdTokenAccountAfterRepay.amount)
         )
       )
+      // check vault
       assert.ok(repayAmount.eq(vaultBeforeRepay.mintAmount.val.sub(vaultAfterRepay.mintAmount.val)))
+      // check vault entry
       assert.ok(
         repayAmount.eq(
           vaultEntryBeforeRepay.syntheticAmount.val.sub(vaultEntryAfterRepay.syntheticAmount.val)
         )
       )
+      // check synthetic supply
+      assert.ok(repayAmount.eq(xusdBefore.supply.val.sub(xusdAfter.supply.val)))
+      // check synthetic borrowed supply
+      assert.ok(repayAmount.eq(xusdBefore.borrowedSupply.val.sub(xusdAfter.borrowedSupply.val)))
     })
     it('repay over limit should repay rest of borrowed synthetic', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
+      const xusdBefore = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
-      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xusdBefore.assetAddress,
+        usdc.collateralAddress
+      )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress,
         accountOwner.publicKey
       )
@@ -699,24 +710,28 @@ describe('vaults', () => {
         amount: maxRepayAmount.addn(1),
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress,
+        synthetic: xusdBefore.assetAddress,
         userTokenAccountRepay: userXusdTokenAccount,
         signers: [accountOwner]
       })
 
-      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
+      const vaultAfter = await exchange.getVaultForPair(
+        xusdBefore.assetAddress,
+        usdc.collateralAddress
+      )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
-        xusd.assetAddress,
+        xusdBefore.assetAddress,
         usdc.collateralAddress,
         accountOwner.publicKey
       )
       const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
-      // TODO: fix synthetic borrowed supply bug
-      const expectedBorrowedSupply = toDecimal(new BN(0), xusd.supply.scale)
+      const expectedBorrowedSupply = toDecimal(new BN(0), xusdBefore.supply.scale)
       assert.ok(eqDecimals(vaultAfter.mintAmount, expectedBorrowedSupply))
       assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedBorrowedSupply))
-      assert.ok(eqDecimals(xusd.borrowedSupply, expectedBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.supply, expectedBorrowedSupply))
       assert.ok(userXusdTokenAccountAfter.amount.eq(expectedBorrowedSupply.val))
     })
   })
