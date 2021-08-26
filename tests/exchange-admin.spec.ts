@@ -889,9 +889,8 @@ describe('admin', () => {
   })
   describe('#setMaxCollateral()', async () => {
     it('should fail without admin signature', async () => {
-      const newMaxCollateral = toDecimal(new BN(1000000), 0)
-      const newValueWithMatchingScale = toDecimal(
-        newMaxCollateral.val.mul(new BN(10).pow(new BN(SNY_DECIMALS))),
+      const newMaxCollateral = toDecimal(
+        new BN(1000000).mul(new BN(10).pow(new BN(SNY_DECIMALS))),
         SNY_DECIMALS
       )
       const beforeAssetList = await exchange.getAssetsList(assetsList)
@@ -907,12 +906,11 @@ describe('admin', () => {
       const afterAssetList = await exchange.getAssetsList(assetsList)
       const collateralAfter = afterAssetList.collaterals[0]
 
-      assert.isFalse(eqDecimals(collateralAfter.maxCollateral, newValueWithMatchingScale))
+      assert.isFalse(eqDecimals(collateralAfter.maxCollateral, newMaxCollateral))
     })
     it('should set new collateral ratio for asset', async () => {
-      const newMaxCollateral = toDecimal(new BN(1000000), 0)
-      const newValueWithMatchingScale = toDecimal(
-        newMaxCollateral.val.mul(new BN(10).pow(new BN(SNY_DECIMALS))),
+      const newMaxCollateral = toDecimal(
+        new BN(1000000).mul(new BN(10).pow(new BN(SNY_DECIMALS))),
         SNY_DECIMALS
       )
       const beforeAssetList = await exchange.getAssetsList(assetsList)
@@ -924,7 +922,26 @@ describe('admin', () => {
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
       const collateralAfter = afterAssetList.collaterals[0]
-      assert.ok(eqDecimals(collateralAfter.maxCollateral, newValueWithMatchingScale))
+      assert.ok(eqDecimals(collateralAfter.maxCollateral, newMaxCollateral))
+    })
+    it('should fail because of different scales', async () => {
+      const newMaxCollateral = toDecimal(
+        new BN(1000000).mul(new BN(10).pow(new BN(SNY_DECIMALS))),
+        SNY_DECIMALS + 1
+      )
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setMaxCollateral(
+        collateralBefore.collateralAddress,
+        newMaxCollateral
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.DIFFERENT_SCALE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.isFalse(eqDecimals(collateralAfter.maxCollateral, newMaxCollateral))
     })
   })
   describe('#setAssetsPrices()', async () => {

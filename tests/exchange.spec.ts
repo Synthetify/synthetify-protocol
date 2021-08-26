@@ -289,7 +289,7 @@ describe('exchange', () => {
       // Change max collateral for testing
       const ix = await exchange.setMaxCollateral(
         collateralToken.publicKey,
-        toDecimal(new BN(10), 0)
+        toDecimal(new BN(10_000000), 6)
       )
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 

@@ -1344,6 +1344,11 @@ pub mod exchange {
         let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
+        require!(
+            reserve_balance.scale == max_collateral.scale,
+            DifferentScale
+        );
+
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
@@ -1351,7 +1356,7 @@ pub mod exchange {
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
-            max_collateral: max_collateral.to_scale(reserve_balance.scale),
+            max_collateral,
         };
         assets_list.append_collateral(new_collateral);
         Ok(())
@@ -1397,7 +1402,12 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        collateral.max_collateral = max_collateral.to_scale(collateral.max_collateral.scale);
+        require!(
+            collateral.max_collateral.scale == max_collateral.scale,
+            DifferentScale
+        );
+
+        collateral.max_collateral = max_collateral;
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
