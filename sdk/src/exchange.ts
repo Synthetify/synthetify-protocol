@@ -593,6 +593,16 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setMaxCollateral(collateralAddress: PublicKey, newMaxCollateral: Decimal) {
+    return await (this.program.instruction.setMaxCollateral(newMaxCollateral, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList: this.state.assetsList,
+        collateralAddress: collateralAddress
+      }
+    }) as TransactionInstruction)
+  }
   public async setAdmin(newAdmin: PublicKey) {
     return await (this.program.instruction.setAdmin({
       accounts: {
@@ -1136,6 +1146,7 @@ export interface Collateral {
   liquidationFund: PublicKey
   reserveBalance: Decimal
   collateralRatio: Decimal
+  maxCollateral: Decimal
 }
 export interface Synthetic {
   assetIndex: number

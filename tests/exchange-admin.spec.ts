@@ -887,6 +887,46 @@ describe('admin', () => {
       assert.isFalse(eqDecimals(collateralAfter.collateralRatio, newCollateralRatio))
     })
   })
+  describe('#setMaxCollateral()', async () => {
+    it('should fail without admin signature', async () => {
+      const newMaxCollateral = toDecimal(new BN(1000000), 0)
+      const newValueWithMatchingScale = toDecimal(
+        newMaxCollateral.val.mul(new BN(10).pow(new BN(SNY_DECIMALS))),
+        SNY_DECIMALS
+      )
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setMaxCollateral(
+        collateralBefore.collateralAddress,
+        newMaxCollateral
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+
+      assert.isFalse(eqDecimals(collateralAfter.maxCollateral, newValueWithMatchingScale))
+    })
+    it('should set new collateral ratio for asset', async () => {
+      const newMaxCollateral = toDecimal(new BN(1000000), 0)
+      const newValueWithMatchingScale = toDecimal(
+        newMaxCollateral.val.mul(new BN(10).pow(new BN(SNY_DECIMALS))),
+        SNY_DECIMALS
+      )
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const collateralBefore = beforeAssetList.collaterals[0]
+      const ix = await exchange.setMaxCollateral(
+        collateralBefore.collateralAddress,
+        newMaxCollateral
+      )
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+      const afterAssetList = await exchange.getAssetsList(assetsList)
+      const collateralAfter = afterAssetList.collaterals[0]
+      assert.ok(eqDecimals(collateralAfter.maxCollateral, newValueWithMatchingScale))
+    })
+  })
   describe('#setAssetsPrices()', async () => {
     const newPrice = 6
     it('Should not change prices', async () => {

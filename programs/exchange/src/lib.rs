@@ -1381,6 +1381,26 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_max_collateral(
+        ctx: Context<SetMaxCollateral>,
+        max_collateral: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET COLLATERAL RATIO");
+        let mut assets_list = ctx.accounts.assets_list.load_mut()?;
+
+        let collateral = match assets_list
+            .collaterals
+            .iter_mut()
+            .find(|x| x.collateral_address == *ctx.accounts.collateral_address.key)
+        {
+            Some(asset) => asset,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        collateral.max_collateral = max_collateral.to_scale(collateral.max_collateral.scale);
+        Ok(())
+    }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_admin(ctx: Context<SetAdmin>) -> Result<()> {
         msg!("Synthetify:Admin: SET ADMIN");
         let mut state = ctx.accounts.state.load_mut()?;
@@ -2053,6 +2073,18 @@ pub struct AddCollateral<'info> {
 }
 #[derive(Accounts)]
 pub struct SetCollateralRatio<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub collateral_address: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct SetMaxCollateral<'info> {
     #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
     pub state: Loader<'info, State>,
     #[account(signer)]

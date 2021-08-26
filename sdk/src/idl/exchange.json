@@ -1134,6 +1134,39 @@
       ]
     },
     {
+      "name": "setMaxCollateral",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralAddress",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxCollateral",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
       "name": "setAdmin",
       "accounts": [
         {
@@ -2349,6 +2382,11 @@
       "code": 331,
       "name": "SwaplineLimit",
       "msg": "Limit crossed"
+    },
+    {
+      "code": 332,
+      "name": "CollateralLimitExceeded",
+      "msg": "Limit of collateral exceeded"
     }
   ]
 }
