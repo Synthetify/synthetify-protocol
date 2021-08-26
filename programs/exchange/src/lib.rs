@@ -1822,15 +1822,7 @@ pub mod exchange {
             .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
             .unwrap();
 
-        let user_collateral_account = &ctx.accounts.user_collateral_account;
-
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-
-        let tx_signer = ctx.accounts.owner.key;
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        };
 
         let amount_decimal = Decimal {
             val: amount.into(),
@@ -1961,13 +1953,6 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        // Check signer
-        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
-        let tx_signer = ctx.accounts.owner.key;
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
-
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
             _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
@@ -2011,13 +1996,6 @@ pub mod exchange {
             .unwrap();
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-
-        // Signer need to be owner of source account
-        let tx_signer = ctx.accounts.owner.key;
-        let user_token_account_repay = &ctx.accounts.user_token_account_repay;
-        if !tx_signer.eq(&user_token_account_repay.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
 
         // determine repay_amount
         let mut repay_amount = match amount {
@@ -3358,7 +3336,8 @@ pub struct WithdrawVault<'info> {
     )]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
     #[account(mut,
-        constraint = &user_collateral_account.mint == collateral.key
+        constraint = &user_collateral_account.mint == collateral.key,
+        constraint = &user_collateral_account.owner == owner.key
     )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(address = token::ID)]
