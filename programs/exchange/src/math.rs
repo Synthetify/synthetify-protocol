@@ -1433,6 +1433,39 @@ mod tests {
 
     #[test]
     fn test_calculate_vault_withdraw_limit() {
-        // TODO
+        // vault BTC/xSOL
+        {
+            let btc_asset = Asset {
+                price: Decimal::from_integer(47598).to_price(),
+                ..Default::default()
+            };
+            let xsol_asset = Asset {
+                price: Decimal::from_integer(67).to_price(),
+                ..Default::default()
+            };
+            let btc_decimal = 8;
+            let xsol_decimal = 9;
+            let btc_amount = Decimal::new(12, 1).to_scale(btc_decimal);
+            let xsol_amount = Decimal::from_integer(300).to_scale(xsol_decimal);
+            let collateral_ratio = Decimal::from_percent(65);
+
+            let vault_withdraw_limit = calculate_vault_withdraw_limit(
+                btc_asset,
+                xsol_asset,
+                btc_amount,
+                xsol_amount,
+                collateral_ratio,
+            )
+            .unwrap();
+
+            // collateral value = 57117.6 USD
+            // max borrow value = 37126.44 USD
+            // current borrow value = 20100 USD
+            // max withdraw value =  17026.44 USD
+            // max withdraw amount = 0.35771334 BTC
+            let expected_max_withdraw_amount = Decimal::new(35771334, btc_decimal);
+
+            assert_eq!(vault_withdraw_limit, expected_max_withdraw_amount);
+        }
     }
 }
