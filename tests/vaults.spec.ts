@@ -569,7 +569,68 @@ describe('vaults', () => {
         )
       )
     })
-    it('should withdraw rest of collateral', async () => {})
+    it('should withdraw rest of collateral', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+      const withdrawAmount = new BN('ffffffffffffffff', 16)
+
+      const vaultEntryBefore = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+      const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
+
+      const ix = await exchange.withdrawVaultInstruction({
+        amount: withdrawAmount,
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userCollateralAccount: userUsdcTokenAccount
+      })
+      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+
+      const vaultEntryAfter = await exchange.getVaultEntryForOwner(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        accountOwner.publicKey
+      )
+      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const userUsdcTokenAccountAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
+      const vaultUsdcTokenAccountAfter = await usdcToken.getAccountInfo(usdcVaultReserve)
+
+      const minCollateralized = vaultEntryAfter.syntheticAmount.val.divn(
+        decimalToPercent(vaultAfter.collateralRatio) / 100
+      )
+      const expectedWithdraw = vaultEntryBefore.collateralAmount.val.sub(minCollateralized)
+
+      // collateral amount should be equals min collateralized
+      assert.ok(minCollateralized.eq(vaultAfter.collateralAmount.val))
+      assert.ok(minCollateralized.eq(vaultEntryAfter.collateralAmount.val))
+
+      // expected withdraw amount
+      assert.ok(
+        expectedWithdraw.eq(vaultBefore.collateralAmount.val.sub(vaultAfter.collateralAmount.val))
+      )
+      assert.ok(
+        expectedWithdraw.eq(
+          vaultEntryBefore.collateralAmount.val.sub(vaultEntryAfter.collateralAmount.val)
+        )
+      )
+
+      // check transfer between accounts
+      assert.ok(
+        expectedWithdraw.eq(userUsdcTokenAccountAfter.amount.sub(userUsdcTokenAccountBefore.amount))
+      )
+      assert.ok(
+        expectedWithdraw.eq(
+          vaultUsdcTokenAccountBefore.amount.sub(vaultUsdcTokenAccountAfter.amount)
+        )
+      )
+    })
   })
   describe('#repayVault', async () => {
     it('should repay xusd from usdc/xusd vault entry', async () => {
