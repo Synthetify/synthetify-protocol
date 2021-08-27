@@ -785,7 +785,7 @@ describe('vaults', () => {
         ERRORS_EXCHANGE.HALTED
       )
     })
-    it('deposit to vault entry should failed', async () => {
+    it('deposit from vault entry should failed', async () => {
       await assertThrowsAsync(
         exchange.vaultDeposit({
           amount: new BN(0),
@@ -795,6 +795,46 @@ describe('vaults', () => {
           userCollateralAccount: userUsdcTokenAccount,
           reserveAddress: usdcVaultReserve,
           collateralToken: usdcToken,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.HALTED
+      )
+    })
+    it('borrow from vault entry should failed', async () => {
+      await assertThrowsAsync(
+        exchange.borrowVault({
+          amount: allUserCollateralAmount.addn(1),
+          owner: accountOwner.publicKey,
+          to: userXusdTokenAccount,
+          collateral: usdcCollateralAddress,
+          synthetic: xusdAssetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.HALTED
+      )
+    })
+    it('withdraw from vault entry should failed', async () => {
+      const ix = await exchange.withdrawVaultInstruction({
+        amount: new BN(0),
+        owner: accountOwner.publicKey,
+        collateral: usdcCollateralAddress,
+        synthetic: xusdAssetAddress,
+        userCollateralAccount: userUsdcTokenAccount
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [accountOwner], connection),
+        ERRORS_EXCHANGE.HALTED
+      )
+    })
+    it('repay from vault entry should failed', async () => {
+      await assertThrowsAsync(
+        exchange.repayVault({
+          amount: new BN(0),
+          owner: accountOwner.publicKey,
+          collateral: usdcCollateralAddress,
+          synthetic: xusdAssetAddress,
+          userTokenAccountRepay: userXusdTokenAccount,
           signers: [accountOwner]
         }),
         ERRORS_EXCHANGE.HALTED
