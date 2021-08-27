@@ -1575,7 +1575,7 @@ pub mod exchange {
             .unwrap();
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
         let collateral_reserve = &ctx.accounts.collateral_reserve;
         swapline.balance = Decimal {
@@ -1652,7 +1652,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -1711,7 +1711,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -3614,7 +3614,7 @@ pub enum ErrorCode {
     #[msg("Scale is different")]
     DifferentScale = 29,
     #[msg("Tokens does not represent same asset")]
-    MissmatchedTokens = 30,
+    MismatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
     #[msg("Limit of collateral exceeded")]
