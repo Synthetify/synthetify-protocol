@@ -1403,6 +1403,24 @@ export class Exchange {
 
     await signAndSend(new Transaction().add(approveIx).add(repayIx), signers, this.connection)
   }
+  public async setVaultHaltedInstruction({ halted, collateral, synthetic }: SetVaultHalted) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    const ix = await this.program.instruction.setVaultHalted(halted, {
+      accounts: {
+        synthetic,
+        collateral,
+        state: this.stateAddress,
+        admin: this.state.admin,
+        vault: vaultAddress,
+        assetsList: this.state.assetsList,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        exchangeAuthority: this.exchangeAuthority
+      }
+    })
+
+    return ix
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1836,6 +1854,11 @@ export interface CreateVaultEntry {
   synthetic: PublicKey
   collateral: PublicKey
   owner: PublicKey
+}
+export interface SetVaultHalted {
+  halted: boolean
+  synthetic: PublicKey
+  collateral: PublicKey
 }
 
 export interface Decimal {
