@@ -14,8 +14,8 @@ export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
 
-export const almostEqual = (num1: BN, num2: BN) => {
-  return num1.sub(num2).abs().ltn(10)
+export const almostEqual = (num1: BN, num2: BN, epsilon: BN = new BN(10)) => {
+  return num1.sub(num2).abs().lt(epsilon)
 }
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap

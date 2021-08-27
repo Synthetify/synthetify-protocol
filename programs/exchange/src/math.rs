@@ -29,15 +29,14 @@ pub fn calculate_debt(
             true => asset.twap,
             _ => asset.price,
         };
-        // rounding up to be sure that debt is not less than minted tokens
-
-        debt = debt
-            .add(
-                price
-                    .mul_up(synthetic.supply.sub(synthetic.swapline_supply).unwrap())
-                    .to_usd_up(),
-            )
+        let supply = synthetic
+            .supply
+            .sub(synthetic.swapline_supply)
+            .unwrap()
+            .sub(synthetic.borrowed_supply)
             .unwrap();
+        // rounding up to be sure that debt is not less than minted tokens
+        debt = debt.add(price.mul_up(supply).to_usd_up()).unwrap();
     }
     Ok(debt)
 }
@@ -225,10 +224,7 @@ pub fn calculate_compounded_interest(
     periods_number: u128,
 ) -> Decimal {
     // base_price * ((1 + periodic_interest_rate) ^ periods_number - 1)
-    let one = Decimal {
-        val: periodic_interest_rate.denominator(),
-        scale: periodic_interest_rate.scale,
-    };
+    let one = Decimal::from_integer(1).to_interest_rate();
     let interest = periodic_interest_rate.add(one).unwrap();
     let compounded = interest.pow_with_accuracy(periods_number).sub(one).unwrap();
     base_value.mul_up(compounded)
@@ -238,6 +234,44 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 }
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
+}
+pub fn calculate_vault_borrow_limit(
+    collateral_asset: Asset,
+    synthetic_asset: Asset,
+    synthetic: Synthetic,
+    collateral_amount: Decimal,
+    collateral_ratio: Decimal,
+) -> Decimal {
+    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let max_debt = collateral_value.mul(collateral_ratio);
+    let max_synthetic_amount =
+        usd_to_token_amount(&synthetic_asset, max_debt, synthetic.supply.scale);
+
+    return max_synthetic_amount;
+}
+pub fn calculate_vault_withdraw_limit(
+    collateral_asset: Asset,
+    synthetic_asset: Asset,
+    collateral_amount: Decimal,
+    synthetic_amount: Decimal,
+    collateral_ratio: Decimal,
+) -> Result<Decimal> {
+    let vault_debt_value = calculate_value_in_usd(synthetic_asset.price, synthetic_amount);
+    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let min_collateralized_value = vault_debt_value.div(collateral_ratio);
+    let max_debt_value = collateral_value.mul(collateral_ratio);
+
+    if vault_debt_value.gte(max_debt_value)? {
+        return Err(ErrorCode::VaultWithdrawLimit.into());
+    }
+
+    let max_withdraw_value = collateral_value.sub(min_collateralized_value).unwrap();
+    let max_withdraw_amount = usd_to_token_amount(
+        &collateral_asset,
+        max_withdraw_value,
+        collateral_amount.scale,
+    );
+    return Ok(max_withdraw_amount);
 }
 
 #[cfg(test)]
@@ -425,6 +459,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100).to_scale(6),
                 swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -440,6 +475,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(200).to_scale(6),
                 swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -455,6 +491,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(50).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -490,8 +527,9 @@ mod tests {
                 ..Default::default()
             });
             assets_list.append_synthetic(Synthetic {
-                supply: Decimal::from_integer(110_000_000).to_scale(6),
+                supply: Decimal::from_integer(115_000_000).to_scale(6),
                 swapline_supply: Decimal::from_integer(10_000_000).to_scale(6),
+                borrowed_supply: Decimal::from_integer(5_000_000).to_scale(6),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -507,6 +545,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -522,6 +561,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1_000_000).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -556,6 +596,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000_000).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -571,6 +612,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(100_000).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -586,6 +628,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::from_integer(1).to_scale(6),
                 swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -601,6 +644,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(12345678, 8).to_scale(8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -618,6 +662,9 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
+    }
+    #[test]
+    fn test_calculate_debt_continuation() {
         {
             let slot = 100;
             let mut assets_list = AssetsList {
@@ -635,6 +682,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(126871562_97531672, 8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets as u8 - 1,
                 ..Default::default()
             });
@@ -650,6 +698,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(14262_842164, 6),
                 swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -665,6 +714,7 @@ mod tests {
             assets_list.append_synthetic(Synthetic {
                 supply: Decimal::new(1295_25386912, 8),
                 swapline_supply: Decimal::from_integer(0).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
                 asset_index: assets_list.head_assets - 1,
                 ..Default::default()
             });
@@ -683,6 +733,7 @@ mod tests {
             }
         }
     }
+
     #[test]
     fn test_calculate_debt_error() {
         let slot = 100;
@@ -1354,6 +1405,105 @@ mod tests {
             // expected 0.0000209284627092     %
             let expected = Decimal::from_interest_rate(209284627092);
             assert_eq!(minute_interest_rate, expected);
+        }
+    }
+
+    #[test]
+    fn test_calculate_vault_borrow_limit() {
+        let btc_decimal = 8;
+        let btc_asset = Asset {
+            price: Decimal::from_integer(49_862).to_price(),
+            ..Default::default()
+        };
+        let xusd_asset = Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        };
+        let xusd_synthetic = Synthetic {
+            supply: Decimal::from_integer(100).to_usd(),
+            ..Default::default()
+        };
+        let collateral_amount = Decimal::from_integer(2).to_scale(btc_decimal);
+        let collateral_ratio = Decimal::from_percent(70);
+
+        let borrow_limit = calculate_vault_borrow_limit(
+            btc_asset,
+            xusd_asset,
+            xusd_synthetic,
+            collateral_amount,
+            collateral_ratio,
+        );
+        let expected_borrow_limit = Decimal::new(698068, 1).to_usd();
+        assert_eq!(borrow_limit, expected_borrow_limit);
+    }
+
+    #[test]
+    fn test_calculate_vault_withdraw_limit() {
+        let btc_asset = Asset {
+            price: Decimal::from_integer(47598).to_price(),
+            ..Default::default()
+        };
+        let xsol_asset = Asset {
+            price: Decimal::from_integer(67).to_price(),
+            ..Default::default()
+        };
+        let btc_decimal = 8;
+        let xsol_decimal = 9;
+        let btc_xsol_collateral_ratio = Decimal::from_percent(65);
+
+        // vault BTC/xSOL
+        {
+            let btc_amount = Decimal::new(12, 1).to_scale(btc_decimal);
+            let xsol_amount = Decimal::from_integer(300).to_scale(xsol_decimal);
+
+            let vault_withdraw_limit = calculate_vault_withdraw_limit(
+                btc_asset,
+                xsol_asset,
+                btc_amount,
+                xsol_amount,
+                btc_xsol_collateral_ratio,
+            )
+            .unwrap();
+
+            // collateral value = 57117.6 USD
+            // current borrow value = 20100 USD
+            // debt require to collateralized = 30923.076923 USD
+
+            // max withdraw value =  26194.523076 USD
+            // max withdraw amount = 0.55032822 BTC
+            let expected_max_withdraw_amount = Decimal::new(55032822, btc_decimal);
+            assert_eq!(vault_withdraw_limit, expected_max_withdraw_amount);
+        }
+        // value withdraw limit error
+        {
+            let btc_amount = Decimal::from_integer(1).to_scale(btc_decimal);
+            let xsol_amount = Decimal::from_integer(1000).to_scale(xsol_decimal);
+
+            let vault_withdraw_limit = calculate_vault_withdraw_limit(
+                btc_asset,
+                xsol_asset,
+                btc_amount,
+                xsol_amount,
+                btc_xsol_collateral_ratio,
+            );
+            // should contain error
+            assert!(vault_withdraw_limit.is_err())
+        }
+        // no borrowed synthetic
+        {
+            let btc_amount = Decimal::from_integer(1).to_scale(btc_decimal);
+            let xsol_amount = Decimal::new(0, xsol_decimal);
+            let vault_withdraw_limit = calculate_vault_withdraw_limit(
+                btc_asset,
+                xsol_asset,
+                btc_amount,
+                xsol_amount,
+                btc_xsol_collateral_ratio,
+            )
+            .unwrap();
+
+            // withdraw 1 btc
+            assert_eq!(vault_withdraw_limit, btc_amount);
         }
     }
 }

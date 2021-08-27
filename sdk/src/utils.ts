@@ -6,7 +6,8 @@ import {
   Connection,
   ConfirmOptions,
   sendAndConfirmRawTransaction,
-  Account
+  Account,
+  Keypair
 } from '@solana/web3.js'
 import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './exchange'
 
@@ -57,13 +58,16 @@ export enum ERRORS_EXCHANGE {
   PARAMETER_OUT_OF_RANGE = '0x147', //27
   OVERFLOW = '0x148', //28
   DIFFERENT_SCALE = '0x149', //29
-  MISSMATCHED_TOKENS = '0x14a', //30
+  MISMATCHED_TOKENS = '0x14a', //30
   SWAPLINE_LIMIT = '0x14b', //31
-  COLLATERAL_LIMIT_EXCEEDED = '0x14c' //32
+  COLLATERAL_LIMIT_EXCEEDED = '0x14c', //32
+  USER_BORROW_LIMIT = '0x14d', // 33
+  VAULT_BORROW_LIMIT = '0x14e', // 34
+  VAULT_WITHDRAW_LIMIT = '0x14f' // 35
 }
 export const signAndSend = async (
   tx: Transaction,
-  signers: Account[],
+  signers: Array<Account | Keypair>,
   connection: Connection,
   opts?: ConfirmOptions
 ) => {

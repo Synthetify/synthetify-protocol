@@ -16,7 +16,8 @@ pub mod exchange {
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
-        calculate_user_debt_in_usd, calculate_value_in_usd, usd_to_token_amount,
+        calculate_user_debt_in_usd, calculate_value_in_usd, calculate_vault_borrow_limit,
+        calculate_vault_withdraw_limit, usd_to_token_amount,
     };
 
     use crate::decimal::{
@@ -57,6 +58,7 @@ pub mod exchange {
         let usd_synthetic = Synthetic {
             asset_address: usd_token,
             supply: Decimal::from_usd(0),
+            borrowed_supply: Decimal::from_usd(0),
             max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
             swapline_supply: Decimal::from_usd(0),
             settlement_slot: u64::MAX,
@@ -1153,7 +1155,7 @@ pub mod exchange {
 
         // max swap_tax_ratio must be less or equals 30%
         let same_scale = swap_tax_ratio.scale == state.swap_tax_ratio.scale;
-        let in_range = swap_tax_ratio.ltq(Decimal::from_percent(30))?;
+        let in_range = swap_tax_ratio.lte(Decimal::from_percent(30))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.swap_tax_ratio = swap_tax_ratio;
@@ -1169,7 +1171,7 @@ pub mod exchange {
 
         // max debt_interest_rate must be less or equals 20%
         let same_scale = debt_interest_rate.scale == state.debt_interest_rate.scale;
-        let in_range = debt_interest_rate.ltq(Decimal::from_percent(20).to_interest_rate())?;
+        let in_range = debt_interest_rate.lte(Decimal::from_percent(20).to_interest_rate())?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.debt_interest_rate = debt_interest_rate;
@@ -1197,7 +1199,7 @@ pub mod exchange {
 
         // liquidation_rate should be less or equals 100%
         let same_scale = liquidation_rate.scale == state.liquidation_rate.scale;
-        let in_range = liquidation_rate.ltq(Decimal::from_percent(100))?;
+        let in_range = liquidation_rate.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.liquidation_rate = liquidation_rate;
@@ -1211,7 +1213,7 @@ pub mod exchange {
 
         //  fee must be less or equals 1%
         let same_scale = fee.scale == state.fee.scale;
-        let in_range = fee.ltq(Decimal::from_percent(1))?;
+        let in_range = fee.lte(Decimal::from_percent(1))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.fee = fee;
@@ -1240,7 +1242,7 @@ pub mod exchange {
 
         // factor must be less or equals 100%
         let same_scale = factor.scale == state.health_factor.scale;
-        let in_range = factor.ltq(Decimal::from_percent(100))?;
+        let in_range = factor.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
         state.health_factor = factor;
         Ok(())
@@ -1284,6 +1286,7 @@ pub mod exchange {
         }
         Ok(())
     }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.signer))]
     pub fn set_price_feed(ctx: Context<SetPriceFeed>, old_feed_address: Pubkey) -> Result<()> {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1310,11 +1313,11 @@ pub mod exchange {
 
         // penalty_to_exchange and penalty_to_liquidator must be less or equals 25%
         let same_scale = penalty_to_exchange.scale == state.penalty_to_exchange.scale;
-        let in_range = penalty_to_exchange.ltq(Decimal::from_percent(25))?;
+        let in_range = penalty_to_exchange.lte(Decimal::from_percent(25))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         let same_scale = penalty_to_liquidator.scale == state.penalty_to_liquidator.scale;
-        let in_range = penalty_to_liquidator.ltq(Decimal::from_percent(25))?;
+        let in_range = penalty_to_liquidator.lte(Decimal::from_percent(25))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         state.penalty_to_exchange = penalty_to_exchange;
@@ -1341,7 +1344,7 @@ pub mod exchange {
         };
         // collateral_ratio must be less or equals 100%
         let same_scale = collateral_ratio.scale == UNIFIED_PERCENT_SCALE;
-        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
+        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         require!(
@@ -1352,7 +1355,7 @@ pub mod exchange {
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
-            liquidation_fund: *ctx.accounts.liquidation_fund.key,
+            liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
@@ -1379,7 +1382,7 @@ pub mod exchange {
         };
         // collateral_ratio must be less or equals 100%
         let same_scale = collateral.collateral_ratio.scale == collateral_ratio.scale;
-        let in_range = collateral_ratio.ltq(Decimal::from_percent(100))?;
+        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         collateral.collateral_ratio = collateral_ratio;
@@ -1459,6 +1462,7 @@ pub mod exchange {
                 scale: ctx.accounts.asset_address.decimals,
             },
             settlement_slot: u64::MAX,
+            borrowed_supply: Decimal::new(0, ctx.accounts.asset_address.decimals),
             supply: Decimal {
                 val: 0,
                 scale: ctx.accounts.asset_address.decimals,
@@ -1569,7 +1573,7 @@ pub mod exchange {
             .unwrap();
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
         let collateral_reserve = &ctx.accounts.collateral_reserve;
         swapline.balance = Decimal {
@@ -1646,7 +1650,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -1663,7 +1667,7 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.ltq(swapline.limit).unwrap(), SwaplineLimit);
+        require!(swapline.balance.lte(swapline.limit).unwrap(), SwaplineLimit);
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1679,6 +1683,7 @@ pub mod exchange {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx_transfer = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
         token::transfer(cpi_ctx_transfer, amount.to_u64())?;
+
         Ok(())
     }
     pub fn synthetic_to_native(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
@@ -1704,7 +1709,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -1735,18 +1740,508 @@ pub mod exchange {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx_transfer = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer);
         token::transfer(cpi_ctx_transfer, amount_out.to_u64())?;
+
+        Ok(())
+    }
+    #[access_control(halted(&ctx.accounts.state) admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn create_vault(
+        ctx: Context<CreateVault>,
+        bump: u8,
+        debt_interest_rate: Decimal,
+        collateral_ratio: Decimal,
+        max_borrow: Decimal,
+        liquidation_threshold: Decimal,
+        penalty_to_liquidator: Decimal,
+        penalty_to_exchange: Decimal,
+        liquidation_ratio: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify: CREATE VAULT");
+
+        let mut vault = ctx.accounts.vault.load_init()?;
+        let assets_list = ctx.accounts.assets_list.load()?;
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let synthetic = assets_list
+            .synthetics
+            .iter()
+            .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+        let collateral = assets_list
+            .collaterals
+            .iter()
+            .find(|x| x.collateral_address.eq(ctx.accounts.collateral.key));
+        if collateral == None {
+            return Err(ErrorCode::NoAssetFound.into());
+        }
+        let collateral = collateral.unwrap();
+
+        require!(
+            collateral_ratio.lte(Decimal::from_percent(100))?,
+            ParameterOutOfRange
+        );
+        // Init vault struct
+        {
+            vault.bump = bump;
+            vault.halted = false;
+            vault.synthetic = *ctx.accounts.synthetic.key;
+            vault.collateral = *ctx.accounts.collateral.key;
+            vault.debt_interest_rate = debt_interest_rate;
+            vault.collateral_ratio = collateral_ratio;
+            vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
+            vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
+            vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+            vault.max_borrow = max_borrow;
+            vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
+            vault.last_update = timestamp;
+            // Liquidation parameters
+            vault.liquidation_threshold = liquidation_threshold;
+            vault.liquidation_ratio = liquidation_ratio;
+            vault.liquidation_penalty_liquidator = penalty_to_liquidator;
+            vault.liquidation_penalty_exchange = penalty_to_exchange;
+        }
+
+        Ok(())
+    }
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
+        let mut vault = ctx.accounts.vault.load_mut()?;
+        let assets_list = ctx.accounts.assets_list.load()?;
+
+        let synthetic = assets_list
+            .synthetics
+            .iter()
+            .find(|x| x.asset_address.eq(&vault.synthetic))
+            .unwrap();
+        let collateral = assets_list
+            .collaterals
+            .iter()
+            .find(|x| x.collateral_address.eq(&vault.collateral))
+            .unwrap();
+
+        adjust_vault_interest_rate(&mut vault, timestamp);
+        // Init vault entry
+        {
+            vault_entry.bump = bump;
+            vault_entry.owner = *ctx.accounts.owner.key;
+            vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
+            vault_entry.last_accumulated_interest_rate = vault.accumulated_interest_rate;
+            vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
+            vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+        }
+
+        Ok(())
+    }
+
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn deposit_vault(ctx: Context<DepositVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: DEPOSIT VAULT");
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let state = &ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (_, collaterals, synthetics) = assets_list.split_borrow();
+
+        let collateral = collaterals
+            .iter()
+            .find(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = synthetics
+            .iter_mut()
+            .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        let amount_decimal = Decimal {
+            val: amount.into(),
+            scale: collateral.reserve_balance.scale,
+        };
+        vault_entry.collateral_amount = vault_entry.collateral_amount.add(amount_decimal)?;
+        vault.collateral_amount = vault.collateral_amount.add(amount_decimal)?;
+
+        // Transfer token
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::transfer(cpi_ctx, amount)?;
+
+        Ok(())
+    }
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn borrow_vault(ctx: Context<BorrowVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: BORROW VAULT");
+        let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = &mut synthetics[synthetic_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = assets[synthetic.asset_index as usize];
+        let collateral_asset = assets[collateral.asset_index as usize];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+
+        let amount_borrow_limit = calculate_vault_borrow_limit(
+            collateral_asset,
+            synthetic_asset,
+            *synthetic,
+            vault_entry.collateral_amount,
+            vault.collateral_ratio,
+        );
+
+        let borrow_amount = match amount {
+            u64::MAX => amount_borrow_limit
+                .sub(vault_entry.synthetic_amount)
+                .unwrap(),
+            _ => Decimal::new(amount.into(), synthetic.supply.scale),
+        };
+        let amount_after_borrow = vault_entry.synthetic_amount.add(borrow_amount).unwrap();
+        if amount_borrow_limit.lt(amount_after_borrow)? {
+            return Err(ErrorCode::UserBorrowLimit.into());
+        }
+
+        // update vault
+        let new_mint_amount = vault.mint_amount.add(borrow_amount).unwrap();
+        set_new_vault_mint_amount(vault, new_mint_amount)?;
+
+        // update vault_entry
+        vault_entry.synthetic_amount = amount_after_borrow;
+
+        // update synthetic
+        synthetic.borrowed_supply = synthetic.borrowed_supply.add(borrow_amount)?;
+        let new_synthetic_supply = synthetic.supply.add(borrow_amount).unwrap();
+        set_synthetic_supply(synthetic, new_synthetic_supply)?;
+
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
+
+        Ok(())
+    }
+
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: WITHDRAW_VAULT");
+
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+        
+        let synthetic_asset = assets[synthetics[synthetic_position].asset_index as usize];
+        let collateral_asset = assets[collaterals[collateral_position].asset_index as usize];
+        let synthetic = &mut synthetics[synthetic_position];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        let vault_withdraw_limit = calculate_vault_withdraw_limit(
+            collateral_asset,
+            synthetic_asset,
+            vault_entry.collateral_amount,
+            vault_entry.synthetic_amount,
+            vault.collateral_ratio,
+        )
+        .unwrap();
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        let amount_to_withdraw = match amount {
+            u64::MAX => vault_withdraw_limit,
+            _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
+        };
+
+        if amount_to_withdraw.gt(vault_withdraw_limit)? {
+            return Err(ErrorCode::VaultWithdrawLimit.into());
+        }
+
+        // update vault, vault_entry balances
+        vault.collateral_amount = vault.collateral_amount.sub(amount_to_withdraw).unwrap();
+        vault_entry.collateral_amount = vault_entry
+            .collateral_amount
+            .sub(amount_to_withdraw)
+            .unwrap();
+
+        // Send withdrawn collateral to user
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::transfer(cpi_ctx, amount_to_withdraw.val.try_into().unwrap())?;
+
+        Ok(())
+    }
+
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn repay_vault(ctx: Context<RepayVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: REPAY_VAULT");
+
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (_, _, synthetics) = assets_list.split_borrow();
+
+        let synthetic = synthetics
+            .iter_mut()
+            .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        // determine repay_amount
+        let mut repay_amount = match amount {
+            u64::MAX => vault_entry.synthetic_amount,
+            _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
+        };
+
+        if repay_amount.gt(vault_entry.synthetic_amount)? {
+            repay_amount = vault_entry.synthetic_amount;
+        };
+
+        // update synthetic, vault, vault_entry supply
+        vault.mint_amount = vault.mint_amount.sub(repay_amount).unwrap();
+        vault_entry.synthetic_amount = vault_entry.synthetic_amount.sub(repay_amount).unwrap();
+        synthetic.supply = synthetic.supply.sub(repay_amount).unwrap();
+        synthetic.borrowed_supply = synthetic.borrowed_supply.sub(repay_amount).unwrap();
+
+        // burn tokens
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::burn(cpi_ctx, repay_amount.to_u64())?;
+
+        Ok(())
+    }
+    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    pub fn liquidate_vault(ctx: Context<LiquidateVault>, amount: u64) -> Result<()> {
+        msg!("Synthetify: LIQUIDATE VAULT");
+
+        let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
+
+        let state = ctx.accounts.state.load()?;
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+
+        let synthetic_position = synthetics
+            .iter_mut()
+            .position(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
+            .unwrap();
+
+        let collateral_position = collaterals
+            .iter()
+            .position(|x| x.collateral_address.eq(ctx.accounts.collateral.key))
+            .unwrap();
+
+        let synthetic = &mut synthetics[synthetic_position];
+        let collateral = &mut collaterals[collateral_position];
+        let synthetic_asset = &assets[synthetic.asset_index as usize];
+        let collateral_asset = &assets[collateral.asset_index as usize];
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        if (synthetic_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
+        {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
+        {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+
+        // Amount of synthetic safely collateralized
+        let amount_liquidation_limit = calculate_vault_borrow_limit(
+            *collateral_asset,
+            *synthetic_asset,
+            *synthetic,
+            vault_entry.collateral_amount,
+            vault.liquidation_threshold,
+        );
+        // Fail if user is safe
+        require!(
+            amount_liquidation_limit
+                .lt(vault_entry.synthetic_amount)
+                .unwrap(),
+            InvalidLiquidation
+        );
+        // Amount of synthetic to repay
+        // U64::MAX mean debt * liquidation_ratio (percent of position able to liquidate in single liquidation)
+        let liquidation_amount = match amount {
+            u64::MAX => vault_entry.synthetic_amount.mul(vault.liquidation_ratio),
+            _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
+        };
+        // Fail if liquidator wants to liquidate more than allowed number
+        require!(
+            liquidation_amount
+                .lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))
+                .unwrap(),
+            InvalidLiquidation
+        );
+        // Amount seized in usd
+        let seized_collateral_in_usd = liquidation_amount
+            .mul_up(
+                vault
+                    .liquidation_penalty_liquidator
+                    .add(vault.liquidation_penalty_exchange)
+                    .unwrap(),
+            )
+            .add(liquidation_amount)
+            .unwrap()
+            .mul(synthetic_asset.price);
+
+        // Amount seized in token
+        let seized_collateral_in_token = usd_to_token_amount(
+            &collateral_asset,
+            seized_collateral_in_usd,
+            collateral.reserve_balance.scale,
+        );
+
+        let collateral_to_exchange = seized_collateral_in_token
+            .mul(vault.liquidation_penalty_exchange)
+            .div_up(
+                Decimal::from_percent(100)
+                    .add(vault.liquidation_penalty_liquidator)
+                    .unwrap()
+                    .add(vault.liquidation_penalty_exchange)
+                    .unwrap(),
+            );
+
+        let collateral_to_liquidator = seized_collateral_in_token
+            .sub(collateral_to_exchange)
+            .unwrap();
+
+        // Adjust vault_entry variables
+        vault_entry.collateral_amount = vault_entry
+            .collateral_amount
+            .sub(seized_collateral_in_token)
+            .unwrap();
+
+        vault_entry.synthetic_amount = vault_entry
+            .synthetic_amount
+            .sub(liquidation_amount)
+            .unwrap();
+        // Adjust vault variables
+        vault.collateral_amount = vault
+            .collateral_amount
+            .sub(seized_collateral_in_token)
+            .unwrap();
+        vault.mint_amount = vault.mint_amount.sub(liquidation_amount).unwrap();
+        // Change supply of burned synthetic
+        set_synthetic_supply(synthetic, synthetic.supply.sub(liquidation_amount).unwrap()).unwrap();
+
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer_seeds = &[&seeds[..]];
+        {
+            // Transfer collateral to liquidator
+            let liquidator_accounts = Transfer {
+                from: ctx.accounts.collateral_reserve.to_account_info(),
+                to: ctx.accounts.liquidator_collateral_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let transfer =
+                CpiContext::new(token_program, liquidator_accounts).with_signer(signer_seeds);
+            token::transfer(transfer, collateral_to_liquidator.to_u64())?;
+        }
+        {
+            if !ctx
+                .accounts
+                .liquidation_fund
+                .to_account_info()
+                .key
+                .eq(&collateral.liquidation_fund)
+            {
+                return Err(ErrorCode::ExchangeLiquidationAccount.into());
+            }
+            // Transfer collateral to liquidation_fund
+            let exchange_accounts = Transfer {
+                from: ctx.accounts.collateral_reserve.to_account_info(),
+                to: ctx.accounts.liquidation_fund.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let transfer =
+                CpiContext::new(token_program, exchange_accounts).with_signer(signer_seeds);
+            token::transfer(transfer, collateral_to_exchange.try_into().unwrap())?;
+        }
+        {
+            // Burn repaid synthetic
+            let exchange_accounts = Burn {
+                mint: ctx.accounts.synthetic.to_account_info(),
+                to: ctx.accounts.liquidator_synthetic_account.to_account_info(),
+                authority: ctx.accounts.exchange_authority.to_account_info(),
+            };
+            let token_program = ctx.accounts.token_program.to_account_info();
+            let burn = CpiContext::new(token_program, exchange_accounts).with_signer(signer_seeds);
+            token::burn(burn, liquidation_amount.to_u64())?;
+        }
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_halted(ctx: Context<SetVaultHalted>, halted: bool) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT HALTED");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        vault.halted = halted;
+
         Ok(())
     }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
-pub struct AssetsList {
-    pub head_assets: u8,
-    pub head_collaterals: u8,
-    pub head_synthetics: u8,
-    pub assets: [Asset; 255],
-    pub collaterals: [Collateral; 255],
-    pub synthetics: [Synthetic; 255],
+pub struct AssetsList { // 93333
+    pub head_assets: u8,                // 1
+    pub head_collaterals: u8,           // 1
+    pub head_synthetics: u8,            // 1
+    pub assets: [Asset; 255],           // 27795
+    pub collaterals: [Collateral; 255], // 37740
+    pub synthetics: [Synthetic; 255],   // 27795
 }
 impl Default for AssetsList {
     #[inline]
@@ -1807,9 +2302,9 @@ impl AssetsList {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], payer=admin )]
+    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()], bump=bump, payer=admin )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -1817,7 +2312,10 @@ pub struct CreateSwapline<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = &collateral_reserve.mint == collateral.key)]
+    #[account(
+        constraint = &collateral_reserve.mint == collateral.key,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
+    )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -1826,9 +2324,9 @@ pub struct CreateSwapline<'info> {
 }
 #[derive(Accounts)]
 pub struct UseSwapLine<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()], bump = swapline.load()?.bump )]
     pub swapline: Loader<'info, Swapline>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -1852,7 +2350,8 @@ pub struct UseSwapLine<'info> {
     #[account(
         mut,
         constraint = &collateral_reserve.mint == collateral.key,
-        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -1886,22 +2385,22 @@ impl<'a, 'b, 'c, 'info> From<&UseSwapLine<'info>> for CpiContext<'a, 'b, 'c, 'in
 }
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct Swapline {
-    synthetic: Pubkey,
-    collateral: Pubkey,
-    fee: Decimal,
-    accumulated_fee: Decimal,
-    balance: Decimal,
-    limit: Decimal,
-    collateral_reserve: Pubkey,
-    halted: bool,
-    bump: u8,
+pub struct Swapline { // 166
+    synthetic: Pubkey,          // 32
+    collateral: Pubkey,         // 32
+    fee: Decimal,               // 17
+    accumulated_fee: Decimal,   // 17
+    balance: Decimal,           // 17
+    limit: Decimal,             // 17
+    collateral_reserve: Pubkey, // 32
+    halted: bool,               // 1
+    bump: u8,                   // 1
 }
 #[derive(Accounts)]
 pub struct WithdrawSwaplineFee<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()],bump = swapline.load()?.bump)]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -1941,9 +2440,9 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawSwaplineFee<'info>>
 }
 #[derive(Accounts)]
 pub struct SetHaltedSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+     #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()],bump = swapline.load()?.bump)]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -1965,7 +2464,7 @@ pub struct SetAssetsPrices<'info> {
 }
 #[derive(Accounts)]
 pub struct AddNewAsset<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -1976,11 +2475,11 @@ pub struct AddNewAsset<'info> {
 }
 #[derive(Accounts)]
 pub struct AdminWithdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2010,10 +2509,11 @@ impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
 }
 #[derive(Accounts)]
 pub struct WithdrawAccumulatedDebtInterest<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2023,7 +2523,9 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
         constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &to.mint == usd_token.key
+    )]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2045,7 +2547,7 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -2056,7 +2558,7 @@ pub struct SetMaxSupply<'info> {
 }
 #[derive(Accounts)]
 pub struct SetPriceFeed<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -2068,7 +2570,7 @@ pub struct SetPriceFeed<'info> {
 }
 #[derive(Accounts)]
 pub struct AddCollateral<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2077,13 +2579,15 @@ pub struct AddCollateral<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub liquidation_fund: AccountInfo<'info>,
-    pub reserve_account: AccountInfo<'info>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub liquidation_fund: CpiAccount<'info,TokenAccount>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub reserve_account: CpiAccount<'info,TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetCollateralRatio<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2107,7 +2611,7 @@ pub struct SetMaxCollateral<'info> {
 }
 #[derive(Accounts)]
 pub struct SetAdmin<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2115,7 +2619,7 @@ pub struct SetAdmin<'info> {
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2127,7 +2631,7 @@ pub struct SetSettlementSlot<'info> {
 }
 #[derive(Accounts)]
 pub struct AddSynthetic<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2142,7 +2646,7 @@ pub struct AddSynthetic<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], payer=payer )]
+    #[account(init,seeds = [b"accountv1", admin.key.as_ref()], bump=bump, payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -2152,16 +2656,16 @@ pub struct CreateExchangeAccount<'info> {
 }
 
 #[account(zero_copy)]
-#[derive(PartialEq)]
-pub struct ExchangeAccount {
-    pub owner: Pubkey,                  // Identity controlling account
-    pub version: u8,                    // Version of account struct
-    pub debt_shares: u64,               // Shares representing part of entire debt pool
-    pub liquidation_deadline: u64,      // Slot number after which account can be liquidated
-    pub user_staking_data: UserStaking, // Staking information
-    pub head: u8,
-    pub bump: u8,
-    pub collaterals: [CollateralEntry; 32],
+#[derive(PartialEq, Debug)]
+pub struct ExchangeAccount { // 1412
+    pub owner: Pubkey,                      // 32 Identity controlling account
+    pub version: u8,                        // 1 Version of account struct
+    pub debt_shares: u64,                   // 8 Shares representing part of entire debt pool
+    pub liquidation_deadline: u64,          // 8 Slot number after which account can be liquidated
+    pub user_staking_data: UserStaking,     // 49 Staking information
+    pub head: u8,                           // 1
+    pub bump: u8,                           // 1
+    pub collaterals: [CollateralEntry; 32], // 1312
 }
 impl Default for ExchangeAccount {
     #[inline]
@@ -2182,10 +2686,10 @@ impl Default for ExchangeAccount {
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct CollateralEntry {
-    amount: u64,
-    collateral_address: Pubkey,
-    index: u8,
+pub struct CollateralEntry { // 41
+    amount: u64,                // 8
+    collateral_address: Pubkey, // 32
+    index: u8,                  // 1
 }
 impl ExchangeAccount {
     fn append(&mut self, entry: CollateralEntry) {
@@ -2202,13 +2706,13 @@ impl ExchangeAccount {
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
@@ -2234,7 +2738,7 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 }
 #[derive(Accounts)]
 pub struct Mint<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2270,7 +2774,7 @@ impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 }
 #[derive(Accounts)]
 pub struct Deposit<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2307,7 +2811,7 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
 }
 #[derive(Accounts)]
 pub struct Liquidate<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
@@ -2341,7 +2845,7 @@ pub struct Liquidate<'info> {
 }
 #[derive(Accounts)]
 pub struct BurnToken<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(constraint= exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
@@ -2378,7 +2882,7 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 }
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
@@ -2430,7 +2934,7 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 
 #[derive(Accounts)]
 pub struct CheckCollateralization<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2441,14 +2945,14 @@ pub struct CheckCollateralization<'info> {
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2469,7 +2973,7 @@ pub struct WithdrawRewards<'info> {
 }
 #[derive(Accounts)]
 pub struct WithdrawLiquidationPenalty<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2491,98 +2995,128 @@ pub struct WithdrawLiquidationPenalty<'info> {
 }
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct StakingRound {
+pub struct StakingRound { // 33
     pub start: u64,      // 8 Slot when round starts
-    pub amount: Decimal, // 8 Amount of SNY distributed in this round
+    pub amount: Decimal, // 17 Amount of SNY distributed in this round
     pub all_points: u64, // 8 All points used to calculate user share in staking rewards
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Staking {
-    pub fund_account: Pubkey,         //32 Source account of SNY tokens
-    pub round_length: u32,            //4 Length of round in slots
-    pub amount_per_round: Decimal,    //8 Amount of SNY distributed per round
-    pub finished_round: StakingRound, //24
-    pub current_round: StakingRound,  //24
-    pub next_round: StakingRound,     //24
+pub struct Staking { // 152
+    pub fund_account: Pubkey,         // 32 Source account of SNY tokens
+    pub round_length: u32,            // 4 Length of round in slots
+    pub amount_per_round: Decimal,    // 17 Amount of SNY distributed per round
+    pub finished_round: StakingRound, // 33
+    pub current_round: StakingRound,  // 33
+    pub next_round: StakingRound,     // 33
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct UserStaking {
-    pub amount_to_claim: Decimal,   //8 Amount of SNY accumulated by account
-    pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
-    pub current_round_points: u64,  //8
-    pub next_round_points: u64,     //8
-    pub last_update: u64,           //8
+pub struct UserStaking { // 49
+    pub amount_to_claim: Decimal,   // 17 Amount of SNY accumulated by account
+    pub finished_round_points: u64, // 8 Points are based on debt_shares in specific round
+    pub current_round_points: u64,  // 8
+    pub next_round_points: u64,     // 8
+    pub last_update: u64,           // 8
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Asset {
+pub struct Asset { // 109
     pub feed_address: Pubkey, // 32 Pyth oracle account address
-    pub price: Decimal,       // 8
+    pub price: Decimal,       // 17
     pub last_update: u64,     // 8
-    pub twap: Decimal,        // 8
-    pub twac: Decimal,        // 8 unused
+    pub twap: Decimal,        // 17
+    pub twac: Decimal,        // 17 unused
     pub status: u8,           // 1
-    pub confidence: Decimal,  // 8 unused
+    pub confidence: Decimal,  // 17 unused
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Collateral {
+pub struct Collateral { // 148
     pub asset_index: u8,            // 1
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
     pub liquidation_fund: Pubkey,   // 32
-    pub reserve_balance: Decimal,   // 8
-    pub collateral_ratio: Decimal,  // 1 in %
-    pub max_collateral: Decimal,    // 8
+    pub reserve_balance: Decimal,   // 17
+    pub collateral_ratio: Decimal,  // 17
+    pub max_collateral: Decimal,    // 17
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Synthetic {
+pub struct Synthetic { // 109
     pub asset_index: u8,          // 1
     pub asset_address: Pubkey,    // 32
-    pub supply: Decimal,          // 8
-    pub max_supply: Decimal,      // 8
-    pub swapline_supply: Decimal, // 8
-    pub settlement_slot: u64,     // 8 unused
+    pub supply: Decimal,          // 17
+    pub max_supply: Decimal,      // 17
+    pub borrowed_supply: Decimal, // 17
+    pub swapline_supply: Decimal, // 17
+    pub settlement_slot: u64,     // 8
 }
 #[account(zero_copy)]
-#[derive(PartialEq, Default, Debug)]
-pub struct State {
+#[derive(PartialEq, Debug)]
+pub struct State { // 2048
     //8 Account signature
-    pub admin: Pubkey,                      //32
-    pub halted: bool,                       //1
-    pub nonce: u8,                          //1
-    pub debt_shares: u64,                   //8
-    pub assets_list: Pubkey,                //32
-    pub health_factor: Decimal,             //1   In % 1-100% modifier for debt
-    pub max_delay: u32, //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: Decimal,   //4   Default fee per swap 300 => 0.3%
-    pub swap_tax_ratio: Decimal, //8   In % range 0-20% [1 -> 0.1%]
-    pub swap_tax_reserve: Decimal, //64  Amount on tax from swap
-    pub liquidation_rate: Decimal, //1   Size of debt repay in liquidation
-    pub penalty_to_liquidator: Decimal, //1   In % range 0-25%
-    pub penalty_to_exchange: Decimal, //1   In % range 0-25%
-    pub liquidation_buffer: u32, //4   Time given user to fix collateralization ratio
-    pub debt_interest_rate: Decimal, //8   In % range 0-20% [1 -> 0.1%]
-    pub accumulated_debt_interest: Decimal, //64  Accumulated debt interest
-    pub last_debt_adjustment: i64, //64
-    pub staking: Staking, //116
-    pub exchange_authority: Pubkey, //32
-    pub bump: u8,
+    pub admin: Pubkey,                      // 32
+    pub halted: bool,                       // 1
+    pub nonce: u8,                          // 1
+    pub debt_shares: u64,                   // 8
+    pub assets_list: Pubkey,                // 32 
+    pub health_factor: Decimal,             // 17 In % 1-100% modifier for debt
+    pub max_delay: u32,                     // 4  In slots delay between last oracle update 100 blocks ~ 1 min
+    pub fee: Decimal,                       // 17 In % default fee per swap
+    pub swap_tax_ratio: Decimal,            // 17 In % range 0-20%
+    pub swap_tax_reserve: Decimal,          // 17 Amount on tax from swap
+    pub liquidation_rate: Decimal,          // 17 Percentage of debt repay in liquidation
+    pub penalty_to_liquidator: Decimal,     // 17 In % range 0-25%
+    pub penalty_to_exchange: Decimal,       // 17 In % range 0-25%
+    pub liquidation_buffer: u32,            // 4  Time given user to fix collateralization ratio (in slots)
+    pub debt_interest_rate: Decimal,        // 17 In % range 0-20% 
+    pub accumulated_debt_interest: Decimal, // 17 Accumulated debt interest
+    pub last_debt_adjustment: i64,          // 8
+    pub staking: Staking,                   // 152
+    pub exchange_authority: Pubkey,         // 32
+    pub bump: u8,                           // 1
+    padding: [u8; 1620],                    // 1620 (2048 - 428) reserved for future use
+}
+impl Default for State {
+    #[inline]
+    fn default() -> State {
+        State {
+            admin: Pubkey::default(),
+            halted: false,
+            nonce: 0,
+            debt_shares: 0,
+            assets_list: Pubkey::default(),
+            health_factor: Decimal::default(),
+            max_delay: 0,
+            fee: Decimal::default(),
+            swap_tax_ratio: Decimal::default(),
+            swap_tax_reserve: Decimal::default(),
+            liquidation_rate: Decimal::default(),
+            penalty_to_liquidator: Decimal::default(),
+            penalty_to_exchange: Decimal::default(),
+            liquidation_buffer: 0,
+            debt_interest_rate: Decimal::default(),
+            accumulated_debt_interest: Decimal::default(),
+            last_debt_adjustment: 0,
+            staking: Staking::default(),
+            exchange_authority: Pubkey::default(),
+            bump: 0,
+            padding: [0; 1620],
+        }
+    }
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], payer = payer)]
+    #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
@@ -2595,22 +3129,22 @@ pub struct Init<'info> {
 
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct Settlement {
+pub struct Settlement { // 116
     //8 Account signature
-    pub bump: u8,                  //1
-    pub reserve_address: Pubkey,   //32
-    pub token_in_address: Pubkey,  //32
-    pub token_out_address: Pubkey, //32 xUSD
-    pub decimals_in: u8,           //1
-    pub decimals_out: u8,          //1
-    pub ratio: Decimal,            //8
+    pub bump: u8,                  // 1
+    pub reserve_address: Pubkey,   // 32
+    pub token_in_address: Pubkey,  // 32
+    pub token_out_address: Pubkey, // 32 xUSD
+    pub decimals_in: u8,           // 1
+    pub decimals_out: u8,          // 1
+    pub ratio: Decimal,            // 17
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct SettleSynthetic<'info> {
-    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], payer = payer)]
+    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref()], bump=bump, payer = payer)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2650,9 +3184,9 @@ impl<'a, 'b, 'c, 'info> From<&SettleSynthetic<'info>>
 }
 #[derive(Accounts)]
 pub struct SwapSettledSynthetic<'info> {
-    #[account(seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[settlement.load()?.bump]])]
+    #[account(seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref()],bump = settlement.load()?.bump)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = token_to_settle.key == &settlement.load()?.token_in_address
@@ -2666,7 +3200,7 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
-        "settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address"
+        constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account(
@@ -2713,9 +3247,306 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 
 #[zero_copy]
 #[derive(PartialEq, Default, Debug, AnchorDeserialize, AnchorSerialize)]
-pub struct Decimal {
-    pub val: u128,
-    pub scale: u8,
+pub struct Decimal { // 17
+    pub val: u128, // 16
+    pub scale: u8, // 1
+}
+
+#[account(zero_copy)]
+#[derive(PartialEq, Default, Debug)]
+pub struct Vault { // 293
+    pub halted: bool,                            // 1
+    pub synthetic: Pubkey,                       // 32
+    pub collateral: Pubkey,                      // 32
+    pub debt_interest_rate: Decimal,             // 17
+    pub collateral_ratio: Decimal,               // 17
+    pub liquidation_threshold: Decimal,          // 17
+    pub liquidation_ratio: Decimal,              // 17
+    pub liquidation_penalty_liquidator: Decimal, // 17
+    pub liquidation_penalty_exchange: Decimal,   // 17
+    pub accumulated_interest: Decimal,           // 17
+    pub accumulated_interest_rate: Decimal,      // 17
+    pub collateral_reserve: Pubkey,              // 32
+    pub mint_amount: Decimal,                    // 17
+    pub collateral_amount: Decimal,              // 17
+    pub max_borrow: Decimal,                     // 17
+    pub last_update: i64,                        // 8
+    pub bump: u8,                                // 1
+}
+#[account(zero_copy)]
+#[derive(PartialEq, Default, Debug)]
+pub struct VaultEntry { // 116
+    pub owner: Pubkey,                           // 32
+    pub vault: Pubkey,                           // 32
+    pub last_accumulated_interest_rate: Decimal, // 17
+    pub synthetic_amount: Decimal,               // 17
+    pub collateral_amount: Decimal,              // 17
+    pub bump: u8,                                // 1
+}
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct CreateVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()], bump=bump, payer=admin )]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut, signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(
+        constraint = &collateral_reserve.mint == collateral.key,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
+    )]
+    pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct CreateVaultEntry<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()], bump=bump, payer=owner)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: AccountInfo<'info>,
+}
+#[derive(Accounts)]
+pub struct DepositVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut,
+        constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key,
+        constraint = &reserve_address.mint == collateral.key,
+        constraint = &reserve_address.owner == exchange_authority.key
+    )]
+    pub reserve_address: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &user_collateral_account.mint == collateral.key,
+        constraint = &user_collateral_account.owner == owner.key
+    )]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+{
+    fn from(accounts: &DepositVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.user_collateral_account.to_account_info(),
+            to: accounts.reserve_address.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct BorrowVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut,
+        constraint = &to.mint == synthetic.key,
+    )]
+    pub to: CpiAccount<'info, TokenAccount>, // not must be owner
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+    fn from(accounts: &BorrowVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.synthetic.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+#[derive(Accounts)]
+pub struct WithdrawVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut, 
+        constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key,
+        constraint = &reserve_address.owner == exchange_authority.key,
+        constraint = &reserve_address.mint == collateral.key,
+    )]
+    pub reserve_address: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &user_collateral_account.mint == collateral.key,
+        constraint = &user_collateral_account.owner == owner.key
+    )]
+    pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut, signer)]
+    pub owner: AccountInfo<'info>,
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, Transfer<'info>>
+{
+    fn from(accounts: &WithdrawVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: accounts.reserve_address.to_account_info(),
+            to: accounts.user_collateral_account.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct RepayVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut, 
+        constraint = &user_token_account_repay.owner == owner.key,
+        constraint = &user_token_account_repay.mint == synthetic.key,
+    )]
+    pub user_token_account_repay: CpiAccount<'info, TokenAccount>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(signer)]
+    pub owner: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&RepayVault<'info>> for CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+    fn from(accounts: &RepayVault<'info>) -> CpiContext<'a, 'b, 'c, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: accounts.synthetic.to_account_info(),
+            to: accounts.user_token_account_repay.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+#[derive(Accounts)]
+pub struct LiquidateVault<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(mut,has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut)]
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut,
+        constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
+        constraint = &collateral_reserve.mint == collateral.key
+    )]
+    pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidator_synthetic_account.mint == synthetic.key,
+        constraint = &liquidator_synthetic_account.owner == liquidator.key
+    )]
+    pub liquidator_synthetic_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidator_collateral_account.owner == liquidator.key,
+        constraint = &liquidator_collateral_account.mint == collateral.key
+    )]
+    pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
+    #[account(mut,
+        constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
+        constraint = &liquidation_fund.mint == collateral.key
+    )]
+    pub liquidation_fund: CpiAccount<'info, TokenAccount>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    pub owner: AccountInfo<'info>,
+    #[account(signer)]
+    pub liquidator: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetVaultHalted<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
 }
 
 #[error]
@@ -2781,15 +3612,20 @@ pub enum ErrorCode {
     #[msg("Scale is different")]
     DifferentScale = 29,
     #[msg("Tokens does not represent same asset")]
-    MissmatchedTokens = 30,
+    MismatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
     #[msg("Limit of collateral exceeded")]
     CollateralLimitExceeded = 32,
+    #[msg("User borrow limit")]
+    UserBorrowLimit = 33,
+    #[msg("Vault borrow limit")]
+    VaultBorrowLimit = 34,
+    #[msg("Vault withdraw limit")]
+    VaultWithdrawLimit = 35,
 }
 
 // Access control modifiers.
-
 // Only admin access
 fn admin(state_loader: &Loader<State>, signer: &AccountInfo) -> Result<()> {
     let state = state_loader.load()?;
@@ -2802,7 +3638,12 @@ fn halted<'info>(state_loader: &Loader<State>) -> Result<()> {
     require!(!state.halted, Halted);
     Ok(())
 }
-
+// Vault containers
+fn vault_halted<'info>(vault_loader: &Loader<Vault>) -> Result<()> {
+    let vault = vault_loader.load()?;
+    require!(!vault.halted, Halted);
+    Ok(())
+}
 #[cfg(test)]
 mod tests {
     use super::*;

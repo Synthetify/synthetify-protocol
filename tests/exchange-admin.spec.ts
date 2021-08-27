@@ -138,6 +138,10 @@ describe('admin', () => {
     assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
+
+    // Check size of state
+    const stateAccountInfo = await connection.getAccountInfo(exchange.stateAddress as PublicKey)
+    assert.equal(stateAccountInfo?.data.length, 2048 + 8)
   })
   it('Initialize assets', async () => {
     const initTokensDecimals = 6
@@ -684,37 +688,8 @@ describe('admin', () => {
       assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
       assert.ok(addedCollateral.reserveAddress.equals(reserveAccount))
       assert.ok(eqDecimals(addedCollateral.reserveBalance, reserveBalance))
-    }),
-      it('should fail without admin signature', async () => {
-        const beforeAssetList = await exchange.getAssetsList(assetsList)
-        const assetForCollateral = beforeAssetList.assets[0]
-        const liquidationAccount = new Account()
-        const reserveAccount = new Account()
-        const collateralRatio = percentToDecimal(150)
-        const decimals = 8
-        const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
-        const newCollateral = await createToken({
-          connection,
-          payer: wallet,
-          mintAuthority: exchangeAuthority,
-          decimals: 8
-        })
-        const ix = await exchange.addCollateralInstruction({
-          assetsList,
-          assetAddress: newCollateral.publicKey,
-          liquidationFund: liquidationAccount.publicKey,
-          feedAddress: assetForCollateral.feedAddress,
-          reserveAccount: reserveAccount.publicKey,
-          reserveBalance: reserveBalance,
-          collateralRatio,
-          maxCollateral: toDecimal(U64_MAX, decimals)
-        })
-        await assertThrowsAsync(
-          signAndSend(new Transaction().add(ix), [wallet], connection),
-          ERRORS.SIGNATURE
-        )
-      })
-    it('should fail because of out of range paramter', async () => {
+    })
+    it('should fail without admin signature', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
       const assetForCollateral = beforeAssetList.assets[0]
       const liquidationAccount = new Account()
@@ -735,6 +710,36 @@ describe('admin', () => {
         feedAddress: assetForCollateral.feedAddress,
         reserveAccount: reserveAccount.publicKey,
         reserveBalance: reserveBalance,
+        collateralRatio,
+        maxCollateral: toDecimal(U64_MAX, decimals)
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should fail because of out of range paramter', async () => {
+      const beforeAssetList = await exchange.getAssetsList(assetsList)
+      const assetForCollateral = beforeAssetList.assets[0]
+      const decimals = 8
+      const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
+      const newCollateral = await createToken({
+        connection,
+        payer: wallet,
+        mintAuthority: exchangeAuthority,
+        decimals
+      })
+      const liquidationFund = await newCollateral.createAccount(exchangeAuthority)
+      const reserveAccount = await newCollateral.createAccount(exchangeAuthority)
+      const collateralRatio = percentToDecimal(150)
+
+      const ix = await exchange.addCollateralInstruction({
+        assetsList,
+        assetAddress: newCollateral.publicKey,
+        liquidationFund,
+        feedAddress: assetForCollateral.feedAddress,
+        reserveAccount,
+        reserveBalance,
         collateralRatio,
         maxCollateral: toDecimal(U64_MAX, decimals)
       })

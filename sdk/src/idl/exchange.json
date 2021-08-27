@@ -1664,6 +1664,546 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "createVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        },
+        {
+          "name": "debtInterestRate",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "maxBorrow",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "liquidationThreshold",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "penaltyToLiquidator",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "penaltyToExchange",
+          "type": {
+            "defined": "Decimal"
+          }
+        },
+        {
+          "name": "liquidationRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createVaultEntry",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "depositVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "reserveAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "borrowVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "reserveAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "repayVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "userTokenAccountRepay",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "liquidateVault",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateralReserve",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidatorSyntheticAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidatorCollateralAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "liquidationFund",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "liquidator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setVaultHalted",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "halted",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1925,6 +2465,15 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                1620
+              ]
+            }
           }
         ]
       }
@@ -1963,6 +2512,142 @@
             "type": {
               "defined": "Decimal"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "synthetic",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateral",
+            "type": "publicKey"
+          },
+          {
+            "name": "debtInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationThreshold",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationRatio",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationPenaltyLiquidator",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "liquidationPenaltyExchange",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedInterest",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralReserve",
+            "type": "publicKey"
+          },
+          {
+            "name": "mintAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "maxBorrow",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "lastUpdate",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "lastAccumulatedInterestRate",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "syntheticAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralAmount",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -2193,6 +2878,12 @@
             }
           },
           {
+            "name": "borrowedSupply",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
             "name": "swaplineSupply",
             "type": {
               "defined": "Decimal"
@@ -2375,7 +3066,7 @@
     },
     {
       "code": 330,
-      "name": "MissmatchedTokens",
+      "name": "MismatchedTokens",
       "msg": "Tokens does not represent same asset"
     },
     {
@@ -2387,6 +3078,21 @@
       "code": 332,
       "name": "CollateralLimitExceeded",
       "msg": "Limit of collateral exceeded"
+    },
+    {
+      "code": 333,
+      "name": "UserBorrowLimit",
+      "msg": "User borrow limit"
+    },
+    {
+      "code": 334,
+      "name": "VaultBorrowLimit",
+      "msg": "Vault borrow limit"
+    },
+    {
+      "code": 335,
+      "name": "VaultWithdrawLimit",
+      "msg": "Vault withdraw limit"
     }
   ]
 }

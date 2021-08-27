@@ -1,4 +1,6 @@
 {
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "typescript.tsdk": "node_modules/typescript/lib",
   "cSpell.words": [
     "Bodziony",
@@ -11,10 +13,15 @@
     "addn",
     "atype",
     "blockhash",
+    "cichocki",
     "collateralization",
+    "collateralized",
     "divn",
+    "entryv",
+    "keygen",
     "lamports",
     "ledgerhq",
+    "libudev",
     "muln",
     "multicollateral",
     "multiuser",
@@ -25,12 +32,19 @@
     "pythnetwork",
     "repr",
     "solana",
+    "stakers",
     "statev",
+    "struct",
     "subn",
     "swapline",
+    "swaplinev",
+    "toolchain",
     "twac",
     "twap",
     "undercollateralized",
+    "vaultv",
+    "wojciech",
+    "xsol",
     "xusd"
   ]
 }

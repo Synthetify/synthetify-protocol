@@ -247,7 +247,7 @@ impl Into<u128> for Decimal {
     }
 }
 impl Compare<Decimal> for Decimal {
-    fn ltq(self, other: Decimal) -> Result<bool> {
+    fn lte(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val <= other.val)
     }
@@ -258,6 +258,10 @@ impl Compare<Decimal> for Decimal {
     fn gt(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
         Ok(self.val > other.val)
+    }
+    fn gte(self, other: Decimal) -> Result<bool> {
+        require!(self.scale == other.scale, DifferentScale);
+        Ok(self.val >= other.val)
     }
     fn eq(self, other: Decimal) -> Result<bool> {
         require!(self.scale == other.scale, DifferentScale);
@@ -292,7 +296,8 @@ pub trait Compare<T>: Sized {
     fn eq(self, rhs: T) -> Result<bool>;
     fn lt(self, rhs: T) -> Result<bool>;
     fn gt(self, rhs: T) -> Result<bool>;
-    fn ltq(self, rhs: T) -> Result<bool>;
+    fn gte(self, rhs: T) -> Result<bool>;
+    fn lte(self, rhs: T) -> Result<bool>;
 }
 
 #[cfg(test)]
