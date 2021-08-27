@@ -3011,8 +3011,8 @@ pub struct Synthetic { // 109
     pub settlement_slot: u64,     // 8
 }
 #[account(zero_copy)]
-#[derive(PartialEq, Default, Debug)]
-pub struct State { // 428
+#[derive(PartialEq, Debug)]
+pub struct State { // 2048
     //8 Account signature
     pub admin: Pubkey,                      // 32
     pub halted: bool,                       // 1
@@ -3034,6 +3034,35 @@ pub struct State { // 428
     pub staking: Staking,                   // 152
     pub exchange_authority: Pubkey,         // 32
     pub bump: u8,                           // 1
+    padding: [u8; 1620],                    // 1620 (2048 - 428) reserved for future use
+}
+impl Default for State {
+    #[inline]
+    fn default() -> State {
+        State {
+            admin: Pubkey::default(),
+            halted: false,
+            nonce: 0,
+            debt_shares: 0,
+            assets_list: Pubkey::default(),
+            health_factor: Decimal::default(),
+            max_delay: 0,
+            fee: Decimal::default(),
+            swap_tax_ratio: Decimal::default(),
+            swap_tax_reserve: Decimal::default(),
+            liquidation_rate: Decimal::default(),
+            penalty_to_liquidator: Decimal::default(),
+            penalty_to_exchange: Decimal::default(),
+            liquidation_buffer: 0,
+            debt_interest_rate: Decimal::default(),
+            accumulated_debt_interest: Decimal::default(),
+            last_debt_adjustment: 0,
+            staking: Staking::default(),
+            exchange_authority: Pubkey::default(),
+            bump: 0,
+            padding: [0; 1620],
+        }
+    }
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
