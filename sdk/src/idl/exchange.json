@@ -3066,7 +3066,7 @@
     },
     {
       "code": 330,
-      "name": "MissmatchedTokens",
+      "name": "MismatchedTokens",
       "msg": "Tokens does not represent same asset"
     },
     {
