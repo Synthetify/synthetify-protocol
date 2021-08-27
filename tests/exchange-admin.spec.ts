@@ -116,7 +116,7 @@ describe('admin', () => {
     const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
     await connection.confirmTransaction(signature)
   })
-  it.only('Initialize state', async () => {
+  it('Initialize state', async () => {
     const state = await exchange.getState()
     // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
