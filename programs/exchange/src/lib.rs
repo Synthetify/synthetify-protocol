@@ -3067,7 +3067,7 @@ impl Default for State {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer, space = 1024)]
+    #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
