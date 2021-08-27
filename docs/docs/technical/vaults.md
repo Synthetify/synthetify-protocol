@@ -34,7 +34,7 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **synthetic** - address of synthetic token
   * **collateral** - address of token used as collateral
   * **debt_interest_rate** - interest on debt 
-  * **collateral_ratio** - ratio of value of collateral to value of synthetic
+  * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be borrowed using it
   * **liquidation_threshold** - 
   * **liquidation_ratio** - 
   * **liquidation_penalty_liquidator** - 
@@ -42,11 +42,11 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
   * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for deposit to staking)
-  * **mint_amount** - 
-  * **collateral_amount** - 
-  * **max_borrow** - 
+  * **mint_amount** - amount already minted (both amount borrowed and interest)
+  * **collateral_amount** - amount of deposited collateral in reserve
+  * **max_borrow** - limit of total synthetic that can be borrowed
   * **last_update** - 
-  * **bump** - 
+  * **bump** - used to generate address of account
 
 
 ## Vault entry
@@ -124,4 +124,34 @@ Method depositing tokens is defined [TODO](#), takes amount (u64) and a context 
   * **token_program** - 
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **owner** - owner of _collateral account_ and [_vault entry_ ](/docs/technical/vaults#vault-entry)
-  * **exchange_authority** - pubkey of the exchange
+  * **exchange_authority** - pubkey belonging to the exchange
+
+
+## Borrow
+
+Borrow is the counterpart of minting in _Vault_. It is defined [TODO](#), takes amount (u64) and a context: 
+
+    struct BorrowVault<'info> {
+        pub state: Loader<'info, State>,
+        pub vault_entry: Loader<'info, VaultEntry>,
+        pub vault: Loader<'info, Vault>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub to: CpiAccount<'info, TokenAccount>, // not must be owner
+        pub token_program: AccountInfo<'info>,
+        pub owner: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+    }
+
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **vault_entry** - user account in vault
+  * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
+  * **synthetic** - address of borrowed token
+  * **collateral** - address of token used as collateral token
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
+  * **to** - account to which borrowed tokens will be transferred
+  * **token_program** - 
+  * **owner** - owner of [_vault entry_ ](/docs/technical/vaults#vault-entry)
+  * **exchange_authority** - pubkey belonging to the exchange
