@@ -158,6 +158,7 @@ describe('vaults', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
+
       const debtInterestRate = percentToDecimal(5)
       const collateralRatio = percentToDecimal(80)
       const liquidationRatio = percentToDecimal(50)
@@ -187,6 +188,7 @@ describe('vaults', () => {
     it('should create usdc/xusd vault', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
+
       const usdc = assetsListData.collaterals[1]
       const debtInterestRate = percentToDecimal(5)
       const collateralRatio = percentToDecimal(80)
@@ -194,7 +196,6 @@ describe('vaults', () => {
       const liquidationThreshold = percentToDecimal(90)
       const liquidationPenaltyExchange = percentToDecimal(5)
       const liquidationPenaltyLiquidator = percentToDecimal(5)
-
       const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
 
       const { ix } = await exchange.createVaultInstruction({
@@ -290,11 +291,13 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
+      const expectedCollateralAmount = toDecimal(new BN(0), usdc.reserveBalance.scale)
+
+      // balances before deposit
       assert.ok(userUsdcTokenAccountInfo.amount.eq(allUserCollateralAmount))
       assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(new BN(0)))
 
       // vault collateral should be empty
-      const expectedCollateralAmount = toDecimal(new BN(0), usdc.reserveBalance.scale)
       assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
       assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
@@ -329,11 +332,11 @@ describe('vaults', () => {
         usdc.reserveBalance.scale
       )
 
-      // swap balances
+      // change balances after deposit
       assert.ok(userUsdcTokenAccountInfoAfterDeposit.amount.eq(new BN(0)))
       assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(allUserCollateralAmount))
 
-      // deposit to vault
+      // vault and vault entry collateral
       assert.ok(
         eqDecimals(vaultAfterDeposit.collateralAmount, expectedCollateralAmountAfterDeposit)
       )
@@ -358,11 +361,13 @@ describe('vaults', () => {
         usdc.collateralAddress,
         accountOwner.publicKey
       )
+      const expectedCollateralAmount = toDecimal(allUserCollateralAmount, usdc.reserveBalance.scale)
 
+      // balances before deposit
       assert.ok(userUsdcTokenAccountInfo.amount.eq(depositAmount))
       assert.ok(usdcVaultReserveTokenAccountInfo.amount.eq(allUserCollateralAmount))
 
-      const expectedCollateralAmount = toDecimal(allUserCollateralAmount, usdc.reserveBalance.scale)
+      // vault and vault entry before deposit
       assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
       assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
@@ -393,28 +398,46 @@ describe('vaults', () => {
         usdc.collateralAddress,
         accountOwner.publicKey
       )
-      const expectedCollateralAmountAfterDeposit = toDecimal(
-        depositAmount,
-        usdc.reserveBalance.scale
-      )
+      const expectedVaultDecimal = toDecimal(allUserCollateralAmount, vault.collateralAmount.scale)
 
-      // swap balances
+      // change balances
       assert.ok(userUsdcTokenAccountInfoAfterDeposit.amount.eq(new BN(0)))
       assert.ok(usdcVaultReserveTokenAccountInfoAfterDeposit.amount.eq(allUserCollateralAmount))
 
-      // deposit to vault
-      const expectedVaultDecimal = toDecimal(allUserCollateralAmount, vault.collateralAmount.scale)
+      // vault and vault entry collateral
       assert.ok(eqDecimals(vaultAfterDeposit.collateralAmount, expectedVaultDecimal))
       assert.ok(eqDecimals(vaultEntryAfterDeposit.collateralAmount, expectedVaultDecimal))
     })
   })
   describe('#borrowVault', async () => {
+    before(async () => {
+      userXusdTokenAccount = await xusdToken.createAccount(accountOwner.publicKey)
+    })
+    it('borrow over user limit should failed', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      await assertThrowsAsync(
+        exchange.borrowVault({
+          amount: allUserCollateralAmount.addn(1),
+          owner: accountOwner.publicKey,
+          to: userXusdTokenAccount,
+          collateral: usdc.collateralAddress,
+          synthetic: xusd.assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.USER_BORROW_LIMIT
+      )
+    })
+    it('borrow over vault limit should failed', async () => {
+      // TODO: change borrow limit
+    })
     it('should borrow xusd from usdc/xusd vault entry', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
 
-      userXusdTokenAccount = await xusdToken.createAccount(accountOwner.publicKey)
       const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
@@ -422,6 +445,7 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
       const borrowAmountBeforeBorrow = toDecimal(new BN(0), xusd.supply.scale)
+
       // vault before borrow
       assert.ok(eqDecimals(vault.mintAmount, borrowAmountBeforeBorrow))
       // vault entry before borrow
@@ -733,6 +757,48 @@ describe('vaults', () => {
       assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedBorrowedSupply))
       assert.ok(eqDecimals(xusdAfter.supply, expectedBorrowedSupply))
       assert.ok(userXusdTokenAccountAfter.amount.eq(expectedBorrowedSupply.val))
+    })
+  })
+  describe('halted exchange', async () => {
+    let xusdAssetAddress: PublicKey
+    let usdcCollateralAddress: PublicKey
+    let newAccountOwner: Keypair
+
+    before(async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      xusdAssetAddress = assetsListData.synthetics[0].assetAddress
+      usdcCollateralAddress = assetsListData.collaterals[1].collateralAddress
+      newAccountOwner = Keypair.generate()
+
+      const ixHalt = await exchange.setHaltedInstruction(true)
+      await connection.requestAirdrop(newAccountOwner.publicKey, 10e9)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
+    })
+    it('create vault entry should failed', async () => {
+      const { ix } = await exchange.createVaultEntryInstruction({
+        owner: newAccountOwner.publicKey,
+        collateral: usdcCollateralAddress,
+        synthetic: xusdAssetAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [newAccountOwner], connection),
+        ERRORS_EXCHANGE.HALTED
+      )
+    })
+    it('deposit to vault entry should failed', async () => {
+      await assertThrowsAsync(
+        exchange.vaultDeposit({
+          amount: new BN(0),
+          owner: accountOwner.publicKey,
+          collateral: usdcCollateralAddress,
+          synthetic: xusdAssetAddress,
+          userCollateralAccount: userUsdcTokenAccount,
+          reserveAddress: usdcVaultReserve,
+          collateralToken: usdcToken,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.HALTED
+      )
     })
   })
 })
