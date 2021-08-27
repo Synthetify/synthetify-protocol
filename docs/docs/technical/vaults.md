@@ -70,3 +70,30 @@ Vault entry is created for every user using a vault and it stores data for it.
   * **bump** - bump used as a seed
 
 ### Creation of _Vault Entry_
+
+Vault entry is created [TODO](#), takes bump (u8) and a following context: 
+
+    struct CreateVaultEntry<'info> {
+        pub state: Loader<'info, State>,
+        pub vault_entry: Loader<'info, VaultEntry>,
+        pub owner: AccountInfo<'info>,
+        pub vault: Loader<'info, Vault>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub rent: Sysvar<'info, Rent>,
+        pub system_program: AccountInfo<'info>,
+    }
+
+  * **state** - 
+  * **vault_entry** - 
+  * **owner** - pubkey belonging to owner of the account
+  * **vault** - vault for which entry is created
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **synthetic** - address of synthetic token used as a seed for entry
+  * **collateral** - address of collateral token also used as seed
+* **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), used by Solana
+* **system_program** - needed to create account
+
+
+### 
