@@ -662,6 +662,9 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
+    }
+    #[test]
+    fn test_calculate_debt_continuation() {
         {
             let slot = 100;
             let mut assets_list = AssetsList {
@@ -730,6 +733,7 @@ mod tests {
             }
         }
     }
+
     #[test]
     fn test_calculate_debt_error() {
         let slot = 100;
