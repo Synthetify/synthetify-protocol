@@ -343,7 +343,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   }
 }
 
-interface ICreateCollaterToken {
+interface ICreateCollateralToken {
   exchange: Exchange
   exchangeAuthority: PublicKey
   oracleProgram: Program
@@ -352,6 +352,7 @@ interface ICreateCollaterToken {
   price: number
   decimals: number
   collateralRatio: number
+  maxCollateral?: Decimal
 }
 export const createCollateralToken = async ({
   exchange,
@@ -361,8 +362,9 @@ export const createCollateralToken = async ({
   wallet,
   price,
   decimals,
-  collateralRatio
-}: ICreateCollaterToken): Promise<{
+  collateralRatio,
+  maxCollateral
+}: ICreateCollateralToken): Promise<{
   token: Token
   feed: PublicKey
   reserve: PublicKey
@@ -400,7 +402,8 @@ export const createCollateralToken = async ({
     reserveAccount,
     feedAddress: oracleAddress,
     collateralRatio: collateralRatioDecimal,
-    reserveBalance: reserveBalanceDecimal
+    reserveBalance: reserveBalanceDecimal,
+    maxCollateral: maxCollateral ?? toDecimal(U64_MAX, decimals)
   })
   await signAndSend(new Transaction().add(addCollateralIx), [EXCHANGE_ADMIN], connection)
 

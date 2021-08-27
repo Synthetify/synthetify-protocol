@@ -282,6 +282,51 @@ describe('exchange', () => {
         ERRORS.ALLOWANCE
       )
     })
+    it('Deposit over maxCollateral', async () => {
+      const accountOwner = new Account()
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+
+      // Change max collateral for testing
+      const ix = await exchange.setMaxCollateral(
+        collateralToken.publicKey,
+        toDecimal(new BN(10_000000), 6)
+      )
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+      const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
+      await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+      const depositIx = await exchange.depositInstruction({
+        amount: amount.mul(new BN(2)),
+        exchangeAccount,
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey,
+        reserveAddress: snyReserve
+      })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(approveIx).add(depositIx),
+          [wallet, accountOwner],
+          connection
+        ),
+        ERRORS_EXCHANGE.COLLATERAL_LIMIT_EXCEEDED
+      )
+
+      // Change max collateral back to u64 max
+      const ixBack = await exchange.setMaxCollateral(
+        collateralToken.publicKey,
+        toDecimal(new BN(U64_MAX), SNY_DECIMALS)
+      )
+      await signAndSend(new Transaction().add(ixBack), [EXCHANGE_ADMIN], connection)
+    })
   })
   describe('#mint()', async () => {
     it('Mint #1', async () => {

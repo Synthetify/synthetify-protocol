@@ -633,6 +633,16 @@ export class Exchange {
       }
     }) as TransactionInstruction)
   }
+  public async setMaxCollateral(collateralAddress: PublicKey, newMaxCollateral: Decimal) {
+    return await (this.program.instruction.setMaxCollateral(newMaxCollateral, {
+      accounts: {
+        state: this.stateAddress,
+        admin: this.state.admin,
+        assetsList: this.state.assetsList,
+        collateralAddress: collateralAddress
+      }
+    }) as TransactionInstruction)
+  }
   public async setAdmin(newAdmin: PublicKey) {
     return await (this.program.instruction.setAdmin({
       accounts: {
@@ -1088,20 +1098,26 @@ export class Exchange {
     reserveAccount,
     feedAddress,
     collateralRatio,
-    reserveBalance
+    reserveBalance,
+    maxCollateral
   }: AddCollateralInstruction) {
-    return (await this.program.instruction.addCollateral(reserveBalance, collateralRatio, {
-      accounts: {
-        admin: this.state.admin,
-        state: this.stateAddress,
-        signer: this.state.admin,
-        assetsList,
-        assetAddress,
-        liquidationFund,
-        feedAddress,
-        reserveAccount
+    return (await this.program.instruction.addCollateral(
+      reserveBalance,
+      maxCollateral,
+      collateralRatio,
+      {
+        accounts: {
+          admin: this.state.admin,
+          state: this.stateAddress,
+          signer: this.state.admin,
+          assetsList,
+          assetAddress,
+          liquidationFund,
+          feedAddress,
+          reserveAccount
+        }
       }
-    })) as TransactionInstruction
+    )) as TransactionInstruction
   }
   public async createVaultInstruction({
     synthetic,
@@ -1499,6 +1515,7 @@ export interface Collateral {
   liquidationFund: PublicKey
   reserveBalance: Decimal
   collateralRatio: Decimal
+  maxCollateral: Decimal
 }
 export interface Synthetic {
   assetIndex: number
@@ -1554,6 +1571,7 @@ export interface AddCollateralInstruction {
   reserveBalance: Decimal
   reserveAccount: PublicKey
   collateralRatio: Decimal
+  maxCollateral: Decimal
 }
 
 export interface Mint {
