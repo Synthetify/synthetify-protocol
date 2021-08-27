@@ -3740,9 +3740,4 @@ mod tests {
         assert_eq!(collaterals[0].asset_index, 0);
         assert_eq!(synthetics[0].asset_index, 0);
     }
-
-    #[test]
-    fn sizes() {
-        msg!("aa {}", std::mem::size_of::<State>())   
-    }
 }

@@ -116,7 +116,7 @@ describe('admin', () => {
     const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
     await connection.confirmTransaction(signature)
   })
-  it('Initialize state', async () => {
+  it.only('Initialize state', async () => {
     const state = await exchange.getState()
     // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
@@ -138,6 +138,10 @@ describe('admin', () => {
     assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
+
+    // Check size of state
+    const stateAccountInfo = await connection.getAccountInfo(exchange.stateAddress as PublicKey)
+    assert.equal(stateAccountInfo?.data.length, 2048 + 8)
   })
   it('Initialize assets', async () => {
     const initTokensDecimals = 6
