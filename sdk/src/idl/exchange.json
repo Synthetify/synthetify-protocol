@@ -2153,6 +2153,57 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "setVaultHalted",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "halted",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -3022,13 +3073,23 @@
     },
     {
       "code": 332,
+      "name": "CollateralLimitExceeded",
+      "msg": "Limit of collateral exceeded"
+    },
+    {
+      "code": 333,
       "name": "UserBorrowLimit",
       "msg": "User borrow limit"
     },
     {
-      "code": 333,
+      "code": 334,
       "name": "VaultBorrowLimit",
       "msg": "Vault borrow limit"
+    },
+    {
+      "code": 335,
+      "name": "VaultWithdrawLimit",
+      "msg": "Vault withdraw limit"
     }
   ]
 }

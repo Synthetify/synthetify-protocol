@@ -48,7 +48,7 @@ import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
-describe('vaults', () => {
+describe('vaults liquidation', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program

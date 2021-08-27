@@ -1357,7 +1357,7 @@ pub mod exchange {
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
             collateral_address: *ctx.accounts.asset_address.key,
-            liquidation_fund: *ctx.accounts.liquidation_fund.key,
+            liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
             reserve_balance,
@@ -1859,15 +1859,7 @@ pub mod exchange {
             .find(|x| x.asset_address.eq(ctx.accounts.synthetic.key))
             .unwrap();
 
-        let user_collateral_account = &ctx.accounts.user_collateral_account;
-
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-
-        let tx_signer = ctx.accounts.owner.key;
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        };
 
         let amount_decimal = Decimal {
             val: amount.into(),
@@ -1998,13 +1990,6 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        // Check signer
-        let user_collateral_account = &mut ctx.accounts.user_collateral_account;
-        let tx_signer = ctx.accounts.owner.key;
-        if !tx_signer.eq(&user_collateral_account.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
-
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
             _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
@@ -2049,22 +2034,20 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        // Signer need to be owner of source account
-        let tx_signer = ctx.accounts.owner.key;
-        let user_token_account_repay = &ctx.accounts.user_token_account_repay;
-        if !tx_signer.eq(&user_token_account_repay.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
-
         // determine repay_amount
-        let repay_amount = match amount {
+        let mut repay_amount = match amount {
             u64::MAX => vault_entry.synthetic_amount,
             _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
+        };
+
+        if repay_amount.gt(vault_entry.synthetic_amount)? {
+            repay_amount = vault_entry.synthetic_amount;
         };
 
         // update synthetic, vault, vault_entry supply
         vault.mint_amount = vault.mint_amount.sub(repay_amount).unwrap();
         vault_entry.synthetic_amount = vault_entry.synthetic_amount.sub(repay_amount).unwrap();
+        synthetic.supply = synthetic.supply.sub(repay_amount).unwrap();
         synthetic.borrowed_supply = synthetic.borrowed_supply.sub(repay_amount).unwrap();
 
         // burn tokens
@@ -2242,6 +2225,15 @@ pub mod exchange {
         }
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_halted(ctx: Context<SetVaultHalted>, halted: bool) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT HALTED");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        vault.halted = halted;
+
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
@@ -2312,9 +2304,9 @@ impl AssetsList {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()], bump=bump, payer=admin )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -2322,7 +2314,10 @@ pub struct CreateSwapline<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = &collateral_reserve.mint == collateral.key)]
+    #[account(
+        constraint = &collateral_reserve.mint == collateral.key,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
+    )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -2331,9 +2326,9 @@ pub struct CreateSwapline<'info> {
 }
 #[derive(Accounts)]
 pub struct UseSwapLine<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()], bump = swapline.load()?.bump )]
     pub swapline: Loader<'info, Swapline>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -2357,7 +2352,8 @@ pub struct UseSwapLine<'info> {
     #[account(
         mut,
         constraint = &collateral_reserve.mint == collateral.key,
-        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
+        constraint = collateral_reserve.owner == state.load()?.exchange_authority
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -2404,9 +2400,9 @@ pub struct Swapline { // 166
 }
 #[derive(Accounts)]
 pub struct WithdrawSwaplineFee<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()],bump = swapline.load()?.bump)]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -2446,9 +2442,9 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawSwaplineFee<'info>>
 }
 #[derive(Accounts)]
 pub struct SetHaltedSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref(), &[swapline.load()?.bump]] )]
+     #[account(mut,seeds = [b"swaplinev1", synthetic.key.as_ref(),collateral.key.as_ref()],bump = swapline.load()?.bump)]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -2470,7 +2466,7 @@ pub struct SetAssetsPrices<'info> {
 }
 #[derive(Accounts)]
 pub struct AddNewAsset<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -2481,11 +2477,11 @@ pub struct AddNewAsset<'info> {
 }
 #[derive(Accounts)]
 pub struct AdminWithdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2515,10 +2511,11 @@ impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
 }
 #[derive(Accounts)]
 pub struct WithdrawAccumulatedDebtInterest<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2528,7 +2525,9 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
         constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &to.mint == usd_token.key
+    )]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account("token_program.key == &token::ID")]
     pub token_program: AccountInfo<'info>,
@@ -2550,7 +2549,7 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -2561,7 +2560,7 @@ pub struct SetMaxSupply<'info> {
 }
 #[derive(Accounts)]
 pub struct SetPriceFeed<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
@@ -2573,7 +2572,7 @@ pub struct SetPriceFeed<'info> {
 }
 #[derive(Accounts)]
 pub struct AddCollateral<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2582,13 +2581,15 @@ pub struct AddCollateral<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
-    pub liquidation_fund: AccountInfo<'info>,
-    pub reserve_account: AccountInfo<'info>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub liquidation_fund: CpiAccount<'info,TokenAccount>,
+    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    pub reserve_account: CpiAccount<'info,TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetCollateralRatio<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2612,7 +2613,7 @@ pub struct SetMaxCollateral<'info> {
 }
 #[derive(Accounts)]
 pub struct SetAdmin<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2620,7 +2621,7 @@ pub struct SetAdmin<'info> {
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2632,7 +2633,7 @@ pub struct SetSettlementSlot<'info> {
 }
 #[derive(Accounts)]
 pub struct AddSynthetic<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2647,7 +2648,7 @@ pub struct AddSynthetic<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref(), &[bump]], bump =bump, payer=payer )]
+    #[account(init,seeds = [b"accountv1", admin.key.as_ref()], bump=bump, payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -2707,13 +2708,13 @@ impl ExchangeAccount {
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut)]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
@@ -2739,7 +2740,7 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 }
 #[derive(Accounts)]
 pub struct Mint<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -2775,7 +2776,7 @@ impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 }
 #[derive(Accounts)]
 pub struct Deposit<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2812,7 +2813,7 @@ impl<'a, 'b, 'c, 'info> From<&Deposit<'info>> for CpiContext<'a, 'b, 'c, 'info, 
 }
 #[derive(Accounts)]
 pub struct Liquidate<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
@@ -2846,7 +2847,7 @@ pub struct Liquidate<'info> {
 }
 #[derive(Accounts)]
 pub struct BurnToken<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(constraint= exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
@@ -2883,7 +2884,7 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 }
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account("exchange_authority.key == &state.load()?.exchange_authority")]
     pub exchange_authority: AccountInfo<'info>,
@@ -2935,7 +2936,7 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 
 #[derive(Accounts)]
 pub struct CheckCollateralization<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2946,14 +2947,14 @@ pub struct CheckCollateralization<'info> {
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -2974,7 +2975,7 @@ pub struct WithdrawRewards<'info> {
 }
 #[derive(Accounts)]
 pub struct WithdrawLiquidationPenalty<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -2996,7 +2997,7 @@ pub struct WithdrawLiquidationPenalty<'info> {
 }
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -3143,9 +3144,9 @@ pub struct Settlement { // 116
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct SettleSynthetic<'info> {
-    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref()], bump=bump, payer = payer)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -3185,9 +3186,9 @@ impl<'a, 'b, 'c, 'info> From<&SettleSynthetic<'info>>
 }
 #[derive(Accounts)]
 pub struct SwapSettledSynthetic<'info> {
-    #[account(seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref(), &[settlement.load()?.bump]])]
+    #[account(seeds = [b"settlement".as_ref(), token_to_settle.key.as_ref()],bump = settlement.load()?.bump)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = token_to_settle.key == &settlement.load()?.token_in_address
@@ -3201,7 +3202,7 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
-        "settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address"
+        constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account(
@@ -3287,9 +3288,9 @@ pub struct VaultEntry { // 116
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[bump]], bump =bump, payer=admin )]
+    #[account(init, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()], bump=bump, payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -3308,13 +3309,13 @@ pub struct CreateVault<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVaultEntry<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[bump]], bump =bump, payer=owner)]
+    #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()], bump=bump, payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]] )]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump )]
     pub vault: Loader<'info, Vault>,
     #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
     pub assets_list: Loader<'info, AssetsList>,
@@ -3325,11 +3326,11 @@ pub struct CreateVaultEntry<'info> {
 }
 #[derive(Accounts)]
 pub struct DepositVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -3370,11 +3371,11 @@ impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>>
 }
 #[derive(Accounts)]
 pub struct BorrowVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -3408,11 +3409,11 @@ impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'in
 
 #[derive(Accounts)]
 pub struct WithdrawVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
     pub synthetic: AccountInfo<'info>,
     pub collateral: AccountInfo<'info>,
@@ -3422,7 +3423,10 @@ pub struct WithdrawVault<'info> {
         constraint = &reserve_address.mint == collateral.key,
     )]
     pub reserve_address: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_collateral_account.mint == collateral.key,
+        constraint = &user_collateral_account.owner == owner.key
+    )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
@@ -3449,11 +3453,11 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
 }
 #[derive(Accounts)]
 pub struct RepayVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -3487,11 +3491,11 @@ impl<'a, 'b, 'c, 'info> From<&RepayVault<'info>> for CpiContext<'a, 'b, 'c, 'inf
 }
 #[derive(Accounts)]
 pub struct LiquidateVault<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(mut,has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref(), &[vault_entry.load()?.bump]])]
+    #[account(mut,has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]] )]
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref()],bump=vault.load()?.bump )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: AccountInfo<'info>,
@@ -3528,6 +3532,25 @@ pub struct LiquidateVault<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct SetVaultHalted<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
@@ -3594,14 +3617,14 @@ pub enum ErrorCode {
     MissmatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
-    #[msg("User borrow limit")]
-    UserBorrowLimit = 32,
-    #[msg("Vault borrow limit")]
-    VaultBorrowLimit = 33,
-    #[msg("Vault withdraw limit")]
-    VaultWithdrawLimit = 34,
     #[msg("Limit of collateral exceeded")]
-    CollateralLimitExceeded = 35,
+    CollateralLimitExceeded = 32,
+    #[msg("User borrow limit")]
+    UserBorrowLimit = 33,
+    #[msg("Vault borrow limit")]
+    VaultBorrowLimit = 34,
+    #[msg("Vault withdraw limit")]
+    VaultWithdrawLimit = 35,
 }
 
 // Access control modifiers.
