@@ -25,7 +25,6 @@ jobs:
           npm install -g mocha
           npm install -g ts-mocha
           npm install -g typescript
-          npm install -g @project-serum/anchor
           ts-mocha -h
       - name: install solana
         run: |
@@ -38,6 +37,7 @@ jobs:
       - name: install
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          npm install -g @project-serum/anchor
           cargo install --git https://github.com/project-serum/anchor --tag v0.13.2 anchor-cli --locked
           npm install
       - name: build programs
