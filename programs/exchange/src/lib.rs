@@ -3038,7 +3038,7 @@ pub struct State { // 428
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref(), &[bump]], bump =bump, payer = payer)]
+    #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer, space = 1024)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
@@ -3710,5 +3710,10 @@ mod tests {
         assert_eq!({ assets[0].price }, price);
         assert_eq!(collaterals[0].asset_index, 0);
         assert_eq!(synthetics[0].asset_index, 0);
+    }
+
+    #[test]
+    fn sizes() {
+        msg!("aa {}", std::mem::size_of::<State>())   
     }
 }

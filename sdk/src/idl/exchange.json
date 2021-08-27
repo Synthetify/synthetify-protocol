@@ -2984,8 +2984,5 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ],
-  "metadata": {
-    "address": "3ZS8nBMdc8aDZ86DfsVoYT2fve18KwgmWSYkanchJGFR"
-  }
+  ]
 }
