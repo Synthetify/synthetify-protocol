@@ -12,8 +12,6 @@ const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
 
-    use anchor_lang::Key;
-
     use crate::math::{
         amount_to_discount, amount_to_shares_by_rounding_down, calculate_burned_shares,
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
