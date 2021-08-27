@@ -138,7 +138,7 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - authority of the program
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **token_program** - program of xUSD
   * **usd_token** - address of xUSD token
   * **user_token_account_burn** - account on token from which tokens will be burned

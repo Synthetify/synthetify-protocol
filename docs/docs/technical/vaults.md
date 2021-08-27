@@ -41,7 +41,7 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **liquidation_penalty_exchange** - 
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
-  * **collateral_reserve** - 
+  * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for deposit to staking)
   * **mint_amount** - 
   * **collateral_amount** - 
   * **max_borrow** - 
@@ -85,7 +85,7 @@ Vault entry is created [TODO](#), takes bump (u8) and a following context:
         pub system_program: AccountInfo<'info>,
     }
 
-  * **state** - 
+  * **state** -   * **state** - account with [data of the program](/docs/technical/state)
   * **vault_entry** - 
   * **owner** - pubkey belonging to owner of the account
   * **vault** - vault for which entry is created
@@ -96,4 +96,32 @@ Vault entry is created [TODO](#), takes bump (u8) and a following context:
 * **system_program** - needed to create account
 
 
-### 
+## Deposit 
+
+Method depositing tokens is defined [TODO](#), takes amount (u64) and a context structured like this:
+
+    pub struct DepositVault<'info> {
+        pub state: Loader<'info, State>,
+        pub vault_entry: Loader<'info, VaultEntry>,
+        pub vault: Loader<'info, Vault>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub reserve_address: CpiAccount<'info, TokenAccount>,
+        pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+        pub token_program: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub owner: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **vault_entry** - user account in vault
+  * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
+  * **synthetic** - address of asset used as synthetic in vault
+  * **collateral** - address of deposited token
+  * **reserve_address** - address of account to which tokens are deposited (different than reserve for deposit to staking)
+  * **user_collateral_account** - account from which tokens are transferred  
+  * **token_program** - 
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
+  * **owner** - owner of _collateral account_ and [_vault entry_ ](/docs/technical/vaults#vault-entry)
+  * **exchange_authority** - pubkey of the exchange
