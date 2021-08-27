@@ -2188,6 +2188,15 @@ pub mod exchange {
         }
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_halted(ctx: Context<SetVaultHalted>, halted: bool) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT HALTED");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        vault.halted = halted;
+
+        Ok(())
+    }
 }
 #[account(zero_copy)]
 // #[derive(Default)]
@@ -3444,6 +3453,25 @@ pub struct LiquidateVault<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct SetVaultHalted<'info> {
+    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.key.as_ref(), collateral.key.as_ref(), &[vault.load()?.bump]])]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: AccountInfo<'info>,
+    pub collateral: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+}
+
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]

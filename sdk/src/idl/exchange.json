@@ -2114,6 +2114,57 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "setVaultHalted",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "halted",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2984,8 +3035,5 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ],
-  "metadata": {
-    "address": "3ZS8nBMdc8aDZ86DfsVoYT2fve18KwgmWSYkanchJGFR"
-  }
+  ]
 }
