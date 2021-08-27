@@ -1575,7 +1575,7 @@ pub mod exchange {
             .unwrap();
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
         let collateral_reserve = &ctx.accounts.collateral_reserve;
         swapline.balance = Decimal {
@@ -1652,7 +1652,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -1711,7 +1711,7 @@ pub mod exchange {
 
         require!(
             synthetic.asset_index == collateral.asset_index,
-            MissmatchedTokens
+            MismatchedTokens
         );
 
         let amount = Decimal {
@@ -2237,13 +2237,13 @@ pub mod exchange {
 }
 #[account(zero_copy)]
 // #[derive(Default)]
-pub struct AssetsList {
-    pub head_assets: u8,
-    pub head_collaterals: u8,
-    pub head_synthetics: u8,
-    pub assets: [Asset; 255],
-    pub collaterals: [Collateral; 255],
-    pub synthetics: [Synthetic; 255],
+pub struct AssetsList { // 93333
+    pub head_assets: u8,                // 1
+    pub head_collaterals: u8,           // 1
+    pub head_synthetics: u8,            // 1
+    pub assets: [Asset; 255],           // 27795
+    pub collaterals: [Collateral; 255], // 37740
+    pub synthetics: [Synthetic; 255],   // 27795
 }
 impl Default for AssetsList {
     #[inline]
@@ -2387,16 +2387,16 @@ impl<'a, 'b, 'c, 'info> From<&UseSwapLine<'info>> for CpiContext<'a, 'b, 'c, 'in
 }
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct Swapline {
-    synthetic: Pubkey,
-    collateral: Pubkey,
-    fee: Decimal,
-    accumulated_fee: Decimal,
-    balance: Decimal,
-    limit: Decimal,
-    collateral_reserve: Pubkey,
-    halted: bool,
-    bump: u8,
+pub struct Swapline { // 166
+    synthetic: Pubkey,          // 32
+    collateral: Pubkey,         // 32
+    fee: Decimal,               // 17
+    accumulated_fee: Decimal,   // 17
+    balance: Decimal,           // 17
+    limit: Decimal,             // 17
+    collateral_reserve: Pubkey, // 32
+    halted: bool,               // 1
+    bump: u8,                   // 1
 }
 #[derive(Accounts)]
 pub struct WithdrawSwaplineFee<'info> {
@@ -2659,15 +2659,15 @@ pub struct CreateExchangeAccount<'info> {
 
 #[account(zero_copy)]
 #[derive(PartialEq, Debug)]
-pub struct ExchangeAccount {
-    pub owner: Pubkey,                  // Identity controlling account
-    pub version: u8,                    // Version of account struct
-    pub debt_shares: u64,               // Shares representing part of entire debt pool
-    pub liquidation_deadline: u64,      // Slot number after which account can be liquidated
-    pub user_staking_data: UserStaking, // Staking information
-    pub head: u8,
-    pub bump: u8,
-    pub collaterals: [CollateralEntry; 32],
+pub struct ExchangeAccount { // 1412
+    pub owner: Pubkey,                      // 32 Identity controlling account
+    pub version: u8,                        // 1 Version of account struct
+    pub debt_shares: u64,                   // 8 Shares representing part of entire debt pool
+    pub liquidation_deadline: u64,          // 8 Slot number after which account can be liquidated
+    pub user_staking_data: UserStaking,     // 49 Staking information
+    pub head: u8,                           // 1
+    pub bump: u8,                           // 1
+    pub collaterals: [CollateralEntry; 32], // 1312
 }
 impl Default for ExchangeAccount {
     #[inline]
@@ -2688,10 +2688,10 @@ impl Default for ExchangeAccount {
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct CollateralEntry {
-    amount: u64,
-    collateral_address: Pubkey,
-    index: u8,
+pub struct CollateralEntry { // 41
+    amount: u64,                // 8
+    collateral_address: Pubkey, // 32
+    index: u8,                  // 1
 }
 impl ExchangeAccount {
     fn append(&mut self, entry: CollateralEntry) {
@@ -3004,92 +3004,121 @@ pub struct AdminAction<'info> {
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct StakingRound {
+pub struct StakingRound { // 33
     pub start: u64,      // 8 Slot when round starts
-    pub amount: Decimal, // 8 Amount of SNY distributed in this round
+    pub amount: Decimal, // 17 Amount of SNY distributed in this round
     pub all_points: u64, // 8 All points used to calculate user share in staking rewards
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Staking {
-    pub fund_account: Pubkey,         //32 Source account of SNY tokens
-    pub round_length: u32,            //4 Length of round in slots
-    pub amount_per_round: Decimal,    //8 Amount of SNY distributed per round
-    pub finished_round: StakingRound, //24
-    pub current_round: StakingRound,  //24
-    pub next_round: StakingRound,     //24
+pub struct Staking { // 152
+    pub fund_account: Pubkey,         // 32 Source account of SNY tokens
+    pub round_length: u32,            // 4 Length of round in slots
+    pub amount_per_round: Decimal,    // 17 Amount of SNY distributed per round
+    pub finished_round: StakingRound, // 33
+    pub current_round: StakingRound,  // 33
+    pub next_round: StakingRound,     // 33
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct UserStaking {
-    pub amount_to_claim: Decimal,   //8 Amount of SNY accumulated by account
-    pub finished_round_points: u64, //8 Points are based on debt_shares in specific round
-    pub current_round_points: u64,  //8
-    pub next_round_points: u64,     //8
-    pub last_update: u64,           //8
+pub struct UserStaking { // 49
+    pub amount_to_claim: Decimal,   // 17 Amount of SNY accumulated by account
+    pub finished_round_points: u64, // 8 Points are based on debt_shares in specific round
+    pub current_round_points: u64,  // 8
+    pub next_round_points: u64,     // 8
+    pub last_update: u64,           // 8
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Asset {
+pub struct Asset { // 109
     pub feed_address: Pubkey, // 32 Pyth oracle account address
-    pub price: Decimal,       // 8
+    pub price: Decimal,       // 17
     pub last_update: u64,     // 8
-    pub twap: Decimal,        // 8
-    pub twac: Decimal,        // 8 unused
+    pub twap: Decimal,        // 17
+    pub twac: Decimal,        // 17 unused
     pub status: u8,           // 1
-    pub confidence: Decimal,  // 8 unused
+    pub confidence: Decimal,  // 17 unused
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Collateral {
+pub struct Collateral { // 148
     pub asset_index: u8,            // 1
     pub collateral_address: Pubkey, // 32
     pub reserve_address: Pubkey,    // 32
     pub liquidation_fund: Pubkey,   // 32
-    pub reserve_balance: Decimal,   // 8
-    pub collateral_ratio: Decimal,  // 1 in %
-    pub max_collateral: Decimal,    // 8
+    pub reserve_balance: Decimal,   // 17
+    pub collateral_ratio: Decimal,  // 17
+    pub max_collateral: Decimal,    // 17
 }
 #[zero_copy]
 #[derive(PartialEq, Default, Debug)]
-pub struct Synthetic {
+pub struct Synthetic { // 109
     pub asset_index: u8,          // 1
     pub asset_address: Pubkey,    // 32
-    pub supply: Decimal,          // 8
-    pub max_supply: Decimal,      // 8
-    pub borrowed_supply: Decimal, // 8
-    pub swapline_supply: Decimal, // 8
-    pub settlement_slot: u64,     // 8 unused
+    pub supply: Decimal,          // 17
+    pub max_supply: Decimal,      // 17
+    pub borrowed_supply: Decimal, // 17
+    pub swapline_supply: Decimal, // 17
+    pub settlement_slot: u64,     // 8
 }
 #[account(zero_copy)]
-#[derive(PartialEq, Default, Debug)]
-pub struct State {
+#[derive(PartialEq, Debug)]
+pub struct State { // 2048
     //8 Account signature
-    pub admin: Pubkey,                      //32
-    pub halted: bool,                       //1
-    pub nonce: u8,                          //1
-    pub debt_shares: u64,                   //8
-    pub assets_list: Pubkey,                //32
-    pub health_factor: Decimal,             //1   In % 1-100% modifier for debt
-    pub max_delay: u32, //4   Delay between last oracle update 100 blocks ~ 1 min
-    pub fee: Decimal,   //4   Default fee per swap 300 => 0.3%
-    pub swap_tax_ratio: Decimal, //8   In % range 0-20% [1 -> 0.1%]
-    pub swap_tax_reserve: Decimal, //64  Amount on tax from swap
-    pub liquidation_rate: Decimal, //1   Size of debt repay in liquidation
-    pub penalty_to_liquidator: Decimal, //1   In % range 0-25%
-    pub penalty_to_exchange: Decimal, //1   In % range 0-25%
-    pub liquidation_buffer: u32, //4   Time given user to fix collateralization ratio
-    pub debt_interest_rate: Decimal, //8   In % range 0-20% [1 -> 0.1%]
-    pub accumulated_debt_interest: Decimal, //64  Accumulated debt interest
-    pub last_debt_adjustment: i64, //64
-    pub staking: Staking, //116
-    pub exchange_authority: Pubkey, //32
-    pub bump: u8,
+    pub admin: Pubkey,                      // 32
+    pub halted: bool,                       // 1
+    pub nonce: u8,                          // 1
+    pub debt_shares: u64,                   // 8
+    pub assets_list: Pubkey,                // 32 
+    pub health_factor: Decimal,             // 17 In % 1-100% modifier for debt
+    pub max_delay: u32,                     // 4  In slots delay between last oracle update 100 blocks ~ 1 min
+    pub fee: Decimal,                       // 17 In % default fee per swap
+    pub swap_tax_ratio: Decimal,            // 17 In % range 0-20%
+    pub swap_tax_reserve: Decimal,          // 17 Amount on tax from swap
+    pub liquidation_rate: Decimal,          // 17 Percentage of debt repay in liquidation
+    pub penalty_to_liquidator: Decimal,     // 17 In % range 0-25%
+    pub penalty_to_exchange: Decimal,       // 17 In % range 0-25%
+    pub liquidation_buffer: u32,            // 4  Time given user to fix collateralization ratio (in slots)
+    pub debt_interest_rate: Decimal,        // 17 In % range 0-20% 
+    pub accumulated_debt_interest: Decimal, // 17 Accumulated debt interest
+    pub last_debt_adjustment: i64,          // 8
+    pub staking: Staking,                   // 152
+    pub exchange_authority: Pubkey,         // 32
+    pub bump: u8,                           // 1
+    padding: [u8; 1620],                    // 1620 (2048 - 428) reserved for future use
+}
+impl Default for State {
+    #[inline]
+    fn default() -> State {
+        State {
+            admin: Pubkey::default(),
+            halted: false,
+            nonce: 0,
+            debt_shares: 0,
+            assets_list: Pubkey::default(),
+            health_factor: Decimal::default(),
+            max_delay: 0,
+            fee: Decimal::default(),
+            swap_tax_ratio: Decimal::default(),
+            swap_tax_reserve: Decimal::default(),
+            liquidation_rate: Decimal::default(),
+            penalty_to_liquidator: Decimal::default(),
+            penalty_to_exchange: Decimal::default(),
+            liquidation_buffer: 0,
+            debt_interest_rate: Decimal::default(),
+            accumulated_debt_interest: Decimal::default(),
+            last_debt_adjustment: 0,
+            staking: Staking::default(),
+            exchange_authority: Pubkey::default(),
+            bump: 0,
+            padding: [0; 1620],
+        }
+    }
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, seeds = [b"statev1".as_ref()], bump=bump, payer = payer)]
+    #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
@@ -3102,15 +3131,15 @@ pub struct Init<'info> {
 
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct Settlement {
+pub struct Settlement { // 116
     //8 Account signature
-    pub bump: u8,                  //1
-    pub reserve_address: Pubkey,   //32
-    pub token_in_address: Pubkey,  //32
-    pub token_out_address: Pubkey, //32 xUSD
-    pub decimals_in: u8,           //1
-    pub decimals_out: u8,          //1
-    pub ratio: Decimal,            //8
+    pub bump: u8,                  // 1
+    pub reserve_address: Pubkey,   // 32
+    pub token_in_address: Pubkey,  // 32
+    pub token_out_address: Pubkey, // 32 xUSD
+    pub decimals_in: u8,           // 1
+    pub decimals_out: u8,          // 1
+    pub ratio: Decimal,            // 17
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
@@ -3220,41 +3249,41 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 
 #[zero_copy]
 #[derive(PartialEq, Default, Debug, AnchorDeserialize, AnchorSerialize)]
-pub struct Decimal {
-    pub val: u128,
-    pub scale: u8,
+pub struct Decimal { // 17
+    pub val: u128, // 16
+    pub scale: u8, // 1
 }
 
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct Vault {
-    pub halted: bool,
-    pub synthetic: Pubkey,
-    pub collateral: Pubkey,
-    pub debt_interest_rate: Decimal,
-    pub collateral_ratio: Decimal,
-    pub liquidation_threshold: Decimal,
-    pub liquidation_ratio: Decimal,
-    pub liquidation_penalty_liquidator: Decimal,
-    pub liquidation_penalty_exchange: Decimal,
-    pub accumulated_interest: Decimal,
-    pub accumulated_interest_rate: Decimal,
-    pub collateral_reserve: Pubkey,
-    pub mint_amount: Decimal,
-    pub collateral_amount: Decimal,
-    pub max_borrow: Decimal,
-    pub last_update: i64,
-    pub bump: u8,
+pub struct Vault { // 293
+    pub halted: bool,                            // 1
+    pub synthetic: Pubkey,                       // 32
+    pub collateral: Pubkey,                      // 32
+    pub debt_interest_rate: Decimal,             // 17
+    pub collateral_ratio: Decimal,               // 17
+    pub liquidation_threshold: Decimal,          // 17
+    pub liquidation_ratio: Decimal,              // 17
+    pub liquidation_penalty_liquidator: Decimal, // 17
+    pub liquidation_penalty_exchange: Decimal,   // 17
+    pub accumulated_interest: Decimal,           // 17
+    pub accumulated_interest_rate: Decimal,      // 17
+    pub collateral_reserve: Pubkey,              // 32
+    pub mint_amount: Decimal,                    // 17
+    pub collateral_amount: Decimal,              // 17
+    pub max_borrow: Decimal,                     // 17
+    pub last_update: i64,                        // 8
+    pub bump: u8,                                // 1
 }
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]
-pub struct VaultEntry {
-    pub owner: Pubkey,
-    pub vault: Pubkey,
-    pub last_accumulated_interest_rate: Decimal,
-    pub synthetic_amount: Decimal,
-    pub collateral_amount: Decimal,
-    pub bump: u8,
+pub struct VaultEntry { // 116
+    pub owner: Pubkey,                           // 32
+    pub vault: Pubkey,                           // 32
+    pub last_accumulated_interest_rate: Decimal, // 17
+    pub synthetic_amount: Decimal,               // 17
+    pub collateral_amount: Decimal,              // 17
+    pub bump: u8,                                // 1
 }
 #[derive(Accounts)]
 #[instruction(bump: u8)]
@@ -3585,7 +3614,7 @@ pub enum ErrorCode {
     #[msg("Scale is different")]
     DifferentScale = 29,
     #[msg("Tokens does not represent same asset")]
-    MissmatchedTokens = 30,
+    MismatchedTokens = 30,
     #[msg("Limit crossed")]
     SwaplineLimit = 31,
     #[msg("Limit of collateral exceeded")]

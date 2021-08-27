@@ -138,6 +138,10 @@ describe('admin', () => {
     assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
     assert.ok(state.liquidationBuffer === 172800)
     assert.ok(state.debtShares.eq(new BN(0)))
+
+    // Check size of state
+    const stateAccountInfo = await connection.getAccountInfo(exchange.stateAddress as PublicKey)
+    assert.equal(stateAccountInfo?.data.length, 2048 + 8)
   })
   it('Initialize assets', async () => {
     const initTokensDecimals = 6
