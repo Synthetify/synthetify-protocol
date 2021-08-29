@@ -154,19 +154,28 @@ describe('vaults', () => {
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
   })
   describe('#createVault', async () => {
-    it('create usdc/xusd vault should failed due to admin signature', async () => {
-      const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
-      const usdc = assetsListData.collaterals[1]
-
-      const debtInterestRate = percentToDecimal(5)
-      const collateralRatio = percentToDecimal(80)
-      const liquidationRatio = percentToDecimal(50)
-      const liquidationThreshold = percentToDecimal(90)
-      const liquidationPenaltyExchange = percentToDecimal(5)
-      const liquidationPenaltyLiquidator = percentToDecimal(5)
-      const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
-
+    let assetsListData
+    let xusd: Synthetic
+    let usdc: Collateral
+    let debtInterestRate: Decimal
+    let collateralRatio: Decimal
+    let liquidationRatio: Decimal
+    let liquidationThreshold: Decimal
+    let liquidationPenaltyExchange: Decimal
+    let liquidationPenaltyLiquidator: Decimal
+    let maxBorrow: Decimal
+    let createVaultIx: TransactionInstruction
+    before(async () => {
+      assetsListData = await exchange.getAssetsList(assetsList)
+      xusd = assetsListData.synthetics[0]
+      usdc = assetsListData.collaterals[1]
+      debtInterestRate = percentToDecimal(5)
+      collateralRatio = percentToDecimal(80)
+      liquidationRatio = percentToDecimal(50)
+      liquidationThreshold = percentToDecimal(90)
+      liquidationPenaltyExchange = percentToDecimal(5)
+      liquidationPenaltyLiquidator = percentToDecimal(5)
+      maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
@@ -179,39 +188,18 @@ describe('vaults', () => {
         liquidationThreshold,
         liquidationRatio
       })
+      createVaultIx = ix
+    })
 
+    it('create usdc/xusd vault should failed due to admin signature', async () => {
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet], connection),
+        signAndSend(new Transaction().add(createVaultIx), [wallet], connection),
         ERRORS.SIGNATURE
       )
     })
     it('should create usdc/xusd vault', async () => {
-      const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
-
-      const usdc = assetsListData.collaterals[1]
-      const debtInterestRate = percentToDecimal(5)
-      const collateralRatio = percentToDecimal(80)
-      const liquidationRatio = percentToDecimal(50)
-      const liquidationThreshold = percentToDecimal(90)
-      const liquidationPenaltyExchange = percentToDecimal(5)
-      const liquidationPenaltyLiquidator = percentToDecimal(5)
-      const maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
-
-      const { ix } = await exchange.createVaultInstruction({
-        collateralReserve: usdcVaultReserve,
-        collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress,
-        debtInterestRate,
-        collateralRatio,
-        maxBorrow,
-        liquidationPenaltyExchange,
-        liquidationPenaltyLiquidator,
-        liquidationThreshold,
-        liquidationRatio
-      })
       const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
-      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
       const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
 
       assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
@@ -234,6 +222,11 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
       assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
+    })
+    it('create usdc/xusd vault should fail cause there can only be one vault per synthetic/collateral pair', async () => {
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
+      )
     })
   })
   describe('#createVaultEntry', async () => {
@@ -270,6 +263,18 @@ describe('vaults', () => {
           toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
         )
       )
+    })
+    it('create usdc/xusd vault entry should fail cause there can only be one vault entry per user', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      const { ix } = await exchange.createVaultEntryInstruction({
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress
+      })
+      await assertThrowsAsync(signAndSend(new Transaction().add(ix), [accountOwner], connection))
     })
   })
   describe('#depositVault', async () => {
