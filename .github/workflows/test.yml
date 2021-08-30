@@ -37,8 +37,7 @@ jobs:
       - name: install
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          rm -rf ~/.cargo/registry
-          cargo update
+          npm install -g @project-serum/anchor
           cargo install --git https://github.com/project-serum/anchor --tag v0.13.2 anchor-cli --locked
           npm install
       - name: build programs
