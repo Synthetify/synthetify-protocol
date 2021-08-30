@@ -12,6 +12,7 @@ import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
+console.log(EXCHANGE_ADMIN.publicKey.toBase58())
 const initialTokens = [
   {
     price: 50000,
@@ -50,22 +51,22 @@ const connection = new web3.Connection(
   'https://solana--devnet--rpc.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
   {
     wsEndpoint:
-      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121'
+      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
+    commitment: 'max'
   }
 )
 //@ts-ignore
 provider.connection = connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  'tiZoKAMGhgdxo7TPRMqcKgSd2sxs7ArDzTiuL5oehUc'
+  '3V7ZLhTi3EFSQ3j1szadrfM5Am8368RPQVPRnYqUsbBB'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'ErmCSmqDNPS8EGqGemop61toXA2qcvNWDxLe5ctn3umg'
+  'DUTaRHQcejLHkDdsnR8cUUv2BakxCJfJQmWQNK2hzizE'
 )
-const authority = '9tdVcWaM9JcauiKJKqMtfELNTtXA1y9BYzB5DCtJ7Js4'
+const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
 
 const main = async () => {
-  const connection = provider.connection
   // @ts-expect-error
   const wallet = provider.wallet.payer as web3.Account
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
@@ -116,9 +117,10 @@ const main = async () => {
     await sleep(2000)
     try {
       console.log('state ')
-      console.log(await exchange.getState())
+      console.log(await exchange.getOnlyState())
       break
     } catch (error) {
+      console.log(error)
       console.log('not found ')
     }
   }
@@ -138,16 +140,16 @@ const main = async () => {
     collateralTokenFeed,
     connection,
     wallet,
-    exchangeAdmin: EXCHANGE_ADMIN,
+    exchangeAdmin: wallet,
     exchange,
     snyReserve: snyReserve,
     snyLiquidationFund: snyLiquidationFund
   })
   const assetsList = data.assetsList
   console.log('set assets list')
-  await sleep(5000)
+  await sleep(25000)
 
-  await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+  await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
 
   // await exchange.getState()
   console.log('Initialize Tokens')

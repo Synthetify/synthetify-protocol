@@ -78,7 +78,7 @@ export class Exchange {
       instance.program.programId
     )
     instance.stateAddress = stateAddress
-    await instance.getOnlyState()
+    await instance.getState()
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
@@ -128,6 +128,18 @@ export class Exchange {
       },
       signers: [exchangeAdmin]
     })
+    // while (true) {
+    //   await sleep(2000)
+    //   try {
+    //     console.log('state ')
+    //     console.log(await this.getAssetsList(assetsList))
+    //     console.log(await this.getState())
+    //     break
+    //   } catch (error) {
+    //     console.log(error)
+    //     console.log('not found ')
+    //   }
+    // }
     this.assetsList = await this.getAssetsList(assetsList)
     await this.getState()
   }
