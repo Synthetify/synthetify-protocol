@@ -91,12 +91,12 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn set_assets_list(ctx: Context<InitializeAssetsList>) -> Result<()> {
+    pub fn set_assets_list(ctx: Context<SetAssetsList>) -> Result<()> {
         msg!("Synthetify:Admin: SET ASSETS LIST");
         let state = &mut ctx.accounts.state.load_mut()?;
+        &ctx.accounts.assets_list.load()?;
 
         state.assets_list = *ctx.accounts.assets_list.to_account_info().key;
-
         Ok(())
     }
 
@@ -2475,7 +2475,7 @@ pub struct InitializeAssetsList<'info> {
 pub struct SetAssetsList<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    pub assets_list: AccountInfo<'info>,
+    pub assets_list: Loader<'info, AssetsList>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
 }
