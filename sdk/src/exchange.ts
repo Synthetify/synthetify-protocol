@@ -78,8 +78,9 @@ export class Exchange {
       instance.program.programId
     )
     instance.stateAddress = stateAddress
-    await instance.getState()
-    instance.assetsList = await instance.getAssetsList(instance.state.assetsList)
+    await instance.getOnlyState()
+    // TODO: move this line
+    // instance.assetsList = await instance.getAssetsList(instance.state.assetsList)
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
@@ -96,7 +97,6 @@ export class Exchange {
   }
   public async init({
     admin,
-    assetsList,
     nonce,
     amountPerRound,
     stakingRoundLength,
@@ -112,7 +112,6 @@ export class Exchange {
       accounts: {
         state: stateAddress,
         admin: admin,
-        assetsList: assetsList,
         stakingFundAccount: stakingFundAccount,
         payer: this.wallet.publicKey,
         exchangeAuthority: exchangeAuthority,
@@ -121,6 +120,22 @@ export class Exchange {
       }
     })
     this.stateAddress = stateAddress
+  }
+  public async setAssetsList({ exchangeAdmin, assetsList }: SetAssetsList) {
+    await this.program.rpc.setAssetsList({
+      accounts: {
+        assetsList,
+        state: this.stateAddress,
+        admin: this.state.admin
+      },
+      signers: [exchangeAdmin]
+    })
+  }
+  public async getOnlyState() {
+    const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
+    // need to add hooks on change
+    this.state = state
+    return state
   }
   public async getState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
@@ -1021,6 +1036,7 @@ export class Exchange {
   }
 
   public async initializeAssetsList({
+    admin,
     collateralToken,
     collateralTokenFeed,
     usdToken,
@@ -1030,12 +1046,14 @@ export class Exchange {
     const assetListAccount = Keypair.generate()
     await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
+        admin: this.state.admin,
+        state: this.stateAddress,
         assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,
         snyLiquidationFund: snyLiquidationFund,
         rent: SYSVAR_RENT_PUBKEY
       },
-      signers: [assetListAccount],
+      signers: [admin, assetListAccount],
       instructions: [await this.program.account.assetsList.createInstruction(assetListAccount)]
     })
     return assetListAccount.publicKey
@@ -1478,11 +1496,16 @@ export class Exchange {
   }
 }
 export interface InitializeAssetList {
+  admin: Keypair | Account
   collateralToken: PublicKey
   collateralTokenFeed: PublicKey
   usdToken: PublicKey
   snyReserve: PublicKey
   snyLiquidationFund: PublicKey
+}
+export interface SetAssetsList {
+  assetsList: PublicKey
+  exchangeAdmin: Keypair | Account
 }
 export enum PriceStatus {
   Unknown = 0,
@@ -1702,7 +1725,6 @@ export interface Init {
   stakingRoundLength: number
   stakingFundAccount: PublicKey
   amountPerRound: BN
-  assetsList: PublicKey
   exchangeAuthority: PublicKey
 }
 export interface ExchangeState {

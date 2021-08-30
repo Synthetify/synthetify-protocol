@@ -97,28 +97,13 @@
         },
         {
           "name": "assetsList",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
           "name": "admin",
           "isMut": false,
           "isSigner": true
-        },
-        {
-          "name": "snyReserve",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "snyLiquidationFund",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": []
@@ -3135,5 +3120,8 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "4aw8jL7bt3jYweAWiXC5gbyF8yi67EaPBhzc6RtqXgpM"
+  }
 }

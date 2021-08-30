@@ -1,7 +1,14 @@
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, u64 } from '@solana/spl-token'
-import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import {
+  Account,
+  Connection,
+  Keypair,
+  PublicKey,
+  SYSVAR_RENT_PUBKEY,
+  Transaction
+} from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
@@ -130,6 +137,7 @@ export interface ICreateAssetsList {
   snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
+  exchangeAdmin: Keypair | Account
   wallet: Account
   assetsSize?: number
 }
@@ -143,6 +151,7 @@ export const createAssetsList = async ({
   collateralTokenFeed,
   connection,
   wallet,
+  exchangeAdmin,
   exchangeAuthority,
   snyLiquidationFund,
   snyReserve
@@ -153,6 +162,7 @@ export const createAssetsList = async ({
     mintAuthority: exchangeAuthority
   })
   const assetsList = await exchange.initializeAssetsList({
+    admin: exchangeAdmin,
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,
