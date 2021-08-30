@@ -38,6 +38,7 @@ pub mod exchange {
         exchange_account.user_staking_data.amount_to_claim = Decimal::from_sny(0);
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn create_list(
         ctx: Context<InitializeAssetsList>,
         collateral_token: Pubkey,
@@ -89,6 +90,16 @@ pub mod exchange {
         assets_list.append_collateral(sny_collateral);
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_assets_list(ctx: Context<InitializeAssetsList>) -> Result<()> {
+        msg!("Synthetify:Admin: SET ASSETS LIST");
+        let state = &mut ctx.accounts.state.load_mut()?;
+
+        state.assets_list = *ctx.accounts.assets_list.to_account_info().key;
+
+        Ok(())
+    }
+
     pub fn set_assets_prices(ctx: Context<SetAssetsPrices>) -> Result<()> {
         msg!("SYNTHETIFY: SET ASSETS PRICES");
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -180,7 +191,6 @@ pub mod exchange {
         state.halted = false;
         state.nonce = nonce;
         state.debt_shares = 0u64;
-        state.assets_list = *ctx.accounts.assets_list.key;
         state.health_factor = Decimal::from_percent(50); // 50%
 
         // once we will not be able to fit all data into one transaction we will
@@ -2451,11 +2461,23 @@ pub struct SetHaltedSwapline<'info> {
 }
 #[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
     #[account(init)]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
     pub sny_reserve: AccountInfo<'info>,
     pub sny_liquidation_fund: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
+}
+#[derive(Accounts)]
+pub struct SetAssetsList<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    pub assets_list: AccountInfo<'info>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
@@ -3120,7 +3142,6 @@ pub struct Init<'info> {
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
-    pub assets_list: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
     pub rent: Sysvar<'info, Rent>,

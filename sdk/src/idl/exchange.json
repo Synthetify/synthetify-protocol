@@ -42,9 +42,19 @@
       "name": "createList",
       "accounts": [
         {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
         },
         {
           "name": "snyReserve",
@@ -78,6 +88,42 @@
       ]
     },
     {
+      "name": "setAssetsList",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "snyReserve",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "snyLiquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setAssetsPrices",
       "accounts": [
         {
@@ -103,11 +149,6 @@
         },
         {
           "name": "admin",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "assetsList",
           "isMut": false,
           "isSigner": false
         },
