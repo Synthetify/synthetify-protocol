@@ -16,37 +16,53 @@ const initialTokens = [
   {
     price: 50000,
     ticker: Buffer.from('xBTC'),
-    decimals: 8,
+    decimals: 10,
     limit: new BN(1e12),
     priceFeed: new PublicKey('HovQMDrbAgAYPCmHVSrezcSmkMtXSSUsLDFANExrZh2J')
   },
   {
     price: 36,
     ticker: Buffer.from('xSOL'),
-    decimals: 6,
-    limit: new BN(1e6),
+    decimals: 9,
+    limit: new BN(1e10),
     priceFeed: new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
   },
   {
     price: 5,
-    ticker: Buffer.from('xSRM'),
-    decimals: 6,
-    limit: new BN(1e7),
-    priceFeed: new PublicKey('992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs')
+    ticker: Buffer.from('xFTT'),
+    decimals: 8,
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('6vivTRs5ZPeeXbjo7dfburfaYDWoXjBtdtuYgQRuGfu')
+  },
+  {
+    price: 3000,
+    ticker: Buffer.from('xETH'),
+    decimals: 9,
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('EdVCmQ9FSPcVe5YySXDPCRmc8aDQLKJ9xvYBMZPie1Vw')
   }
 ]
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
+const connection = new web3.Connection(
+  'https://solana--devnet--rpc.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
+  {
+    wsEndpoint:
+      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121'
+  }
+)
+//@ts-ignore
+provider.connection = connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '8RXWQoGYb9saCXces3STYcxvaJznvQiy7uW1pkuYTXXv'
+  'tiZoKAMGhgdxo7TPRMqcKgSd2sxs7ArDzTiuL5oehUc'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  '5qTeBcsCvvGyQwVDCbKrsTD9mxLfvokZkJLwWyW4Fg63'
+  'ErmCSmqDNPS8EGqGemop61toXA2qcvNWDxLe5ctn3umg'
 )
-const authority = '3rBAzG4ZUUK1wQur6BhiNCTvXBZkLsniVWgDueZmdEHJ'
+const authority = '9tdVcWaM9JcauiKJKqMtfELNTtXA1y9BYzB5DCtJ7Js4'
 
 const main = async () => {
   const connection = provider.connection
@@ -78,7 +94,6 @@ const main = async () => {
   const snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
   const stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
-  console.log('Create Asset List')
   let exchange: Exchange
   // @ts-expect-error
   exchange = new Exchange(
@@ -88,23 +103,9 @@ const main = async () => {
     exchangeAuthority,
     exchangeProgramId
   )
-
-  const data = await createAssetsList({
-    exchangeAuthority,
-    collateralToken,
-    collateralTokenFeed,
-    connection,
-    wallet,
-    exchange,
-    snyReserve,
-    snyLiquidationFund
-  })
-  const assetsList = data.assetsList
-  console.log('Initialize Exchange')
-  await sleep(5000)
+  console.log('Init exchange')
   await exchange.init({
     admin: wallet.publicKey,
-    assetsList,
     nonce,
     amountPerRound: new BN(100 * 1e6),
     stakingRoundLength: 100,
@@ -121,7 +122,6 @@ const main = async () => {
       console.log('not found ')
     }
   }
-
   await sleep(5000)
   exchange = await Exchange.build(
     connection,
@@ -130,6 +130,25 @@ const main = async () => {
     exchangeAuthority,
     exchangeProgramId
   )
+  await sleep(5000)
+  console.log('Create Asset List')
+  const data = await createAssetsList({
+    exchangeAuthority,
+    collateralToken,
+    collateralTokenFeed,
+    connection,
+    wallet,
+    exchangeAdmin: EXCHANGE_ADMIN,
+    exchange,
+    snyReserve: snyReserve,
+    snyLiquidationFund: snyLiquidationFund
+  })
+  const assetsList = data.assetsList
+  console.log('set assets list')
+  await sleep(5000)
+
+  await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+
   // await exchange.getState()
   console.log('Initialize Tokens')
 
@@ -157,7 +176,6 @@ const main = async () => {
     const addEthSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: newToken.publicKey,
       assetsList,
-      decimals: asset.decimals + 1,
       maxSupply: asset.limit,
       priceFeed: asset.priceFeed
     })
@@ -166,9 +184,6 @@ const main = async () => {
   await sleep(5000)
   const state = await exchange.getState()
   await sleep(12000)
-  await exchange.updatePrices(state.assetsList)
-  await sleep(12000)
-  await exchange.updatePrices(state.assetsList)
   await exchange.updatePrices(state.assetsList)
   const assets = await exchange.getAssetsList(state.assetsList)
 
