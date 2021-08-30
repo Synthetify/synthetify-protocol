@@ -35,10 +35,10 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **collateral** - address of token used as collateral
   * **debt_interest_rate** - interest on debt 
   * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be borrowed using it
-  * **liquidation_threshold** - 
-  * **liquidation_ratio** - 
-  * **liquidation_penalty_liquidator** - 
-  * **liquidation_penalty_exchange** - 
+  * **liquidation_threshold** - ratio of debt to value of collateral when account can be liquidated
+  * **liquidation_ratio** - percentage of user's collateral that can be liquidated with one liquidation
+  * **liquidation_penalty_liquidator** - percentage of additional collateral that goes to liquidator
+  * **liquidation_penalty_exchange** - percentage of liquidation that goes to liquidation fund as a penalty
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
   * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for deposit to staking)
@@ -178,11 +178,39 @@ Method responsible for withdrawal is defined [here]. It withdraws users collater
   * **state** - account with [data of the program](/docs/technical/state)
   * **vault_entry** - user account in vault ([this one](/docs/technical/vaults#vault-entry))
   * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
-  * **synthetic** - address of borrowed token
-  * **collateral** - address of token used as collateral token
+  * **synthetic** - address of token used as a synthetic
+  * **collateral** - address of token used as collateral
   * **reserve_address** - address of account from which tokens are withdrawn (same as in corresponding vault)
   * **user_collateral_account** - account to which tokens will be transferred
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **owner** - owner of _VaultEntry_, signer of transaction
+  * **exchange_authority** - pubkey of exchange program
+
+
+## Repay
+
+Repay method allows user to burn borrowed tokens, and free it's collateral. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2016-L2058), takes amount (u64) and a following context:
+
+    struct RepayVault<'info> {
+        pub state: Loader<'info, State>,
+        pub vault_entry: Loader<'info, VaultEntry>,
+        pub vault: Loader<'info, Vault>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub user_token_account_repay: CpiAccount<'info, TokenAccount>,
+        pub token_program: AccountInfo<'info>,
+        pub owner: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **vault_entry** - user account in vault ([this one](/docs/technical/vaults#vault-entry))
+  * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
+  * **synthetic** - address of token used as a synthetic
+  * **collateral** - address of token used as collateral
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **user_token_account_repay** - account from with tokens will be repaid
+  * **owner** - owner of _VaultEntry_ and collateral amount, signer of transaction
   * **exchange_authority** - pubkey of exchange program
