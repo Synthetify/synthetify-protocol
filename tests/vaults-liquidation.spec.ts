@@ -184,7 +184,7 @@ describe('vaults liquidation', () => {
     const ethAsset = assetsListData.assets[eth.assetIndex]
     const xusdAsset = assetsListData.assets[xusd.assetIndex]
 
-    const debtInterestRate = percentToDecimal(0) // zero interest for sake of tests
+    const debtInterestRate = toScale(percentToDecimal(0), INTEREST_RATE_DECIMALS) // zero interest for sake of tests
     const collateralRatio = percentToDecimal(80)
     const liquidationThreshold = percentToDecimal(90)
     const liquidationRatio = percentToDecimal(50)
