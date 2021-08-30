@@ -16,8 +16,8 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.13.2"
-anchor-spl = "0.13.2"
+anchor-lang = { git = "https://github.com/project-serum/anchor", branch = "master" }
+anchor-spl = { git = "https://github.com/project-serum/anchor", branch = "master" }
 thincollections = "0.5"
 spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
 pyth = { path = "../pyth", features = ["cpi"] }
