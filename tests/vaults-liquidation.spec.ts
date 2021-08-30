@@ -113,22 +113,8 @@ describe('vaults liquidation', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken: snyToken,
-      collateralTokenFeed: snyTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    xusdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -142,6 +128,22 @@ describe('vaults liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken: snyToken,
+      collateralTokenFeed: snyTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    xusdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     // create USDC collateral token
     const { feed, token } = await createCollateralToken({
       collateralRatio: 50,

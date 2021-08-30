@@ -84,25 +84,11 @@ describe('swap-line', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve: reserveAddress,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
-      amountPerRound: amountPerRound.val,
-      stakingRoundLength: stakingRoundLength,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
@@ -113,6 +99,22 @@ describe('swap-line', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve: reserveAddress,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
 
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
