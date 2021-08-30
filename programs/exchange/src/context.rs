@@ -161,7 +161,7 @@ pub struct SetHaltedSwapline<'info> {
 pub struct InitializeAssetsList<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(init)]
+    #[account(zero)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -314,7 +314,7 @@ pub struct SetCollateralRatio<'info> {
 }
 #[derive(Accounts)]
 pub struct SetMaxCollateral<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -1057,11 +1057,11 @@ pub struct LiquidateVault<'info> {
 
 #[derive(Accounts)]
 pub struct SetVaultHalted<'info> {
-    #[account(seeds = [b"statev1".as_ref(), &[state.load()?.bump]])]
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &[vault.load()?.bump]])]
+    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
     pub vault: Loader<'info, Vault>,
     #[account(constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID)]
     pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
