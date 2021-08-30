@@ -38,6 +38,31 @@ To have a collateral user has to deposit it. Method responsible for it takes _am
 Deposit instruction has to be preceded by an [approve](https://spl.solana.com/token#authority-delegation) allowing _exchange authority_ to transfer funds.
 
 
+## Withdrawal 
+
+Unused collateral can be withdrawn. Tokens can be withdrawn up to difference between debt and collateral value multiplied by health factor. Passing u64::MAX will withdraw maximum valid amount. Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/d829d5e736035b75c6c5193d23411dfbf8617143/programs/exchange/src/lib.rs#L348-L456), takes amount (u64) and a following context: 
+
+    pub struct Withdraw<'info> {
+        pub state: Loader<'info, State>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub reserve_account: CpiAccount<'info, TokenAccount>,
+        pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+        pub token_program: AccountInfo<'info>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub owner: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **exchange_authority** - pubkey of the exchange
+  * **reserve_account** - account where deposited tokens are kept, must be the same as in [*Collateral*](/docs/technical/state#collateral-asset) struct
+  * **user_collateral_account** - tokens where collateral will be send
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+  * **owner** - owner of _exchange account_
+
+
 ## Collateral in account
 
 Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntries_. Each of them corresponds to different deposited token and look like this:
@@ -55,7 +80,7 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
 
 ## Liquidation
 
-When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to bump in price of minted tokens or drop in collateral ones. When that happens and *check_account_collateralization* function is run liquidation deadline is set. 
+When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to drop in price of collateral tokens or increase in debt per [*debt_share*]. When that happens and *check_account_collateralization* function is run liquidation deadline is set. 
 If after certain buffer time user doesn't deposit collateral or burn synthetics account will be liquidated and part of collateral taken.
 
 

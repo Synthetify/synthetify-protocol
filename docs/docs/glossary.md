@@ -10,11 +10,11 @@ Deposit takes tokens from user wallet and adds it to user's account as a [collat
 
 ### Dept
 
-Debt consists of all minted tokens. 
+Minting tokens adds debt to account as a shares in the debt pool. As total debt can change, debt of user can as well.
 
 ### Max debt
 
-After user debt exceeds max debt user can be liquidated
+After user debt exceeds max debt user can be [liquidated](#liquidation)
 
 ### Mint
 
