@@ -33,11 +33,11 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **halted** - vault can be halted independently of rest of exchange (but halt of exchange affects it too)
   * **synthetic** - address of synthetic token
   * **collateral** - address of token used as collateral
-  * **debt_interest_rate** - interest on debt 
+  * **debt_interest_rate** - amount of yearly interest rate (charged minutely)
   * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be borrowed using it
   * **liquidation_threshold** - ratio of debt to value of collateral when account can be liquidated
-  * **liquidation_ratio** - percentage of user's collateral that can be liquidated with one liquidation
-  * **liquidation_penalty_liquidator** - percentage of additional collateral that goes to liquidator
+  * **liquidation_ratio** - percentage of user's collateral that can be liquidated at once
+  * **liquidation_penalty_liquidator** - percentage of additional collateral going to liquidator
   * **liquidation_penalty_exchange** - percentage of liquidation that goes to liquidation fund as a penalty
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
@@ -45,7 +45,7 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **mint_amount** - amount already minted (both amount borrowed and interest)
   * **collateral_amount** - amount of deposited collateral in reserve
   * **max_borrow** - limit of total synthetic that can be borrowed
-  * **last_update** - 
+  * **last_update** - timestamp since last update of interest rate
   * **bump** - used to generate address of account
 
 
@@ -62,7 +62,7 @@ Vault entry is created for every user using a vault and it stores data for it.
         pub bump: u8,                                // 1
     }
   
-  * **owner** - owner of entry
+  * **owner** - pubkey belonging to owner of entry
   * **vault** - address of vault which is used
   * **last_accumulated_interest_rate** - value of *accumulated_interest_rate* when it was last charged to user
   * **synthetic_amount** - amount of minted synthetic, is increased by interest rate
@@ -71,7 +71,7 @@ Vault entry is created for every user using a vault and it stores data for it.
 
 ### Creation of _Vault Entry_
 
-Vault entry is created [TODO](#), takes bump (u8) and a following context: 
+Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1806-L1837), takes bump (u8) and a following context: 
 
     struct CreateVaultEntry<'info> {
         pub state: Loader<'info, State>,
@@ -85,20 +85,20 @@ Vault entry is created [TODO](#), takes bump (u8) and a following context:
         pub system_program: AccountInfo<'info>,
     }
 
-  * **state** -   * **state** - account with [data of the program](/docs/technical/state)
-  * **vault_entry** - 
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **vault_entry** - user account in vault
   * **owner** - pubkey belonging to owner of the account
   * **vault** - vault for which entry is created
   * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
   * **synthetic** - address of synthetic token used as a seed for entry
   * **collateral** - address of collateral token also used as seed
-* **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), used by Solana
-* **system_program** - needed to create account
+  * **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), needed to create account
+  * **system_program** - Solana's [_System Program_](https://docs.solana.com/developing/runtime-facilities/programs#system-program) needed to create account
 
 
 ## Deposit 
 
-Method depositing tokens is defined [TODO](#), takes amount (u64) and a context structured like this:
+Method depositing tokens is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1839-L1876), takes amount (u64) and a context structured like this:
 
     pub struct DepositVault<'info> {
         pub state: Loader<'info, State>,
@@ -129,7 +129,7 @@ Method depositing tokens is defined [TODO](#), takes amount (u64) and a context 
 
 ## Borrow
 
-Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthetic asset up to *collateral_amount* * *collateral_ratio*. It is defined [TODO](#), takes amount (u64) and a context: 
+Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthetic asset up to *collateral_amount*  _*_  *collateral_ratio*. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1877-L1950), takes amount (u64) and a context: 
 
     struct BorrowVault<'info> {
         pub state: Loader<'info, State>,
@@ -138,7 +138,7 @@ Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthe
         pub synthetic: AccountInfo<'info>,
         pub collateral: AccountInfo<'info>,
         pub assets_list: Loader<'info, AssetsList>,
-        pub to: CpiAccount<'info, TokenAccount>, // not must be owner
+        pub to: CpiAccount<'info, TokenAccount>,
         pub token_program: AccountInfo<'info>,
         pub owner: AccountInfo<'info>,
         pub exchange_authority: AccountInfo<'info>,
@@ -151,15 +151,15 @@ Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthe
   * **synthetic** - address of borrowed token
   * **collateral** - address of token used as collateral token
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **to** - account to which borrowed tokens will be transferred
+  * **to** - account to which borrowed tokens will be transferred (does not have to be owned by signer)
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
-  * **owner** - owner of [_vault entry_ ](/docs/technical/vaults#vault-entry)
+  * **owner** - signer, owner of [_vault entry_ ](/docs/technical/vaults#vault-entry)
   * **exchange_authority** - pubkey belonging to the exchange
 
 
 ## Withdraw
 
-Method responsible for withdrawal is defined [here]. It withdraws users collateral up to when value of collateral * *collateral_ratio* are equal to borrowed synthetic. It takes amount (u64, when equal to u64::MAX maximum amount will be withdrawn) and a followind context: 
+Method responsible for withdrawal is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/d829d5e736035b75c6c5193d23411dfbf8617143/programs/exchange/src/lib.rs#L1952-L2014). It withdraws users collateral up to when value of collateral * *collateral_ratio* are equal to borrowed synthetic. It takes amount (u64, when equal to u64::MAX maximum amount will be withdrawn) and a following context: 
 
     struct WithdrawVault<'info> {
         pub state: Loader<'info, State>,
@@ -183,8 +183,8 @@ Method responsible for withdrawal is defined [here]. It withdraws users collater
   * **reserve_address** - address of account from which tokens are withdrawn (same as in corresponding vault)
   * **user_collateral_account** - account to which tokens will be transferred
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
-  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **owner** - owner of _VaultEntry_, signer of transaction
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#structure-of-assetslist)
+  * **owner** - signer, owner of _VaultEntry_, signer of transaction
   * **exchange_authority** - pubkey of exchange program
 
 
@@ -218,7 +218,7 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
 
 ## Liquidation
 
-Function responsible for liquidation is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2059-L2225). It checks if user can be liquidated, and if amount is valid. Liquidated amount is smaller or equal to difference between borrow limit and current debt and is below *liquidation_ratio* of collateral (or sets is at max if amount is equal to u64::MAX). Method takes amount (u64) and this context: 
+Function responsible for liquidation is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2059-L2225). It checks if user can be liquidated, and if amount is valid. Liquidated amount is not greater than difference between borrow limit and current debt and below *liquidation_ratio* of collateral (or sets is at maximum valid value if amount is equal to u64::MAX). Method takes amount (u64) and this context: 
 
 
     pub struct LiquidateVault<'info> {
