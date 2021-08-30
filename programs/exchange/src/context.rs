@@ -1,7 +1,14 @@
 use anchor_lang::prelude::*;
 use crate::account::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
-
+#[derive(Accounts)]
+pub struct SetAssetsList<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+}
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateSwapline<'info> {
@@ -149,8 +156,12 @@ pub struct SetHaltedSwapline<'info> {
 }
 #[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
+    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
     #[account(init)]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
     pub sny_reserve: AccountInfo<'info>,
     pub sny_liquidation_fund: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -667,13 +678,11 @@ pub struct Init<'info> {
     pub state: Loader<'info, State>,
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
-    pub assets_list: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
     pub staking_fund_account: CpiAccount<'info, TokenAccount>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: AccountInfo<'info>,
 }
-
 
 #[derive(Accounts)]
 #[instruction(bump: u8)]

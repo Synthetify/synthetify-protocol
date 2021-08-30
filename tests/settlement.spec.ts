@@ -77,25 +77,11 @@ describe('settlement', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      snyLiquidationFund: liquidationAccount,
-      snyReserve: snyReserve,
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
-      amountPerRound: amountPerRound,
-      stakingRoundLength: stakingRoundLength,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
@@ -106,6 +92,23 @@ describe('settlement', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund: liquidationAccount
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   describe('Settlement', async () => {

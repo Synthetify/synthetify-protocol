@@ -78,24 +78,8 @@ describe('max collaterals', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken: snyToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-    tokens.push(usdToken)
-    reserves.push(await usdToken.createAccount(exchangeAuthority))
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -109,6 +93,24 @@ describe('max collaterals', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken: snyToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+    tokens.push(usdToken)
+    reserves.push(await usdToken.createAccount(exchangeAuthority))
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     healthFactor = (await exchange.getState()).healthFactor

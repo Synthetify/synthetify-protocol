@@ -94,28 +94,14 @@ describe('liquidation', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
-
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -123,6 +109,22 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     snyCollateral = (await exchange.getAssetsList(assetsList)).collaterals[0]
@@ -139,7 +141,7 @@ describe('liquidation', () => {
     liquidator = liquidatorData.accountOwner
     liquidatorUsdAccount = liquidatorData.usdTokenAccount
     liquidatorCollateralAccount = liquidatorData.userCollateralTokenAccount
-    const state = await exchange.getState()
+    await exchange.getState()
 
     // creating BTC
     const btc = await createCollateralToken({
@@ -600,7 +602,8 @@ describe('liquidation', () => {
         wallet,
         exchange,
         snyReserve,
-        snyLiquidationFund
+        snyLiquidationFund,
+        exchangeAdmin: EXCHANGE_ADMIN
       })
       const liquidateIx = (await exchange.program.instruction.liquidate(maxAmount, {
         accounts: {
