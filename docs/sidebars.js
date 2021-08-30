@@ -26,7 +26,8 @@ module.exports = {
         'technical/state',
         'technical/collateral',
         'technical/synthetics',
-        'technical/vaults'
+        'technical/vaults',
+        'technical/swapline'
       ]
     }
   ]
