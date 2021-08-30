@@ -1,27 +1,30 @@
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
-import { Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token'
-import { Connection, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import { Token, u64 } from '@solana/spl-token'
+import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
-import { Synthetic } from '@synthetify/sdk/src/exchange'
+import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
+import { divUp, toDecimal, UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
-export const SYNTHETIFY_EXCHANGE_SEED = Buffer.from('Synthetify')
-export const EXCHANGE_ADMIN = new Keypair()
+export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
+export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
 
-export const almostEqual = (num1: BN, num2: BN) => {
-  return num1.sub(num2).abs().ltn(10)
+export const almostEqual = (num1: BN, num2: BN, epsilon: BN = new BN(10)) => {
+  return num1.sub(num2).abs().lt(epsilon)
 }
 export const tou64 = (amount) => {
   // eslint-disable-next-line new-cap
   return new u64(amount.toString())
 }
-export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral | Synthetic) => {
-  return amount.mul(asset.price).div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+export const tokenToUsdValue = (amount: BN, asset: Asset, synthetic: Collateral) => {
+  return amount
+    .mul(asset.price.val)
+    .div(new BN(10 ** (synthetic.reserveBalance.scale + ORACLE_OFFSET - ACCURACY)))
 }
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -30,9 +33,9 @@ export const calculateDebt = (assetsList: AssetsList) => {
   return assetsList.synthetics.reduce((acc, synthetic) => {
     const asset = assetsList.assets[synthetic.assetIndex]
     return acc.add(
-      synthetic.supply
-        .mul(asset.price)
-        .div(new BN(10 ** (synthetic.decimals + ORACLE_OFFSET - ACCURACY)))
+      synthetic.supply.val
+        .mul(asset.price.val)
+        .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
     )
   }, new BN(0))
 }
@@ -41,58 +44,65 @@ export const calculateAmountAfterFee = (
   assetFor: Asset,
   syntheticIn: Synthetic,
   syntheticFor: Synthetic,
-  effectiveFee: number,
+  effectiveFee: Decimal,
   amount: BN
 ): BN => {
-  const feeDecimal = 5
-  const valueInUsd = assetIn.price
+  const valueInUsd = assetIn.price.val
     .mul(amount)
-    .div(new BN(10 ** (syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
-  const fee = valueInUsd.mul(new BN(effectiveFee)).div(new BN(10 ** feeDecimal))
+    .div(new BN(10 ** (syntheticIn.supply.scale + ORACLE_OFFSET - ACCURACY)))
+  const fee = valueInUsd.mul(effectiveFee.val).div(new BN(10 ** effectiveFee.scale))
   return usdToTokenAmount(assetFor, syntheticFor, valueInUsd.sub(fee))
 }
 export const calculateFee = (
   assetIn: Asset,
   syntheticIn: Synthetic,
   amountIn: BN,
-  effectiveFee: number
+  effectiveFee: Decimal
 ): BN => {
-  const feeDecimal = 5
-  const value = assetIn.price
+  const value = assetIn.price.val
     .mul(amountIn)
-    .div(new BN(10).pow(new BN(syntheticIn.decimals + ORACLE_OFFSET - ACCURACY)))
+    .div(new BN(10).pow(new BN(syntheticIn.supply.scale + ORACLE_OFFSET - ACCURACY)))
 
-  return value.muln(effectiveFee).div(new BN(10 ** feeDecimal))
+  return value.mul(effectiveFee.val).div(new BN(10 ** effectiveFee.scale))
 }
-export const calculateSwapTax = (totalFee: BN, swapTax: number): BN => {
+export const calculateSwapTax = (totalFee: BN, swapTax: Decimal): BN => {
   // swapTax 20 -> 20%
-  return totalFee.muln(swapTax).divn(100)
+  return divUp(totalFee.mul(swapTax.val), new BN(10).pow(new BN(swapTax.scale)))
+}
+export const eqDecimals = (a: Decimal, b: Decimal) => {
+  if (a.scale !== b.scale) {
+    return false
+  }
+  return a.val.eq(b.val)
 }
 export const usdToTokenAmount = (
   asset: Asset,
   token: Synthetic | Collateral,
   valueInUsd: BN
 ): BN => {
-  let decimalDifference = token.decimals - ACCURACY
+  let decimalDifference
+  //@ts-expect-error
+  if (token?.supply.scale) {
+    //@ts-expect-error
+    decimalDifference = token?.supply.scale - ACCURACY
+  } else {
+    //@ts-expect-error
+    decimalDifference = token.reserveBalance.scale - ACCURACY
+  }
   let amount
   if (decimalDifference < 0) {
     amount = valueInUsd
       .mul(new BN(10 ** ORACLE_OFFSET))
       .div(new BN(10 ** decimalDifference))
-      .div(asset.price)
+      .div(asset.price.val)
   } else {
-    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price)
+    amount = valueInUsd.mul(new BN(10 ** (ORACLE_OFFSET + decimalDifference))).div(asset.price.val)
   }
   return amount
 }
-export const calculateValueInUsd = (asset: Asset, token: Synthetic | Collateral, amount: BN) => {
-  return asset.price
-    .mul(amount)
-    .div(new BN(10).pow(new BN(token.decimals + ORACLE_OFFSET - ACCURACY)))
-}
 interface ICreateToken {
   connection: Connection
-  payer: Keypair
+  payer: Account
   mintAuthority: PublicKey
   decimals?: number
 }
@@ -120,7 +130,7 @@ export interface ICreateAssetsList {
   snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
-  wallet: Keypair
+  wallet: Account
   assetsSize?: number
 }
 export type AddNewAssetResult = {
@@ -153,7 +163,7 @@ export const createAssetsList = async ({
 }
 
 export const newAccountWithLamports = async (connection, lamports = 1e10) => {
-  const account = new Keypair()
+  const account = new web3.Account()
 
   let retries = 30
   await connection.requestAirdrop(account.publicKey, lamports)
@@ -311,8 +321,11 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
   // Price of token is 2$ and collateral ratio 1000%
-  const healthFactor = new BN((await exchange.getState()).healthFactor)
-  const usdMintAmount = amount.div(new BN(5)).mul(healthFactor).div(new BN(100))
+  const healthFactor = (await exchange.getState()).healthFactor
+  const usdMintAmount = amount
+    .div(new BN(5))
+    .mul(healthFactor.val)
+    .div(new BN(10 ** healthFactor.scale))
 
   await exchange.mint({
     amount: usdMintAmount,
@@ -330,15 +343,16 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   }
 }
 
-interface ICreateCollaterToken {
+interface ICreateCollateralToken {
   exchange: Exchange
   exchangeAuthority: PublicKey
   oracleProgram: Program
   connection: Connection
-  wallet: Keypair
+  wallet: Account
   price: number
   decimals: number
   collateralRatio: number
+  maxCollateral?: Decimal
 }
 export const createCollateralToken = async ({
   exchange,
@@ -348,8 +362,9 @@ export const createCollateralToken = async ({
   wallet,
   price,
   decimals,
-  collateralRatio
-}: ICreateCollaterToken): Promise<{
+  collateralRatio,
+  maxCollateral
+}: ICreateCollateralToken): Promise<{
   token: Token
   feed: PublicKey
   reserve: PublicKey
@@ -366,16 +381,19 @@ export const createCollateralToken = async ({
   const oracleAddress = await createPriceFeed({
     oracleProgram,
     initPrice: price,
-    expo: -decimals
+    expo: -ORACLE_OFFSET
   })
   const addAssetIx = await exchange.addNewAssetInstruction({
     assetsList,
     assetFeedAddress: oracleAddress
   })
-  await signAndSend(new Transaction().add(addAssetIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
 
   const reserveAccount = await collateralToken.createAccount(exchangeAuthority)
   const liquidationFund = await collateralToken.createAccount(exchangeAuthority)
+
+  const reserveBalanceDecimal = toDecimal(new BN(0), decimals)
+  const collateralRatioDecimal = toDecimal(new BN(collateralRatio), UNIFIED_PERCENT_SCALE)
 
   const addCollateralIx = await exchange.addCollateralInstruction({
     assetsList,
@@ -383,11 +401,11 @@ export const createCollateralToken = async ({
     liquidationFund,
     reserveAccount,
     feedAddress: oracleAddress,
-    collateralRatio,
-    reserveBalance: new BN(0),
-    decimals
+    collateralRatio: collateralRatioDecimal,
+    reserveBalance: reserveBalanceDecimal,
+    maxCollateral: maxCollateral ?? toDecimal(U64_MAX, decimals)
   })
-  await signAndSend(new Transaction().add(addCollateralIx), [wallet, EXCHANGE_ADMIN], connection)
+  await signAndSend(new Transaction().add(addCollateralIx), [EXCHANGE_ADMIN], connection)
 
   return {
     token: collateralToken,
@@ -451,8 +469,38 @@ export const skipTimestamps = async (
 export const mulByPercentage = (a: BN, percentage: BN) => {
   return a.mul(percentage).div(new BN(100))
 }
+export const mulByDecimal = (a: BN, b: Decimal) => {
+  return a.mul(b.val).div(new BN(10 ** b.scale))
+}
 
 export const waitForBeggingOfASlot = async (connection: Connection) => {
   const startSlot = await connection.getSlot()
   while (startSlot == (await connection.getSlot())) {}
+}
+
+export const getSwapLineAmountOut = async ({
+  amountIn,
+  fee,
+  inDecimals,
+  outDecimals
+}: SwapLineAmountOut) => {
+  const decimalsDif = inDecimals - outDecimals
+  if (decimalsDif <= 0) {
+    const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
+    const swapAmountOut = new BN(amountIn).sub(swapFee)
+    const scaledAmountOut = swapAmountOut.mul(new BN(10 ** -decimalsDif))
+
+    return { fee: swapFee, amountOut: scaledAmountOut }
+  } else {
+    const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
+    const swapAmountOut = new BN(amountIn).sub(swapFee)
+    const scaledAmountOut = swapAmountOut.div(new BN(10 ** decimalsDif))
+    return { fee: swapFee, amountOut: scaledAmountOut }
+  }
+}
+export interface SwapLineAmountOut {
+  fee: Decimal
+  amountIn: BN
+  outDecimals: number
+  inDecimals: number
 }

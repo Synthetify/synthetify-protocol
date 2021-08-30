@@ -74,5 +74,58 @@
         }
       ]
     }
+  ],
+  "types": [
+    {
+      "name": "PriceStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Trading"
+          },
+          {
+            "name": "Halted"
+          },
+          {
+            "name": "Auction"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CorpAction",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "NoCorpAct"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriceType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unknown"
+          },
+          {
+            "name": "Price"
+          },
+          {
+            "name": "TWAP"
+          },
+          {
+            "name": "Volatility"
+          }
+        ]
+      }
+    }
   ]
 }

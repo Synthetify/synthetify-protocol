@@ -5,7 +5,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   sleep,
-  SYNTHETIFY_EXCHANGE_SEED
+  SYNTHETIFY_ECHANGE_SEED
 } from '../tests/utils'
 import { MINTER } from './minter'
 import oracleIdl from '../target/idl/pyth.json'
@@ -24,14 +24,14 @@ const initialTokens = [
     price: 36,
     ticker: Buffer.from('xSOL'),
     decimals: 6,
-    limit: new BN(1e12),
+    limit: new BN(1e6),
     priceFeed: new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
   },
   {
     price: 5,
     ticker: Buffer.from('xSRM'),
     decimals: 6,
-    limit: new BN(1e12),
+    limit: new BN(1e7),
     priceFeed: new PublicKey('992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs')
   }
 ]
@@ -41,12 +41,12 @@ const provider = Provider.local('https://api.devnet.solana.com', {
 })
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  'Fka99HSG9ErxA3zURgoLeSkSdvoKFAHHaHV1iYup12De'
+  '8RXWQoGYb9saCXces3STYcxvaJznvQiy7uW1pkuYTXXv'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'FqcnGwHttTjRzb87bDsDHbkEzhZwG8Nht86NziRN2qiw'
+  '5qTeBcsCvvGyQwVDCbKrsTD9mxLfvokZkJLwWyW4Fg63'
 )
-const authority = '6Ngr2N3CGjvWQMA15u4xEgPShfdyKWJ4mpDw7J7rWCx4'
+const authority = '3rBAzG4ZUUK1wQur6BhiNCTvXBZkLsniVWgDueZmdEHJ'
 
 const main = async () => {
   const connection = provider.connection
@@ -55,7 +55,7 @@ const main = async () => {
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
 
   const [exchangeAuthority, nonce] = await web3.PublicKey.findProgramAddress(
-    [SYNTHETIFY_EXCHANGE_SEED],
+    [SYNTHETIFY_ECHANGE_SEED],
     exchangeProgramId
   )
   console.log('exchangeAuthority')
@@ -108,7 +108,8 @@ const main = async () => {
     nonce,
     amountPerRound: new BN(100 * 1e6),
     stakingRoundLength: 100,
-    stakingFundAccount: stakingFundAccount
+    stakingFundAccount: stakingFundAccount,
+    exchangeAuthority: exchangeAuthority
   })
   while (true) {
     await sleep(2000)
@@ -173,7 +174,15 @@ const main = async () => {
 
   for (const asset of assets.synthetics) {
     console.log('##########')
+    console.log('Synthetics')
+
     console.log(asset.assetAddress.toString())
+    console.log(assets.assets[asset.assetIndex].price.val.toString())
+  }
+  for (const asset of assets.collaterals) {
+    console.log('##########')
+    console.log('Collaterals')
+    console.log(asset.collateralAddress.toString())
     console.log(assets.assets[asset.assetIndex].price.toString())
   }
 }

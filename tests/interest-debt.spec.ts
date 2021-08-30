@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Account, Keypair, PublicKey, Transaction } from '@solana/web3.js'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network } from '@synthetify/sdk'
 
@@ -9,14 +9,15 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_EXCHANGE_SEED,
+  SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateral,
   skipTimestamps,
   assertThrowsAsync,
-  U64_MAX
+  U64_MAX,
+  eqDecimals
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
-import { calculateDebt } from '../sdk/lib/utils'
+import { calculateDebt, toDecimal } from '../sdk/lib/utils'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
 import { signAndSend } from '@synthetify/sdk'
 import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
@@ -30,7 +31,7 @@ describe('Interest debt accumulation', () => {
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Keypair
+  const wallet = provider.wallet.payer as Account
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -43,13 +44,13 @@ describe('Interest debt accumulation', () => {
   let accountOwner: PublicKey
   let exchangeAccount: PublicKey
   let expectedDebtInterest: BN
-  let CollateralTokenMinter = wallet
+  let CollateralTokenMinter: Account = wallet
   let nonce: number
 
   let initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_EXCHANGE_SEED],
+      [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -98,7 +99,8 @@ describe('Interest debt accumulation', () => {
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,
@@ -110,12 +112,13 @@ describe('Interest debt accumulation', () => {
 
     accountOwner = new Account().publicKey
     exchangeAccount = await exchange.createExchangeAccount(accountOwner)
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   describe('Accumulate debt interest', async () => {
     it('should initialized interest debt parameters', async () => {
       const state = await exchange.getState()
-      assert.ok(state.debtInterestRate === 10)
-      assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
+      assert.ok(eqDecimals(state.debtInterestRate, toDecimal(new BN(10).pow(new BN(16)), 18)))
+      assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), 6)))
     })
     it('should initialized assets list', async () => {
       const initTokensDecimals = 6
@@ -127,7 +130,6 @@ describe('Interest debt accumulation', () => {
       // Check feed address
       const snyAsset = assetsListData.assets[assetsListData.assets.length - 1]
       assert.ok(snyAsset.feedAddress.equals(collateralTokenFeed))
-      assert.ok(snyAsset.price.eq(new BN(0)))
 
       // Check token address
       const snyCollateral = assetsListData.collaterals[assetsListData.collaterals.length - 1]
@@ -135,13 +137,14 @@ describe('Interest debt accumulation', () => {
 
       // USD token address
       const usdAsset = assetsListData.assets[0]
-      assert.ok(usdAsset.price.eq(new BN(10 ** ORACLE_OFFSET)))
+      assert.ok(eqDecimals(usdAsset.price, toDecimal(new BN(10 ** ORACLE_OFFSET), ORACLE_OFFSET)))
 
       // xUSD checks
       const usdSynthetic = assetsListData.synthetics[assetsListData.synthetics.length - 1]
       assert.ok(usdSynthetic.assetAddress.equals(usdToken.publicKey))
-      assert.ok(usdSynthetic.decimals === initTokensDecimals)
-      assert.ok(usdSynthetic.maxSupply.eq(new BN('ffffffffffffffff', 16)))
+      assert.ok(usdSynthetic.supply.scale === initTokensDecimals)
+      assert.ok(usdSynthetic.maxSupply.scale === initTokensDecimals)
+      assert.ok(usdSynthetic.maxSupply.val.eq(new BN('ffffffffffffffff', 16)))
     })
     it('should prepare base debt (mint debt)', async () => {
       const collateralAmount = new BN(500_000 * 10 ** ACCURACY)
@@ -174,7 +177,7 @@ describe('Interest debt accumulation', () => {
 
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
+      assert.ok(assetsListAfter.synthetics[0].supply.val.eq(usdMintAmount))
 
       // Increase user xusd balance
       const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
@@ -201,12 +204,12 @@ describe('Interest debt accumulation', () => {
       assert.ok(debtAfterAdjustment.eq(debtBeforeAdjustment.add(expectedDebtInterest)))
       // xUSD supply should be increased by debt interest
       assert.ok(
-        assetsListAfterAdjustment.synthetics[0].supply.eq(
-          assetsListBeforeAdjustment.synthetics[0].supply.add(expectedDebtInterest)
+        assetsListAfterAdjustment.synthetics[0].supply.val.eq(
+          assetsListBeforeAdjustment.synthetics[0].supply.val.add(expectedDebtInterest)
         )
       )
       // accumulatedDebtInterest should be increased by debt interest
-      assert.ok(stateAfterAdjustment.accumulatedDebtInterest.eq(expectedDebtInterest))
+      assert.ok(stateAfterAdjustment.accumulatedDebtInterest.val.eq(expectedDebtInterest))
       // lastDebtAdjustment should be increased 60 = 1 adjustment (lastDebtAdjustment should always be multiple of 60 sec)
       assert.ok(stateAfterAdjustment.lastDebtAdjustment.gten(timestampBeforeAdjustment + 60))
       assert.ok(
@@ -239,14 +242,14 @@ describe('Interest debt accumulation', () => {
 
       const accumulatedDebtInterestBeforeWithdraw = (await exchange.getState())
         .accumulatedDebtInterest
-      assert.ok(accumulatedDebtInterestBeforeWithdraw.eq(expectedDebtInterest))
+      assert.ok(accumulatedDebtInterestBeforeWithdraw.val.eq(expectedDebtInterest))
 
       firstWithdrawAmount = new BN(100)
       const ix = await exchange.withdrawAccumulatedDebtInterestInstruction({
         amount: firstWithdrawAmount,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(firstWithdrawAmount))
@@ -254,7 +257,7 @@ describe('Interest debt accumulation', () => {
       const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
         .accumulatedDebtInterest
       assert.ok(
-        accumulatedDebtInterestAfterWithdraw.eq(expectedDebtInterest.sub(firstWithdrawAmount))
+        accumulatedDebtInterestAfterWithdraw.val.eq(expectedDebtInterest.sub(firstWithdrawAmount))
       )
     })
     it('should withdraw all swap tax', async () => {
@@ -264,7 +267,7 @@ describe('Interest debt accumulation', () => {
       const accumulatedDebtInterestBeforeWithdraw = (await exchange.getState())
         .accumulatedDebtInterest
       assert.ok(
-        accumulatedDebtInterestBeforeWithdraw.eq(expectedDebtInterest.sub(firstWithdrawAmount))
+        accumulatedDebtInterestBeforeWithdraw.val.eq(expectedDebtInterest.sub(firstWithdrawAmount))
       )
 
       const toWithdrawTax = U64_MAX
@@ -272,14 +275,14 @@ describe('Interest debt accumulation', () => {
         amount: toWithdrawTax,
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(expectedDebtInterest))
 
       const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
         .accumulatedDebtInterest
-      assert.ok(accumulatedDebtInterestAfterWithdraw.eqn(0))
+      assert.ok(accumulatedDebtInterestAfterWithdraw.val.eqn(0))
     })
     it('withdraw 0 accumulated interest debt should not have an effect', async () => {
       const userUsdAccountBeforeWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
@@ -290,7 +293,7 @@ describe('Interest debt accumulation', () => {
         amount: new BN(0),
         to: adminUsdTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
       const userUsdAccountAfterWithdraw = await usdToken.getAccountInfo(adminUsdTokenAccount)
       assert.ok(userUsdAccountAfterWithdraw.amount.eq(userUsdAccountBeforeWithdraw.amount))
@@ -298,8 +301,9 @@ describe('Interest debt accumulation', () => {
       const accumulatedDebtInterestAfterWithdraw = (await exchange.getState())
         .accumulatedDebtInterest
 
-      accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw)
-      assert.ok(accumulatedDebtInterestAfterWithdraw.eq(accumulatedDebtInterestBeforeWithdraw))
+      assert.ok(
+        eqDecimals(accumulatedDebtInterestAfterWithdraw, accumulatedDebtInterestBeforeWithdraw)
+      )
     })
     it('withdraw too much from accumulated interest debt should result failed', async () => {
       const ix = await exchange.withdrawSwapTaxInstruction({
@@ -307,7 +311,7 @@ describe('Interest debt accumulation', () => {
         to: adminUsdTokenAccount
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection),
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
       )
     })

@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
 import { Token } from '@solana/spl-token'
-import { Keypair, PublicKey } from '@solana/web3.js'
+import { Account, PublicKey } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network } from '@synthetify/sdk'
 
@@ -10,24 +10,24 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_EXCHANGE_SEED,
+  SYNTHETIFY_ECHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   skipToSlot,
-  mulByPercentage
+  mulByDecimal
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
+import { ExchangeAccount } from '../sdk/lib/exchange'
 
 describe('staking with multiple users', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
-  const managerProgram = anchor.workspace.Manager as Program
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
 
   // @ts-expect-error
-  const wallet = provider.wallet.payer as Keypair
+  const wallet = provider.wallet.payer as Account
   let collateralToken: Token
   let usdToken: Token
   let collateralTokenFeed: PublicKey
@@ -37,7 +37,7 @@ describe('staking with multiple users', () => {
   let liquidationAccount: PublicKey
   let stakingFundAccount: PublicKey
   let reserveAccount: PublicKey
-  let CollateralTokenMinter = wallet
+  let CollateralTokenMinter: Account = wallet
   let nonce: number
 
   const amountPerRound = new BN(100)
@@ -49,7 +49,7 @@ describe('staking with multiple users', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_EXCHANGE_SEED],
+      [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -97,7 +97,8 @@ describe('staking with multiple users', () => {
       nonce,
       amountPerRound: amountPerRound,
       stakingRoundLength: stakingRoundLength,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,
@@ -108,22 +109,6 @@ describe('staking with multiple users', () => {
     )
     const state = await exchange.getState()
     nextRoundStart = state.staking.nextRound.start
-  })
-  it('Initialize', async () => {
-    const state = await exchange.getState()
-    // Check initialized addresses
-    assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
-    assert.ok(state.halted === false)
-    assert.ok(state.assetsList.equals(assetsList))
-    // Check initialized parameters
-    assert.ok(state.nonce === nonce)
-    assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
-    assert.ok(state.liquidationBuffer === 172800)
-    assert.ok(state.debtShares.eq(new BN(0)))
-    assert.ok(state.staking.fundAccount.equals(stakingFundAccount))
-    assert.ok(state.staking.amountPerRound.eq(amountPerRound))
-    assert.ok(state.staking.roundLength === stakingRoundLength)
   })
   describe('Multi user staking', async () => {
     it('test flow', async () => {
@@ -148,14 +133,14 @@ describe('staking with multiple users', () => {
       )
 
       // const usersAccounts = await Promise.all(usersAccountsPromises)
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
 
       // Checking points for each user after first round
       const nextRoundPointsCorrectness = await Promise.all(
         usersAccounts.map(async (user) =>
           (
             await exchange.getExchangeAccount(user.exchangeAccount)
-          ).userStakingData.nextRoundPoints.eq(mulByPercentage(new BN(200 * 1e6), healthFactor))
+          ).userStakingData.nextRoundPoints.eq(mulByDecimal(new BN(200 * 1e6), healthFactor))
         )
       )
 
@@ -165,7 +150,7 @@ describe('staking with multiple users', () => {
       await skipToSlot(nextRoundStart.toNumber(), connection)
 
       // Burn should reduce next round stake
-      const amountBurn = mulByPercentage(new BN(100 * 1e6), healthFactor)
+      const amountBurn = mulByDecimal(new BN(100 * 1e6), healthFactor)
       const amountScaledByHealth = amountBurn // half of amount before burn
 
       for (let user of usersAccounts) {
@@ -199,9 +184,9 @@ describe('staking with multiple users', () => {
       assert.ok(state.staking.currentRound.allPoints.eq(expectedAllPointAmount))
       assert.ok(state.staking.nextRound.allPoints.eq(expectedAllPointAmount))
 
-      assert.ok(state.staking.finishedRound.amount.eq(amountPerRound))
+      assert.ok(state.staking.finishedRound.amount.val.eq(amountPerRound))
 
-      let rewardClaims = []
+      let rewardClaims: ExchangeAccount[] = []
 
       for (let user of usersAccounts) {
         const exchangeAccountDataRewardClaim = await exchange.getExchangeAccount(
@@ -234,7 +219,7 @@ describe('staking with multiple users', () => {
           })
           assert.ok(
             (await collateralToken.getAccountInfo(user.userCollateralTokenAccount)).amount.eq(
-              rewardClaims[index].userStakingData.amountToClaim
+              rewardClaims[index].userStakingData.amountToClaim.val
             )
           )
         })
@@ -253,7 +238,8 @@ describe('staking with multiple users', () => {
         usersAccounts.map(async (user) => exchange.getExchangeAccount(user.exchangeAccount))
       )
 
-      for (let account of exchangeAccounts) account.userStakingData.amountToClaim.eq(new BN(100))
+      for (let account of exchangeAccounts)
+        account.userStakingData.amountToClaim.val.eq(new BN(100))
 
       // Wait for round to end
       await skipToSlot(nextRoundStart.add(new BN(3 * stakingRoundLength)).toNumber(), connection)
@@ -276,7 +262,7 @@ describe('staking with multiple users', () => {
         .add(amountPerRound.div(new BN(amountOfAccounts)))
 
       for (let account of exchangeAccountsDataAfterRewards)
-        assert.ok(account.userStakingData.amountToClaim.eq(expectedAmountToClaim))
+        assert.ok(account.userStakingData.amountToClaim.val.eq(expectedAmountToClaim))
     })
   })
 })

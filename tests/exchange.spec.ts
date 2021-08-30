@@ -1,38 +1,39 @@
 import * as anchor from '@project-serum/anchor'
 import { Program } from '@project-serum/anchor'
-import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import {
-  Keypair,
-  PublicKey,
-  sendAndConfirmRawTransaction,
-  Transaction,
-  TransactionInstruction
-} from '@solana/web3.js'
+import { Token } from '@solana/spl-token'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { assert } from 'chai'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 
 import {
   createAssetsList,
   createToken,
-  sleep,
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
   calculateDebt,
-  SYNTHETIFY_EXCHANGE_SEED,
+  SYNTHETIFY_ECHANGE_SEED,
   calculateAmountAfterFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
-  mulByPercentage,
-  createCollateralToken,
   calculateFee,
   calculateSwapTax,
-  U64_MAX
+  U64_MAX,
+  eqDecimals,
+  mulByDecimal
 } from './utils'
-import { createPriceFeed, getFeedData } from './oracleUtils'
-import { ERRORS } from '@synthetify/sdk/lib/utils'
+import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
+import {
+  ERRORS,
+  percentToDecimal,
+  sleep,
+  SNY_DECIMALS,
+  toDecimal,
+  XUSD_DECIMALS
+} from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('exchange', () => {
   const provider = anchor.Provider.local()
@@ -56,7 +57,7 @@ describe('exchange', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_EXCHANGE_SEED],
+      [SYNTHETIFY_ECHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -104,7 +105,8 @@ describe('exchange', () => {
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
-      stakingFundAccount: stakingFundAccount
+      stakingFundAccount: stakingFundAccount,
+      exchangeAuthority: exchangeAuthority
     })
     exchange = await Exchange.build(
       connection,
@@ -114,6 +116,8 @@ describe('exchange', () => {
       exchangeProgram.programId
     )
     const state = await exchange.getState()
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+    await sleep(10000)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -124,15 +128,18 @@ describe('exchange', () => {
     // Check initialized parameters
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
-    assert.ok(state.fee === 300)
-    assert.ok(state.swapTaxRatio === 20)
-    assert.ok(state.swapTaxReserve.eq(new BN(0)))
-    assert.ok(state.debtInterestRate === 10)
-    assert.ok(state.accumulatedDebtInterest.eq(new BN(0)))
+
+    assert.ok(eqDecimals(state.fee, percentToDecimal(0.3)))
+    // assert.ok(state.swapTaxRatio === 20)
+    assert.ok(eqDecimals(state.swapTaxReserve, toDecimal(new BN(0), SNY_DECIMALS)))
+    // console.log(state.debtInterestRate)
+    // console.log(percentToDecimal(1))
+    // assert.ok(eqDecimals(state.debtInterestRate, percentToDecimal(1)))
+    assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
     assert.ok(state.debtShares.eq(new BN(0)))
   })
   it('Account Creation', async () => {
-    const accountOwner = new Keypair().publicKey
+    const accountOwner = new Account().publicKey
     const exchangeAccount = await exchange.createExchangeAccount(accountOwner)
 
     const userExchangeAccount = await exchange.getExchangeAccount(exchangeAccount)
@@ -145,7 +152,7 @@ describe('exchange', () => {
   })
   describe('#deposit()', async () => {
     it('Deposit collateral 1st', async () => {
-      const accountOwner = new Keypair()
+      const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -189,10 +196,10 @@ describe('exchange', () => {
       const userExchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListData = await exchange.getAssetsList(assetsList)
-      assert.ok(assetListData.collaterals[0].reserveBalance.eq(amount))
+      assert.ok(assetListData.collaterals[0].reserveBalance.val.eq(amount))
     })
     it('Deposit collateral next', async () => {
-      const accountOwner = new Keypair()
+      const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -239,13 +246,13 @@ describe('exchange', () => {
       assert.ok(userExchangeAccountAfter.collaterals[0].amount.eq(amount))
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataAfter.collaterals[0].reserveBalance
-          .sub(assetListDataBefore.collaterals[0].reserveBalance)
+        assetListDataAfter.collaterals[0].reserveBalance.val
+          .sub(assetListDataBefore.collaterals[0].reserveBalance.val)
           .eq(amount)
       )
     })
     it('Deposit more than allowance', async () => {
-      const accountOwner = new Keypair()
+      const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -274,6 +281,51 @@ describe('exchange', () => {
         ),
         ERRORS.ALLOWANCE
       )
+    })
+    it('Deposit over maxCollateral', async () => {
+      const accountOwner = new Account()
+      const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
+
+      // Change max collateral for testing
+      const ix = await exchange.setMaxCollateral(
+        collateralToken.publicKey,
+        toDecimal(new BN(10_000000), 6)
+      )
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
+      const amount = new anchor.BN(100 * 1e6) // Mint 100 SNY
+      await collateralToken.mintTo(userCollateralTokenAccount, wallet, [], tou64(amount))
+      const depositIx = await exchange.depositInstruction({
+        amount: amount.mul(new BN(2)),
+        exchangeAccount,
+        userCollateralAccount: userCollateralTokenAccount,
+        owner: accountOwner.publicKey,
+        reserveAddress: snyReserve
+      })
+      const approveIx = Token.createApproveInstruction(
+        collateralToken.programId,
+        userCollateralTokenAccount,
+        exchangeAuthority,
+        accountOwner.publicKey,
+        [],
+        tou64(amount)
+      )
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(approveIx).add(depositIx),
+          [wallet, accountOwner],
+          connection
+        ),
+        ERRORS_EXCHANGE.COLLATERAL_LIMIT_EXCEEDED
+      )
+
+      // Change max collateral back to u64 max
+      const ixBack = await exchange.setMaxCollateral(
+        collateralToken.publicKey,
+        toDecimal(new BN(U64_MAX), SNY_DECIMALS)
+      )
+      await signAndSend(new Transaction().add(ixBack), [EXCHANGE_ADMIN], connection)
     })
   })
   describe('#mint()', async () => {
@@ -307,7 +359,7 @@ describe('exchange', () => {
 
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
-      assert.ok(assetsListAfter.synthetics[0].supply.eq(usdMintAmount))
+      assert.ok(assetsListAfter.synthetics[0].supply.val.eq(usdMintAmount))
 
       // Increase user xusd balance
       const userUsdAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
@@ -352,8 +404,8 @@ describe('exchange', () => {
       // Increase asset supply
       const assetsListAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetsListAfter.synthetics[0].supply.eq(
-          assetsListBefore.synthetics[0].supply.add(usdMintAmount)
+        assetsListAfter.synthetics[0].supply.val.eq(
+          assetsListBefore.synthetics[0].supply.val.add(usdMintAmount)
         )
       )
 
@@ -388,9 +440,9 @@ describe('exchange', () => {
     })
   })
   describe('#withdraw()', async () => {
-    let healthFactor: BN
+    let healthFactor: Decimal
     before(async () => {
-      healthFactor = new BN((await exchange.getState()).healthFactor)
+      healthFactor = (await exchange.getState()).healthFactor
     })
     it('withdraw with no debt', async () => {
       const collateralAmount = new BN(100 * 1e6)
@@ -443,8 +495,8 @@ describe('exchange', () => {
       // Updating amount in assetList check
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.collaterals[0].reserveBalance
-          .sub(assetListDataAfter.collaterals[0].reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance.val
+          .sub(assetListDataAfter.collaterals[0].reserveBalance.val)
           .eq(withdrawAmount)
       )
 
@@ -509,8 +561,8 @@ describe('exchange', () => {
       // Updating amount in assetList
       const assetListDataAfter = await exchange.getAssetsList(assetsList)
       assert.ok(
-        assetListDataBefore.collaterals[0].reserveBalance
-          .sub(assetListDataAfter.collaterals[0].reserveBalance)
+        assetListDataBefore.collaterals[0].reserveBalance.val
+          .sub(assetListDataAfter.collaterals[0].reserveBalance.val)
           .eq(withdrawAmount)
       )
 
@@ -563,7 +615,7 @@ describe('exchange', () => {
       assert.ok(userCollateralTokenAccountBefore.amount.eq(new BN(0)))
 
       // We can mint max 20 * 1e6 * healthFactor
-      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(10 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -605,10 +657,11 @@ describe('exchange', () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
-    let healthFactor: BN
+    let btcFeed: PublicKey
+    let healthFactor: Decimal
 
     before(async () => {
-      healthFactor = new BN((await exchange.getState()).healthFactor)
+      healthFactor = (await exchange.getState()).healthFactor
 
       btcToken = await createToken({
         connection,
@@ -616,7 +669,7 @@ describe('exchange', () => {
         mintAuthority: exchangeAuthority,
         decimals: 8
       })
-      const btcFeed = await createPriceFeed({
+      btcFeed = await createPriceFeed({
         oracleProgram,
         initPrice: 50000,
         expo: -9
@@ -649,55 +702,44 @@ describe('exchange', () => {
         assetsList: assetsList,
         assetFeedAddress: btcFeed
       })
-      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addBtcIx), [EXCHANGE_ADMIN], connection)
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
-        decimals: 8,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })
-      await signAndSend(
-        new Transaction().add(addBtcSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
       const addEthIx = await exchange.addNewAssetInstruction({
         assetsList: assetsList,
         assetFeedAddress: ethFeed
       })
-      await signAndSend(new Transaction().add(addEthIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addEthIx), [EXCHANGE_ADMIN], connection)
       const addEthSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: ethToken.publicKey,
         assetsList,
-        decimals: 6,
         maxSupply: newAssetLimit,
         priceFeed: ethFeed
       })
-      await signAndSend(
-        new Transaction().add(addEthSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addEthSynthetic), [EXCHANGE_ADMIN], connection)
       const addZeroMaxSupplyTokenIx = await exchange.addNewAssetInstruction({
         assetsList: assetsList,
         assetFeedAddress: zeroMaxSupplyTokenFeed
       })
       await signAndSend(
         new Transaction().add(addZeroMaxSupplyTokenIx),
-        [wallet, EXCHANGE_ADMIN],
+        [EXCHANGE_ADMIN],
         connection
       )
       const addZeroMaxSupplySynthetic = await exchange.addSyntheticInstruction({
         assetAddress: zeroMaxSupplyToken.publicKey,
         assetsList,
-        decimals: 6,
         maxSupply: new BN(0),
         priceFeed: zeroMaxSupplyTokenFeed
       })
       await signAndSend(
         new Transaction().add(addZeroMaxSupplySynthetic),
-        [wallet, EXCHANGE_ADMIN],
+        [EXCHANGE_ADMIN],
         connection
       )
     })
@@ -718,7 +760,7 @@ describe('exchange', () => {
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 9 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(9 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(9 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -736,9 +778,9 @@ describe('exchange', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
-      assert.ok(effectiveFee === 300) // discount 0%
+      assert.ok(eqDecimals(effectiveFee, percentToDecimal(0.3))) // discount 0%
       const stateBeforeSwap = await exchange.getState()
-      assert.ok(stateBeforeSwap.swapTaxReserve.eq(new BN(0))) // pull fee should equals 0 before swaps
+      assert.ok(stateBeforeSwap.swapTaxReserve.val.eq(new BN(0))) // pull fee should equals 0 before swaps
 
       // 4.5$(IN value), 4.4865$(OUT value)
       // expected fee 0.0135$ -> 135 * 10^2
@@ -778,11 +820,11 @@ describe('exchange', () => {
       const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
-      assert.ok(stateAfterSwap.swapTaxReserve.eq(adminTax))
+      assert.ok(stateAfterSwap.swapTaxReserve.val.eq(adminTax))
       // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfterSwap.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
+        assetsListDataAfterSwap.synthetics[0].supply.val.eq(
+          assetsListData.synthetics[0].supply.val.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
@@ -825,14 +867,14 @@ describe('exchange', () => {
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
-        stateAfterSecondSwap.swapTaxReserve.eq(
-          adminTaxSecondSwap.add(stateAfterSwap.swapTaxReserve)
+        stateAfterSecondSwap.swapTaxReserve.val.eq(
+          adminTaxSecondSwap.add(stateAfterSwap.swapTaxReserve.val)
         )
       )
       // supply should be equals supply before swap plus admin swap tax
       assert.ok(
-        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
-          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        assetsListDataAfterSecondSwap.synthetics[0].supply.val.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.val.add(adminTaxSecondSwap)
         )
       )
     })
@@ -861,7 +903,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
       // We can mint max 200 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount: temp.exchangeAccount,
@@ -890,7 +932,7 @@ describe('exchange', () => {
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       assert.ok(userCollateralBalance.eq(new BN(0)))
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
-      assert.ok(effectiveFee === 300) // discount 0%
+      assert.ok(eqDecimals(effectiveFee, percentToDecimal(0.3))) // discount 0%
 
       const usdSynthetic = assetsListData.synthetics[0]
       const usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
@@ -933,11 +975,13 @@ describe('exchange', () => {
       const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
-      assert.ok(stateAfterSwap.swapTaxReserve.eq(stateBeforeSwap.swapTaxReserve.add(adminTax)))
+      assert.ok(
+        stateAfterSwap.swapTaxReserve.val.eq(stateBeforeSwap.swapTaxReserve.val.add(adminTax))
+      )
       // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfterSwap.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
+        assetsListDataAfterSwap.synthetics[0].supply.val.eq(
+          assetsListData.synthetics[0].supply.val.sub(usdMintAmount).add(adminTax)
         )
       )
       const ethSynthetic = assetsListData.synthetics.find((a) =>
@@ -980,14 +1024,14 @@ describe('exchange', () => {
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
-        stateAfterSecondSwap.swapTaxReserve.eq(
-          stateAfterSwap.swapTaxReserve.add(adminTaxSecondSwap)
+        stateAfterSecondSwap.swapTaxReserve.val.eq(
+          stateAfterSwap.swapTaxReserve.val.add(adminTaxSecondSwap)
         )
       )
       // supply should be equals supply before swap plus admin swap tax
       assert.ok(
-        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
-          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        assetsListDataAfterSecondSwap.synthetics[0].supply.val.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.val.add(adminTaxSecondSwap)
         )
       )
     })
@@ -1008,7 +1052,7 @@ describe('exchange', () => {
       const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 60 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(60 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(60 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1026,7 +1070,7 @@ describe('exchange', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const userCollateralBalance = await exchange.getUserCollateralBalance(exchangeAccount)
       const effectiveFee = toEffectiveFee(exchange.state.fee, userCollateralBalance)
-      assert.ok(effectiveFee === 291) // discount 3%
+      assert.ok(eqDecimals(effectiveFee, percentToDecimal(0.291))) // discount 3%
 
       const usdSynthetic = assetsListData.synthetics[0]
       const usdAsset = assetsListData.assets[usdSynthetic.assetIndex]
@@ -1069,11 +1113,13 @@ describe('exchange', () => {
       const totalFee = calculateFee(usdAsset, usdSynthetic, usdMintAmount, effectiveFee)
       const adminTax = calculateSwapTax(totalFee, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
-      assert.ok(stateAfterSwap.swapTaxReserve.eq(stateBeforeSwap.swapTaxReserve.add(adminTax)))
+      assert.ok(
+        stateAfterSwap.swapTaxReserve.val.eq(stateBeforeSwap.swapTaxReserve.val.add(adminTax))
+      )
       // supply should be equals supply before swap minus minted usd amount plus admin swap tax
       assert.ok(
-        assetsListDataAfterSwap.synthetics[0].supply.eq(
-          assetsListData.synthetics[0].supply.sub(usdMintAmount).add(adminTax)
+        assetsListDataAfterSwap.synthetics[0].supply.val.eq(
+          assetsListData.synthetics[0].supply.val.sub(usdMintAmount).add(adminTax)
         )
       )
 
@@ -1117,14 +1163,14 @@ describe('exchange', () => {
       const adminTaxSecondSwap = calculateSwapTax(totalFeeSecondSwap, exchange.state.swapTaxRatio)
       // check swapTaxReserve was increased by admin swap tax
       assert.ok(
-        stateAfterSecondSwap.swapTaxReserve.eq(
-          stateAfterSwap.swapTaxReserve.add(adminTaxSecondSwap)
+        stateAfterSecondSwap.swapTaxReserve.val.eq(
+          stateAfterSwap.swapTaxReserve.val.add(adminTaxSecondSwap)
         )
       )
       // supply should be equals supply before swap plus admin swap tax
       assert.ok(
-        assetsListDataAfterSecondSwap.synthetics[0].supply.eq(
-          assetsListDataAfterSwap.synthetics[0].supply.add(adminTaxSecondSwap)
+        assetsListDataAfterSecondSwap.synthetics[0].supply.val.eq(
+          assetsListDataAfterSwap.synthetics[0].supply.val.add(adminTaxSecondSwap)
         )
       )
     })
@@ -1144,7 +1190,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 2000 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1190,7 +1236,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       // mint 10 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(10 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(10 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1242,7 +1288,7 @@ describe('exchange', () => {
       )
 
       // We can mint max 2000 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1292,7 +1338,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 2000 * 1e6
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1326,6 +1372,97 @@ describe('exchange', () => {
         ERRORS.ALLOWANCE
       )
     })
+    it('swap on non tradable asset should fail', async () => {
+      const collateralAmount = new BN(10000 * 1e6)
+      const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
+        await createAccountWithCollateral({
+          reserveAddress: snyReserve,
+          collateralToken,
+          exchangeAuthority,
+          exchange,
+          collateralTokenMintAuthority: CollateralTokenMinter.publicKey,
+          amount: collateralAmount
+        })
+      // create usd account
+      const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
+      const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
+
+      // We can mint max 2000 * 1e6
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
+      await exchange.mint({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        to: usdTokenAccount,
+        signers: [accountOwner]
+      })
+
+      const userBtcTokenAccountBefore = await btcToken.getAccountInfo(btcTokenAccount)
+      assert.ok(userBtcTokenAccountBefore.amount.eq(new BN(0)))
+
+      const userUsdTokenAccountBefore = await usdToken.getAccountInfo(usdTokenAccount)
+      assert.ok(userUsdTokenAccountBefore.amount.eq(usdMintAmount))
+
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const btcSynthetic = assetsListData.synthetics.find((a) =>
+        a.assetAddress.equals(btcToken.publicKey)
+      ) as Synthetic
+
+      // mark asset out status as Unknown
+      await setFeedTrading(oracleProgram, PriceStatus.Unknown, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Unknown)
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: usdMintAmount,
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: btcTokenAccount,
+          userTokenAccountIn: usdTokenAccount,
+          tokenFor: btcSynthetic.assetAddress,
+          tokenIn: assetsListData.synthetics[0].assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.SWAP_UNAVAILABLE
+      )
+
+      // clean up: return status to trading
+      await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Trading)
+
+      await exchange.swap({
+        amount: usdMintAmount,
+        exchangeAccount,
+        owner: accountOwner.publicKey,
+        userTokenAccountFor: btcTokenAccount,
+        userTokenAccountIn: usdTokenAccount,
+        tokenFor: btcSynthetic.assetAddress,
+        tokenIn: assetsListData.synthetics[0].assetAddress,
+        signers: [accountOwner]
+      })
+
+      // mark asset in status as Halted
+      await setFeedTrading(oracleProgram, PriceStatus.Halted, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Halted)
+      const ethTokenAccount = await ethToken.createAccount(accountOwner.publicKey)
+
+      await assertThrowsAsync(
+        exchange.swap({
+          amount: new BN(1),
+          exchangeAccount,
+          owner: accountOwner.publicKey,
+          userTokenAccountFor: ethTokenAccount,
+          userTokenAccountIn: btcTokenAccount,
+          tokenFor: ethToken.publicKey,
+          tokenIn: btcSynthetic.assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.SWAP_UNAVAILABLE
+      )
+      // clean up: return status to trading
+      await setFeedTrading(oracleProgram, PriceStatus.Trading, btcFeed)
+      assert.ok((await getFeedData(oracleProgram, btcFeed)).status === PriceStatus.Trading)
+    })
   })
   describe('#burn()', async () => {
     const debtBurnAccuracy = new BN(10)
@@ -1344,8 +1481,8 @@ describe('exchange', () => {
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
 
       // We can mint max 200 * 1e6 * healthFactor
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1395,8 +1532,8 @@ describe('exchange', () => {
         })
       const usdTokenAccount = await usdToken.createAccount(accountOwner.publicKey)
       // We can mint max 200 * 1e6 * healthFactor
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const usdMintAmount = mulByPercentage(new BN(200 * 1e6), healthFactor)
+      const healthFactor = (await exchange.getState()).healthFactor
+      const usdMintAmount = mulByDecimal(new BN(200 * 1e6), healthFactor)
       await exchange.mint({
         amount: usdMintAmount,
         exchangeAccount,
@@ -1426,7 +1563,7 @@ describe('exchange', () => {
         signers: [accountOwner]
       })
 
-      // We should end with transferred amount
+      // We should end with transfered amount
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       // amount should be close to transferAmount
       assert.ok(userUsdTokenAccountAfter.amount.lt(transferAmount.add(debtBurnAccuracy)))
@@ -1559,7 +1696,7 @@ describe('exchange', () => {
   })
   describe('System Halted', async () => {
     it('#deposit()', async () => {
-      const accountOwner = new Keypair()
+      const accountOwner = new Account()
       const exchangeAccount = await exchange.createExchangeAccount(accountOwner.publicKey)
 
       const userCollateralTokenAccount = await collateralToken.createAccount(accountOwner.publicKey)
@@ -1582,7 +1719,7 @@ describe('exchange', () => {
       )
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1597,7 +1734,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1624,7 +1761,7 @@ describe('exchange', () => {
       const usdMintAmount = new BN(5 * 1e6)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1641,7 +1778,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1668,7 +1805,7 @@ describe('exchange', () => {
       const withdrawAmount = new BN(20 * 1e6)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1686,7 +1823,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1701,8 +1838,10 @@ describe('exchange', () => {
       })
     })
     it('#burn()', async () => {
-      const healthFactor = new BN((await exchange.getState()).healthFactor)
-      const collateralAmount = new BN(100 * 1e6).div(healthFactor).mul(new BN(100))
+      const healthFactor = (await exchange.getState()).healthFactor
+      const collateralAmount = new BN(100 * 1e6)
+        .div(healthFactor.val)
+        .mul(new BN(10 ** healthFactor.scale))
       const {
         accountOwner,
         exchangeAccount,
@@ -1719,7 +1858,7 @@ describe('exchange', () => {
         usdToken
       })
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1736,7 +1875,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 
@@ -1768,19 +1907,14 @@ describe('exchange', () => {
         assetsList: assetsList,
         assetFeedAddress: btcFeed
       })
-      await signAndSend(new Transaction().add(addBtcIx), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(addBtcIx), [EXCHANGE_ADMIN], connection)
       const addBtcSynthetic = await exchange.addSyntheticInstruction({
         assetAddress: btcToken.publicKey,
         assetsList,
-        decimals: 8,
         maxSupply: newAssetLimit,
         priceFeed: btcFeed
       })
-      await signAndSend(
-        new Transaction().add(addBtcSynthetic),
-        [wallet, EXCHANGE_ADMIN],
-        connection
-      )
+      await signAndSend(new Transaction().add(addBtcSynthetic), [EXCHANGE_ADMIN], connection)
       await exchange.getState()
 
       const collateralAmount = new BN(100 * 1e6)
@@ -1803,7 +1937,7 @@ describe('exchange', () => {
       const btcTokenAccount = await btcToken.createAccount(accountOwner.publicKey)
 
       const ixHalt = await exchange.setHaltedInstruction(true)
-      await signAndSend(new Transaction().add(ixHalt), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ixHalt), [EXCHANGE_ADMIN], connection)
       const stateHalted = await exchange.getState()
       assert.ok(stateHalted.halted === true)
 
@@ -1823,7 +1957,7 @@ describe('exchange', () => {
       )
       // unlock
       const ix = await exchange.setHaltedInstruction(false)
-      await signAndSend(new Transaction().add(ix), [wallet, EXCHANGE_ADMIN], connection)
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
       assert.ok(state.halted === false)
 

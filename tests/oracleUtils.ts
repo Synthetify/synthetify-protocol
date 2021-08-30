@@ -1,6 +1,6 @@
-import { Buffer } from 'buffer'
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { parsePriceData } from '@pythnetwork/client'
+import { PriceStatus } from '@synthetify/sdk/lib/exchange'
 
 interface ICreatePriceFeed {
   oracleProgram: Program
@@ -8,33 +8,33 @@ interface ICreatePriceFeed {
   confidence?: BN
   expo?: number
 }
-interface PriceStatus {
-  Unknown: 0
-  Trading: 1
-  Halted: 2
-  Auction: 3
-}
 export const createPriceFeed = async ({
   oracleProgram,
   initPrice,
   confidence,
-  expo = -4
+  expo = -8
 }: ICreatePriceFeed) => {
-  const conf = confidence || new BN((initPrice / 10) * 10 ** -expo)
+  const conf = confidence || new BN(initPrice / 10).mul(new BN(10).pow(new BN(-expo)))
   const collateralTokenFeed = new web3.Account()
-  await oracleProgram.rpc.initialize(new BN(initPrice * 10 ** -expo), expo, conf, {
-    accounts: { price: collateralTokenFeed.publicKey },
-    signers: [collateralTokenFeed],
-    instructions: [
-      web3.SystemProgram.createAccount({
-        fromPubkey: oracleProgram.provider.wallet.publicKey,
-        newAccountPubkey: collateralTokenFeed.publicKey,
-        space: 3312,
-        lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(3312),
-        programId: oracleProgram.programId
-      })
-    ]
-  })
+
+  await oracleProgram.rpc.initialize(
+    new BN(initPrice).mul(new BN(10).pow(new BN(-expo))),
+    expo,
+    conf,
+    {
+      accounts: { price: collateralTokenFeed.publicKey },
+      signers: [collateralTokenFeed],
+      instructions: [
+        web3.SystemProgram.createAccount({
+          fromPubkey: oracleProgram.provider.wallet.publicKey,
+          newAccountPubkey: collateralTokenFeed.publicKey,
+          space: 3312,
+          lamports: await oracleProgram.provider.connection.getMinimumBalanceForRentExemption(3312),
+          programId: oracleProgram.programId
+        })
+      ]
+    }
+  )
   return collateralTokenFeed.publicKey
 }
 export const setFeedPrice = async (
@@ -43,6 +43,7 @@ export const setFeedPrice = async (
   priceFeed: web3.PublicKey
 ) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   const data = parsePriceData(info.data)
   await oracleProgram.rpc.setPrice(new BN(newPrice * 10 ** -data.exponent), {
     accounts: { price: priceFeed }
@@ -63,6 +64,7 @@ export const setTwap = async (
   priceFeed: web3.PublicKey
 ) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   const data = parsePriceData(info.data)
   await oracleProgram.rpc.setTwap(new BN(newTwap * 10 ** -data.exponent), {
     accounts: { price: priceFeed }
@@ -70,5 +72,6 @@ export const setTwap = async (
 }
 export const getFeedData = async (oracleProgram: Program, priceFeed: web3.PublicKey) => {
   const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
   return parsePriceData(info.data)
 }

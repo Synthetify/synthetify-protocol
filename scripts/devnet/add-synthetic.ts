@@ -31,6 +31,7 @@ const main = async () => {
     priceFeed: FEED_ADDRESS,
     assetAddress: token.publicKey
   })
-  await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  console.log(tx)
 }
 main()
