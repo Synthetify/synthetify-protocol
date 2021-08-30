@@ -214,3 +214,41 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
   * **user_token_account_repay** - account from with tokens will be repaid
   * **owner** - owner of _VaultEntry_ and collateral amount, signer of transaction
   * **exchange_authority** - pubkey of exchange program
+
+
+## Liquidation
+
+Function responsible for liquidation is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2059-L2225). It checks if user can be liquidated, and if amount is valid. Liquidated amount is smaller or equal to difference between borrow limit and current debt and is below *liquidation_ratio* of collateral (or sets is at max if amount is equal to u64::MAX). Method takes amount (u64) and this context: 
+
+
+    pub struct LiquidateVault<'info> {
+        pub state: Loader<'info, State>,
+        pub vault_entry: Loader<'info, VaultEntry>,
+        pub vault: Loader<'info, Vault>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+        pub liquidator_synthetic_account: CpiAccount<'info, TokenAccount>,
+        pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
+        pub liquidation_fund: CpiAccount<'info, TokenAccount>,
+        pub token_program: AccountInfo<'info>,
+        pub owner: AccountInfo<'info>,
+        pub liquidator: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **vault_entry** - user account in vault ([this one](/docs/technical/vaults#vault-entry))
+  * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
+  * **synthetic** - address of token used as a synthetic
+  * **collateral** - address of token used as collateral
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')  
+  * **collateral_reserve** - address of account where deposited tokens are kept
+  * **liquidator_synthetic_account** - account from which synthetic tokens will be repaid
+  * **liquidator_collateral_account** - account to which collateral tokens will be transferred
+  * **liquidation_fund** - account where *liquidation_penalty_exchange* will be transferred (same as in [_Collateral_](/docs/technical/state#collateral-asset) struct)
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **owner** - owner of *vault_entry*, needed to check address
+  * **liquidator** - signer, owner of accounts on synthetic and collateral
+  * **exchange_authority** - pubkey of exchange program
