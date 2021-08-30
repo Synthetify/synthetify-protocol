@@ -147,6 +147,16 @@ Synthetic assets created by Synthetify keep their data inside this structure:
 * **max_supply** - limit of tokens that can be minted. It exists to increase safety of the platform (can be changed by the admin)
 * **settlement_slot** - slot when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
 
+
+### _AssetsList_ inside SDK
+
+Assets List can be fetched by using: 
+
+    await exchange.getAssetsList(assetsList)
+
+Where _exchange_ is instance of _Exchange_ singleton. Argument _assetsList_ is PublicKey, that can be found in state. Whole structure is similar, but arrays are trimmed to correct length.
+
+
 ## Decimal
 In many places in synthetify code there is a need for numbers with decimal places. Tokens have them, percentages can be saved as them as well as interest rate. To avoid floating point numbers _Decimal_ was created.
 
