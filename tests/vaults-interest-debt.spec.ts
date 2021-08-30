@@ -20,7 +20,7 @@ import {
   tou64,
   createAccountWithCollateral,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   calculateAmountAfterFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
@@ -85,7 +85,7 @@ describe('Vault interest borrow accumulation', () => {
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
 
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -144,6 +144,7 @@ describe('Vault interest borrow accumulation', () => {
     assetsList = data.assetsList
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+
     // create BTC collateral token
     const { token } = await createCollateralToken({
       decimals: 8,

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::account::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
+
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
@@ -35,6 +36,7 @@ pub struct CreateSwapline<'info> {
     pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
+
 pub struct UseSwapLine<'info> {
     #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
@@ -52,6 +54,7 @@ pub struct UseSwapLine<'info> {
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
+
         constraint = &user_synthetic_account.mint == synthetic.to_account_info().key,
         constraint = &user_synthetic_account.owner == signer.key
     )]

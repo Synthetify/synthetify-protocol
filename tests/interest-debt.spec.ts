@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateral,
   skipTimestamps,
   assertThrowsAsync,
@@ -50,7 +50,7 @@ describe('Interest debt accumulation', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce

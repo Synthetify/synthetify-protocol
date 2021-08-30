@@ -9,7 +9,7 @@ import {
   createAssetsList,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   createCollateralToken,
   createToken,
@@ -48,7 +48,7 @@ describe('max collaterals', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -184,7 +184,7 @@ describe('max collaterals', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
@@ -231,7 +231,7 @@ describe('max collaterals', () => {
         })
 
         await waitForBeggingOfASlot(connection)
-        // Check saldos
+        // Check balances
         const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
           reserveAccount
         )
@@ -288,7 +288,7 @@ describe('max collaterals', () => {
       signers: [accountOwner]
     })
 
-    // Check saldo and debt shares
+    // Check balance and debt shares
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
     assert.ok(await (await usdToken.getAccountInfo(usdTokenAccount)).amount.eq(mintAmount))

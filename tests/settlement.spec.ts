@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   createAccountWithCollateralAndMaxMintUsd,
   almostEqual,
@@ -47,7 +47,7 @@ describe('settlement', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -80,8 +80,8 @@ describe('settlement', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       nonce,
-      amountPerRound: new BN(100),
-      stakingRoundLength: 300,
+      amountPerRound: amountPerRound,
+      stakingRoundLength: stakingRoundLength,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
@@ -237,14 +237,14 @@ describe('settlement', () => {
       const settlementData = await exchange.getSettlementAccountForSynthetic(
         syntheticToSettle.assetAddress
       )
-      const valueOfSetteledSynthetic = new BN(tokenToSettleAmount.toString())
+      const valueOfSettledSynthetic = new BN(tokenToSettleAmount.toString())
         .mul(settlementData.ratio.val)
         .div(new BN(10 ** (settlementData.decimalsIn + settlementData.ratio.scale - ACCURACY)))
       const delta = assetsListAfterSettlement.synthetics[0].supply.val.sub(
         assetsListBeforeSettlement.synthetics[0].supply.val
       )
-      const settelmentAsset = assetsListAfterSettlement.assets[syntheticToSettle.assetIndex]
-      assert.ok(almostEqual(valueOfSetteledSynthetic, delta))
+      const settlementAsset = assetsListAfterSettlement.assets[syntheticToSettle.assetIndex]
+      assert.ok(almostEqual(valueOfSettledSynthetic, delta))
       assert.ok(
         assetsListAfterSettlement.synthetics.find((s) =>
           s.assetAddress.equals(syntheticToSettle.assetAddress)
@@ -252,7 +252,7 @@ describe('settlement', () => {
       )
       assert.ok(settlementData.decimalsOut === (await usdToken.getMintInfo()).decimals)
       assert.ok(settlementData.decimalsIn === syntheticToSettle.supply.scale)
-      assert.ok(almostEqual(settelmentAsset.price.val, settlementData.ratio.val))
+      assert.ok(almostEqual(settlementAsset.price.val, settlementData.ratio.val))
       assert.ok(settlementData.reserveAddress.equals(settlementReserve))
       assert.ok(settlementData.tokenInAddress.equals(syntheticToSettle.assetAddress))
       assert.ok(settlementData.tokenOutAddress.equals(usdToken.publicKey))
@@ -286,7 +286,7 @@ describe('settlement', () => {
       const usdBalanceAfter = (await usdToken.getAccountInfo(usdTokenAccount)).amount
       assert.ok(
         almostEqual(
-          new BN(usdBalanceBefore.toString()).add(valueOfSetteledSynthetic),
+          new BN(usdBalanceBefore.toString()).add(valueOfSettledSynthetic),
           new BN(usdBalanceAfter.toString())
         )
       )

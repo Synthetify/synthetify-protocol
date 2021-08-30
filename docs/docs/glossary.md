@@ -6,19 +6,28 @@ slug: /glossary
 
 ### Deposit
 
-Deposit allows the user to be a part of a collateral by locking their SNY tokens.
+Deposit takes tokens from user wallet and adds it to user's account as a [collateral](#collateral)
+
+### Dept
+
+Minting tokens adds debt to account as a shares in the debt pool. As total debt can change, debt of user can as well.
+
+### Max debt
+
+After user debt exceeds max debt user can be [liquidated](#liquidation)
 
 ### Mint
 
-Synthetic assets can be created by Stakers of the platform and then exchanged on Synthetify exchange. Exchange of two different synthetic assets is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in much lower exchange fees and slippage.
+Synthetic assets can be created by Stakers of the platform and then exchanged on Synthetify exchange. Exchange of two different synthetic assets is direct, even for pairs that do not exist on centralized exchanges e.g. xFTT -> xSRM instead of FTT -> USD -> SRM which results in lower exchange fees and no slippage.
 
 ### Mint limit
 
-To ensure safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created.
+Maximum amount you can mint calculated from [collateral](#collateral).
+<!-- To ensure safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created. -->
 
 ### Withdraw
 
-SNY tokens can be transferred to user's wallet by withdraw.
+Deposited collateral can be transferred to user's wallet by withdraw.
 
 ### Burn
 
@@ -26,9 +35,11 @@ Synthetic tokens can be burned by Stakers to reduce their debt and free collater
 
 ### Rewards
 
+For participating in debt pool you get some SNY token. Details of getting it are [here](http://localhost:3000/docs/staking#rewards).
+
 ### Collateral
 
-For now only SNY token can be a collateral, other assets will be added in the future.
+Deposited tokens become collateral. It is stored inside the account and allows a user to [mint](#mint) tokens and to have debt. You can find more about collateral [here](/docs/technical/collateral)
 
 ### Collateral Ratio
 
@@ -36,7 +47,7 @@ Locked collateral to the value of minted tokens is called a collateral ratio.
 
 ### Liquidation
 
-Liquidation means a collateral decrease by asset burn. To ensure platform stability Stakers can be liquidated and part of their collateral will be transferred to Liquidators in exchange for paying back part of a Staker debt. It takes place everytime overrunning the collateral ratio occurs.
+Liquidation means a collateral decrease by asset burn. To ensure platform stability Stakers can be liquidated and part of their collateral will be transferred to Liquidators in exchange for paying back part of a Staker debt. It takes place every time overrunning the collateral ratio occurs.
 
 ### Risk
 
@@ -48,7 +59,7 @@ Market risk is a possibility to experience losses due to price change. Cryptocur
 
 #### Liquidity Risk
 
-Liquidity risk is a potential issue especially on micro-cap assets. It could happen that exchanging earned asset will be obstructed because of illiquidity on the market.
+Liquidity risk is a potential issue especially on micro-cap assets. It could happen that exchanging earned asset will be obstructed because of liquidity on the market.
 
 #### Rewards Loss Risk
 
@@ -64,4 +75,4 @@ In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards 
 
 Adding new assets to Synthetify exchange requires existence of a reliable price oracle for this asset. Currently, Synthetify team controls what assets are listed on the exchange but in the future this decision will be moved to governance instance.
 
-![Assets Exchange Symbolic Represantation](https://i.imgur.com/yT9BdQe.png)
+![Assets Exchange Symbolic Representation](https://i.imgur.com/yT9BdQe.png)

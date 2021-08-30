@@ -5,7 +5,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   sleep,
-  SYNTHETIFY_ECHANGE_SEED
+  SYNTHETIFY_EXCHANGE_SEED
 } from '../tests/utils'
 import { MINTER } from './minter'
 import oracleIdl from '../target/idl/pyth.json'
@@ -55,7 +55,7 @@ const main = async () => {
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
 
   const [exchangeAuthority, nonce] = await web3.PublicKey.findProgramAddress(
-    [SYNTHETIFY_ECHANGE_SEED],
+    [SYNTHETIFY_EXCHANGE_SEED],
     exchangeProgramId
   )
   console.log('exchangeAuthority')

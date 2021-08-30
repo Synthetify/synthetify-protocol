@@ -12,7 +12,7 @@ import {
   tou64,
   createAccountWithCollateral,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   calculateAmountAfterFee,
   createAccountWithCollateralAndMaxMintUsd,
   assertThrowsAsync,
@@ -57,7 +57,7 @@ describe('exchange', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -1564,7 +1564,7 @@ describe('exchange', () => {
         signers: [accountOwner]
       })
 
-      // We should end with transfered amount
+      // We should end with transferred amount
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       // amount should be close to transferAmount
       assert.ok(userUsdTokenAccountAfter.amount.lt(transferAmount.add(debtBurnAccuracy)))

@@ -18,7 +18,7 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   calculateDebt,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   tokenToUsdValue,
   assertThrowsAsync,
@@ -66,7 +66,7 @@ describe('liquidation', () => {
   const initialCollateralPrice = 2
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -109,6 +109,7 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -170,7 +171,7 @@ describe('liquidation', () => {
       await setFeedPrice(oracleProgram, initialCollateralPrice, collateralTokenFeed)
     })
     beforeEach(async () => {
-      // change liquidation buffor for sake of tests
+      // change liquidation buffer for sake of tests
       const newLiquidationBuffer = 0
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -258,7 +259,7 @@ describe('liquidation', () => {
       const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
 
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -402,7 +403,7 @@ describe('liquidation', () => {
         collateralAsset,
         collateral
       )
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
