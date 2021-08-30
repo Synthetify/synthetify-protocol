@@ -10,13 +10,13 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createCollateralToken,
   eqDecimals,
   assertThrowsAsync,
   newAccountWithLamports,
   almostEqual,
-  getSwapLineAmountOut
+  getSwaplineAmountOut
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import {
@@ -55,7 +55,7 @@ describe('swap-line', () => {
   before(async () => {
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -275,7 +275,7 @@ describe('swap-line', () => {
         await (await collateralToken.getAccountInfo(userCollateralAccount)).amount.eq(new BN(0))
       )
 
-      const { amountOut, fee } = await getSwapLineAmountOut({
+      const { amountOut, fee } = await getSwaplineAmountOut({
         amountIn: new BN(amountToSwap),
         fee: swapLineAfterNativeSwap.fee,
         inDecimals: (await collateralToken.getMintInfo()).decimals,
@@ -346,7 +346,7 @@ describe('swap-line', () => {
         [ownerAccount],
         connection
       )
-      const { amountOut: nativeAmountOut, fee: nativeFee } = await getSwapLineAmountOut({
+      const { amountOut: nativeAmountOut, fee: nativeFee } = await getSwaplineAmountOut({
         amountIn: amountOut,
         fee: swapLineAfterNativeSwap.fee,
         inDecimals: (await syntheticToken.getMintInfo()).decimals,

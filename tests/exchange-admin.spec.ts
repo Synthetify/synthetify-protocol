@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   DEFAULT_PUBLIC_KEY,
   U64_MAX,
@@ -54,7 +54,7 @@ describe('admin', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce

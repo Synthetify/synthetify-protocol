@@ -9,7 +9,7 @@ import {
   createAssetsList,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   createCollateralToken,
   createToken,
@@ -48,7 +48,7 @@ describe('max collaterals', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce

@@ -9,7 +9,7 @@ import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 import { divUp, toDecimal, UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
-export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
+export const SYNTHETIFY_EXCHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
@@ -478,12 +478,12 @@ export const waitForBeggingOfASlot = async (connection: Connection) => {
   while (startSlot == (await connection.getSlot())) {}
 }
 
-export const getSwapLineAmountOut = async ({
+export const getSwaplineAmountOut = async ({
   amountIn,
   fee,
   inDecimals,
   outDecimals
-}: SwapLineAmountOut) => {
+}: SwaplineAmountOut) => {
   const decimalsDif = inDecimals - outDecimals
   if (decimalsDif <= 0) {
     const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
@@ -498,7 +498,7 @@ export const getSwapLineAmountOut = async ({
     return { fee: swapFee, amountOut: scaledAmountOut }
   }
 }
-export interface SwapLineAmountOut {
+export interface SwaplineAmountOut {
   fee: Decimal
   amountIn: BN
   outDecimals: number

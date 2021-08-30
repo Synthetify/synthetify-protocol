@@ -11,7 +11,7 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   U64_MAX,
   mulByDecimal
@@ -41,7 +41,7 @@ describe('isolated exchange burn', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
