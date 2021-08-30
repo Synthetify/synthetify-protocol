@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test:full": "npm run test:exchange && npm run test:interest-debt && npm run test:isolated-burn && npm run test:liquidation && npm run test:admin && npm run test:admin-withdraw && npm run test:staking && npm run test:multi && npm run test:multicollateral && npm run test:settlement && npm run test:swapline && npm run test:vaults && npm run test:vaultsliquidation",
+    "test:full": "npm run test:exchange && npm run test:interest-debt && npm run test:isolated-burn && npm run test:liquidation && npm run test:admin && npm run test:admin-withdraw && npm run test:staking && npm run test:multi && npm run test:multicollateral && npm run test:settlement && npm run test:swapline && npm run test:vaults && npm run test:vaultsliquidation && npm run test:staking-multiuser",
     "test:exchange": "anchor test --skip-build tests/exchange.spec.ts",
     "test:interest-debt": "anchor test --skip-build tests/interest-debt.spec.ts",
     "test:isolated-burn": " anchor test --skip-build tests/isolated-burn.spec.ts",
@@ -11,6 +11,7 @@
     "test:admin": "anchor test --skip-build tests/exchange-admin.spec.ts",
     "test:admin-withdraw": "anchor test --skip-build tests/admin-withdraw.spec.ts",
     "test:staking": "anchor test --skip-build tests/staking.spec.ts",
+    "test:staking-multiuser": "anchor test --skip-build tests/staking-multiuser.spec.ts",
     "test:multi": "anchor test --skip-build tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test --skip-build tests/multicollateral.spec.ts",
     "test:settlement": "anchor test --skip-build tests/settlement.spec.ts",
