@@ -54,7 +54,7 @@ Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
-  * **exchange_authority** - authority of the program
+  * **exchange_authority** - pubkey of exchange program
   * **usd_token** - address of xUSD token
   * **to** - account to which xUSD is minted
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
@@ -83,7 +83,7 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
     }
 
   * **state** - account with [data of the program](/docs/technical/state)
-  * **exchange_authority** - authority of the program
+  * **exchange_authority** - pubkey of exchange program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token

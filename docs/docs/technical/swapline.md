@@ -37,3 +37,30 @@ Tokens can be swapped from collateral to synthetic as long as total amount swapp
 
 They can also be swapped back from synthetic to collateral, as long as there is enough tokens in *collateral_reserve* (same as _balance_). Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/acbb2260c3eaee568e1f328c01db7c64fe868aae/programs/exchange/src/lib.rs#L1692-L1748).
 
+As both of these functions are so similar, they both take amount (u64) and the same struct: 
+
+    pub struct UseSwapline<'info> {
+        pub state: Loader<'info, State>,
+        pub swapline: Loader<'info, Swapline>,
+        pub synthetic: AccountInfo<'info>,
+        pub collateral: AccountInfo<'info>,
+        pub user_collateral_account: CpiAccount<'info, TokenAccount>,
+        pub user_synthetic_account: CpiAccount<'info, TokenAccount>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+        pub signer: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub token_program: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **swapline** - structures with data of the exchange
+  * **synthetic** - address of synthetic token
+  * **collateral** - address of collateral token
+  * **user_collateral_account** - user account on collateral token
+  * **user_synthetic_account** - user account on synthetic token
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **collateral_reserve** - account with collateral tokens
+  * **signer** - owner of accounts on tokens
+  * **exchange_authority** - pubkey of exchange program
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
