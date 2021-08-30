@@ -80,7 +80,7 @@ Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/
   * **settlement_reserve** - account from which xUSD is transferred (specified in _Settlement_ structure)
   * **usd_token** - address of xUSD token
   * **exchange_authority** - pubkey belonging to program
-  * **token_program** - address of program of settled token
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **signer** - owner of account on settled token
 
 
@@ -112,7 +112,7 @@ Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/
   * **exchange_authority** - authority of the program
   * **usd_token** - address of xUSD token
   * **to** - account to which xUSD is minted
-  * **token_program** - program of xUSD
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
   * **owner** - owner of _exchange account_
 
@@ -139,7 +139,7 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - authority of the program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **token_program** - program of xUSD
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **user_token_account_burn** - account on token from which tokens will be burned
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)

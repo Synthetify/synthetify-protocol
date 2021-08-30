@@ -30,7 +30,7 @@ To have a collateral user has to deposit it. Method responsible for it takes _am
   * **exchange_account** - account with [user specific data](/docs/technical/account)
   * **reserve_address** - account belonging to exchange where deposited collaterals are kept
   * **user_collateral_account** - user account with deposited tokens
-  * **token_program** - program of the deposited token
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
   * **owner** - owner of collateral, doesn't have be own the _Exchange Account_
   * **exchange_authority** - pubkey belonging to the exchange, used to sign transactions
@@ -97,7 +97,7 @@ Liquidation method is defined [here](https://github.com/Synthetify/synthetify-pr
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - pubkey belonging to the exchange, used to sing transactions
   * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
-  * **token_program** - address of program of liquidated token
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **liquidator_usd_account** - signer's account on xUSD token
   * **liquidator_collateral_account** - account on collateral token that is liquidated
