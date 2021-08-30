@@ -79,8 +79,6 @@ export class Exchange {
     )
     instance.stateAddress = stateAddress
     await instance.getOnlyState()
-    // TODO: move this line
-    // instance.assetsList = await instance.getAssetsList(instance.state.assetsList)
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
@@ -130,6 +128,7 @@ export class Exchange {
       },
       signers: [exchangeAdmin]
     })
+    this.assetsList = await this.getAssetsList(assetsList)
   }
   public async getOnlyState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
