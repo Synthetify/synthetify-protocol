@@ -63,3 +63,15 @@ User's staking point rounds are updated [here](https://github.com/Synthetify/syn
   * **next_round_points** - amount of points in next rounds
   * **last_update** - last slot, when staking data was updated
 
+
+## Claim
+
+While finished round lasts user can claim it's rewards. Actually it does not require a signer, so can be called by anybody. When claimed rewards are added to *amount_to_claim* and can be withdrawn.
+
+    pub struct ClaimRewards<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
