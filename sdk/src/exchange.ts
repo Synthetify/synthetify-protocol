@@ -129,6 +129,7 @@ export class Exchange {
       signers: [exchangeAdmin]
     })
     this.assetsList = await this.getAssetsList(assetsList)
+    await this.getState()
   }
   public async getOnlyState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
