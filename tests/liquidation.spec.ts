@@ -94,28 +94,14 @@ describe('liquidation', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
-
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -123,6 +109,23 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     snyCollateral = (await exchange.getAssetsList(assetsList)).collaterals[0]
@@ -139,7 +142,7 @@ describe('liquidation', () => {
     liquidator = liquidatorData.accountOwner
     liquidatorUsdAccount = liquidatorData.usdTokenAccount
     liquidatorCollateralAccount = liquidatorData.userCollateralTokenAccount
-    const state = await exchange.getState()
+    await exchange.getState()
 
     // creating BTC
     const btc = await createCollateralToken({
@@ -168,7 +171,7 @@ describe('liquidation', () => {
       await setFeedPrice(oracleProgram, initialCollateralPrice, collateralTokenFeed)
     })
     beforeEach(async () => {
-      // change liquidation buffor for sake of tests
+      // change liquidation buffer for sake of tests
       const newLiquidationBuffer = 0
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -256,7 +259,7 @@ describe('liquidation', () => {
       const exchangeAccountDataBeforeCheck = await exchange.getExchangeAccount(exchangeAccount)
       assert.ok(exchangeAccountDataBeforeCheck.liquidationDeadline.eq(U64_MAX))
 
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -400,7 +403,7 @@ describe('liquidation', () => {
         collateralAsset,
         collateral
       )
-      // change liquidation buffor for sake of test
+      // change liquidation buffer for sake of test
       const newLiquidationBuffer = 10
       const ix = await exchange.setLiquidationBufferInstruction(newLiquidationBuffer)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
@@ -600,7 +603,8 @@ describe('liquidation', () => {
         wallet,
         exchange,
         snyReserve,
-        snyLiquidationFund
+        snyLiquidationFund,
+        exchangeAdmin: EXCHANGE_ADMIN
       })
       const liquidateIx = (await exchange.program.instruction.liquidate(maxAmount, {
         accounts: {

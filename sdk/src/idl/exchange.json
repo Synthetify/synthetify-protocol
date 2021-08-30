@@ -42,9 +42,19 @@
       "name": "createList",
       "accounts": [
         {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
         },
         {
           "name": "snyReserve",
@@ -78,6 +88,27 @@
       ]
     },
     {
+      "name": "setAssetsList",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setAssetsPrices",
       "accounts": [
         {
@@ -103,11 +134,6 @@
         },
         {
           "name": "admin",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "assetsList",
           "isMut": false,
           "isSigner": false
         },
@@ -2208,154 +2234,38 @@
   ],
   "accounts": [
     {
-      "name": "AssetsList",
+      "name": "Settlement",
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "headAssets",
-            "type": "u8"
-          },
-          {
-            "name": "headCollaterals",
-            "type": "u8"
-          },
-          {
-            "name": "headSynthetics",
-            "type": "u8"
-          },
-          {
-            "name": "assets",
-            "type": {
-              "array": [
-                {
-                  "defined": "Asset"
-                },
-                255
-              ]
-            }
-          },
-          {
-            "name": "collaterals",
-            "type": {
-              "array": [
-                {
-                  "defined": "Collateral"
-                },
-                255
-              ]
-            }
-          },
-          {
-            "name": "synthetics",
-            "type": {
-              "array": [
-                {
-                  "defined": "Synthetic"
-                },
-                255
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "Swapline",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "synthetic",
-            "type": "publicKey"
-          },
-          {
-            "name": "collateral",
-            "type": "publicKey"
-          },
-          {
-            "name": "fee",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "accumulatedFee",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "balance",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "limit",
-            "type": {
-              "defined": "Decimal"
-            }
-          },
-          {
-            "name": "collateralReserve",
-            "type": "publicKey"
-          },
-          {
-            "name": "halted",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "ExchangeAccount",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "debtShares",
-            "type": "u64"
-          },
-          {
-            "name": "liquidationDeadline",
-            "type": "u64"
-          },
-          {
-            "name": "userStakingData",
-            "type": {
-              "defined": "UserStaking"
-            }
-          },
-          {
-            "name": "head",
-            "type": "u8"
-          },
           {
             "name": "bump",
             "type": "u8"
           },
           {
-            "name": "collaterals",
+            "name": "reserveAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenInAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "tokenOutAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "decimalsIn",
+            "type": "u8"
+          },
+          {
+            "name": "decimalsOut",
+            "type": "u8"
+          },
+          {
+            "name": "ratio",
             "type": {
-              "array": [
-                {
-                  "defined": "CollateralEntry"
-                },
-                32
-              ]
+              "defined": "Decimal"
             }
           }
         ]
@@ -2479,38 +2389,154 @@
       }
     },
     {
-      "name": "Settlement",
+      "name": "ExchangeAccount",
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "debtShares",
+            "type": "u64"
+          },
+          {
+            "name": "liquidationDeadline",
+            "type": "u64"
+          },
+          {
+            "name": "userStakingData",
+            "type": {
+              "defined": "UserStaking"
+            }
+          },
+          {
+            "name": "head",
+            "type": "u8"
+          },
           {
             "name": "bump",
             "type": "u8"
           },
           {
-            "name": "reserveAddress",
+            "name": "collaterals",
+            "type": {
+              "array": [
+                {
+                  "defined": "CollateralEntry"
+                },
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Swapline",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "synthetic",
             "type": "publicKey"
           },
           {
-            "name": "tokenInAddress",
+            "name": "collateral",
             "type": "publicKey"
           },
           {
-            "name": "tokenOutAddress",
-            "type": "publicKey"
-          },
-          {
-            "name": "decimalsIn",
-            "type": "u8"
-          },
-          {
-            "name": "decimalsOut",
-            "type": "u8"
-          },
-          {
-            "name": "ratio",
+            "name": "fee",
             "type": {
               "defined": "Decimal"
+            }
+          },
+          {
+            "name": "accumulatedFee",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "balance",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "limit",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
+            "name": "collateralReserve",
+            "type": "publicKey"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AssetsList",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "headAssets",
+            "type": "u8"
+          },
+          {
+            "name": "headCollaterals",
+            "type": "u8"
+          },
+          {
+            "name": "headSynthetics",
+            "type": "u8"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "array": [
+                {
+                  "defined": "Asset"
+                },
+                255
+              ]
+            }
+          },
+          {
+            "name": "collaterals",
+            "type": {
+              "array": [
+                {
+                  "defined": "Collateral"
+                },
+                255
+              ]
+            }
+          },
+          {
+            "name": "synthetics",
+            "type": {
+              "array": [
+                {
+                  "defined": "Synthetic"
+                },
+                255
+              ]
             }
           }
         ]
@@ -2654,26 +2680,6 @@
     }
   ],
   "types": [
-    {
-      "name": "CollateralEntry",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "collateralAddress",
-            "type": "publicKey"
-          },
-          {
-            "name": "index",
-            "type": "u8"
-          }
-        ]
-      }
-    },
     {
       "name": "StakingRound",
       "type": {
@@ -2892,6 +2898,26 @@
           {
             "name": "settlementSlot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollateralEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "collateralAddress",
+            "type": "publicKey"
+          },
+          {
+            "name": "index",
+            "type": "u8"
           }
         ]
       }

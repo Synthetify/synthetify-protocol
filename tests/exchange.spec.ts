@@ -86,22 +86,8 @@ describe('exchange', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -115,9 +101,24 @@ describe('exchange', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    const state = await exchange.getState()
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
-    await sleep(10000)
+    await sleep(3000)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
@@ -1563,7 +1564,7 @@ describe('exchange', () => {
         signers: [accountOwner]
       })
 
-      // We should end with transfered amount
+      // We should end with transferred amount
       const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
       // amount should be close to transferAmount
       assert.ok(userUsdTokenAccountAfter.amount.lt(transferAmount.add(debtBurnAccuracy)))

@@ -1,7 +1,14 @@
 import { BN, Program, web3 } from '@project-serum/anchor'
 import { TokenInstructions } from '@project-serum/serum'
 import { Token, u64 } from '@solana/spl-token'
-import { Account, Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction } from '@solana/web3.js'
+import {
+  Account,
+  Connection,
+  Keypair,
+  PublicKey,
+  SYSVAR_RENT_PUBKEY,
+  Transaction
+} from '@solana/web3.js'
 import { Exchange, signAndSend } from '@synthetify/sdk'
 import { Asset, AssetsList, Collateral } from '@synthetify/sdk/lib/exchange'
 import { ORACLE_OFFSET, ACCURACY } from '@synthetify/sdk'
@@ -130,6 +137,7 @@ export interface ICreateAssetsList {
   snyLiquidationFund: PublicKey
   collateralToken: Token
   connection: Connection
+  exchangeAdmin: Keypair | Account
   wallet: Account
   assetsSize?: number
 }
@@ -143,6 +151,7 @@ export const createAssetsList = async ({
   collateralTokenFeed,
   connection,
   wallet,
+  exchangeAdmin,
   exchangeAuthority,
   snyLiquidationFund,
   snyReserve
@@ -153,6 +162,7 @@ export const createAssetsList = async ({
     mintAuthority: exchangeAuthority
   })
   const assetsList = await exchange.initializeAssetsList({
+    admin: exchangeAdmin,
     collateralToken: collateralToken.publicKey,
     collateralTokenFeed,
     usdToken: usdToken.publicKey,
@@ -169,7 +179,7 @@ export const newAccountWithLamports = async (connection, lamports = 1e10) => {
   await connection.requestAirdrop(account.publicKey, lamports)
   for (;;) {
     await sleep(500)
-    // eslint-disable-next-line eqeqeq
+    // eslint-disable-next-line
     if (lamports == (await connection.getBalance(account.publicKey))) {
       return account
     }
@@ -198,7 +208,7 @@ export interface IAccountWithMultipleCollaterals {
   amountOfCollateralToken: BN
   amountOfOtherToken: BN
 }
-export interface IAccountWithCollateralandMint {
+export interface IAccountWithCollateralAndMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
   exchangeAuthority: PublicKey
@@ -307,7 +317,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   amount,
   usdToken,
   reserveAddress
-}: IAccountWithCollateralandMint) => {
+}: IAccountWithCollateralAndMint) => {
   const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
     await createAccountWithCollateral({
       amount,
@@ -478,12 +488,12 @@ export const waitForBeggingOfASlot = async (connection: Connection) => {
   while (startSlot == (await connection.getSlot())) {}
 }
 
-export const getSwaplineAmountOut = async ({
+export const getSwapLineAmountOut = async ({
   amountIn,
   fee,
   inDecimals,
   outDecimals
-}: SwaplineAmountOut) => {
+}: SwapLineAmountOut) => {
   const decimalsDif = inDecimals - outDecimals
   if (decimalsDif <= 0) {
     const swapFee = new BN(amountIn).mul(fee.val).div(new BN(10 ** fee.scale))
@@ -498,7 +508,7 @@ export const getSwaplineAmountOut = async ({
     return { fee: swapFee, amountOut: scaledAmountOut }
   }
 }
-export interface SwaplineAmountOut {
+export interface SwapLineAmountOut {
   fee: Decimal
   amountIn: BN
   outDecimals: number

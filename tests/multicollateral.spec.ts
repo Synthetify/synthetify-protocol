@@ -78,24 +78,8 @@ describe('max collaterals', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken: snyToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-    tokens.push(usdToken)
-    reserves.push(await usdToken.createAccount(exchangeAuthority))
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -109,6 +93,24 @@ describe('max collaterals', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken: snyToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+    tokens.push(usdToken)
+    reserves.push(await usdToken.createAccount(exchangeAuthority))
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     healthFactor = (await exchange.getState()).healthFactor
@@ -182,7 +184,7 @@ describe('max collaterals', () => {
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
-    // Check initialized addreses
+    // Check initialized addresses
     assert.ok(state.admin.equals(EXCHANGE_ADMIN.publicKey))
     assert.ok(state.halted === false)
     assert.ok(state.assetsList.equals(assetsList))
@@ -229,7 +231,7 @@ describe('max collaterals', () => {
         })
 
         await waitForBeggingOfASlot(connection)
-        // Check saldos
+        // Check balances
         const exchangeCollateralTokenAccountInfoAfter = await collateralToken.getAccountInfo(
           reserveAccount
         )
@@ -286,7 +288,7 @@ describe('max collaterals', () => {
       signers: [accountOwner]
     })
 
-    // Check saldo and debt shares
+    // Check balance and debt shares
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)
     assert.ok(!exchangeAccountAfter.debtShares.eq(new BN(0)))
     assert.ok(await (await usdToken.getAccountInfo(usdTokenAccount)).amount.eq(mintAmount))

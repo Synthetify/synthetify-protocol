@@ -16,7 +16,7 @@ import {
   assertThrowsAsync,
   newAccountWithLamports,
   almostEqual,
-  getSwaplineAmountOut
+  getSwapLineAmountOut
 } from './utils'
 import { createPriceFeed } from './oracleUtils'
 import {
@@ -84,25 +84,11 @@ describe('swap-line', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve: reserveAddress,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
-      amountPerRound: amountPerRound.val,
-      stakingRoundLength: stakingRoundLength,
+      amountPerRound: new BN(100),
+      stakingRoundLength: 300,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
@@ -114,6 +100,21 @@ describe('swap-line', () => {
       exchangeProgram.programId
     )
 
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve: reserveAddress,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
 
@@ -275,7 +276,7 @@ describe('swap-line', () => {
         await (await collateralToken.getAccountInfo(userCollateralAccount)).amount.eq(new BN(0))
       )
 
-      const { amountOut, fee } = await getSwaplineAmountOut({
+      const { amountOut, fee } = await getSwapLineAmountOut({
         amountIn: new BN(amountToSwap),
         fee: swapLineAfterNativeSwap.fee,
         inDecimals: (await collateralToken.getMintInfo()).decimals,
@@ -285,7 +286,7 @@ describe('swap-line', () => {
       const reserveAmountAfterNativeSwap = (
         await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)
       ).amount
-      // assets toten transfer
+      // assets token transfer
       assert.ok(almostEqual(mintedAmount, amountOut))
       assert.ok(almostEqual(reserveAmountAfterNativeSwap, new BN(amountToSwap)))
       assert.ok(almostEqual(swapLineAfterNativeSwap.balance.val, new BN(amountToSwap)))
@@ -346,7 +347,7 @@ describe('swap-line', () => {
         [ownerAccount],
         connection
       )
-      const { amountOut: nativeAmountOut, fee: nativeFee } = await getSwaplineAmountOut({
+      const { amountOut: nativeAmountOut, fee: nativeFee } = await getSwapLineAmountOut({
         amountIn: amountOut,
         fee: swapLineAfterNativeSwap.fee,
         inDecimals: (await syntheticToken.getMintInfo()).decimals,

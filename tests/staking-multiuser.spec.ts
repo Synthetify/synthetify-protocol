@@ -78,25 +78,11 @@ describe('staking with multiple users', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      snyReserve: reserveAccount,
-      snyLiquidationFund: liquidationAccount,
-      exchangeAuthority,
-      collateralToken,
-      collateralTokenFeed,
-      connection,
-      wallet,
-      exchange
-    })
-    assetsList = data.assetsList
-    usdToken = data.usdToken
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
-      amountPerRound: amountPerRound,
-      stakingRoundLength: stakingRoundLength,
+      amountPerRound,
+      stakingRoundLength,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
@@ -107,6 +93,23 @@ describe('staking with multiple users', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken,
+      collateralTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve: reserveAccount,
+      snyLiquidationFund: liquidationAccount
+    })
+    assetsList = data.assetsList
+    usdToken = data.usdToken
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+
     const state = await exchange.getState()
     nextRoundStart = state.staking.nextRound.start
   })

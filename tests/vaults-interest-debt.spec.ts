@@ -114,21 +114,8 @@ describe('Vault interest borrow accumulation', () => {
       exchangeProgram.programId
     )
 
-    const data = await createAssetsList({
-      exchangeAuthority,
-      collateralToken: snyToken,
-      collateralTokenFeed: snyTokenFeed,
-      connection,
-      wallet,
-      exchange,
-      snyReserve,
-      snyLiquidationFund
-    })
-    assetsList = data.assetsList
-
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
-      assetsList,
       nonce,
       amountPerRound: new BN(100),
       stakingRoundLength: 300,
@@ -142,6 +129,22 @@ describe('Vault interest borrow accumulation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
+
+    const data = await createAssetsList({
+      exchangeAuthority,
+      collateralToken: snyToken,
+      collateralTokenFeed: snyTokenFeed,
+      connection,
+      wallet,
+      exchangeAdmin: EXCHANGE_ADMIN,
+      exchange,
+      snyReserve,
+      snyLiquidationFund
+    })
+    assetsList = data.assetsList
+
+    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+
     // create BTC collateral token
     const { token } = await createCollateralToken({
       decimals: 8,
