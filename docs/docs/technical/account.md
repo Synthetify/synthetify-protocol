@@ -31,7 +31,7 @@ The data structure is defined like this:
 * **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
 * **bump** - used with [generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
 * **head** - index pointing to last of used fields in collaterals array
-* **collaterals** - array of [collaterals](/docs/technical/collaterals) owned by account, up to 32 different at the same time
+* **collaterals** - array of [collaterals](/docs/technical/collateral) owned by account, up to 32 different at the same time
 
 ### Account Creation
 

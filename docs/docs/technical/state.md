@@ -41,7 +41,7 @@ Respectively these fields are used for:
   * **admin** - public key of admin, only admin can modify state using setters
   * **halted** - if set to _true_ access to methods is blocked
   * **nonce** - one of signer seeds, used to sign transactions
-  * **debt_shares** - total amount of _debt shares_, together with user _debt shares_ allows to calculate debt, more on that [here](/docs/technical/synthetics#debt)/docs/technical/state#structure-of-assetslist
+  * **debt_shares** - total amount of _debt shares_, together with user _debt shares_ allows to calculate debt, more on that [here](/docs/technical/synthetics#debt)
   * **assets_list** - address used to confirm correctness of [asset list](/docs/technical/state#structure-of-assetslist) passed to a method
   * **health_factor** - coefficient of [mint limit](/docs/glossary#mint-limit) to [max debt](/docs/glossary#max-debt) as a [decimal](#decimal)
   * **max_delay** - maximum amount of [slots](https://docs.solana.com/terminology#slot) a price can be outdated by
@@ -66,19 +66,20 @@ State is initialized [here](https://github.com/Synthetify/synthetify-protocol/bl
 
 ## Assets
 
-To work platform needs to store data about all assets it is. Here data about decimal places, addresses and prices are aggregated.
+All assets used in platform are stored here. Data about prices comes from [Pyth](https://pyth.network/) but is aggregated here. It also keeps data about decimal places and addresses of tokens and supply.
 
 ### Structure of _AssetsList_
 
 Data related to assets is kept inside AssetsList:
 
     struct AssetsList {
-        pub head_assets: u8,
-        pub head_collaterals: u8,
-        pub head_synthetics: u8,
-        pub assets: [Asset; 255],
-        pub collaterals: [Collateral; 255],
-        pub synthetics: [Synthetic; 255],
+        // 93333
+        pub head_assets: u8,                // 1
+        pub head_collaterals: u8,           // 1
+        pub head_synthetics: u8,            // 1
+        pub assets: [Asset; 255],           // 27795
+        pub collaterals: [Collateral; 255], // 37740
+        pub synthetics: [Synthetic; 255],   // 27795
     }
 
 First three are indexes of corresponding arrays, points to last element, used as length. Next three keep data and are described below:
@@ -86,16 +87,17 @@ First three are indexes of corresponding arrays, points to last element, used as
 
 ### Asset
 
-Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of all assets. It keeps them in one place for ease of use. Data related to price is kept inside _Asset_ structure: 
+Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of all assets and stores them in one place for ease of use. Data related to price is kept inside _Asset_ structure: 
 
     pub struct Asset {
-        pub feed_address: Pubkey,
-        pub price: Decimal,
-        pub last_update: u64,
-        pub twap: Decimal,
-        pub twac: Decimal,
-        pub status: u8,
-        pub confidence: Decimal,
+        // 109
+        pub feed_address: Pubkey, // 32 Pyth oracle account address
+        pub price: Decimal,       // 17
+        pub last_update: u64,     // 8
+        pub twap: Decimal,        // 17
+        pub twac: Decimal,        // 17 unused
+        pub status: u8,           // 1
+        pub confidence: Decimal,  // 17 unused
     }
 
 * **feed_address** - address of Pyth oracle account
@@ -113,39 +115,47 @@ Every collateral asset and every synthetic assets has to have corresponding _Ass
 
 Data of that can be used as a [collateral](/docs/technical/collateral) are stored inside a _Collateral_ structure:
 
-    struct Collateral {
-        pub asset_index: u8,
-        pub collateral_address: Pubkey, 
-        pub reserve_address: Pubkey,
-        pub liquidation_fund: Pubkey,
-        pub reserve_balance: Decimal,
-        pub collateral_ratio: Decimal,
+    pub struct Collateral {
+        // 148
+        pub asset_index: u8,            // 1
+        pub collateral_address: Pubkey, // 32
+        pub reserve_address: Pubkey,    // 32
+        pub liquidation_fund: Pubkey,   // 32
+        pub reserve_balance: Decimal,   // 17
+        pub collateral_ratio: Decimal,  // 17
+        pub max_collateral: Decimal,    // 17
     }
 
   * **asset_index** - index of corresponding [asset](#asset) used to get price
   * **collateral_address** - address of token used as a collateral
   * **reserve_address** - address of account where exchange keeps deposited tokens
-  * **liquidation_fund** - address of account where liquidation penalty is kept until it is withdrawn
+  * **liquidation_fund** - address of account where [liquidation](/docs/technical/collateral#liquidation) penalty is kept until it is withdrawn
   * **reserve_balance** - amount of tokens in reserve account
   * **collateral_ratio** - coefficient of collateral to debt user can have
+  * **max_collateral** - maximum amount that can be used as a collateral
 
 
 ### Synthetic asset
 
 Synthetic assets created by Synthetify keep their data inside this structure:
 
-    struct Synthetic {
-        pub asset_index: u8,
-        pub asset_address: Pubkey,
-        pub supply: Decimal,
-        pub max_supply: Decimal,
-        pub settlement_slot: u64,
+    pub struct Synthetic {
+        // 109
+        pub asset_index: u8,          // 1
+        pub asset_address: Pubkey,    // 32
+        pub supply: Decimal,          // 17
+        pub max_supply: Decimal,      // 17
+        pub borrowed_supply: Decimal, // 17
+        pub swapline_supply: Decimal, // 17
+        pub settlement_slot: u64,     // 8
     }
 
 * **asset_index** - index of corresponding [asset](#asset)
 * **asset_address** - address of synthetic token
 * **supply** - total amount of minted tokens
 * **max_supply** - limit of tokens that can be minted. It exists to increase safety of the platform (can be changed by the admin)
+* **borrowed_supply** - amount of tokens minted using [vaults](/docs/technical/vaults)
+* **swapline_supply** - amount of tokens swapped using [swapline](/docs/technical/swapline)
 * **settlement_slot** - slot when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
 
 
