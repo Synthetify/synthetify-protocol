@@ -130,6 +130,15 @@ export class Exchange {
     })
     this.state.assetsList = assetsList
   }
+  public async setAssetsListInstruction(assetsList: PublicKey) {
+    return (await this.program.instruction.setAssetsList({
+      accounts: {
+        assetsList,
+        state: this.stateAddress,
+        admin: this.state.admin
+      }
+    })) as TransactionInstruction
+  }
   public async getOnlyState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
     // need to add hooks on change

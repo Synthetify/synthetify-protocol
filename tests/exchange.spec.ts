@@ -116,9 +116,10 @@ describe('exchange', () => {
     assetsList = data.assetsList
     usdToken = data.usdToken
 
-    await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
     await sleep(3000)
+    const ix = await exchange.setAssetsListInstruction(assetsList)
+    await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
   })
   it('Initialize', async () => {
     const state = await exchange.getState()
