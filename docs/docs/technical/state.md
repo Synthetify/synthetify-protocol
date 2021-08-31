@@ -6,44 +6,46 @@ slug: /technical/state
 
 ## Program data
 
-Protocol needs a place to store persistent data. 
-Most of it is stored inside _State_ structure that is passed to methods via _context_ just as any other account.
+Protocol needs a place to store persistent data. Most of it is stored inside _State_ structure that is passed to methods just like any other account.
 
 ### Structure of state
 
 State is structured like this:
 
     pub struct State {
-        pub admin: Pubkey,
-        pub halted: bool,
-        pub nonce: u8,
-        pub debt_shares: u64,
-        pub assets_list: Pubkey,
-        pub health_factor: Decimal,
-        pub max_delay: u32,
-        pub fee: Decimal,
-        pub swap_tax_ratio: Decimal,
-        pub swap_tax_reserve: Decimal,
-        pub liquidation_rate: Decimal,
-        pub penalty_to_liquidator: Decimal,
-        pub penalty_to_exchange: Decimal,
-        pub liquidation_buffer: u32,
-        pub debt_interest_rate: Decimal,
-        pub accumulated_debt_interest: Decimal,
-        pub last_debt_adjustment: i64,
-        pub staking: Staking,
-        pub bump: u8,
+        // 2048
+        pub admin: Pubkey,                      // 32
+        pub halted: bool,                       // 1
+        pub nonce: u8,                          // 1
+        pub debt_shares: u64,                   // 8
+        pub assets_list: Pubkey,                // 32
+        pub health_factor: Decimal,             // 17 In % 1-100% modifier for debt
+        pub max_delay: u32,                     // 4  In slots delay between last oracle update 100 blocks ~ 1 min
+        pub fee: Decimal,                       // 17 In % default fee per swap
+        pub swap_tax_ratio: Decimal,            // 17 In % range 0-20%
+        pub swap_tax_reserve: Decimal,          // 17 Amount on tax from swap
+        pub liquidation_rate: Decimal,          // 17 Percentage of debt repay in liquidation
+        pub penalty_to_liquidator: Decimal,     // 17 In % range 0-25%
+        pub penalty_to_exchange: Decimal,       // 17 In % range 0-25%
+        pub liquidation_buffer: u32,            // 4  Time given user to fix collateralization ratio (in slots)
+        pub debt_interest_rate: Decimal,        // 17 In % range 0-20%
+        pub accumulated_debt_interest: Decimal, // 17 Accumulated debt interest
+        pub last_debt_adjustment: i64,          // 8
+        pub staking: Staking,                   // 152
+        pub exchange_authority: Pubkey,         // 32
+        pub bump: u8,                           // 1
+        pub padding: [u8; 1620],                // 1620 (2048 - 428) reserved for future use
     }
 
 Respectively these fields are used for:
-  * **admin** - public key of admin, only admin can modify some of state's fields using setters
+  * **admin** - public key of admin, only admin can modify state using setters
   * **halted** - if set to _true_ access to methods is blocked
   * **nonce** - one of signer seeds, used to sign transactions
-  * **debt_shares** - sum of all debt shares, together with user debt shares allows to calculate debt 
-  * **assets_list** - address used to confirm correctness of [asset list](/docs/technical/minting#) passed to a method
+  * **debt_shares** - total amount of _debt shares_, together with user _debt shares_ allows to calculate debt, more on that [here](/docs/technical/synthetics#debt)/docs/technical/state#structure-of-assetslist
+  * **assets_list** - address used to confirm correctness of [asset list](/docs/technical/state#structure-of-assetslist) passed to a method
   * **health_factor** - coefficient of [mint limit](/docs/glossary#mint-limit) to [max debt](/docs/glossary#max-debt) as a [decimal](#decimal)
-  * **max_delay** - maximum amount of slots a price can be outdated by
-  * **fee** - amount of fee payed on swap as a percentage
+  * **max_delay** - maximum amount of [slots](https://docs.solana.com/terminology#slot) a price can be outdated by
+  * **fee** - amount of fee payed on swap
   * **swap_tax_ratio** - percentage of fee going to the _tax reserve_
   * **swap_tax_reserve** - part of total amount of charged tax, can be withdrawn by admin
   * **liquidation_rate** - part of user debt repaid on [liquidation](/docs/technical/collateral#liquidation)
@@ -54,13 +56,12 @@ Respectively these fields are used for:
   * **accumulated_debt_interest** - total amount charged as interest
   * **last_debt_adjustment** - timestamp of last charge of interest
   * **staking** - structure with all data needed for staking. Details are [here](/docs/technical/staking)
+  * **exchange_authority** - pubkey belonging to the exchange, used to sign transactions
   * **bump** - used to [confirm address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
+  * **padding** - used as padding to reserve space up to 2kB for future use
 
 
-### Initialization and changes
-
-State is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/c643113f47b65b947a55bfe80193570e96d3ccba/programs/exchange/src/lib.rs#L2035-L2056).
-It can later be changed using admin methods signed by the admin.
+State is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/c643113f47b65b947a55bfe80193570e96d3ccba/programs/exchange/src/lib.rs#L2035-L2056). It can later be changed using admin methods signed by the admin.
 
 
 ## Assets
