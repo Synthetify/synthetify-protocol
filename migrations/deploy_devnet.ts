@@ -12,44 +12,61 @@ import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
+console.log(EXCHANGE_ADMIN.publicKey.toBase58())
 const initialTokens = [
   {
     price: 50000,
     ticker: Buffer.from('xBTC'),
-    decimals: 8,
+    decimals: 10,
     limit: new BN(1e12),
     priceFeed: new PublicKey('HovQMDrbAgAYPCmHVSrezcSmkMtXSSUsLDFANExrZh2J')
   },
   {
     price: 36,
     ticker: Buffer.from('xSOL'),
-    decimals: 6,
-    limit: new BN(1e6),
+    decimals: 9,
+    limit: new BN(1e10),
     priceFeed: new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
   },
   {
     price: 5,
-    ticker: Buffer.from('xSRM'),
-    decimals: 6,
-    limit: new BN(1e7),
-    priceFeed: new PublicKey('992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs')
+    ticker: Buffer.from('xFTT'),
+    decimals: 8,
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('6vivTRs5ZPeeXbjo7dfburfaYDWoXjBtdtuYgQRuGfu')
+  },
+  {
+    price: 3000,
+    ticker: Buffer.from('xETH'),
+    decimals: 9,
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('EdVCmQ9FSPcVe5YySXDPCRmc8aDQLKJ9xvYBMZPie1Vw')
   }
 ]
 const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
+const connection = new web3.Connection(
+  'https://solana--devnet--rpc.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
+  {
+    wsEndpoint:
+      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
+    commitment: 'max'
+  }
+)
+//@ts-ignore
+provider.connection = connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '8RXWQoGYb9saCXces3STYcxvaJznvQiy7uW1pkuYTXXv'
+  '6NriRyuF2JThPkyMVdosPTHCEkLEwhkUf6Nz8fFJQszu'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  '5qTeBcsCvvGyQwVDCbKrsTD9mxLfvokZkJLwWyW4Fg63'
+  'HJ1ApW2wzGgGgnQhsBPJAxcCUKNdpRW623kunQkwca4Z'
 )
-const authority = '3rBAzG4ZUUK1wQur6BhiNCTvXBZkLsniVWgDueZmdEHJ'
+const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
 
 const main = async () => {
-  const connection = provider.connection
   // @ts-expect-error
   const wallet = provider.wallet.payer as web3.Account
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
@@ -78,7 +95,6 @@ const main = async () => {
   const snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
   const stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
-  console.log('Create Asset List')
   let exchange: Exchange
   // @ts-expect-error
   exchange = new Exchange(
@@ -88,23 +104,9 @@ const main = async () => {
     exchangeAuthority,
     exchangeProgramId
   )
-
-  const data = await createAssetsList({
-    exchangeAuthority,
-    collateralToken,
-    collateralTokenFeed,
-    connection,
-    wallet,
-    exchange,
-    snyReserve,
-    snyLiquidationFund
-  })
-  const assetsList = data.assetsList
-  console.log('Initialize Exchange')
-  await sleep(5000)
+  console.log('Init exchange')
   await exchange.init({
     admin: wallet.publicKey,
-    assetsList,
     nonce,
     amountPerRound: new BN(100 * 1e6),
     stakingRoundLength: 100,
@@ -115,14 +117,44 @@ const main = async () => {
     await sleep(2000)
     try {
       console.log('state ')
-      console.log(await exchange.getState())
+      console.log(await exchange.getOnlyState())
       break
     } catch (error) {
+      console.log(error)
       console.log('not found ')
     }
   }
+  await sleep(5000)
 
   await sleep(5000)
+  console.log('Create Asset List')
+  const data = await createAssetsList({
+    exchangeAuthority,
+    collateralToken,
+    collateralTokenFeed,
+    connection,
+    wallet,
+    exchangeAdmin: wallet,
+    exchange,
+    snyReserve: snyReserve,
+    snyLiquidationFund: snyLiquidationFund
+  })
+  const assetsList = data.assetsList
+  console.log('set assets list')
+  await sleep(25000)
+
+  await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
+  while (true) {
+    await sleep(2000)
+    try {
+      console.log('state ')
+      console.log(await exchange.getState())
+      break
+    } catch (error) {
+      console.log(error)
+      console.log('not found ')
+    }
+  }
   exchange = await Exchange.build(
     connection,
     Network.LOCAL,
@@ -157,7 +189,6 @@ const main = async () => {
     const addEthSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: newToken.publicKey,
       assetsList,
-      decimals: asset.decimals + 1,
       maxSupply: asset.limit,
       priceFeed: asset.priceFeed
     })
@@ -166,9 +197,6 @@ const main = async () => {
   await sleep(5000)
   const state = await exchange.getState()
   await sleep(12000)
-  await exchange.updatePrices(state.assetsList)
-  await sleep(12000)
-  await exchange.updatePrices(state.assetsList)
   await exchange.updatePrices(state.assetsList)
   const assets = await exchange.getAssetsList(state.assetsList)
 

@@ -78,7 +78,6 @@ export class Exchange {
       instance.program.programId
     )
     instance.stateAddress = stateAddress
-    await instance.getOnlyState()
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
