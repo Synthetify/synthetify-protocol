@@ -125,13 +125,7 @@ const main = async () => {
     }
   }
   await sleep(5000)
-  exchange = await Exchange.build(
-    connection,
-    Network.LOCAL,
-    provider.wallet,
-    exchangeAuthority,
-    exchangeProgramId
-  )
+
   await sleep(5000)
   console.log('Create Asset List')
   const data = await createAssetsList({
@@ -150,7 +144,24 @@ const main = async () => {
   await sleep(25000)
 
   await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
-
+  while (true) {
+    await sleep(2000)
+    try {
+      console.log('state ')
+      console.log(await exchange.getState())
+      break
+    } catch (error) {
+      console.log(error)
+      console.log('not found ')
+    }
+  }
+  exchange = await Exchange.build(
+    connection,
+    Network.LOCAL,
+    provider.wallet,
+    exchangeAuthority,
+    exchangeProgramId
+  )
   // await exchange.getState()
   console.log('Initialize Tokens')
 
