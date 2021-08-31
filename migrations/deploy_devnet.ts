@@ -59,10 +59,10 @@ const connection = new web3.Connection(
 provider.connection = connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '6NriRyuF2JThPkyMVdosPTHCEkLEwhkUf6Nz8fFJQszu'
+  '47ctfGLr8stNjoANYBQuziZpbn9en1k8UAA5wua2cWjP'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'HJ1ApW2wzGgGgnQhsBPJAxcCUKNdpRW623kunQkwca4Z'
+  'FCsgHG9zUBdUC6VPKXVAFnM5UBAyNnmjkLMXZbdN2sL3'
 )
 const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
 
@@ -113,6 +113,8 @@ const main = async () => {
     stakingFundAccount: stakingFundAccount,
     exchangeAuthority: exchangeAuthority
   })
+  await sleep(5000)
+
   while (true) {
     await sleep(2000)
     try {
@@ -124,9 +126,7 @@ const main = async () => {
       console.log('not found ')
     }
   }
-  await sleep(5000)
 
-  await sleep(5000)
   console.log('Create Asset List')
   const data = await createAssetsList({
     exchangeAuthority,
@@ -140,10 +140,10 @@ const main = async () => {
     snyLiquidationFund: snyLiquidationFund
   })
   const assetsList = data.assetsList
-  console.log('set assets list')
-  await sleep(25000)
 
+  console.log('Set assets list')
   await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
+
   while (true) {
     await sleep(2000)
     try {
@@ -155,6 +155,7 @@ const main = async () => {
       console.log('not found ')
     }
   }
+
   exchange = await Exchange.build(
     connection,
     Network.LOCAL,
