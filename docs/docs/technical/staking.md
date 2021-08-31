@@ -75,3 +75,27 @@ While finished round lasts user can claim it's rewards. Actually it does not req
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+
+
+## Withdraw rewards
+
+User can withdraw it's claimed rewards using [this](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1000-L1035) function. It transfers claimed amount to specified account in SNY token. Method takes a following context:
+
+
+    struct WithdrawRewards<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub owner: AccountInfo<'info>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub token_program: AccountInfo<'info>,
+        pub user_token_account: CpiAccount<'info, TokenAccount>,
+        pub staking_fund_account: CpiAccount<'info, TokenAccount>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+  * **owner** - owner of _exchange account_
+  * **exchange_authority** - pubkey of exchange program
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **user_token_account** - users account on 
+  * **staking_fund_account** - account from which tokens will be transferred, same as in [*Staking*](/docs/technical/staking#staking-structure) struct
