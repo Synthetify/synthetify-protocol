@@ -32,14 +32,9 @@ Maximum amount of tokens user can mint is their mint limit. It's calculated by m
 
 ## Mint
 
-To get Synthetic tokens you have to mint them. Only xUSD can be minted. 
+User can get xUSD by minting it. Afterwards it can be swapped for other synthetics. Method responsible for minting is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L258-L314). It checks if [debt](/docs/technical/synthetics#debt) and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
 
-It check if sum of debt and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
-
-
-### Mint method
-
-Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L258-L314) and takes _amount_ (u64) and following context
+It takes _amount_ (u64) and following context
 
     struct Mint<'info> {
         pub state: Loader<'info, State>,
@@ -64,11 +59,7 @@ Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/
 
 
 ## Burn
-User can burn only xUSD.
-TODO: finish this
-
-### Burn method
-
+User can burn only xUSD. Burning reduces users debt and allows it to withdraw tokens used as collateral. Burning tokens reduces [rewards](#) in *current_round*.
 Method responsible for burning is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L539-L661). It takes _amount_ (u64) and this context:
 
     struct BurnToken<'info> {
@@ -88,6 +79,62 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **user_token_account_burn** - account on token from which tokens will be burned
+  * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
+  * **owner** - owner of _exchange account_
+
+
+## Swap 
+Synthetic tokens can be swapped inside exchange. Constant fee is 0.3% for all pairs. Having SNY as a collateral gives user a discount
+
+
+### Discount
+
+  Discount is calculated [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/math.rs#L151-L177) as a percentage of fee. 
+
+  100 => 0%  
+  200 => 1%  
+  500 => 2%  
+  1_000 => 3%  
+  2_000 => 4%  
+  5_000 => 5%  
+  10_000 => 6%  
+  25_000 => 7%  
+  50_000 => 8%  
+  100_000 => 9%  
+  250_000 => 10%  
+  250_000 => 10%  
+  500_000 => 11%  
+  1_000_000 => 12%  
+  2_000_000 => 13%  
+  5_000_000 => 14%  
+  10_000_000 => 15%  
+
+
+### Swap method
+
+Method defined for swap is defined here [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L470-L580). It burns one token, charges fee, and reduced mints reduced amount of the other token. It takes amount (u64) and a following context: 
+
+    struct Swap<'info> {
+        pub state: Loader<'info, State>,
+        pub exchange_authority: AccountInfo<'info>,
+        pub assets_list: Loader<'info, AssetsList>,
+        pub token_program: AccountInfo<'info>,
+        pub token_in: CpiAccount<'info, anchor_spl::token::Mint>,
+        pub token_for: CpiAccount<'info, anchor_spl::token::Mint>,
+        pub user_token_account_in: CpiAccount<'info, TokenAccount>,
+        pub user_token_account_for: CpiAccount<'info, TokenAccount>,
+        pub exchange_account: Loader<'info, ExchangeAccount>,
+        pub owner: AccountInfo<'info>,
+    }
+
+  * **state** - account with [data of the program](/docs/technical/state)
+  * **exchange_authority** - pubkey of exchange program
+  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_in** - token which is send to exchange
+  * **token_for** - token which is send back to user
+  * **user_token_account_in** - user's account from which tokens will be taken
+  * **user_token_account_for** - user's account to which tokens will be send
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
   * **owner** - owner of _exchange account_
 
