@@ -12,7 +12,7 @@ Collateral allows user to have debt and to mint tokens up to [_mint limit_](/doc
 
 ## Deposit
 
-To have a collateral user has to deposit it. Method responsible for it takes _amount (u64)_ and a following context: 
+To have a collateral user has to deposit it. Method responsible for it takes amount (u64) and a following context: 
 
     // Constraints were removed for simplicity 
     struct Deposit<'info> {
@@ -67,10 +67,11 @@ Unused collateral can be withdrawn. Tokens can be withdrawn up to difference bet
 
 Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntries_. Each of them corresponds to different deposited token and look like this:
 
-    struct CollateralEntry {
-        amount: u64,
-        collateral_address: Pubkey,
-        index: u8,
+    pub struct CollateralEntry {
+        // 41
+        pub amount: u64,                // 8
+        pub collateral_address: Pubkey, // 32
+        pub index: u8,                  // 1
     }
 
   * **amount** - amount of tokens, with decimals as in [_Collateral_](/docs/technical/state#collateral-asset) structure
@@ -80,7 +81,7 @@ Inside _ExchangeAccount_ collateral is stored as one of up to 32 _CollateralEntr
 
 ## Liquidation
 
-When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to drop in price of collateral tokens or increase in debt per [*debt_share*]. When that happens and *check_account_collateralization* function is run liquidation deadline is set. 
+When value of user debt in USD exceeds value of it's collateral there is a risk of liquidation. This can happen due to drop in price of collateral tokens or increase in debt per [*debt_share*](/docs/technical/synthetics#debt). When that happens and account will be _checked_ (see below) liquidation deadline is set. 
 If after certain buffer time user doesn't deposit collateral or burn synthetics account will be liquidated and part of collateral taken.
 
 
@@ -131,4 +132,4 @@ Liquidation method is defined [here](https://github.com/Synthetify/synthetify-pr
   * **liquidation_fund** - account where liquidation penalty is kept
   * **reserve_account** - account with collateral tokens belonging to exchange
 
-This method checks if *liquidation_deadline* has passed and debt exceeds value of collateral. If so it proceeds to liquidate specified amount up to *liquidation_rate* increased by liquidation penalties. Liquidators xUSD is burned and liquidated users debt_shares decreased. Collateral together with *penalty_to_liquidator* (percentage of liquidated amount) goes to user account and *penalty_to_exchange* to *liquidation_fund*
+This method checks if *liquidation_deadline* has passed and debt exceeds value of collateral. If so it proceeds to liquidate specified amount up to *liquidation_rate* of total collateral increased by liquidation penalties. Liquidators xUSD is burned and liquidated users debt_shares decreased. Collateral together with *penalty_to_liquidator* (percentage of liquidated amount) goes to user account and *penalty_to_exchange* to *liquidation_fund*.
