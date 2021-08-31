@@ -12,23 +12,24 @@ import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
+console.log(EXCHANGE_ADMIN.publicKey.toBase58())
 const initialTokens = [
   {
     price: 50000,
     ticker: Buffer.from('xBTC'),
-    decimals: 8,
+    decimals: 10,
     limit: new BN(1e12)
   },
   {
     price: 36,
     ticker: Buffer.from('xSOL'),
-    decimals: 6,
-    limit: new BN(1e12)
+    decimals: 9,
+    limit: new BN(1e10)
   },
   {
     price: 5,
-    ticker: Buffer.from('xSRM'),
-    decimals: 6,
+    ticker: Buffer.from('xFTT'),
+    decimals: 8,
     limit: new BN(1e12)
   }
 ]
@@ -41,10 +42,10 @@ const provider = Provider.local('http://127.0.0.1:8899', {
   // skipPreflight: true
 })
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '3n8LkY6AHFint9qXGASDuFbPDNsxfQjfQPoGBEtsQWeM'
+  '9aYSwzMQe6zL5Ubr55nJppCKgn2HonoijF3t7Zac4Leo'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'BhxjwhwdgsgjL3RZC7KqFydCyE3KPMzxSAMdP3sdWZhw'
+  'CfsrdaFYHGiVn1ndCn9L8utvfKQJVbBgsuog9Ft3WEMK'
 )
 const authority = 'CvStoyXqhnJY4dV34EM3GC83SFtFxQm8bU7YhoPHpBf9'
 
@@ -89,28 +90,46 @@ const main = async () => {
     exchangeProgramId
   )
 
-  const data = await createAssetsList({
-    exchangeAuthority,
-    collateralToken,
-    collateralTokenFeed,
-    connection,
-    wallet,
-    exchange,
-    snyReserve,
-    snyLiquidationFund
-  })
-  const assetsList = data.assetsList
-  console.log('Initialize Exchange')
-  await sleep(5000)
+  console.log('Init exchange')
   await exchange.init({
     admin: wallet.publicKey,
-    assetsList,
     nonce,
     amountPerRound: new BN(100 * 1e6),
     stakingRoundLength: 100,
     stakingFundAccount: stakingFundAccount,
     exchangeAuthority: exchangeAuthority
   })
+  await sleep(5000)
+
+  while (true) {
+    await sleep(2000)
+    try {
+      console.log('state ')
+      console.log(await exchange.getOnlyState())
+      break
+    } catch (error) {
+      console.log(error)
+      console.log('not found ')
+    }
+  }
+
+  console.log('Create Asset List')
+  const data = await createAssetsList({
+    exchangeAuthority,
+    collateralToken,
+    collateralTokenFeed,
+    connection,
+    wallet,
+    exchangeAdmin: wallet,
+    exchange,
+    snyReserve: snyReserve,
+    snyLiquidationFund: snyLiquidationFund
+  })
+  const assetsList = data.assetsList
+
+  console.log('Set assets list')
+  await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
+
   while (true) {
     await sleep(2000)
     try {
@@ -118,11 +137,11 @@ const main = async () => {
       console.log(await exchange.getState())
       break
     } catch (error) {
+      console.log(error)
       console.log('not found ')
     }
   }
 
-  await sleep(5000)
   exchange = await Exchange.build(
     connection,
     Network.LOCAL,
@@ -163,7 +182,6 @@ const main = async () => {
     const addEthSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: newToken.publicKey,
       assetsList,
-      decimals: asset.decimals + 1,
       maxSupply: asset.limit,
       priceFeed: oracleAddress
     })
