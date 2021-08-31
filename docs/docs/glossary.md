@@ -35,7 +35,7 @@ Synthetic tokens can be burned by Stakers to reduce their debt and free collater
 
 ### Rewards
 
-For participating in debt pool you get some SNY token. Details of getting it are [here](http://localhost:3000/docs/staking#rewards).
+For participating in debt pool you get some SNY token. Details of getting it are [here](/docs/staking#rewards).
 
 ### Collateral
 
