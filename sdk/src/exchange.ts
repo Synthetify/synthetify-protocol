@@ -121,13 +121,12 @@ export class Exchange {
   public async setAssetsList({ exchangeAdmin, assetsList }: SetAssetsList) {
     await this.program.rpc.setAssetsList({
       accounts: {
-        assetsList,
+        assetsList: assetsList,
         state: this.stateAddress,
-        admin: this.state.admin
+        admin: exchangeAdmin.publicKey
       },
       signers: [exchangeAdmin]
     })
-    this.state.assetsList = assetsList
   }
   public async setAssetsListInstruction(assetsList: PublicKey) {
     return (await this.program.instruction.setAssetsList({
@@ -1053,7 +1052,7 @@ export class Exchange {
     const assetListAccount = Keypair.generate()
     await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
-        admin: this.state.admin,
+        admin: admin.publicKey,
         state: this.stateAddress,
         assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,
