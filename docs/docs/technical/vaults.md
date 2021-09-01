@@ -34,14 +34,14 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **synthetic** - address of synthetic token
   * **collateral** - address of token used as collateral
   * **debt_interest_rate** - amount of yearly interest rate (charged minutely)
-  * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be borrowed using it
-  * **liquidation_threshold** - ratio of debt to value of collateral when account can be liquidated
+  * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be [borrowed](#borrow) using it
+  * **liquidation_threshold** - ratio of debt to value of collateral when account can be [liquidated](#liquidation)
   * **liquidation_ratio** - percentage of user's collateral that can be liquidated at once
   * **liquidation_penalty_liquidator** - percentage of additional collateral going to liquidator
   * **liquidation_penalty_exchange** - percentage of liquidation that goes to liquidation fund as a penalty
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
-  * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for deposit to staking)
+  * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for [deposit](/docs/technical/collateral#deposit) to staking)
   * **mint_amount** - amount already minted (both amount borrowed and interest)
   * **collateral_amount** - amount of deposited collateral in reserve
   * **max_borrow** - limit of total synthetic that can be borrowed
@@ -89,7 +89,7 @@ Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/
   * **vault_entry** - user account in vault
   * **owner** - pubkey belonging to owner of the account
   * **vault** - vault for which entry is created
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **synthetic** - address of synthetic token used as a seed for entry
   * **collateral** - address of collateral token also used as seed
   * **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), needed to create account
@@ -210,7 +210,7 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
   * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
   * **synthetic** - address of token used as a synthetic
   * **collateral** - address of token used as collateral
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **user_token_account_repay** - account from with tokens will be repaid
   * **owner** - owner of _VaultEntry_ and collateral amount, signer of transaction
   * **exchange_authority** - pubkey of exchange program
@@ -243,7 +243,7 @@ Function responsible for liquidation is defined [here](https://github.com/Synthe
   * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
   * **synthetic** - address of token used as a synthetic
   * **collateral** - address of token used as collateral
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')  
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)  
   * **collateral_reserve** - address of account where deposited tokens are kept
   * **liquidator_synthetic_account** - account from which synthetic tokens will be repaid
   * **liquidator_collateral_account** - account to which collateral tokens will be transferred

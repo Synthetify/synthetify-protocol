@@ -48,7 +48,7 @@ It takes _amount_ (u64) and following context
     }
 
   * **state** - account with [data of the program](/docs/technical/state)
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **exchange_authority** - pubkey of exchange program
   * **usd_token** - address of xUSD token
   * **to** - account to which xUSD is minted
@@ -112,7 +112,7 @@ Synthetic tokens can be swapped inside exchange. Constant fee is 0.3% for all pa
 
 ### Swap method
 
-Method defined for swap is defined here [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L470-L580). It burns one token, charges fee, and reduced mints reduced amount of the other token. It takes amount (u64) and a following context: 
+Method defined for swap is defined here [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L470-L580). It burns one token, charges fee and mints reduced amount of the other token. It takes amount (u64) and a following context: 
 
     struct Swap<'info> {
         pub state: Loader<'info, State>,
@@ -129,7 +129,7 @@ Method defined for swap is defined here [here](https://github.com/Synthetify/syn
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - pubkey of exchange program
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **token_in** - token which is send to exchange
   * **token_for** - token which is send back to user

@@ -21,8 +21,8 @@ Swapline is more straightforward way to get synthetic tokens. It exists to keep 
         pub bump: u8,                   // 1
     }
 
-- **synthetic** - address of synthetic token
-- **collateral** - address of collateral token
+- **synthetic** - address of [synthetic](/docs/technical/state#synthetic-asset) token
+- **collateral** - address of [collateral](/docs/technical/state#collateral-asset) token
 - **fee** - percentage of every swap taken as fee
 - **accumulated_fee** - total amount of fee, can be withdrawn by admin
 - **balance** - amount of tokens in reserve
@@ -35,7 +35,7 @@ Swapline is more straightforward way to get synthetic tokens. It exists to keep 
 
 Tokens can be swapped from collateral to synthetic as long as total amount swapped is below swapline limit. Appropriate function is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/c7c309d4b6c393018477e03cfafce6df9414e86f/programs/exchange/src/lib.rs#L1633-L1691).
 
-They can also be swapped back from synthetic to collateral, as long as there is enough tokens in *collateral_reserve* (same as _balance_). Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/acbb2260c3eaee568e1f328c01db7c64fe868aae/programs/exchange/src/lib.rs#L1692-L1748).
+They can also be swapped back from synthetic to collateral, as long as there is enough tokens in *collateral_reserve* (_balance_). Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/acbb2260c3eaee568e1f328c01db7c64fe868aae/programs/exchange/src/lib.rs#L1692-L1748).
 
 As both of these functions are so similar, they both take amount (u64) and the same struct: 
 
@@ -59,7 +59,7 @@ As both of these functions are so similar, they both take amount (u64) and the s
   * **collateral** - address of collateral token
   * **user_collateral_account** - user account on collateral token
   * **user_synthetic_account** - user account on synthetic token
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **collateral_reserve** - account with collateral tokens
   * **signer** - owner of accounts on tokens
   * **exchange_authority** - pubkey of exchange program

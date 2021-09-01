@@ -31,7 +31,7 @@ Synthetify is available 24/7. Trading and minting can be done at any time.
 
 **8. What wallets can I use?**
 
-There are three wallets which can be connected: Phantom, Sollet.
+There are two wallets which can be connected: Phantom, Sollet.
 
 **9. Is it required to have SNY to use Synthetify?**
 

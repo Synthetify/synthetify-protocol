@@ -31,7 +31,7 @@ To have a collateral user has to deposit it. Method responsible for it takes amo
   * **reserve_address** - account belonging to exchange where deposited collaterals are kept
   * **user_collateral_account** - user account with deposited tokens
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **owner** - owner of collateral, doesn't have be own the _Exchange Account_
   * **exchange_authority** - pubkey belonging to the exchange, used to sign transactions
 
@@ -54,7 +54,7 @@ Unused collateral can be withdrawn. Tokens can be withdrawn up to difference bet
     }
 
   * **state** - account with [data of the program](/docs/technical/state)
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **exchange_authority** - pubkey of the exchange
   * **reserve_account** - account where deposited tokens are kept, must be the same as in [*Collateral*](/docs/technical/state#collateral-asset) struct
   * **user_collateral_account** - tokens where collateral will be send
@@ -97,7 +97,7 @@ Function responsible for it is defined [here](https://github.com/Synthetify/synt
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_account** - account with [user's](/docs/technical/account) collateral
-  * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
+  * **assets_list** - list of [assets](/docs/technical/state#assetslist-structure), containing prices
 
 Method calculates [debt](/docs/technical/synthetics#debt) with [interest rate](/docs/technical/synthetics#interest-rate) as well as *max_debt* based on collateral and compares them. If debt is greater *liquidation_deadline* is set at current [slot](https://docs.solana.com/terminology#slot) increased by *liquidation_buffer*. When slot catches up to it user can be liquidated.
 
@@ -122,7 +122,7 @@ Liquidation method is defined [here](https://github.com/Synthetify/synthetify-pr
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - pubkey belonging to the exchange, used to sing transactions
-  * **assets_list** - list of [assets]('/docs/technical/state#assetslist-structure'), containing prices
+  * **assets_list** - list of [assets](/docs/technical/state#assetslist-structure), containing prices
   * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **liquidator_usd_account** - signer's account on xUSD token
