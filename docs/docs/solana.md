@@ -4,7 +4,7 @@ title: Solana
 slug: /solana
 ---
 
-Solana is an open source blockchain project. Its architecture is based on Proof of History. The main assumption of its architecture is to prove existance of combination software algorithms set and blockchain implementation which removes software as a performance bottleneck.
+Solana is an open source blockchain project. Its architecture is based on Proof of History. The main assumption of its architecture is to prove existence of combination software algorithms set and blockchain implementation which removes software as a performance bottleneck.
 
 Solana has a mechanism for time synchronization. All nodes elect the one node leader, which provides universal source of time for all of them in a decentralized network, which means that transactions need less time to be verified.
 

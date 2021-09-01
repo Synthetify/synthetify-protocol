@@ -70,8 +70,8 @@ Next, your wallet wants you to confirm the transaction. Check whether all inform
 If everything went smoothly, you should see that:
 
 - Current Debt increased by the amount you minted
-- Collaterial Ratio decreased
-- On the right of _Mint_ button, there is a green tick and an informaton _Successfully minted_
+- Collateral Ratio decreased
+- On the right of _Mint_ button, there is a green tick and an information _Successfully minted_
 - On the bottom left of the site, you can see a green field _Successfully minted xUSD_ (not shown here)
 
 ![Mint-Confirmation](https://i.imgur.com/ttfW3iJ.png)
@@ -99,8 +99,8 @@ Next, your wallet wants you to confirm the transaction. Check whether all inform
 If everything went smoothly, you should see that:
 
 - Current Debt decreased by the amount you withdrew
-- Collaterial Ratio decreased
-- On the right of _Wihdraw_ button, there is a green tick and an informaton _Successfully withdrawn_
+- Collateral Ratio decreased
+- On the right of _Withdraw_ button, there is a green tick and an information _Successfully withdrawn_
 - In section _Owned tokens_ amount of SNY tokens increased by those you withdrew
 - On the down left of the site, you can see a green field _Successfully withdraw Collateral_.
 
