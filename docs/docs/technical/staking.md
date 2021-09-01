@@ -30,7 +30,7 @@ Data about staking rounds is kept inside state in _Staking_ struct:
 
 ### Staking Round
 
-Staking round keeps data about single round. All three of them are in continuous rotation, just as [here](https://github.com/Synthetify/synthetify-protocol/blob/2fb834ffd651504e13a0ffd2a4b40bcbbaa6af85/programs/exchange/src/utils.rs#L35-L125)
+Staking round keeps data about single round. All three of them are in continuous rotation, just as [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/utils.rs#L35-L125)
 
     pub struct StakingRound {
         // 33
@@ -46,7 +46,7 @@ Staking round keeps data about single round. All three of them are in continuous
 
 ## User Staking
 
-User's staking point rounds are updated [here](https://github.com/Synthetify/synthetify-protocol/blob/06fb1f2ab8e9d095cef9f4216ed53a97ad81a847/programs/exchange/src/utils.rs#L126-L145). They are also updated [in mint](https://github.com/Synthetify/synthetify-protocol/blob/06fb1f2ab8e9d095cef9f4216ed53a97ad81a847/programs/exchange/src/lib.rs#L339-L341) and [in burn](https://github.com/Synthetify/synthetify-protocol/blob/06fb1f2ab8e9d095cef9f4216ed53a97ad81a847/programs/exchange/src/lib.rs#L650-L675).
+User's staking point rounds are updated [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/utils.rs#L126-L145). They are also updated [in mint](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L349-L350) and [in burn](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L660-L685).
 
     pub struct UserStaking {
         // 49
@@ -79,7 +79,7 @@ While finished round lasts user can claim it's rewards. Actually it does not req
 
 ## Withdraw rewards
 
-User can withdraw it's claimed rewards using [this](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1000-L1035) function. It transfers claimed amount to specified account in SNY token. Method takes a following context:
+User can withdraw it's claimed rewards using [this](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1010-L1045) function. It transfers claimed amount to specified account in SNY token. Method takes a following context:
 
 
     struct WithdrawRewards<'info> {

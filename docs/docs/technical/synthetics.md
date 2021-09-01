@@ -11,7 +11,7 @@ By minting synthetic assets user enters the _debt pool_. To do it it needs to de
 
 Debt is stored as *debt_shares* in [_ExchangeAccount_](/docs/technical/account). To convert it to actual amount total amount of *debt_shares* from [state](/docs/technical/state#structure-of-state) and a total debt calculated from supply (excluding borrowed and swapline supplies).
 
-Total debt is calculated [here](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/exchange/src/math.rs#L12-L33) as a sum of all minted assets converted to USD.
+Total debt is calculated [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/math.rs#L14-L42) as a sum of all minted assets converted to USD.
 
 
 ### Interest rate 
@@ -32,7 +32,7 @@ Maximum amount of tokens user can mint is their mint limit. It's calculated by m
 
 ## Mint
 
-User can get xUSD by minting it. Afterwards it can be swapped for other synthetics. Method responsible for minting is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L258-L314). It checks if [debt](/docs/technical/synthetics#debt) and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
+User can get xUSD by minting it. Afterwards it can be swapped for other synthetics. Method responsible for minting is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L299-L360). It checks if [debt](/docs/technical/synthetics#debt) and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
 
 It takes _amount_ (u64) and following context
 
@@ -60,7 +60,7 @@ It takes _amount_ (u64) and following context
 
 ## Burn
 User can burn only xUSD. Burning reduces users debt and allows it to withdraw tokens used as collateral. Burning tokens reduces [rewards](#/docs/technical/staking#staking-structure) in *current_round*.
-Method responsible for burning is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/cb56d5f6aa971375d651ae452c216d42203c511a/programs/exchange/src/lib.rs#L539-L661). It takes _amount_ (u64) and this context:
+Method responsible for burning is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L581-L697). It takes _amount_ (u64) and this context:
 
     struct BurnToken<'info> {
         pub state: Loader<'info, State>,
@@ -168,7 +168,7 @@ Data needed for settlement is stored in this structure:
 
 ### Swapping settled synthetic
 
-Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/exchange/src/lib.rs#L1362-L1393). It gets specified amount and uses above structure to swap it for xUSD. It takes single number _amount_ (u64) and a following context:
+Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1541-L1565). It gets specified amount and uses above structure to swap it for xUSD. It takes single number _amount_ (u64) and a following context:
 
     struct SwapSettledSynthetic<'info> {
         pub settlement: Loader<'info, Settlement>,

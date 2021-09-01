@@ -61,7 +61,7 @@ Respectively these fields are used for:
   * **padding** - used as padding to reserve space up to 2kB for future use
 
 
-State is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/c643113f47b65b947a55bfe80193570e96d3ccba/programs/exchange/src/lib.rs#L2035-L2056). It can later be changed using admin methods signed by the admin.
+State is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L180-L239). It can later be changed using admin methods signed by the admin.
 
 
 ## Assets
@@ -105,7 +105,7 @@ Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of 
 * **last_update** - slot of last price update
 * **twap** - stands for [Time-weighted average price](https://en.wikipedia.org/wiki/Time-weighted_average_price)
 * **twac** - stands for Time-weighted average confidence
-* **status** - status taken from oracle saved as [_PriceStatus_](https://github.com/Synthetify/synthetify-protocol/blob/4c39873b86324348c40c9677fac15db4f6a48dce/programs/pyth/src/pc.rs#L14-L19), token can be swapped only of status is equal to 1
+* **status** - status taken from oracle saved as [_PriceStatus_](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/pyth/src/pc.rs#L14-L19), token can be swapped only of status is equal to 1
 * **confidence** - confidence of price in USD
 
 Every collateral asset and every synthetic assets has to have corresponding _Asset_ but they can share it. For example BTC and xBTC will have common _Asset_ as they share a price.

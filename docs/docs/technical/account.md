@@ -35,7 +35,7 @@ The data structure is defined like this:
 
 ### Account Creation
 
-Function creating _Exchange Account_ is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/ef5e4a65e3009e8a957d3382fc67d3b721115af8/programs/exchange/src/lib.rs#L24-L33), it takes a single argument of bump (u8) and the following _Context_
+Function creating _Exchange Account_ is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L33-L43), it takes a single argument of bump (u8) and the following _Context_
 
     pub struct CreateExchangeAccount<'info> {
         #[account(init,seeds = [b"accountv1", owner.key.as_ref(), &[bump]], payer=payer )]
