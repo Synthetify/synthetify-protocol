@@ -69,7 +69,7 @@ There are three stages of providing liquidity:
 2. Staking
 3. Claiming.
 
-In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing all previously earned rewards.
+In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing earned rewards.
 
 ### Listing new assets
 

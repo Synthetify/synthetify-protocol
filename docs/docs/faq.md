@@ -31,7 +31,7 @@ Synthetify is available 24/7. Trading and minting can be done at any time.
 
 **8. What wallets can I use?**
 
-There are two wallets which can be connected: Phantom, Sollet.
+There are two wallets which can be connected: Phantom and Sollet.
 
 **9. Is it required to have SNY to use Synthetify?**
 
@@ -43,15 +43,15 @@ Minting is the process of creation of the synthetic asset. For more information,
 
 **11. What are the costs of using Synthetify?**
 
-Costs are adjusted to the current market situation. For now it is 0.3%. User who hold sufficient collateral in SNY, gets an additional discount.
+Costs are adjusted to the current market situation. For now it is 0.3%. Users who hold sufficient collateral in SNY, will get an additional discount.
 
-**12. Are there any benefits from providing liquidity?**
+**12. Are there any benefits from staking?**
 
-Participants of the debt pool earn pro rata shares of the exchange fees for acting as a counterparty during trades.
+Participants of the debt pool earn pro rata shares of the exchange fees.
 
-**13. Is there any risk to providing liquidity to the pools?**
+**13. Is there any risk to participating in the pool?**
 
-The pool debt participant can remove their liquidity at any time. There is no risk of loosing SNY tokens. However its price is affected by market fluctuations, which means that the return on providing liquidity may be less than the absolute price variation.
+The pool debt participant can remove their liquidity at any time. There is no risk of loosing SNY tokens. However its price is affected by market fluctuations, which means that the rewards may be less than the absolute price variation.
 
 **14. How can I verify that the transaction was completed?**
 
