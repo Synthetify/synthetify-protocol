@@ -85,6 +85,7 @@ describe('settlement', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,

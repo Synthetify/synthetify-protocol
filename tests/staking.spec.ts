@@ -88,6 +88,7 @@ describe('staking', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -111,8 +112,8 @@ describe('staking', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
-
     const state = await exchange.getState()
+
     nextRoundStart = state.staking.nextRound.start
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })

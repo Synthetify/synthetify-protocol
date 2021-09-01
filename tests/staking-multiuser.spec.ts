@@ -86,6 +86,7 @@ describe('staking with multiple users', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,

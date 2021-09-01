@@ -86,6 +86,7 @@ describe('max collaterals', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -111,6 +112,7 @@ describe('max collaterals', () => {
     reserves.push(await usdToken.createAccount(exchangeAuthority))
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     healthFactor = (await exchange.getState()).healthFactor

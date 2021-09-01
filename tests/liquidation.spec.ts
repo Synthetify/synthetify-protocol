@@ -102,6 +102,7 @@ describe('liquidation', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -109,7 +110,6 @@ describe('liquidation', () => {
       exchangeAuthority,
       exchangeProgram.programId
     )
-    await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     const data = await createAssetsList({
       exchangeAuthority,
@@ -126,6 +126,7 @@ describe('liquidation', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
 
     snyCollateral = (await exchange.getAssetsList(assetsList)).collaterals[0]

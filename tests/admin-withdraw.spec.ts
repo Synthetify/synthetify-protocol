@@ -95,6 +95,7 @@ describe('admin', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -119,6 +120,7 @@ describe('admin', () => {
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
 
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   it('should initialized interest debt and swap tax parameters', async () => {

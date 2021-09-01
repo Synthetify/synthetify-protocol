@@ -118,6 +118,7 @@ describe('vaults', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -141,6 +142,7 @@ describe('vaults', () => {
     xusdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
 
     // create USDC collateral token
     const { feed, token } = await createCollateralToken({

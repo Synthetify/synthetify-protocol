@@ -92,6 +92,7 @@ describe('swap-line', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -115,6 +116,7 @@ describe('swap-line', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
 
