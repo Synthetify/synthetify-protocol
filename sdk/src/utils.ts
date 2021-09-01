@@ -247,10 +247,11 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HPxzYx1doGTbwJx6AJmtsx1iN53v6sV2nPy7VgeA5aJ7: 'xSOL',
   '2HnwLrUhdkUg7zLmC2vaU9gVppkLo9WMPHyJK49h9SRa': 'xSRM',
   //Dev
-  ESUBHs54VvnFrtaCFuQC85icCuGV2hRpSjA9pDZBz7W: 'xUSD',
-  F13FHBPHYiGkZSrdMe3jdZLr2H3XZFXoQsA6SeqScQuT: 'SNY',
-  '4DVgM2JMzzmzeYbKVcJHjJgtL89ZP9EGuxxRJqQCYG2H': 'xBTC',
-  '6k1x7ubcQAyjjuvUXxwv9CBuY5E67zY66Xf8Ph89io1n': 'xSOL',
-  CNqaxkv91uJHMU6UccVCni7YfmU1djMS26TGGqCPEgeb: 'xSRM',
+  '6w9cNSAchLU4FSupCc2hMT3fkppABrZZPx6AZzojvzwe': 'xUSD',
+  '2QbRGihC3TZT2mGU2ezV977fFBHS5AG6Amg4iSGbam8g': 'SNY',
+  HuEFyTFMfQzxfFMAz4j91GzhiDc4DFx72Z1mLunsBLyQ: 'xBTC',
+  E5626Ue9L5uS2vQvB3ovVakbUJUzmxp2AUmEYd9w2sgG: 'xSOL',
+  JBnMgsHi2VZ7QzUHA8Yvdve7Dn9yeXi3EF8sLvo8ZevC: 'xFTT',
+  '9N7FjVABh8Uwfcq7XF3FGK8H4g7bd55Qnu2Rh34j7yaW': 'xETH',
   So11111111111111111111111111111111111111112: 'WSOL'
 }
