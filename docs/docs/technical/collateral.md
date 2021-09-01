@@ -40,7 +40,7 @@ Deposit instruction has to be preceded by an [approve](https://spl.solana.com/to
 
 ## Withdrawal 
 
-Unused collateral can be withdrawn. Tokens can be withdrawn up to difference between debt and collateral value multiplied by health factor. Passing u64::MAX will withdraw maximum valid amount. Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/d829d5e736035b75c6c5193d23411dfbf8617143/programs/exchange/src/lib.rs#L348-L456), takes amount (u64) and a following context: 
+Unused collateral can be withdrawn. Tokens can be withdrawn up to difference between debt and collateral value multiplied by health factor. Passing _u64::MAX_ will withdraw maximum valid amount. Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L361-L469), takes amount (u64) and a following context: 
 
     pub struct Withdraw<'info> {
         pub state: Loader<'info, State>,
@@ -87,7 +87,7 @@ If after certain buffer time user doesn't deposit collateral or burn synthetics 
 
 ### Checking collateralization
 
-Function responsible for it is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/e8e70a9928b3659b6aca80eeec540b67baf596d5/programs/exchange/src/lib.rs#L896-L929). It takes minimal context of: 
+Function responsible for it is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L928-L963). It takes minimal context of: 
 
     struct CheckCollateralization<'info> {
         pub state: Loader<'info, State>,
@@ -104,7 +104,7 @@ Method calculates [debt](/docs/technical/synthetics#debt) with [interest rate](/
 
 ### User Liquidation
 
-Liquidation method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/e8e70a9928b3659b6aca80eeec540b67baf596d5/programs/exchange/src/lib.rs#L704-L894) and takes amount (u64) and this context:
+Liquidation method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L698-L927) and takes amount (u64) and this context:
 
     pub struct Liquidate<'info> {
         pub state: Loader<'info, State>,
