@@ -13,7 +13,7 @@ export const DEV_NET = {
   exchangeAuthority: new PublicKey('Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i')
 }
 export const TEST_NET = {
-  exchange: new PublicKey('9buhRrePiSBr6no7mR8is5UAx19YXjLTJuPcuvg2LSSd'),
-  oracle: new PublicKey('8B1scSRf6xnYsQHdrwusF8kpSdEUZDcnFcNjRciSG96W'),
-  exchangeAuthority: new PublicKey('AddxzY6F4KEEEwgjfbwdpRuucxWcEzmEm1A1Yikc2SLW')
+  exchange: new PublicKey('9drf22jv2L8HvW3uDu7cmQTaYVoJM1W8cEjqD3NfDmAM'),
+  oracle: new PublicKey('4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'),
+  exchangeAuthority: new PublicKey('AHhuSXACqtyPfYZ7DZUg5xqPGViKux34hXTGqRNw392B')
 }
