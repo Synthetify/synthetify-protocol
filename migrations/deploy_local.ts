@@ -33,19 +33,17 @@ const initialTokens = [
     limit: new BN(1e12)
   }
 ]
-// const provider = Provider.local('https://api.devnet.solana.com', {
-//   // preflightCommitment: 'max',
-//   skipPreflight: true
-// })
 const provider = Provider.local('http://127.0.0.1:8899', {
   // preflightCommitment: 'max',
-  // skipPreflight: true
+  skipPreflight: true
 })
+const connection = provider.connection
+
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '9aYSwzMQe6zL5Ubr55nJppCKgn2HonoijF3t7Zac4Leo'
+  'F9enSoQWPEWJRYqmPohSMXaWSiwYuUhH4TLch6mvAaQ6'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'CfsrdaFYHGiVn1ndCn9L8utvfKQJVbBgsuog9Ft3WEMK'
+  '9vBBmJjzzDeq9ueet6ACKEUBYMM7SqZXY63mTgGPpHSG'
 )
 const authority = 'CvStoyXqhnJY4dV34EM3GC83SFtFxQm8bU7YhoPHpBf9'
 
@@ -79,7 +77,6 @@ const main = async () => {
   const snyLiquidationFund = await collateralToken.createAccount(exchangeAuthority)
   const stakingFundAccount = await collateralToken.createAccount(exchangeAuthority)
 
-  console.log('Create Asset List')
   let exchange: Exchange
   // @ts-expect-error
   exchange = new Exchange(
@@ -89,8 +86,9 @@ const main = async () => {
     exchangeAuthority,
     exchangeProgramId
   )
-
   console.log('Init exchange')
+  await sleep(1000)
+
   await exchange.init({
     admin: wallet.publicKey,
     nonce,
@@ -99,19 +97,16 @@ const main = async () => {
     stakingFundAccount: stakingFundAccount,
     exchangeAuthority: exchangeAuthority
   })
-  await sleep(5000)
+  await sleep(10000)
 
-  while (true) {
-    await sleep(2000)
-    try {
-      console.log('state ')
-      console.log(await exchange.getOnlyState())
-      break
-    } catch (error) {
-      console.log(error)
-      console.log('not found ')
-    }
-  }
+  exchange = await Exchange.build(
+    connection,
+    Network.LOCAL,
+    provider.wallet,
+    exchangeAuthority,
+    exchangeProgramId
+  )
+  await sleep(10000)
 
   console.log('Create Asset List')
   const data = await createAssetsList({
@@ -126,6 +121,7 @@ const main = async () => {
     snyLiquidationFund: snyLiquidationFund
   })
   const assetsList = data.assetsList
+  await sleep(10000)
 
   console.log('Set assets list')
   await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
@@ -142,14 +138,6 @@ const main = async () => {
     }
   }
 
-  exchange = await Exchange.build(
-    connection,
-    Network.LOCAL,
-    provider.wallet,
-    exchangeAuthority,
-    exchangeProgramId
-  )
-  // await exchange.getState()
   console.log('Initialize Tokens')
 
   for (const asset of initialTokens) {
