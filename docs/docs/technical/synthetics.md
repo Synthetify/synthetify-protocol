@@ -112,7 +112,7 @@ Synthetic tokens can be swapped inside exchange. Constant fee is 0.3% for all pa
 
 ### Swap method
 
-Method defined for swap is defined here [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L470-L580). It burns one token, charges fee and mints reduced amount of the other token. It takes amount (u64) and a following context: 
+Method responsible for swap is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L470-L580). It burns one token, charges fee and mints reduced amount of the other token. It takes amount (u64) and a following context: 
 
     struct Swap<'info> {
         pub state: Loader<'info, State>,

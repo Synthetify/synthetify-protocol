@@ -34,7 +34,7 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **synthetic** - address of synthetic token
   * **collateral** - address of token used as collateral
   * **debt_interest_rate** - amount of yearly interest rate (charged minutely)
-  * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be [borrowed](#borrow) using it
+  * **collateral_ratio** - ratio of collateral to synthetic that can be [borrowed](#borrow) using it
   * **liquidation_threshold** - ratio of debt to value of collateral when account can be [liquidated](#liquidation)
   * **liquidation_ratio** - percentage of user's collateral that can be liquidated at once
   * **liquidation_penalty_liquidator** - percentage of additional collateral going to liquidator
