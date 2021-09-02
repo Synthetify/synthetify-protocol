@@ -12,7 +12,6 @@ import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
-console.log(EXCHANGE_ADMIN.publicKey.toBase58())
 const initialTokens = [
   {
     price: 50000,

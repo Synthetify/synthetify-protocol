@@ -12,7 +12,6 @@ import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { createPriceFeed } from '../tests/oracleUtils'
 
-console.log(EXCHANGE_ADMIN.publicKey.toBase58())
 const initialTokens = [
   {
     price: 50000,
@@ -47,16 +46,7 @@ const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const connection = new web3.Connection(
-  'https://solana--devnet--rpc.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
-  {
-    wsEndpoint:
-      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
-    commitment: 'max'
-  }
-)
-//@ts-ignore
-provider.connection = connection
+const connection = provider.connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
   '5Jx2koXFSH1CNB5NKtACUh1zhNb1h2G27HKUzeYkUvS3'
