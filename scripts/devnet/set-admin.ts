@@ -1,6 +1,6 @@
 import { Provider } from '@project-serum/anchor'
 import { NATIVE_MINT, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { PublicKey, Transaction } from '@solana/web3.js'
+import { Account, PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { percentToDecimal, sleep, toDecimal } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
@@ -23,5 +23,7 @@ const main = async () => {
   await sleep(1000)
   const ix = await exchange.setAdmin(NEW_ADMIN)
   await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  // // @ts-expect-error
+  // await signAndSend(new Transaction().add(ix), [provider.wallet.payer as Account], connection)
 }
 main()

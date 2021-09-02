@@ -146,7 +146,6 @@ const main = async () => {
       console.log('not found ')
     }
   }
-
   console.log('Initialize Tokens')
 
   for (const asset of initialTokens) {
