@@ -11,7 +11,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   createAccountWithMultipleCollaterals,
   skipToSlot,
@@ -51,7 +51,7 @@ describe('staking', () => {
 
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -88,6 +88,7 @@ describe('staking', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -111,8 +112,8 @@ describe('staking', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
-
     const state = await exchange.getState()
+
     nextRoundStart = state.staking.nextRound.start
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })

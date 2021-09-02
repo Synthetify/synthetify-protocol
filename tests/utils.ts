@@ -16,7 +16,7 @@ import { Decimal, Synthetic } from '@synthetify/sdk/src/exchange'
 import { createPriceFeed } from './oracleUtils'
 import { divUp, toDecimal, UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
-export const SYNTHETIFY_ECHANGE_SEED = Buffer.from('Synthetify')
+export const SYNTHETIFY_EXCHANGE_SEED = Buffer.from('Synthetify')
 export const EXCHANGE_ADMIN = new Account()
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const U64_MAX = new BN('18446744073709551615')
@@ -179,7 +179,7 @@ export const newAccountWithLamports = async (connection, lamports = 1e10) => {
   await connection.requestAirdrop(account.publicKey, lamports)
   for (;;) {
     await sleep(500)
-    // eslint-disable-next-line eqeqeq
+    // eslint-disable-next-line
     if (lamports == (await connection.getBalance(account.publicKey))) {
       return account
     }
@@ -208,7 +208,7 @@ export interface IAccountWithMultipleCollaterals {
   amountOfCollateralToken: BN
   amountOfOtherToken: BN
 }
-export interface IAccountWithCollateralandMint {
+export interface IAccountWithCollateralAndMint {
   exchange: Exchange
   collateralTokenMintAuthority: PublicKey
   exchangeAuthority: PublicKey
@@ -317,7 +317,7 @@ export const createAccountWithCollateralAndMaxMintUsd = async ({
   amount,
   usdToken,
   reserveAddress
-}: IAccountWithCollateralandMint) => {
+}: IAccountWithCollateralAndMint) => {
   const { accountOwner, exchangeAccount, userCollateralTokenAccount } =
     await createAccountWithCollateral({
       amount,

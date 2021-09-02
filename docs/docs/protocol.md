@@ -1,5 +1,0 @@
----
-title: Protocol
-
-slug: /protocol
----

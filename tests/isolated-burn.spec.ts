@@ -11,7 +11,7 @@ import {
   EXCHANGE_ADMIN,
   tou64,
   createAccountWithCollateral,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateralAndMaxMintUsd,
   U64_MAX,
   mulByDecimal
@@ -41,7 +41,7 @@ describe('isolated exchange burn', () => {
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -77,6 +77,7 @@ describe('isolated exchange burn', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -100,6 +101,7 @@ describe('isolated exchange burn', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
   })
   it('Burn all debt', async () => {
     const collateralAmount = new BN(1000 * 1e6)
@@ -190,7 +192,7 @@ describe('isolated exchange burn', () => {
       userTokenAccountBurn: usdTokenAccount,
       signers: [accountOwner]
     })
-    // We should end with transfered amount
+    // We should end with transferred amount
     const userUsdTokenAccountAfter = await usdToken.getAccountInfo(usdTokenAccount)
     assert.ok(userUsdTokenAccountAfter.amount.eq(transferAmount))
     const exchangeAccountAfter = await exchange.getExchangeAccount(exchangeAccount)

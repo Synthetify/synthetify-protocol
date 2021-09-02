@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   assertThrowsAsync,
   DEFAULT_PUBLIC_KEY,
   U64_MAX,
@@ -54,7 +54,7 @@ describe('admin', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -87,11 +87,12 @@ describe('admin', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       nonce,
-      amountPerRound: new BN(100),
-      stakingRoundLength: 300,
+      amountPerRound: amountPerRound,
+      stakingRoundLength: stakingRoundLength,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -115,6 +116,8 @@ describe('admin', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
+
     const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
     await connection.confirmTransaction(signature)
   })
@@ -323,12 +326,14 @@ describe('admin', () => {
         penaltyToExchange,
         penaltyToLiquidator
       })
+
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
 
       const state = await exchange.getState()
+
       assert.isFalse(eqDecimals(state.penaltyToExchange, penaltyToExchange))
       assert.isFalse(eqDecimals(state.penaltyToLiquidator, penaltyToLiquidator))
     })
@@ -348,6 +353,7 @@ describe('admin', () => {
       const newFee = percentToDecimal(0.999)
       const ix = await exchange.setFeeInstruction(newFee)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
       const state = await exchange.getState()
       assert.ok(eqDecimals(state.fee, newFee))
     })
@@ -359,6 +365,7 @@ describe('admin', () => {
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
       const state = await exchange.getState()
+
       assert.isFalse(eqDecimals(state.fee, newFee))
     })
   })
@@ -438,6 +445,7 @@ describe('admin', () => {
         ERRORS.SIGNATURE
       )
       const state = await exchange.getState()
+
       assert.isFalse(state.admin.equals(newAdmin))
     })
     it('change value', async () => {
@@ -445,6 +453,7 @@ describe('admin', () => {
       const ix = await exchange.setAdmin(newAdmin.publicKey)
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const state = await exchange.getState()
+
       assert.ok(state.admin.equals(newAdmin.publicKey))
 
       // Revert back for next tests

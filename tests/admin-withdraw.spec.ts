@@ -9,7 +9,7 @@ import {
   createAssetsList,
   createToken,
   EXCHANGE_ADMIN,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createAccountWithCollateral,
   mulByPercentage,
   calculateAmountAfterFee,
@@ -58,7 +58,7 @@ describe('admin', () => {
   let initialCollateralPrice = 2
   before(async () => {
     const [_exchangeAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -90,11 +90,12 @@ describe('admin', () => {
     await exchange.init({
       admin: EXCHANGE_ADMIN.publicKey,
       nonce,
-      amountPerRound: new BN(100),
-      stakingRoundLength: 300,
+      amountPerRound: amountPerRound,
+      stakingRoundLength: stakingRoundLength,
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -119,6 +120,7 @@ describe('admin', () => {
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
 
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
   it('should initialized interest debt and swap tax parameters', async () => {

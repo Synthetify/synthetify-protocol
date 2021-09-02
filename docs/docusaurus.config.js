@@ -4,12 +4,12 @@ module.exports = {
   tagline: 'Decentralized protocol for synthetic assets, built on Solana',
   url: 'https://synthetify.io/',
   baseUrl: '/',
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'ignore',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
   organizationName: 'Synthetify',
   projectName: 'Synthetify docs',
-   themeConfig: {
+  themeConfig: {
     navbar: {
       title: 'Synthetify',
       logo: {

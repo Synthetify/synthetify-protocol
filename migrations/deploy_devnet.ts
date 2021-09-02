@@ -5,7 +5,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   sleep,
-  SYNTHETIFY_ECHANGE_SEED
+  SYNTHETIFY_EXCHANGE_SEED
 } from '../tests/utils'
 import { MINTER } from './minter'
 import oracleIdl from '../target/idl/pyth.json'
@@ -47,32 +47,24 @@ const provider = Provider.local('https://api.devnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const connection = new web3.Connection(
-  'https://solana--devnet--rpc.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
-  {
-    wsEndpoint:
-      'wss://solana--devnet--ws.datahub.figment.io/apikey/c094bf5eb52737e91dc13dc960f15121',
-    commitment: 'max'
-  }
-)
-//@ts-ignore
-provider.connection = connection
+const connection = provider.connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '3V7ZLhTi3EFSQ3j1szadrfM5Am8368RPQVPRnYqUsbBB'
+  '5Jx2koXFSH1CNB5NKtACUh1zhNb1h2G27HKUzeYkUvS3'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  'DUTaRHQcejLHkDdsnR8cUUv2BakxCJfJQmWQNK2hzizE'
+  'Ei9GZtbFfyFy7YE61YZg46tjNhUwJWZdoPbnf3HAB5sh'
 )
 const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
 
 const main = async () => {
+  // const connection = provider.connection
   // @ts-expect-error
   const wallet = provider.wallet.payer as web3.Account
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
 
   const [exchangeAuthority, nonce] = await web3.PublicKey.findProgramAddress(
-    [SYNTHETIFY_ECHANGE_SEED],
+    [SYNTHETIFY_EXCHANGE_SEED],
     exchangeProgramId
   )
   console.log('exchangeAuthority')
@@ -105,6 +97,8 @@ const main = async () => {
     exchangeProgramId
   )
   console.log('Init exchange')
+  await sleep(1000)
+
   await exchange.init({
     admin: wallet.publicKey,
     nonce,
@@ -113,20 +107,17 @@ const main = async () => {
     stakingFundAccount: stakingFundAccount,
     exchangeAuthority: exchangeAuthority
   })
-  while (true) {
-    await sleep(2000)
-    try {
-      console.log('state ')
-      console.log(await exchange.getOnlyState())
-      break
-    } catch (error) {
-      console.log(error)
-      console.log('not found ')
-    }
-  }
-  await sleep(5000)
+  await sleep(10000)
 
-  await sleep(5000)
+  exchange = await Exchange.build(
+    connection,
+    Network.LOCAL,
+    provider.wallet,
+    exchangeAuthority,
+    exchangeProgramId
+  )
+  await sleep(10000)
+
   console.log('Create Asset List')
   const data = await createAssetsList({
     exchangeAuthority,
@@ -140,10 +131,11 @@ const main = async () => {
     snyLiquidationFund: snyLiquidationFund
   })
   const assetsList = data.assetsList
-  console.log('set assets list')
-  await sleep(25000)
+  await sleep(10000)
 
+  console.log('Set assets list')
   await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
+
   while (true) {
     await sleep(2000)
     try {
@@ -155,14 +147,6 @@ const main = async () => {
       console.log('not found ')
     }
   }
-  exchange = await Exchange.build(
-    connection,
-    Network.LOCAL,
-    provider.wallet,
-    exchangeAuthority,
-    exchangeProgramId
-  )
-  // await exchange.getState()
   console.log('Initialize Tokens')
 
   for (const asset of initialTokens) {
@@ -184,7 +168,7 @@ const main = async () => {
       assetFeedAddress: asset.priceFeed
     })
     await signAndSend(new Transaction().add(newAssetIx), [wallet], connection)
-    await sleep(5000)
+    await sleep(10000)
 
     const addEthSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: newToken.publicKey,

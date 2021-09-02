@@ -10,7 +10,7 @@ import {
   createToken,
   EXCHANGE_ADMIN,
   tou64,
-  SYNTHETIFY_ECHANGE_SEED,
+  SYNTHETIFY_EXCHANGE_SEED,
   createCollateralToken,
   eqDecimals,
   assertThrowsAsync,
@@ -55,7 +55,7 @@ describe('swap-line', () => {
   before(async () => {
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
-      [SYNTHETIFY_ECHANGE_SEED],
+      [SYNTHETIFY_EXCHANGE_SEED],
       exchangeProgram.programId
     )
     nonce = _nonce
@@ -92,6 +92,7 @@ describe('swap-line', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -115,7 +116,7 @@ describe('swap-line', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
-
+    await exchange.getState()
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
   })
 
@@ -287,7 +288,7 @@ describe('swap-line', () => {
       const reserveAmountAfterNativeSwap = (
         await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)
       ).amount
-      // assets toten transfer
+      // assets token transfer
       assert.ok(almostEqual(mintedAmount, amountOut))
       assert.ok(almostEqual(reserveAmountAfterNativeSwap, new BN(amountToSwap)))
       assert.ok(almostEqual(swapLineAfterNativeSwap.balance.val, new BN(amountToSwap)))
