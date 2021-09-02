@@ -1,6 +1,6 @@
 import { Provider } from '@project-serum/anchor'
 import { NATIVE_MINT, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { PublicKey, Transaction } from '@solana/web3.js'
+import { Connection, PublicKey, Transaction } from '@solana/web3.js'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { percentToDecimal, sleep, toDecimal } from '@synthetify/sdk/lib/utils'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
@@ -20,7 +20,6 @@ const main = async () => {
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
-  const assetsList = await exchange.getAssetsList(state.assetsList)
   const token = new Token(connection, TOKEN_MINT, TOKEN_PROGRAM_ID, DEVNET_ADMIN_ACCOUNT)
   const tokenInfo = await token.getMintInfo()
   const liquidationFund = await token.createAccount(exchange.exchangeAuthority)
@@ -31,7 +30,7 @@ const main = async () => {
     assetAddress: TOKEN_MINT,
     assetsList: state.assetsList,
     collateralRatio: percentToDecimal(30),
-    feedAddress: assetsList.assets[3].feedAddress,
+    feedAddress: FEED_ADDRESS,
     liquidationFund,
     reserveAccount,
     reserveBalance: toDecimal(new BN(0), tokenInfo.decimals),
