@@ -1074,3 +1074,17 @@ pub struct SetVaultHalted<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct SetVaultParameter<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID)]
+    pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
+    pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
+}

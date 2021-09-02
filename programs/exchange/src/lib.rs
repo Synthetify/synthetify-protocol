@@ -2289,6 +2289,22 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_collateral_ratio(
+        ctx: Context<SetVaultParameter>,
+        collateral_ratio: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT COLLATERAL RATIO");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // collateral_ratio must be less or equals 100%
+        let same_scale = vault.collateral_ratio.scale == collateral_ratio.scale;
+        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.collateral_ratio = collateral_ratio;
+        Ok(())
+    }
 }
 
 #[error]
