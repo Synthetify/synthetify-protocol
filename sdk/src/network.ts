@@ -8,12 +8,12 @@ export enum Network {
 }
 
 export const DEV_NET = {
-  exchange: new PublicKey('CjqA761CQoT9S3GpVBRzMfjcemDR65yxxd7gTiCAiZMA'),
-  oracle: new PublicKey('8vDDTGeiRFZMjK26fsXACuLMo4BL8tAKEyvv7r3tDVtF'),
-  exchangeAuthority: new PublicKey('DfGmNC4M2FTzxFGJkzBY8R2NVzXSPJ2SfxBuFB2trsPc')
+  exchange: new PublicKey('3V7ZLhTi3EFSQ3j1szadrfM5Am8368RPQVPRnYqUsbBB'),
+  oracle: new PublicKey('DUTaRHQcejLHkDdsnR8cUUv2BakxCJfJQmWQNK2hzizE'),
+  exchangeAuthority: new PublicKey('Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i')
 }
 export const TEST_NET = {
-  exchange: new PublicKey('9buhRrePiSBr6no7mR8is5UAx19YXjLTJuPcuvg2LSSd'),
-  oracle: new PublicKey('8B1scSRf6xnYsQHdrwusF8kpSdEUZDcnFcNjRciSG96W'),
-  exchangeAuthority: new PublicKey('AddxzY6F4KEEEwgjfbwdpRuucxWcEzmEm1A1Yikc2SLW')
+  exchange: new PublicKey('9drf22jv2L8HvW3uDu7cmQTaYVoJM1W8cEjqD3NfDmAM'),
+  oracle: new PublicKey('4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'),
+  exchangeAuthority: new PublicKey('AHhuSXACqtyPfYZ7DZUg5xqPGViKux34hXTGqRNw392B')
 }

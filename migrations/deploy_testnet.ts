@@ -17,37 +17,54 @@ const initialTokens = [
     price: 50000,
     ticker: Buffer.from('xBTC'),
     decimals: 10,
-    limit: new BN(1e12)
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('DJW6f4ZVqCnpYNN9rNuzqUcCvkVtBgixo8mq9FKSsCbJ')
   },
   {
     price: 36,
     ticker: Buffer.from('xSOL'),
     decimals: 9,
-    limit: new BN(1e10)
+    limit: new BN(1e10),
+    priceFeed: new PublicKey('7VJsBtJzgTftYzEeooSDYyjKXvYRWJHdwvbwfBvTg9K')
+  },
+  {
+    price: 6,
+    ticker: Buffer.from('xSRM'),
+    decimals: 9,
+    limit: new BN(1e13),
+    priceFeed: new PublicKey('74Bak9eMFPvDLHcnjCpvDWvBSGNd8sCThVe3WmDf7sZW')
   },
   {
     price: 5,
     ticker: Buffer.from('xFTT'),
     decimals: 8,
-    limit: new BN(1e12)
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('9594DvS2MxHoLRsWyRrfdsNMnBFRkRvH25gKxwxZwAuP')
+  },
+  {
+    price: 3000,
+    ticker: Buffer.from('xETH'),
+    decimals: 9,
+    limit: new BN(1e12),
+    priceFeed: new PublicKey('7A98y76fcETLHnkCxjmnUrsuNrbUae7asy4TiVeGqLSs')
   }
 ]
-const provider = Provider.local('http://127.0.0.1:8899', {
+const provider = Provider.local('https://api.testnet.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
 const connection = provider.connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  'F9enSoQWPEWJRYqmPohSMXaWSiwYuUhH4TLch6mvAaQ6'
+  '9drf22jv2L8HvW3uDu7cmQTaYVoJM1W8cEjqD3NfDmAM'
 )
 const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  '9vBBmJjzzDeq9ueet6ACKEUBYMM7SqZXY63mTgGPpHSG'
+  '4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'
 )
-const authority = 'CvStoyXqhnJY4dV34EM3GC83SFtFxQm8bU7YhoPHpBf9'
+const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
 
 const main = async () => {
-  const connection = provider.connection
+  // const connection = provider.connection
   // @ts-expect-error
   const wallet = provider.wallet.payer as web3.Account
   const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
@@ -86,7 +103,7 @@ const main = async () => {
     exchangeProgramId
   )
   console.log('Init exchange')
-  await sleep(1000)
+  await sleep(3000)
 
   await exchange.init({
     admin: wallet.publicKey,
@@ -96,7 +113,7 @@ const main = async () => {
     stakingFundAccount: stakingFundAccount,
     exchangeAuthority: exchangeAuthority
   })
-  await sleep(10000)
+  await sleep(15000)
 
   exchange = await Exchange.build(
     connection,
@@ -105,7 +122,7 @@ const main = async () => {
     exchangeAuthority,
     exchangeProgramId
   )
-  await sleep(10000)
+  await sleep(15000)
 
   console.log('Create Asset List')
   const data = await createAssetsList({
@@ -120,7 +137,7 @@ const main = async () => {
     snyLiquidationFund: snyLiquidationFund
   })
   const assetsList = data.assetsList
-  await sleep(10000)
+  await sleep(15000)
 
   console.log('Set assets list')
   await exchange.setAssetsList({ exchangeAdmin: wallet, assetsList })
@@ -150,38 +167,41 @@ const main = async () => {
     })
 
     console.log(`Adding ${newToken.publicKey.toString()}`)
-    await sleep(2000)
+    await sleep(10000)
 
-    const oracleAddress = await createPriceFeed({
-      oracleProgram,
-      initPrice: asset.price,
-      expo: -asset.decimals
-    })
-    await sleep(2000)
-    const state = await exchange.getState()
+    await exchange.getState()
     const newAssetIx = await exchange.addNewAssetInstruction({
       assetsList: assetsList,
-      assetFeedAddress: oracleAddress
+      assetFeedAddress: asset.priceFeed
     })
     await signAndSend(new Transaction().add(newAssetIx), [wallet], connection)
-    await sleep(5000)
+    await sleep(15000)
 
     const addEthSynthetic = await exchange.addSyntheticInstruction({
       assetAddress: newToken.publicKey,
       assetsList,
       maxSupply: asset.limit,
-      priceFeed: oracleAddress
+      priceFeed: asset.priceFeed
     })
     await signAndSend(new Transaction().add(addEthSynthetic), [wallet], connection)
   }
-  await sleep(5000)
+  await sleep(6000)
   const state = await exchange.getState()
+  await sleep(15000)
   await exchange.updatePrices(state.assetsList)
-  await sleep(12000)
   const assets = await exchange.getAssetsList(state.assetsList)
+
   for (const asset of assets.synthetics) {
     console.log('##########')
+    console.log('Synthetics')
+
     console.log(asset.assetAddress.toString())
+    console.log(assets.assets[asset.assetIndex].price.val.toString())
+  }
+  for (const asset of assets.collaterals) {
+    console.log('##########')
+    console.log('Collaterals')
+    console.log(asset.collateralAddress.toString())
     console.log(assets.assets[asset.assetIndex].price.toString())
   }
 }

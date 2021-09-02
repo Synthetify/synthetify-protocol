@@ -122,6 +122,7 @@ describe('Vault interest borrow accumulation', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -144,6 +145,7 @@ describe('Vault interest borrow accumulation', () => {
     assetsList = data.assetsList
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
 
     // create BTC collateral token
     const { token } = await createCollateralToken({

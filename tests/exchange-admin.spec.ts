@@ -92,6 +92,7 @@ describe('admin', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -115,6 +116,7 @@ describe('admin', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
 
     const signature = await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 1e10)
     await connection.confirmTransaction(signature)

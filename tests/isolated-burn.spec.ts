@@ -77,6 +77,7 @@ describe('isolated exchange burn', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -100,6 +101,7 @@ describe('isolated exchange burn', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
   })
   it('Burn all debt', async () => {
     const collateralAmount = new BN(1000 * 1e6)

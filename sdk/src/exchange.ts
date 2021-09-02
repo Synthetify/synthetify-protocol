@@ -78,7 +78,6 @@ export class Exchange {
       instance.program.programId
     )
     instance.stateAddress = stateAddress
-    await instance.getOnlyState()
     return instance
   }
   public onStateChange(fn: (state: ExchangeState) => void) {
@@ -122,14 +121,21 @@ export class Exchange {
   public async setAssetsList({ exchangeAdmin, assetsList }: SetAssetsList) {
     await this.program.rpc.setAssetsList({
       accounts: {
-        assetsList,
+        assetsList: assetsList,
         state: this.stateAddress,
-        admin: this.state.admin
+        admin: exchangeAdmin.publicKey
       },
       signers: [exchangeAdmin]
     })
-    this.assetsList = await this.getAssetsList(assetsList)
-    await this.getState()
+  }
+  public async setAssetsListInstruction(assetsList: PublicKey) {
+    return (await this.program.instruction.setAssetsList({
+      accounts: {
+        assetsList,
+        state: this.stateAddress,
+        admin: this.state.admin
+      }
+    })) as TransactionInstruction
   }
   public async getOnlyState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
@@ -1046,7 +1052,7 @@ export class Exchange {
     const assetListAccount = Keypair.generate()
     await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
       accounts: {
-        admin: this.state.admin,
+        admin: admin.publicKey,
         state: this.stateAddress,
         assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,

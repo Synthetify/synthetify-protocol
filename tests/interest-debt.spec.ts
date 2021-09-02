@@ -88,6 +88,7 @@ describe('Interest debt accumulation', () => {
       stakingFundAccount: stakingFundAccount,
       exchangeAuthority: exchangeAuthority
     })
+
     exchange = await Exchange.build(
       connection,
       Network.LOCAL,
@@ -111,6 +112,7 @@ describe('Interest debt accumulation', () => {
     usdToken = data.usdToken
 
     await exchange.setAssetsList({ exchangeAdmin: EXCHANGE_ADMIN, assetsList })
+    await exchange.getState()
 
     accountOwner = new Account().publicKey
     exchangeAccount = await exchange.createExchangeAccount(accountOwner)
