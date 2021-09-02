@@ -144,7 +144,6 @@ export class Exchange {
     return state
   }
   public async getState() {
-    console.log(this.stateAddress.toString())
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
     // need to add hooks on change
     this.state = state
