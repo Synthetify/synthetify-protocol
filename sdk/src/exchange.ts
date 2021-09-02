@@ -137,12 +137,6 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async getOnlyState() {
-    const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
-    // need to add hooks on change
-    this.state = state
-    return state
-  }
   public async getState() {
     const state = (await this.program.account.state.fetch(this.stateAddress)) as ExchangeState
     // need to add hooks on change

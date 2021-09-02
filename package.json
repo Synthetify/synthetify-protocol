@@ -19,6 +19,7 @@
     "test:vaults": "anchor test --skip-build tests/vaults.spec.ts",
     "test:vaultsliquidation": "anchor test --skip-build tests/vaults-liquidation.spec.ts",
     "test:vaults-interest": "anchor test --skip-build tests/vaults-interest-debt.spec.ts",
+    "test:admin-vaults": "anchor test --skip-build tests/admin-vaults.spec.ts",
     "build": "cd sdk && npm run build",
     "postinstall": "anchor build && cd sdk && npm install && npm run build"
   },

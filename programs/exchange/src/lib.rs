@@ -2289,6 +2289,7 @@ pub mod exchange {
 
         Ok(())
     }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_vault_collateral_ratio(
         ctx: Context<SetVaultParameter>,
