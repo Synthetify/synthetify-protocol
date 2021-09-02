@@ -59,4 +59,4 @@ The confirmation pop-ups on the screen.
 
 **15. How can I inform you about any problems/ideas?**
 
-Catch us on [Discord](https://discord.gg/Z9v9ez8u) or send an e-mail to support@synthetify.io with the applicable note.
+Catch us on [Discord](https://discord.gg/Z9v9ez8u) or send an e-mail to support@synthetify.io with an applicable note.
