@@ -6,11 +6,11 @@ slug: /glossary
 
 ### Deposit
 
-Deposit takes tokens from user wallet and adds it to user's account as a [collateral](#collateral)
+Deposit takes tokens from user wallet and adds them to user's account as a [collateral](#collateral)
 
 ### Dept
 
-Minting tokens adds debt to account as a shares in the debt pool. As total debt can change, debt of user can as well.
+Minting tokens adds debt to account as a share of the debt pool. As total debt can change, the debt of a user can as well.
 
 ### Max debt
 
@@ -22,12 +22,11 @@ Synthetic assets can be created by Stakers of the platform and then exchanged on
 
 ### Mint limit
 
-Maximum amount you can mint calculated from [collateral](#collateral).
-<!-- To ensure safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created. -->
+The maximum amount you can mint is calculated from [collateral](#collateral). To ensure the safety of the platform each asset has a predefined but adjustable limit of the amount of tokens that can be created.
 
 ### Withdraw
 
-Deposited collateral can be transferred to user's wallet by withdraw.
+Deposited collateral can be transferred to the user's wallet by withdrawal.
 
 ### Burn
 
@@ -35,7 +34,7 @@ Synthetic tokens can be burned by Stakers to reduce their debt and free collater
 
 ### Rewards
 
-For participating in debt pool you get some SNY token. Details of getting it are [here](/docs/staking#rewards).
+For participating in the debt pool you get some SNY tokens. Details of getting it are [here](/docs/staking#rewards).
 
 ### Collateral
 
@@ -51,15 +50,15 @@ Liquidation means a collateral decrease by asset burn. To ensure platform stabil
 
 ### Risk
 
-The user can remove provided liquidity at any time. However there are a few risks which can affect locked assets.
+The user can remove provided liquidity at any time. However, there are a few risks that can affect locked assets.
 
 #### Market risk
 
-Market risk is a possibility to experience losses due to price change. Cryptocurrency market is very volatile. Even 15% APY could not cover sharp market movement price change.
+Market risk is a possibility to experience losses due to price change. The cryptocurrency market is very volatile. Even 15% APY could not cover sharp market movement price change.
 
 #### Liquidity Risk
 
-Liquidity risk is a potential issue especially on micro-cap assets. It could happen that exchanging earned asset will be obstructed because of liquidity on the market.
+Liquidity risk is a potential issue, especially on micro-cap assets. It could happen that exchanging earned assets will be obstructed because of liquidity on the market.
 
 #### Rewards Loss Risk
 
@@ -69,10 +68,10 @@ There are three stages of providing liquidity:
 2. Staking
 3. Claiming.
 
-In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing earned rewards.
+In phases 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. The staking phase takes two weeks. During this stage, the user can freely withdraw its deposit. However, burning is bounded with losing earned rewards.
 
 ### Listing new assets
 
-Adding new assets to Synthetify exchange requires existence of a reliable price oracle for this asset. Currently, Synthetify team controls what assets are listed on the exchange but in the future this decision will be moved to governance instance.
+Adding new assets to Synthetify exchange requires the existence of a reliable price oracle for this asset. Currently, the Synthetify team controls what assets are listed on the exchange but in the future, this decision will be moved to the governance instance.
 
 ![Assets Exchange Symbolic Representation](https://i.imgur.com/yT9BdQe.png)
