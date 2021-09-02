@@ -44,11 +44,15 @@ import {
   toScale,
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
-import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
+import {
+  ERRORS_EXCHANGE,
+  fromPercentToInterestRate,
+  toEffectiveFee
+} from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
-describe('vaults', () => {
+describe('ADMIN VAULTS', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -230,14 +234,9 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
     })
-    it('create usdc/xusd vault should fail cause there can only be one vault per synthetic/collateral pair', async () => {
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
-      )
-    })
   })
   describe('#setVaultHalted', async () => {
-    it('should failed without admin', async () => {
+    it('should failed without admin signature', async () => {
       const ix = await exchange.setVaultHaltedInstruction({
         halted: true,
         collateral: collateralAddress,
@@ -258,6 +257,46 @@ describe('vaults', () => {
       const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
       assert.notEqual(vaultAfter.halted, vaultBefore.halted)
       assert.equal(vaultAfter.halted, true)
+    })
+  })
+  describe('#setVault', async () => {
+    it('should failed without admin signature', async () => {
+      const debtInterestRate = fromPercentToInterestRate(30)
+
+      const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should set vault debt interest rate', async () => {
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const debtInterestRate = fromPercentToInterestRate(30)
+
+      const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      assert.notEqual(vaultAfter.debtInterestRate, vaultBefore.debtInterestRate)
+      assert.ok(eqDecimals(vaultAfter.debtInterestRate, debtInterestRate))
+    })
+    it('should fail cause out of range parameter', async () => {
+      const debtInterestRate = fromPercentToInterestRate(201)
+
+      const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
     })
   })
 })

@@ -2306,6 +2306,23 @@ pub mod exchange {
         vault.collateral_ratio = collateral_ratio;
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_debt_interest_rate(
+        ctx: Context<SetVaultParameter>,
+        debt_interest_rate: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT DEBT INTEREST");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // collateral_ratio must be less or equals 100%
+        let same_scale = vault.debt_interest_rate.scale == debt_interest_rate.scale;
+        let in_range = debt_interest_rate.lte(Decimal::from_percent(200).to_interest_rate())?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.debt_interest_rate = debt_interest_rate;
+        Ok(())
+    }
 }
 
 #[error]

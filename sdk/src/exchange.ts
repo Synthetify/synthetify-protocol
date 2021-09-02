@@ -1455,6 +1455,22 @@ export class Exchange {
 
     return ix
   }
+  public async setVaultDebtInterestRateInstruction(
+    debtInterestRate: Decimal,
+    { synthetic, collateral }: SetVaultParameter
+  ): Promise<TransactionInstruction> {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    return (await this.program.instruction.setVaultDebtInterestRate(debtInterestRate, {
+      accounts: {
+        synthetic,
+        collateral,
+        state: this.stateAddress,
+        admin: this.state.admin,
+        vault: vaultAddress
+      }
+    })) as TransactionInstruction
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -1935,6 +1951,11 @@ export interface WithdrawSwaplineFee {
   collateral: PublicKey
   to: PublicKey
   amount: BN
+}
+
+export interface SetVaultParameter {
+  synthetic: PublicKey
+  collateral: PublicKey
 }
 export interface SetHaltedSwapline {
   synthetic: PublicKey

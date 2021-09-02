@@ -2230,6 +2230,82 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setVaultCollateralRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultDebtInterestRate",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "debtInterestRate",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
