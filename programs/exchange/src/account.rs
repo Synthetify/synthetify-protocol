@@ -91,21 +91,21 @@ pub struct State {
     pub debt_shares: u64,                   // 8
     pub assets_list: Pubkey,                // 32
     pub health_factor: Decimal,             // 17 In % 1-100% modifier for debt
-    pub max_delay: u32, // 4  In slots delay between last oracle update 100 blocks ~ 1 min
-    pub fee: Decimal,   // 17 In % default fee per swap
-    pub swap_tax_ratio: Decimal, // 17 In % range 0-20%
-    pub swap_tax_reserve: Decimal, // 17 Amount on tax from swap
-    pub liquidation_rate: Decimal, // 17 Percentage of debt repay in liquidation
-    pub penalty_to_liquidator: Decimal, // 17 In % range 0-25%
-    pub penalty_to_exchange: Decimal, // 17 In % range 0-25%
-    pub liquidation_buffer: u32, // 4  Time given user to fix collateralization ratio (in slots)
-    pub debt_interest_rate: Decimal, // 17 In % range 0-20%
+    pub max_delay: u32,                     // 4  In slots delay between last oracle update 100 blocks ~ 1 min
+    pub fee: Decimal,                       // 17 In % default fee per swap
+    pub swap_tax_ratio: Decimal,            // 17 In % range 0-20%
+    pub swap_tax_reserve: Decimal,          // 17 Amount on tax from swap
+    pub liquidation_rate: Decimal,          // 17 Percentage of debt repay in liquidation
+    pub penalty_to_liquidator: Decimal,     // 17 In % range 0-25%
+    pub penalty_to_exchange: Decimal,       // 17 In % range 0-25%
+    pub liquidation_buffer: u32,            // 4  Time given user to fix collateralization ratio (in slots)
+    pub debt_interest_rate: Decimal,        // 17 In % range 0-20%
     pub accumulated_debt_interest: Decimal, // 17 Accumulated debt interest
-    pub last_debt_adjustment: i64, // 8
-    pub staking: Staking, // 152
-    pub exchange_authority: Pubkey, // 32
-    pub bump: u8,       // 1
-    pub padding: [u8; 1620], // 1620 (2048 - 428) reserved for future use
+    pub last_debt_adjustment: i64,          // 8
+    pub staking: Staking,                   // 152
+    pub exchange_authority: Pubkey,         // 32
+    pub bump: u8,                           // 1
+    pub padding: [u8; 1620],                // 1620 (2048 - 428) reserved for future use
 }
 impl Default for State {
     #[inline]

@@ -35,7 +35,7 @@ Synthetic tokens can be burned by Stakers to reduce their debt and free collater
 
 ### Rewards
 
-For participating in debt pool you get some SNY token. Details of getting it are [here](http://localhost:3000/docs/staking#rewards).
+For participating in debt pool you get some SNY token. Details of getting it are [here](/docs/staking#rewards).
 
 ### Collateral
 
@@ -69,7 +69,7 @@ There are three stages of providing liquidity:
 2. Staking
 3. Claiming.
 
-In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing all previously earned rewards.
+In phase 1 and 3 there is no possibility to lose staked assets. Earning rewards takes place during stage 2. Staking phase takes two weeks. During this stage the user can freely withdraw its deposit. However burning is bounded with losing earned rewards.
 
 ### Listing new assets
 

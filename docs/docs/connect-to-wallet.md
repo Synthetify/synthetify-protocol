@@ -21,7 +21,7 @@ Connect button is placed in the top right corner.
 
 ### Choose your wallet
 
-Clicking on Connect button expandes list of wallets which user can choose to transfer assets.
+Clicking on Connect button expands list of wallets which user can choose to transfer assets.
 
 ![Wallets](https://i.imgur.com/IXW08hb.png)
 

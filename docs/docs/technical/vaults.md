@@ -34,14 +34,14 @@ Data describing a vault are stored inside a _Vault_ struct. Address of it genera
   * **synthetic** - address of synthetic token
   * **collateral** - address of token used as collateral
   * **debt_interest_rate** - amount of yearly interest rate (charged minutely)
-  * **collateral_ratio** - ratio of value of collateral to value of synthetic that can be borrowed using it
-  * **liquidation_threshold** - ratio of debt to value of collateral when account can be liquidated
+  * **collateral_ratio** - ratio of collateral to synthetic that can be [borrowed](#borrow) using it
+  * **liquidation_threshold** - ratio of debt to value of collateral when account can be [liquidated](#liquidation)
   * **liquidation_ratio** - percentage of user's collateral that can be liquidated at once
   * **liquidation_penalty_liquidator** - percentage of additional collateral going to liquidator
   * **liquidation_penalty_exchange** - percentage of liquidation that goes to liquidation fund as a penalty
   * **accumulated_interest** - interest rate of minted tokens, can be withdrawn by admin
   * **accumulated_interest_rate** - compounded interest rate, can be used instead of compounding amount by interest for every user
-  * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for deposit to staking)
+  * **collateral_reserve** - address of account to which tokens are deposited (different than reserve for [deposit](/docs/technical/collateral#deposit) to staking)
   * **mint_amount** - amount already minted (both amount borrowed and interest)
   * **collateral_amount** - amount of deposited collateral in reserve
   * **max_borrow** - limit of total synthetic that can be borrowed
@@ -71,7 +71,7 @@ Vault entry is created for every user using a vault and it stores data for it.
 
 ### Creation of _Vault Entry_
 
-Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1806-L1837), takes bump (u8) and a following context: 
+Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1836-L1867), takes bump (u8) and a following context: 
 
     struct CreateVaultEntry<'info> {
         pub state: Loader<'info, State>,
@@ -89,7 +89,7 @@ Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/
   * **vault_entry** - user account in vault
   * **owner** - pubkey belonging to owner of the account
   * **vault** - vault for which entry is created
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **synthetic** - address of synthetic token used as a seed for entry
   * **collateral** - address of collateral token also used as seed
   * **rent** - a data structure relating to [rent](https://docs.solana.com/developing/programming-model/accounts#rent), needed to create account
@@ -98,7 +98,7 @@ Vault entry is created [here](https://github.com/Synthetify/synthetify-protocol/
 
 ## Deposit 
 
-Method depositing tokens is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1839-L1876), takes amount (u64) and a context structured like this:
+Method depositing tokens is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1869-L1912), takes amount (u64) and a context structured like this:
 
     pub struct DepositVault<'info> {
         pub state: Loader<'info, State>,
@@ -129,7 +129,7 @@ Method depositing tokens is defined [here](https://github.com/Synthetify/synthet
 
 ## Borrow
 
-Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthetic asset up to *collateral_amount*  _*_  *collateral_ratio*. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L1877-L1950), takes amount (u64) and a context: 
+Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthetic asset up to *collateral_amount*  _*_  *collateral_ratio*. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1913-L1992), takes amount (u64) and a context: 
 
     struct BorrowVault<'info> {
         pub state: Loader<'info, State>,
@@ -159,7 +159,7 @@ Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthe
 
 ## Withdraw
 
-Method responsible for withdrawal is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/d829d5e736035b75c6c5193d23411dfbf8617143/programs/exchange/src/lib.rs#L1952-L2014). It withdraws users collateral up to when value of collateral * *collateral_ratio* are equal to borrowed synthetic. It takes amount (u64, when equal to u64::MAX maximum amount will be withdrawn) and a following context: 
+Method responsible for withdrawal is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1994-L2062). It withdraws users collateral up to when value of collateral * *collateral_ratio* are equal to borrowed synthetic. It takes amount (u64, when equal to _u64::MAX_ maximum amount will be withdrawn) and a following context: 
 
     struct WithdrawVault<'info> {
         pub state: Loader<'info, State>,
@@ -190,7 +190,7 @@ Method responsible for withdrawal is defined [here](https://github.com/Synthetif
 
 ## Repay
 
-Repay method allows user to burn borrowed tokens, and free it's collateral. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2016-L2058), takes amount (u64) and a following context:
+Repay method allows user to burn borrowed tokens, and free it's collateral. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L2064-L2109), takes amount (u64) and a following context:
 
     struct RepayVault<'info> {
         pub state: Loader<'info, State>,
@@ -210,7 +210,7 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
   * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
   * **synthetic** - address of token used as a synthetic
   * **collateral** - address of token used as collateral
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **user_token_account_repay** - account from with tokens will be repaid
   * **owner** - owner of _VaultEntry_ and collateral amount, signer of transaction
   * **exchange_authority** - pubkey of exchange program
@@ -218,7 +218,7 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
 
 ## Liquidation
 
-Function responsible for liquidation is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/15532f5847c194f0bfcaa9ca5806601fdab45f46/programs/exchange/src/lib.rs#L2059-L2225). It checks if user can be liquidated, and if amount is valid. Liquidated amount is not greater than difference between borrow limit and current debt and below *liquidation_ratio* of collateral (or sets is at maximum valid value if amount is equal to u64::MAX). Method takes amount (u64) and this context: 
+Function responsible for liquidation is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L2110-L2282). It checks if user can be liquidated, and if amount is valid. Liquidated amount is not greater than difference between borrow limit and current debt and below *liquidation_ratio* of collateral (or sets is at maximum valid value if amount is equal to _u64::MAX_). Method takes amount (u64) and this context: 
 
 
     pub struct LiquidateVault<'info> {
@@ -243,7 +243,7 @@ Function responsible for liquidation is defined [here](https://github.com/Synthe
   * **vault** - account storing [data](/docs/technical/vaults#structure-of-vault) for particular pair
   * **synthetic** - address of token used as a synthetic
   * **collateral** - address of token used as collateral
-  * **assets_list** - list of assets, structured like [this]('/docs/technical/state#assetslist-structure')  
+  * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)  
   * **collateral_reserve** - address of account where deposited tokens are kept
   * **liquidator_synthetic_account** - account from which synthetic tokens will be repaid
   * **liquidator_collateral_account** - account to which collateral tokens will be transferred
