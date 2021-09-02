@@ -2300,8 +2300,12 @@ pub mod exchange {
 
         // collateral_ratio must be less or equals 100%
         let same_scale = vault.collateral_ratio.scale == collateral_ratio.scale;
-        let in_range = collateral_ratio.lte(Decimal::from_percent(100))?;
-        require!(same_scale && in_range, ParameterOutOfRange);
+        let in_range = collateral_ratio.lt(Decimal::from_percent(100))?;
+        let less_than_liquidation_threshold = vault.liquidation_ratio.lt(collateral_ratio)?;
+        require!(
+            same_scale && in_range && less_than_liquidation_threshold,
+            ParameterOutOfRange
+        );
 
         vault.collateral_ratio = collateral_ratio;
         Ok(())
@@ -2315,12 +2319,34 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET VAULT DEBT INTEREST");
         let vault = &mut ctx.accounts.vault.load_mut()?;
 
-        // collateral_ratio must be less or equals 100%
+        // debt interest rate must be less or equals 100%
         let same_scale = vault.debt_interest_rate.scale == debt_interest_rate.scale;
         let in_range = debt_interest_rate.lte(Decimal::from_percent(200).to_interest_rate())?;
         require!(same_scale && in_range, ParameterOutOfRange);
 
         vault.debt_interest_rate = debt_interest_rate;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_liquidation_threshold(
+        ctx: Context<SetVaultParameter>,
+        liquidation_threshold: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION THRESHOLD");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // vault liquidation threshold must be less or equals 100% and bigger than collateral_ratio
+        let same_scale = vault.collateral_ratio.scale == liquidation_threshold.scale;
+
+        let in_range = liquidation_threshold.lte(Decimal::from_percent(100))?;
+        let bigger_than_collateral_ratio = vault.collateral_ratio.lt(liquidation_threshold)?;
+        require!(
+            same_scale && in_range && bigger_than_collateral_ratio,
+            ParameterOutOfRange
+        );
+
+        vault.liquidation_threshold = liquidation_threshold;
         Ok(())
     }
 }

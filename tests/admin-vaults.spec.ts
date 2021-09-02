@@ -259,7 +259,7 @@ describe('ADMIN VAULTS', () => {
       assert.equal(vaultAfter.halted, true)
     })
   })
-  describe('#setVault', async () => {
+  describe('#setVaultDebtInterestRate', async () => {
     it('should failed without admin signature', async () => {
       const debtInterestRate = fromPercentToInterestRate(30)
 
@@ -297,6 +297,57 @@ describe('ADMIN VAULTS', () => {
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
         ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
       )
+    })
+  })
+  describe('#setVaultLiquidationThreshold', async () => {
+    it('should failed without admin signature', async () => {
+      const liquidationThreshold = percentToDecimal(70)
+
+      const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should fail cause out of range parameter', async () => {
+      const liquidationThreshold = percentToDecimal(101)
+
+      const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+    it('should fail cause liquidation threshold is smaller than collateral ratio ', async () => {
+      const liquidationThreshold = percentToDecimal(10)
+
+      const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+    it('should set vault liquidation threshold', async () => {
+      const liquidationThreshold = percentToDecimal(85)
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      assert.notEqual(vaultAfter.liquidationThreshold, vaultBefore.liquidationThreshold)
+      assert.ok(eqDecimals(vaultAfter.liquidationThreshold, liquidationThreshold))
     })
   })
 })

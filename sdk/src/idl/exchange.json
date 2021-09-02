@@ -2306,6 +2306,44 @@
           }
         }
       ]
+    },
+    {
+      "name": "setVaultLiquidationThreshold",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationThreshold",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
