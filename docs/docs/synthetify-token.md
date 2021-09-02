@@ -29,3 +29,4 @@ The SNY Token is planned to have a total supply of 100,000,000. We plan to intro
 1. Collateral for creation of synthetic assets.
 2. Ability to participate in debt pool. Participants earn pro rata fees for providing liquidity.
 3. Vote in governance decisions in the future.
+4. Discount on fee when using swap

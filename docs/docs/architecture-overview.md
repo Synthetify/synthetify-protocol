@@ -14,4 +14,4 @@ All synthetic assets are [SPL-token](https://spl.solana.com/token) based, which 
 
 ### Pyth Oracle
 
-Pyth Oracle provides prices of underlying assets from decetralized oracles.
+Pyth Oracle provides prices of underlying assets from decentralized oracles.

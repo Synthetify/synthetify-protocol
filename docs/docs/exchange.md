@@ -52,7 +52,7 @@ In the next step, your wallet wants you to confirm the transaction. Check whethe
 
 You can check whether everything went smoothly:
 
-- In the bottom left corner, an information _Successfully swaped token_ should show up (not shown here)
+- In the bottom left corner, an information _Successfully swapped token_ should show up (not shown here)
 - Go to Staking tab, in _Owned tokens_ section, you should see that asset you sold decreased, and bought increased.
 
 ![Confirmation](https://i.imgur.com/xBDyAmv.png)
