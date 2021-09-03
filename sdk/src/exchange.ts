@@ -1522,6 +1522,25 @@ export class Exchange {
       }
     )) as TransactionInstruction
   }
+  public async setVaultLiquidationPenaltyExchangeInstruction(
+    liquidationPenaltyExchange: Decimal,
+    { synthetic, collateral }: SetVaultParameter
+  ) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    return (await this.program.instruction.setVaultLiquidationPenaltyExchange(
+      liquidationPenaltyExchange,
+      {
+        accounts: {
+          synthetic,
+          collateral,
+          state: this.stateAddress,
+          admin: this.state.admin,
+          vault: vaultAddress
+        }
+      }
+    )) as TransactionInstruction
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets

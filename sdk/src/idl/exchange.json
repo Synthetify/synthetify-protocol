@@ -2420,6 +2420,44 @@
           }
         }
       ]
+    },
+    {
+      "name": "setVaultLiquidationPenaltyExchange",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationPenaltyExchange",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -3312,6 +3350,6 @@
     }
   ],
   "metadata": {
-    "address": "Ea42LGVXejXqditDrm5JZYB55623h77PfAZnRc1kuDYb"
+    "address": "4iQRzAHF8LiXcqDiSmQnSVw1mXsmLDgHgQLRzyqC1g77"
   }
 }
