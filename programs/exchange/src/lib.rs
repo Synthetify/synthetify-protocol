@@ -2426,7 +2426,7 @@ pub mod exchange {
         amount: u64,
     ) -> Result<()> {
         msg!("Synthetify:Admin: WITHDRAW ACCUMULATED INTEREST");
-        let state = &ctx.accounts.state.load_mut()?;
+        let state = &ctx.accounts.state.load()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let timestamp = Clock::get()?.unix_timestamp;
 
@@ -2445,13 +2445,15 @@ pub mod exchange {
         if actual_amount.gt(vault.accumulated_interest)? {
             return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
         }
-        vault.accumulated_interest = Decimal::new(0, vault.accumulated_interest.scale);
+
+        // decrease vault accumulated interest
+        vault.accumulated_interest = vault.accumulated_interest.sub(actual_amount).unwrap();
 
         // Mint synthetic to admin
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, actual_amount.to_usd().to_u64())?;
+        token::mint_to(mint_cpi_ctx, actual_amount.to_u64())?;
 
         Ok(())
     }

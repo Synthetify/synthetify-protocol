@@ -1105,9 +1105,7 @@ pub struct WithdrawVaultAccumulatedInterest<'info> {
     pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
-    )]
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &to.mint == synthetic.to_account_info().key

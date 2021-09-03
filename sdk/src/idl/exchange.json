@@ -2532,7 +2532,7 @@
         },
         {
           "name": "assetsList",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
