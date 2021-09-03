@@ -37,7 +37,6 @@ import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   ERRORS,
-  INTEREST_RATE_DECIMALS,
   percentToDecimal,
   SNY_DECIMALS,
   toDecimal,
@@ -180,7 +179,7 @@ describe('ADMIN VAULTS', () => {
       assetsListData = await exchange.getAssetsList(assetsList)
       xusd = assetsListData.synthetics[0]
       usdc = assetsListData.collaterals[1]
-      debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
+      debtInterestRate = fromPercentToInterestRate(7)
       collateralRatio = percentToDecimal(80)
       liquidationRatio = percentToDecimal(50)
       liquidationThreshold = percentToDecimal(90)
@@ -224,12 +223,7 @@ describe('ADMIN VAULTS', () => {
       assert.ok(eqDecimals(vault.liquidationPenaltyExchange, liquidationPenaltyExchange))
       assert.ok(eqDecimals(vault.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
       assert.ok(eqDecimals(vault.accumulatedInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
-      assert.ok(
-        eqDecimals(
-          vault.accumulatedInterestRate,
-          toScale(percentToDecimal(100), INTEREST_RATE_DECIMALS)
-        )
-      )
+      assert.ok(eqDecimals(vault.accumulatedInterestRate, fromPercentToInterestRate(100)))
       assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
       assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))

@@ -38,6 +38,7 @@ import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   ERRORS,
+  fromPercentToInterestRate,
   INTEREST_RATE_DECIMALS,
   percentToDecimal,
   SNY_DECIMALS,
@@ -195,7 +196,7 @@ describe('Vault interest borrow accumulation', () => {
     })
 
     it('create btc/xsol vault', async () => {
-      const debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
+      const debtInterestRate = fromPercentToInterestRate(7)
       const collateralRatio = percentToDecimal(65)
       const liquidationRatio = percentToDecimal(50)
       const liquidationThreshold = percentToDecimal(90)
@@ -320,12 +321,7 @@ describe('Vault interest borrow accumulation', () => {
       assert.ok(
         eqDecimals(vaultBefore.accumulatedInterest, toDecimal(new BN(0), xsolAfter.supply.scale))
       )
-      assert.ok(
-        eqDecimals(
-          vaultBefore.accumulatedInterestRate,
-          toScale(toDecimal(new BN(1), 0), INTEREST_RATE_DECIMALS)
-        )
-      )
+      assert.ok(eqDecimals(vaultBefore.accumulatedInterestRate, fromPercentToInterestRate(100)))
 
       // check vault entry
       assert.ok(

@@ -2319,7 +2319,7 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET VAULT DEBT INTEREST");
         let vault = &mut ctx.accounts.vault.load_mut()?;
 
-        // debt interest rate must be less or equals 100%
+        // debt interest rate must be less or equals 200%
         let same_scale = vault.debt_interest_rate.scale == debt_interest_rate.scale;
         let in_range = debt_interest_rate.lte(Decimal::from_percent(200).to_interest_rate())?;
         require!(same_scale && in_range, ParameterOutOfRange);
@@ -2336,12 +2336,12 @@ pub mod exchange {
         msg!("Synthetify:Admin: SET VAULT LIQUIDATION THRESHOLD");
         let vault = &mut ctx.accounts.vault.load_mut()?;
 
-        // vault liquidation threshold must be less or equals 100% and bigger than collateral_ratio
+        // vault liquidation threshold must be less or equals 100% and greater than collateral_ratio
         let same_scale = vault.collateral_ratio.scale == liquidation_threshold.scale;
         let in_range = liquidation_threshold.lte(Decimal::from_percent(100))?;
-        let bigger_than_collateral_ratio = vault.collateral_ratio.lt(liquidation_threshold)?;
+        let greater_than_collateral_ratio = liquidation_threshold.gt(vault.collateral_ratio)?;
         require!(
-            same_scale && in_range && bigger_than_collateral_ratio,
+            same_scale && in_range && greater_than_collateral_ratio,
             ParameterOutOfRange
         );
 
@@ -2415,7 +2415,7 @@ pub mod exchange {
             ParameterOutOfRange
         );
 
-        // increase and decrease max borrow supply is safe
+        // increase and decrease max borrow supply is always safe
         vault.max_borrow = max_borrow;
         Ok(())
     }
@@ -2425,7 +2425,7 @@ pub mod exchange {
         ctx: Context<WithdrawVaultAccumulatedInterest>,
         amount: u64,
     ) -> Result<()> {
-        msg!("Synthetify:Admin: WITHDRAW ACCUMULATED INTEREST");
+        msg!("Synthetify:Admin: WITHDRAW VAULT ACCUMULATED INTEREST");
         let state = &ctx.accounts.state.load()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let timestamp = Clock::get()?.unix_timestamp;
