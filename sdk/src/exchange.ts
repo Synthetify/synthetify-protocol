@@ -1557,6 +1557,28 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  public async withdrawVaultAccumulatedInterestInstruction({
+    synthetic,
+    collateral,
+    to,
+    amount
+  }: WithdrawVaultAccumulatedInterest) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    return (await this.program.instruction.withdrawVaultAccumulatedInterest(amount, {
+      accounts: {
+        synthetic,
+        collateral,
+        to,
+        assetsList: this.state.assetsList,
+        state: this.stateAddress,
+        admin: this.state.admin,
+        vault: vaultAddress,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    })) as TransactionInstruction
+  }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -2042,6 +2064,13 @@ export interface WithdrawSwaplineFee {
 export interface SetVaultParameter {
   synthetic: PublicKey
   collateral: PublicKey
+}
+
+export interface WithdrawVaultAccumulatedInterest {
+  synthetic: PublicKey
+  collateral: PublicKey
+  to: PublicKey
+  amount: BN
 }
 export interface SetHaltedSwapline {
   synthetic: PublicKey
