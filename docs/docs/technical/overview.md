@@ -18,7 +18,7 @@ As it is where the magic happens it will be the focus of this documentation.
 
 ## SDK
 This part is written in typescript as an [npm package](https://www.npmjs.com/package/@synthetify/sdk) and is a wrapper for the smart contract.
-It takes care of low-level aspects such as signing transaction and storing constant addresses making writing client code easier.
+It takes care of low-level aspects such as signing transactions and storing constant addresses making writing client code easier.
 
 Data structures are mapped exactly with the only change being type and case.
 Methods called by a user have a corresponding method that creates instructions, adds them to transaction, signs, and sends it.

@@ -63,7 +63,7 @@ Creating an account is as simple as:
 
     const exchangeAccount = await exchange.createExchangeAccount(ownersPublicKey)
 
-Where _exchange_ is an instance of Exchange singleton and _ownersPublicKey_ has a type of _PublicKey_, which is part of 
+Where the _exchange_ is an instance of Exchange singleton and _ownersPublicKey_ has a type of _PublicKey_, which is part of 
 [Solana's web3 package](https://solana-labs.github.io/solana-web3.js/).
 
 
