@@ -390,4 +390,56 @@ describe('ADMIN VAULTS', () => {
       assert.ok(eqDecimals(vaultAfter.liquidationRatio, liquidationRatio))
     })
   })
+  describe('#setVaultLiquidationPenaltyLiquidator', async () => {
+    it('should failed without admin signature', async () => {
+      const liquidationPenaltyLiquidator = percentToDecimal(15)
+
+      const ix = await exchange.setVaultLiquidationPenaltyLiquidatorInstruction(
+        liquidationPenaltyLiquidator,
+        {
+          collateral: collateralAddress,
+          synthetic: syntheticAddress
+        }
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should fail cause out of range parameter', async () => {
+      const liquidationPenaltyLiquidator = percentToDecimal(21)
+
+      const ix = await exchange.setVaultLiquidationPenaltyLiquidatorInstruction(
+        liquidationPenaltyLiquidator,
+        {
+          collateral: collateralAddress,
+          synthetic: syntheticAddress
+        }
+      )
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+    it('set vault liquidation penalty liquidator', async () => {
+      const liquidationPenaltyLiquidator = percentToDecimal(15)
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+
+      const ix = await exchange.setVaultLiquidationPenaltyLiquidatorInstruction(
+        liquidationPenaltyLiquidator,
+        {
+          collateral: collateralAddress,
+          synthetic: syntheticAddress
+        }
+      )
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      assert.notEqual(
+        vaultAfter.liquidationPenaltyLiquidator,
+        vaultBefore.liquidationPenaltyLiquidator
+      )
+      assert.ok(eqDecimals(vaultAfter.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
+    })
+  })
 })

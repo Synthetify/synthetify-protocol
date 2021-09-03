@@ -2365,6 +2365,24 @@ pub mod exchange {
         vault.liquidation_ratio = liquidation_ratio;
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_liquidation_penalty_liquidator(
+        ctx: Context<SetVaultParameter>,
+        liquidation_penalty_liquidator: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION PENALTY LIQUIDATOR");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // liquidation penalty liquidator vault must be less or equals 20%
+        let same_scale =
+            vault.liquidation_penalty_liquidator.scale == liquidation_penalty_liquidator.scale;
+        let in_range = liquidation_penalty_liquidator.lte(Decimal::from_percent(20))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.liquidation_penalty_liquidator = liquidation_penalty_liquidator;
+        Ok(())
+    }
 }
 
 #[error]
