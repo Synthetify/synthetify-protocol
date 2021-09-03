@@ -2419,6 +2419,42 @@ pub mod exchange {
         vault.max_borrow = max_borrow;
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn withdraw_vault_accumulated_interest(
+        ctx: Context<WithdrawVaultAccumulatedInterest>,
+        amount: u64,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: WITHDRAW ACCUMULATED INTEREST");
+        let state = &ctx.accounts.state.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        adjust_vault_interest_rate(vault, timestamp);
+
+        let mut actual_amount = Decimal {
+            val: amount.into(),
+            scale: vault.accumulated_interest.scale,
+        };
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount.val = vault.accumulated_interest.val;
+        }
+
+        // check valid amount
+        if actual_amount.gt(vault.accumulated_interest)? {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+        vault.accumulated_interest = Decimal::new(0, vault.accumulated_interest.scale);
+
+        // Mint synthetic to admin
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, actual_amount.to_usd().to_u64())?;
+
+        Ok(())
+    }
 }
 
 #[error]
