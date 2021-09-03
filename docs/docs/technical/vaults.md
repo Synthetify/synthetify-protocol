@@ -190,7 +190,7 @@ Method responsible for withdrawal is defined [here](https://github.com/Synthetif
 
 ## Repay
 
-Repay method allows user to burn borrowed tokens, and free it's collateral. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L2064-L2109), takes amount (u64) and a following context:
+Repay method allows user to burn borrowed tokens, and free its collateral. It is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L2064-L2109), takes amount (u64) and a following context:
 
     struct RepayVault<'info> {
         pub state: Loader<'info, State>,
