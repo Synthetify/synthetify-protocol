@@ -2401,6 +2401,24 @@ pub mod exchange {
         vault.liquidation_penalty_exchange = liquidation_penalty_exchange;
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_max_borrow(
+        ctx: Context<SetVaultParameter>,
+        max_borrow: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT MAX BORROW");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        require!(
+            vault.max_borrow.scale == max_borrow.scale,
+            ParameterOutOfRange
+        );
+
+        // increase and decrease max borrow supply is safe
+        vault.max_borrow = max_borrow;
+        Ok(())
+    }
 }
 
 #[error]

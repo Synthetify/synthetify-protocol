@@ -442,7 +442,7 @@ describe('ADMIN VAULTS', () => {
       assert.ok(eqDecimals(vaultAfter.liquidationPenaltyLiquidator, liquidationPenaltyLiquidator))
     })
   })
-  describe('#setVaultLiquidationPenaltyExchangeInstruction', async () => {
+  describe('#setVaultLiquidationPenaltyExchange', async () => {
     it('should failed without admin signature', async () => {
       const liquidationPenaltyExchange = percentToDecimal(15)
 
@@ -489,6 +489,48 @@ describe('ADMIN VAULTS', () => {
       const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
       assert.notEqual(vaultAfter.liquidationPenaltyExchange, vaultBefore.liquidationPenaltyExchange)
       assert.ok(eqDecimals(vaultAfter.liquidationPenaltyExchange, liquidationPenaltyExchange))
+    })
+  })
+  describe('#setVaultMaxBorrow', async () => {
+    it('should failed without admin signature', async () => {
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale)
+
+      const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should fail cause invalid max borrow scale', async () => {
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale - 1)
+
+      const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.PARAMETER_OUT_OF_RANGE
+      )
+    })
+    it('should set vault max borrow', async () => {
+      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale)
+
+      const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
+        collateral: collateralAddress,
+        synthetic: syntheticAddress
+      })
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      assert.notEqual(vaultAfter.maxBorrow, vaultBefore.maxBorrow)
+      assert.ok(eqDecimals(vaultAfter.maxBorrow, maxBorrow))
     })
   })
 })
