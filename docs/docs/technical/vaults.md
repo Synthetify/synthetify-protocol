@@ -185,7 +185,7 @@ Method responsible for withdrawal is defined [here](https://github.com/Synthetif
   * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#structure-of-assetslist)
   * **owner** - signer, owner of _VaultEntry_, signer of transaction
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
 
 
 ## Repay
@@ -213,7 +213,7 @@ Repay method allows user to burn borrowed tokens, and free it's collateral. It i
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **user_token_account_repay** - account from with tokens will be repaid
   * **owner** - owner of _VaultEntry_ and collateral amount, signer of transaction
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
 
 
 ## Liquidation
@@ -251,4 +251,4 @@ Function responsible for liquidation is defined [here](https://github.com/Synthe
   * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **owner** - owner of *vault_entry*, needed to check address
   * **liquidator** - signer, owner of accounts on synthetic and collateral
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program

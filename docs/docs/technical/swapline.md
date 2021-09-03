@@ -62,5 +62,5 @@ As both of these functions are so similar, they both take amount (u64) and the s
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **collateral_reserve** - account with collateral tokens
   * **signer** - owner of accounts on tokens
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
   * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
