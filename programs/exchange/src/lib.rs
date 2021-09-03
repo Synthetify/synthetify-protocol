@@ -2338,7 +2338,6 @@ pub mod exchange {
 
         // vault liquidation threshold must be less or equals 100% and bigger than collateral_ratio
         let same_scale = vault.collateral_ratio.scale == liquidation_threshold.scale;
-
         let in_range = liquidation_threshold.lte(Decimal::from_percent(100))?;
         let bigger_than_collateral_ratio = vault.collateral_ratio.lt(liquidation_threshold)?;
         require!(
@@ -2347,6 +2346,23 @@ pub mod exchange {
         );
 
         vault.liquidation_threshold = liquidation_threshold;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_set_liquidation_ratio(
+        ctx: Context<SetVaultParameter>,
+        liquidation_ratio: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION RATIO");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // vault liquidation ratio must be less or equals 100%
+        let same_scale = vault.liquidation_ratio.scale == liquidation_ratio.scale;
+        let in_range = liquidation_ratio.lte(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.liquidation_ratio = liquidation_ratio;
         Ok(())
     }
 }
