@@ -4,7 +4,7 @@ title: Swapline
 slug: /technical/swapline
 ---
 
-Swapline is more straightforward way to get synthetic tokens. It exists to keep price of synthetic token close to original token. Also without it amount of synthetic tokens in circulation would be smaller than debt, due to interest rate. Swapline provides simple way to counteract that.
+The Swapline is a more straightforward way to get synthetic tokens. It exists to keep the price of the synthetic token close to the original token. Also without it amount of synthetic tokens in circulation would be smaller than debt, due to interest rate. The _Swapline_ provides a simple way to counteract that.
 
 ## Structure of Swapline
 
@@ -24,7 +24,7 @@ Swapline is more straightforward way to get synthetic tokens. It exists to keep 
 - **synthetic** - address of [synthetic](/docs/technical/state#synthetic-asset) token
 - **collateral** - address of [collateral](/docs/technical/state#collateral-asset) token
 - **fee** - percentage of every swap taken as fee
-- **accumulated_fee** - total amount of fee, can be withdrawn by admin
+- **accumulated_fee** - the total amount of fee, can be withdrawn by admin
 - **balance** - amount of tokens in reserve
 - **limit** - limit of synthetic tokens that can be minted
 - **collateral_reserve** - account where collateral tokens are deposited (different from both debt pool and vault counterparts)
@@ -33,9 +33,9 @@ Swapline is more straightforward way to get synthetic tokens. It exists to keep 
 
 ## Swapping tokens
 
-Tokens can be swapped from collateral to synthetic as long as total amount swapped is below swapline limit. Appropriate function is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1645-L1709).
+Tokens can be swapped from collateral to synthetic as long as the total amount swapped is below swapline limit. Appropriate function is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1645-L1709).
 
-They can also be swapped back from synthetic to collateral, as long as there is enough tokens in *collateral_reserve* (_balance_). Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1710-L1772).
+They can also be swapped back from synthetic to collateral, as long as there are enough tokens in *collateral_reserve* (_balance_). Method is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L1710-L1772).
 
 As both of these functions are so similar, they both take amount (u64) and the same struct: 
 
@@ -63,4 +63,4 @@ As both of these functions are so similar, they both take amount (u64) and the s
   * **collateral_reserve** - account with collateral tokens
   * **signer** - owner of accounts on tokens
   * **exchange_authority** - pubkey of exchange program
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)

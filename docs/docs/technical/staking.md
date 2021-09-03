@@ -96,6 +96,6 @@ User can withdraw it's claimed rewards using [this](https://github.com/Synthetif
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
   * **owner** - owner of _exchange account_
   * **exchange_authority** - pubkey of exchange program
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **user_token_account** - users account on 
   * **staking_fund_account** - account from which tokens will be transferred, same as in [*Staking*](/docs/technical/staking#staking-structure) struct

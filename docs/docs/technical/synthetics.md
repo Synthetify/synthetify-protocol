@@ -52,7 +52,7 @@ It takes _amount_ (u64) and following context
   * **exchange_authority** - pubkey of exchange program
   * **usd_token** - address of xUSD token
   * **to** - account to which xUSD is minted
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
   * **owner** - owner of _exchange account_
 
@@ -76,7 +76,7 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - pubkey of exchange program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **user_token_account_burn** - account on token from which tokens will be burned
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
@@ -130,7 +130,7 @@ Method responsible for swap is defined [here](https://github.com/Synthetify/synt
   * **state** - account with [data of the program](/docs/technical/state)
   * **exchange_authority** - pubkey of exchange program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **token_in** - token which is send to exchange
   * **token_for** - token which is send back to user
   * **user_token_account_in** - user's account from which tokens will be taken
@@ -191,5 +191,5 @@ Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/
   * **settlement_reserve** - account from which xUSD is transferred (specified in _Settlement_ structure)
   * **usd_token** - address of xUSD token
   * **exchange_authority** - pubkey belonging to program
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **signer** - owner of account on settled token

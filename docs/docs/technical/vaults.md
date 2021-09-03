@@ -121,7 +121,7 @@ Method depositing tokens is defined [here](https://github.com/Synthetify/synthet
   * **collateral** - address of deposited token
   * **reserve_address** - address of account to which tokens are deposited (different than reserve for deposit to staking)
   * **user_collateral_account** - account from which tokens are transferred  
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **owner** - owner of _collateral account_ and [_vault entry_ ](/docs/technical/vaults#vault-entry)
   * **exchange_authority** - pubkey belonging to the exchange
@@ -152,7 +152,7 @@ Borrow is the counterpart of minting in _Vault_. It allows user to borrow synthe
   * **collateral** - address of token used as collateral token
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
   * **to** - account to which borrowed tokens will be transferred (does not have to be owned by signer)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **owner** - signer, owner of [_vault entry_ ](/docs/technical/vaults#vault-entry)
   * **exchange_authority** - pubkey belonging to the exchange
 
@@ -182,7 +182,7 @@ Method responsible for withdrawal is defined [here](https://github.com/Synthetif
   * **collateral** - address of token used as collateral
   * **reserve_address** - address of account from which tokens are withdrawn (same as in corresponding vault)
   * **user_collateral_account** - account to which tokens will be transferred
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#structure-of-assetslist)
   * **owner** - signer, owner of _VaultEntry_, signer of transaction
   * **exchange_authority** - pubkey of exchange program
@@ -248,7 +248,7 @@ Function responsible for liquidation is defined [here](https://github.com/Synthe
   * **liquidator_synthetic_account** - account from which synthetic tokens will be repaid
   * **liquidator_collateral_account** - account to which collateral tokens will be transferred
   * **liquidation_fund** - account where *liquidation_penalty_exchange* will be transferred (same as in [_Collateral_](/docs/technical/state#collateral-asset) struct)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **owner** - owner of *vault_entry*, needed to check address
   * **liquidator** - signer, owner of accounts on synthetic and collateral
   * **exchange_authority** - pubkey of exchange program
