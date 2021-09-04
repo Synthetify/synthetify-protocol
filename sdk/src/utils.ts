@@ -107,6 +107,9 @@ export const toScale = (decimal: Decimal, scale: number) => {
     }
   }
 }
+export const fromPercentToInterestRate = (percent: number) => {
+  return toScale(percentToDecimal(percent), INTEREST_RATE_DECIMALS)
+}
 
 export const divUp = (a: BN, b: BN) => {
   return a.add(b.subn(1)).div(b)

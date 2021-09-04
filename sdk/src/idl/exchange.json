@@ -2230,6 +2230,328 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "setVaultCollateralRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "collateralRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultDebtInterestRate",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "debtInterestRate",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultLiquidationThreshold",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationThreshold",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultSetLiquidationRatio",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationRatio",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultLiquidationPenaltyLiquidator",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationPenaltyLiquidator",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultLiquidationPenaltyExchange",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "liquidationPenaltyExchange",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setVaultMaxBorrow",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "maxBorrow",
+          "type": {
+            "defined": "Decimal"
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdrawVaultAccumulatedInterest",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "to",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [

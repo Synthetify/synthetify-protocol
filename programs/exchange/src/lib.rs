@@ -2289,6 +2289,174 @@ pub mod exchange {
 
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_collateral_ratio(
+        ctx: Context<SetVaultParameter>,
+        collateral_ratio: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT COLLATERAL RATIO");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // collateral_ratio must be less or equals 100%
+        let same_scale = vault.collateral_ratio.scale == collateral_ratio.scale;
+        let in_range = collateral_ratio.lt(Decimal::from_percent(100))?;
+        let less_than_liquidation_threshold = vault.liquidation_ratio.lt(collateral_ratio)?;
+        require!(
+            same_scale && in_range && less_than_liquidation_threshold,
+            ParameterOutOfRange
+        );
+
+        vault.collateral_ratio = collateral_ratio;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_debt_interest_rate(
+        ctx: Context<SetVaultParameter>,
+        debt_interest_rate: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT DEBT INTEREST");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // debt interest rate must be less or equals 200%
+        let same_scale = vault.debt_interest_rate.scale == debt_interest_rate.scale;
+        let in_range = debt_interest_rate.lte(Decimal::from_percent(200).to_interest_rate())?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.debt_interest_rate = debt_interest_rate;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_liquidation_threshold(
+        ctx: Context<SetVaultParameter>,
+        liquidation_threshold: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION THRESHOLD");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // vault liquidation threshold must be less or equals 100% and greater than collateral_ratio
+        let same_scale = vault.collateral_ratio.scale == liquidation_threshold.scale;
+        let in_range = liquidation_threshold.lte(Decimal::from_percent(100))?;
+        let greater_than_collateral_ratio = liquidation_threshold.gt(vault.collateral_ratio)?;
+        require!(
+            same_scale && in_range && greater_than_collateral_ratio,
+            ParameterOutOfRange
+        );
+
+        vault.liquidation_threshold = liquidation_threshold;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_set_liquidation_ratio(
+        ctx: Context<SetVaultParameter>,
+        liquidation_ratio: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION RATIO");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // vault liquidation ratio must be less or equals 100%
+        let same_scale = vault.liquidation_ratio.scale == liquidation_ratio.scale;
+        let in_range = liquidation_ratio.lte(Decimal::from_percent(100))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.liquidation_ratio = liquidation_ratio;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_liquidation_penalty_liquidator(
+        ctx: Context<SetVaultParameter>,
+        liquidation_penalty_liquidator: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION PENALTY LIQUIDATOR");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // liquidation penalty liquidator vault must be less or equals 20%
+        let same_scale =
+            vault.liquidation_penalty_liquidator.scale == liquidation_penalty_liquidator.scale;
+        let in_range = liquidation_penalty_liquidator.lte(Decimal::from_percent(20))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.liquidation_penalty_liquidator = liquidation_penalty_liquidator;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_liquidation_penalty_exchange(
+        ctx: Context<SetVaultParameter>,
+        liquidation_penalty_exchange: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT LIQUIDATION PENALTY EXCHANGE");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        // liquidation penalty exchange vault must be less or equals 20%
+        let same_scale =
+            vault.liquidation_penalty_exchange.scale == liquidation_penalty_exchange.scale;
+        let in_range = liquidation_penalty_exchange.lte(Decimal::from_percent(20))?;
+        require!(same_scale && in_range, ParameterOutOfRange);
+
+        vault.liquidation_penalty_exchange = liquidation_penalty_exchange;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn set_vault_max_borrow(
+        ctx: Context<SetVaultParameter>,
+        max_borrow: Decimal,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: SET VAULT MAX BORROW");
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        require!(
+            vault.max_borrow.scale == max_borrow.scale,
+            ParameterOutOfRange
+        );
+
+        // increase and decrease max borrow supply is always safe
+        vault.max_borrow = max_borrow;
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn withdraw_vault_accumulated_interest(
+        ctx: Context<WithdrawVaultAccumulatedInterest>,
+        amount: u64,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: WITHDRAW VAULT ACCUMULATED INTEREST");
+        let state = &ctx.accounts.state.load()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        adjust_vault_interest_rate(vault, timestamp);
+
+        let mut actual_amount = Decimal {
+            val: amount.into(),
+            scale: vault.accumulated_interest.scale,
+        };
+        // u64::MAX mean all available
+        if amount == u64::MAX {
+            actual_amount.val = vault.accumulated_interest.val;
+        }
+
+        // check valid amount
+        if actual_amount.gt(vault.accumulated_interest)? {
+            return Err(ErrorCode::InsufficientAmountAdminWithdraw.into());
+        }
+
+        // decrease vault accumulated interest
+        vault.accumulated_interest = vault.accumulated_interest.sub(actual_amount).unwrap();
+
+        // Mint synthetic to admin
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer = &[&seeds[..]];
+        let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
+        token::mint_to(mint_cpi_ctx, actual_amount.to_u64())?;
+
+        Ok(())
+    }
 }
 
 #[error]

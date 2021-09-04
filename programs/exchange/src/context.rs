@@ -1074,3 +1074,58 @@ pub struct SetVaultHalted<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct SetVaultParameter<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID)]
+    pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
+    pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawVaultAccumulatedInterest<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(mut,
+        constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID
+    )]
+    pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
+    pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    pub assets_list: Loader<'info, AssetsList>,
+    #[account(mut,
+        constraint = &to.mint == synthetic.to_account_info().key
+    )]
+    pub to: CpiAccount<'info, TokenAccount>,
+    #[account("token_program.key == &token::ID")]
+    pub token_program: AccountInfo<'info>,
+}
+impl<'a, 'b, 'c, 'info> From<&WithdrawVaultAccumulatedInterest<'info>>
+    for CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> 
+{
+    fn from(
+        accounts: &WithdrawVaultAccumulatedInterest<'info>,
+    ) -> CpiContext<'a, 'b, 'c, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: accounts.synthetic.to_account_info(),
+            to: accounts.to.to_account_info(),
+            authority: accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = accounts.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}

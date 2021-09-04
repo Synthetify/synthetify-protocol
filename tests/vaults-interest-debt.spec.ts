@@ -38,6 +38,7 @@ import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   ERRORS,
+  fromPercentToInterestRate,
   INTEREST_RATE_DECIMALS,
   percentToDecimal,
   SNY_DECIMALS,
@@ -195,7 +196,7 @@ describe('Vault interest borrow accumulation', () => {
     })
 
     it('create btc/xsol vault', async () => {
-      const debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
+      const debtInterestRate = fromPercentToInterestRate(7)
       const collateralRatio = percentToDecimal(65)
       const liquidationRatio = percentToDecimal(50)
       const liquidationThreshold = percentToDecimal(90)
@@ -256,7 +257,7 @@ describe('Vault interest borrow accumulation', () => {
       })
     })
   })
-  describe('accumulate withdraw interest', async () => {
+  describe('accumulate debt interest', async () => {
     const adjustmentPeriod = 60
 
     it('should increase synthetic supply', async () => {
@@ -320,12 +321,7 @@ describe('Vault interest borrow accumulation', () => {
       assert.ok(
         eqDecimals(vaultBefore.accumulatedInterest, toDecimal(new BN(0), xsolAfter.supply.scale))
       )
-      assert.ok(
-        eqDecimals(
-          vaultBefore.accumulatedInterestRate,
-          toScale(toDecimal(new BN(1), 0), INTEREST_RATE_DECIMALS)
-        )
-      )
+      assert.ok(eqDecimals(vaultBefore.accumulatedInterestRate, fromPercentToInterestRate(100)))
 
       // check vault entry
       assert.ok(
@@ -339,6 +335,114 @@ describe('Vault interest borrow accumulation', () => {
       assert.ok(xsolBefore.borrowedSupply.val.eq(xsolBorrowAmount))
       assert.ok(eqDecimals(xsolAfter.supply, expectedNewSupply))
       assert.ok(eqDecimals(xsolAfter.borrowedSupply, expectedNewSupply))
+    })
+  })
+  describe('Withdraw accumulated debt interest from vault', async () => {
+    const firstWithdrawAmount = new BN(5_000)
+    let adminXsolTokenAccount
+
+    before(async () => {
+      adminXsolTokenAccount = await xsolToken.createAccount(EXCHANGE_ADMIN.publicKey)
+    })
+    it('should fail without admin signature', async () => {
+      const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
+        collateral: btc.collateralAddress,
+        synthetic: xsol.assetAddress,
+        to: adminXsolTokenAccount,
+        amount: firstWithdrawAmount
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [wallet], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('withdraw over limit should fail', async () => {
+      const vault = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const overLimit = vault.accumulatedInterest.val.add(new BN(1))
+
+      const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
+        collateral: btc.collateralAddress,
+        synthetic: xsol.assetAddress,
+        to: adminXsolTokenAccount,
+        amount: overLimit
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
+        ERRORS_EXCHANGE.INSUFFICIENT_AMOUNT_ADMIN_WITHDRAW
+      )
+    })
+    it('should withdraw some accumulated interest from vault', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xsolBefore = assetsListData.synthetics[1]
+
+      const vaultBefore = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+
+      const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
+        collateral: btc.collateralAddress,
+        synthetic: xsol.assetAddress,
+        to: adminXsolTokenAccount,
+        amount: firstWithdrawAmount
+      })
+
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const xsolAdminAccountInfo = await xsolToken.getAccountInfo(adminXsolTokenAccount)
+      const xsolAfter = assetsListData.synthetics[1]
+      const expectedVaultAccumulatedInterestAfter = toDecimal(
+        vaultBefore.accumulatedInterest.val.sub(firstWithdrawAmount),
+        vaultBefore.accumulatedInterest.scale
+      )
+
+      // check vault accumulated interest
+      assert.ok(eqDecimals(vaultAfter.accumulatedInterest, expectedVaultAccumulatedInterestAfter))
+
+      // check admin balance
+      assert.ok(xsolAdminAccountInfo.amount.eq(firstWithdrawAmount))
+
+      // supply should not change
+      assert.ok(eqDecimals(vaultAfter.mintAmount, vaultBefore.mintAmount))
+      assert.ok(eqDecimals(xsolBefore.supply, xsolAfter.supply))
+      assert.ok(eqDecimals(xsolBefore.borrowedSupply, xsolAfter.borrowedSupply))
+    })
+    it('should withdraw rest of accumulated interest from vault', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xsolBefore = assetsListData.synthetics[1]
+
+      const vaultBefore = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const xsolAdminAccountInfoBefore = await xsolToken.getAccountInfo(adminXsolTokenAccount)
+      const toWithdraw = new BN('ffffffffffffffff', 16)
+
+      const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
+        collateral: btc.collateralAddress,
+        synthetic: xsol.assetAddress,
+        to: adminXsolTokenAccount,
+        amount: toWithdraw
+      })
+
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+
+      const vaultAfter = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const xsolAdminAccountInfoAfter = await xsolToken.getAccountInfo(adminXsolTokenAccount)
+      const xsolAfter = assetsListData.synthetics[1]
+      const expectedAdminBalance = xsolAdminAccountInfoBefore.amount.add(
+        vaultBefore.accumulatedInterest.val
+      )
+      const expectedVaultAccumulatedInterestAfter = toDecimal(
+        new BN(0),
+        vaultBefore.accumulatedInterest.scale
+      )
+
+      // check vault accumulated interest
+      assert.ok(eqDecimals(vaultAfter.accumulatedInterest, expectedVaultAccumulatedInterestAfter))
+
+      // check admin balance
+      assert.ok(xsolAdminAccountInfoAfter.amount.eq(expectedAdminBalance))
+
+      // supply should not change
+      assert.ok(eqDecimals(vaultAfter.mintAmount, vaultBefore.mintAmount))
+      assert.ok(eqDecimals(xsolBefore.supply, xsolAfter.supply))
+      assert.ok(eqDecimals(xsolBefore.borrowedSupply, xsolAfter.borrowedSupply))
     })
   })
 })
