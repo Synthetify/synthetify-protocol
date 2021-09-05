@@ -173,6 +173,7 @@ pub fn adjust_interest_debt(
             calculate_compounded_interest(total_debt_twap, minute_interest_rate, diff as u128);
         let usd = &mut assets_list.borrow_mut().synthetics[0];
 
+        // increase in interest supply may exceed the max supply limit
         usd.supply = usd.supply.add(compounded_interest).unwrap();
         state.accumulated_debt_interest = state
             .accumulated_debt_interest
@@ -228,6 +229,7 @@ pub fn adjust_vault_entry_interest_debt(
         .sub(vault_entry.synthetic_amount)
         .unwrap();
 
+    // increase in interest supply may exceed the max supply limit
     // increase synthetic supply
     synthetic.supply = synthetic.supply.add(additional_tokens).unwrap();
     // increase synthetic borrowed_supply
@@ -249,6 +251,19 @@ pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> P
     synthetic.supply = new_supply;
     Ok(())
 }
+impl Synthetic {
+    pub fn set_supply_safely(self: &mut Self, new_supply: Decimal) -> ProgramResult {
+        // increase can throw error
+        if new_supply.gt(self.supply)? && new_supply.gt(self.max_supply)? {
+            return Err(ErrorCode::MaxSupply.into());
+        }
+        // decrease is always safe
+        self.supply = new_supply;
+
+        Ok(())
+    }
+}
+
 pub fn set_new_vault_mint_amount(vault: &mut Vault, new_mint_amount: Decimal) -> ProgramResult {
     if vault.max_borrow.lt(new_mint_amount).unwrap() {
         return Err(ErrorCode::VaultBorrowLimit.into());
