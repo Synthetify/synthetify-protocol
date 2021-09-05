@@ -259,7 +259,55 @@ impl Synthetic {
         }
         // decrease is always safe
         self.supply = new_supply;
-
+        Ok(())
+    }
+}
+impl Vault {
+    pub fn set_mint_amount_safely(self: &mut Self, new_mint_amount: Decimal) -> ProgramResult {
+        // increase can throw error
+        if new_mint_amount.gt(self.mint_amount)? && new_mint_amount.gt(self.mint_amount)? {
+            return Err(ErrorCode::MaxSupply.into());
+        }
+        // decrease is always safe
+        self.mint_amount = new_mint_amount;
+        Ok(())
+    }
+}
+impl VaultEntry {
+    pub fn decrease_supply_cascade(
+        self: &mut Self,
+        vault: &mut Vault,
+        synthetic: &mut Synthetic,
+        burn_amount: Decimal,
+    ) -> ProgramResult {
+        // decrease is always safe
+        // decrease vault_entry supply
+        self.synthetic_amount = self.synthetic_amount.sub(burn_amount).unwrap();
+        // decrease vault supply
+        vault.mint_amount = vault.mint_amount.sub(burn_amount).unwrap();
+        // decrease borrowed synthetic supply
+        synthetic.borrowed_supply = synthetic.borrowed_supply.sub(burn_amount).unwrap();
+        // decrease synthetic supply
+        synthetic.supply = synthetic.supply.sub(burn_amount).unwrap();
+        Ok(())
+    }
+    pub fn increase_supply_cascade(
+        self: &mut Self,
+        vault: &mut Vault,
+        synthetic: &mut Synthetic,
+        mint_amount: Decimal,
+    ) -> ProgramResult {
+        // increase can throw limit error
+        // increase vault_entry supply
+        self.synthetic_amount = self.synthetic_amount.add(mint_amount).unwrap();
+        // increase vault supply
+        let new_mint_amount = vault.mint_amount.add(mint_amount).unwrap();
+        vault.set_mint_amount_safely(new_mint_amount)?;
+        // increase borrowed synthetic supply
+        synthetic.borrowed_supply = synthetic.borrowed_supply.add(mint_amount).unwrap();
+        // increase synthetic supply
+        let new_synthetic_supply = synthetic.supply.add(mint_amount).unwrap();
+        synthetic.set_supply_safely(new_synthetic_supply)?;
         Ok(())
     }
 }
