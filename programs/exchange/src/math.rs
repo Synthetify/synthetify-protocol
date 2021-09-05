@@ -29,14 +29,14 @@ pub fn calculate_debt(
             true => asset.twap,
             _ => asset.price,
         };
-        let supply = synthetic
+        let debt_supply = synthetic
             .supply
             .sub(synthetic.swapline_supply)
             .unwrap()
             .sub(synthetic.borrowed_supply)
             .unwrap();
         // rounding up to be sure that debt is not less than minted tokens
-        debt = debt.add(price.mul_up(supply).to_usd_up()).unwrap();
+        debt = debt.add(price.mul_up(debt_supply).to_usd_up()).unwrap();
     }
     Ok(debt)
 }
