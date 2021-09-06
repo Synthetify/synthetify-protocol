@@ -2259,6 +2259,30 @@ pub mod exchange {
         Ok(())
     }
 
+    pub fn trigger_vault_entry_debt_adjustment(
+        ctx: Context<TriggerVaultEntryDebtAdjustment>,
+    ) -> Result<()> {
+        msg!("Synthetify: TRIGGER VAULT ENTRY DEBT ADJUSTMENT");
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        let synthetic = assets_list
+            .synthetics
+            .iter_mut()
+            .find(|x| {
+                x.asset_address
+                    .eq(ctx.accounts.synthetic.to_account_info().key)
+            })
+            .unwrap();
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        Ok(())
+    }
+
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn set_vault_halted(ctx: Context<SetVaultHalted>, halted: bool) -> Result<()> {
         msg!("Synthetify:Admin: SET VAULT HALTED");
