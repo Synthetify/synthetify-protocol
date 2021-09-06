@@ -1416,4 +1416,44 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_set_supply_safely() {
+        let synthetic_decimal = 8;
+        let synthetic = Synthetic {
+            supply: Decimal::from_integer(101).to_scale(synthetic_decimal),
+            borrowed_supply: Decimal::from_integer(101).to_scale(synthetic_decimal),
+            max_supply: Decimal::from_integer(1000).to_scale(synthetic_decimal),
+            ..Default::default()
+        };
+        // increase supply, not crossed max supply
+        {
+            let mut synthetic = synthetic.clone();
+            let new_supply = Decimal::from_integer(179).to_scale(synthetic_decimal);
+            let supply_result = synthetic.set_supply_safely(new_supply);
+            assert!(supply_result.is_ok());
+        }
+        // increase supply, crossed max supply
+        {
+            let mut synthetic = synthetic.clone();
+            let new_supply = Decimal::from_integer(1001).to_scale(synthetic_decimal);
+            let setting_result = synthetic.set_supply_safely(new_supply);
+            assert!(setting_result.is_err())
+        }
+        // decrease supply, not crossed max supply
+        {
+            let mut synthetic = synthetic.clone();
+            let new_supply = Decimal::from_integer(1).to_scale(synthetic_decimal);
+            let setting_result = synthetic.set_supply_safely(new_supply);
+            assert!(setting_result.is_ok())
+        }
+        // decrease supply, crossed max supply
+        {
+            let mut synthetic = synthetic.clone();
+            synthetic.supply = Decimal::from_integer(1800).to_scale(synthetic_decimal);
+            let new_supply = Decimal::from_integer(1300).to_scale(synthetic_decimal);
+            let setting_result = synthetic.set_supply_safely(new_supply);
+            assert!(setting_result.is_ok())
+        }
+    }
 }
