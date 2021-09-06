@@ -2203,6 +2203,11 @@ pub mod exchange {
             .sub(seized_collateral_in_token)
             .unwrap();
 
+        vault.collateral_amount = vault
+            .collateral_amount
+            .sub(seized_collateral_in_token)
+            .unwrap();
+
         vault_entry.decrease_supply_cascade(vault, synthetic, liquidation_amount)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
