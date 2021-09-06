@@ -1420,21 +1420,21 @@ mod tests {
     #[test]
     fn test_set_supply_safely() {
         let synthetic_decimal = 8;
-        let synthetic = Synthetic {
+        let base_synthetic = Synthetic {
             supply: Decimal::from_integer(101).to_scale(synthetic_decimal),
             borrowed_supply: Decimal::from_integer(101).to_scale(synthetic_decimal),
             max_supply: Decimal::from_integer(1000).to_scale(synthetic_decimal),
             ..Default::default()
         };
-        let vault = Vault {
+        let base_vault = Vault {
             mint_amount: Decimal::from_integer(3).to_scale(synthetic_decimal),
             max_borrow: Decimal::from_integer(50).to_scale(synthetic_decimal),
             ..Default::default()
         };
         // increase supply, not crossed max supply
         {
-            let mut synthetic = synthetic.clone();
-            let mut vault = vault.clone();
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
 
             let new_supply = Decimal::from_integer(179).to_scale(synthetic_decimal);
             let new_mint_amount = Decimal::from_integer(21).to_scale(synthetic_decimal);
@@ -1443,11 +1443,13 @@ mod tests {
 
             assert!(supply_result.is_ok());
             assert!(mint_amount_result.is_ok());
+            assert_eq!(synthetic.supply, new_supply);
+            assert_eq!(vault.mint_amount, new_mint_amount);
         }
         // increase supply, crossed max supply
         {
-            let mut synthetic = synthetic.clone();
-            let mut vault = vault.clone();
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
 
             let new_supply = Decimal::from_integer(1001).to_scale(synthetic_decimal);
             let new_mint_amount = Decimal::from_integer(61).to_scale(synthetic_decimal);
@@ -1456,11 +1458,13 @@ mod tests {
 
             assert!(setting_result.is_err());
             assert!(mint_amount_result.is_err());
+            assert_eq!(synthetic.supply, base_synthetic.supply);
+            assert_eq!(vault.mint_amount, base_vault.mint_amount);
         }
         // decrease supply, not crossed max supply
         {
-            let mut synthetic = synthetic.clone();
-            let mut vault = vault.clone();
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
 
             let new_supply = Decimal::from_integer(1).to_scale(synthetic_decimal);
             let new_mint_amount = Decimal::from_integer(1).to_scale(synthetic_decimal);
@@ -1469,11 +1473,13 @@ mod tests {
 
             assert!(setting_result.is_ok());
             assert!(mint_amount_result.is_ok());
+            assert_eq!(synthetic.supply, new_supply);
+            assert_eq!(vault.mint_amount, new_mint_amount);
         }
         // decrease supply, crossed max supply
         {
-            let mut synthetic = synthetic.clone();
-            let mut vault = vault.clone();
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
             synthetic.supply = Decimal::from_integer(1800).to_scale(synthetic_decimal);
             vault.mint_amount = Decimal::from_integer(150).to_scale(synthetic_decimal);
 
@@ -1484,6 +1490,119 @@ mod tests {
 
             assert!(setting_result.is_ok());
             assert!(mint_amount_result.is_ok());
+            assert_eq!(synthetic.supply, new_supply);
+            assert_eq!(vault.mint_amount, new_mint_amount);
+        }
+    }
+
+    #[test]
+    fn test_vault_entry_cascade_supply_change() {
+        let synthetic_decimal = 8;
+        let base_synthetic = Synthetic {
+            supply: Decimal::from_integer(50).to_scale(synthetic_decimal),
+            borrowed_supply: Decimal::from_integer(10).to_scale(synthetic_decimal),
+            max_supply: Decimal::from_integer(100).to_scale(synthetic_decimal),
+            ..Default::default()
+        };
+        let base_vault = Vault {
+            mint_amount: Decimal::from_integer(2).to_scale(synthetic_decimal),
+            max_borrow: Decimal::from_integer(20).to_scale(synthetic_decimal),
+            ..Default::default()
+        };
+        let base_vault_entry = VaultEntry {
+            synthetic_amount: Decimal::from_integer(1).to_scale(synthetic_decimal),
+            ..Default::default()
+        };
+        // increase, not crossed
+        {
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
+            let mut vault_entry = base_vault_entry.clone();
+            let mint_amount = Decimal::from_integer(5).to_scale(synthetic_decimal);
+
+            let cascade_increase =
+                vault_entry.increase_supply_cascade(&mut vault, &mut synthetic, mint_amount);
+
+            assert!(cascade_increase.is_ok());
+            assert_eq!(
+                vault_entry.synthetic_amount,
+                Decimal::from_integer(6).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                vault.mint_amount,
+                Decimal::from_integer(7).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                synthetic.borrowed_supply,
+                Decimal::from_integer(15).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                synthetic.supply,
+                Decimal::from_integer(55).to_scale(synthetic_decimal)
+            );
+        }
+        // increase, crossed max mint amount
+        {
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
+            let mut vault_entry = base_vault_entry.clone();
+            let mint_amount = Decimal::from_integer(20).to_scale(synthetic_decimal);
+
+            let cascade_increase =
+                vault_entry.increase_supply_cascade(&mut vault, &mut synthetic, mint_amount);
+
+            assert!(cascade_increase.is_err());
+        }
+        // increase, crossed max synthetic supply
+        {
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
+            let mut vault_entry = base_vault_entry.clone();
+            vault.max_borrow = Decimal::from_integer(300).to_scale(synthetic_decimal);
+            let mint_amount = Decimal::from_integer(100).to_scale(synthetic_decimal);
+
+            let cascade_increase =
+                vault_entry.increase_supply_cascade(&mut vault, &mut synthetic, mint_amount);
+
+            assert!(cascade_increase.is_err());
+        }
+        // decrease supply, crossed max supply
+        {
+            let mut synthetic = base_synthetic.clone();
+            let mut vault = base_vault.clone();
+            let mut vault_entry = base_vault_entry.clone();
+            let synthetic_supply = Decimal::from_integer(300).to_scale(synthetic_decimal);
+            let borrowed_supply = Decimal::from_integer(200).to_scale(synthetic_decimal);
+            let vault_mint_amount = Decimal::from_integer(200).to_scale(synthetic_decimal);
+            let vault_entry_synthetic_amount =
+                Decimal::from_integer(150).to_scale(synthetic_decimal);
+
+            synthetic.supply = synthetic_supply;
+            synthetic.borrowed_supply = borrowed_supply;
+            vault.mint_amount = vault_mint_amount;
+            vault_entry.synthetic_amount = vault_entry_synthetic_amount;
+            let burn_amount = Decimal::from_integer(10).to_scale(synthetic_decimal);
+
+            let cascade_decrease =
+                vault_entry.decrease_supply_cascade(&mut vault, &mut synthetic, burn_amount);
+
+            assert!(cascade_decrease.is_ok());
+            assert_eq!(
+                vault_entry.synthetic_amount,
+                Decimal::from_integer(140).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                vault.mint_amount,
+                Decimal::from_integer(190).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                synthetic.borrowed_supply,
+                Decimal::from_integer(190).to_scale(synthetic_decimal)
+            );
+            assert_eq!(
+                synthetic.supply,
+                Decimal::from_integer(290).to_scale(synthetic_decimal)
+            );
         }
     }
 }
