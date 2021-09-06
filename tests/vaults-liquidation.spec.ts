@@ -351,5 +351,8 @@ describe('vaults liquidation', () => {
     const assetsListDataAfter = await exchange.getAssetsList(assetsList)
     const xusdAfter = assetsListDataAfter.synthetics[0]
     assert.ok(xusdAfter.supply.val.eq(xusdBefore.supply.val.sub(new BN(8_000_000_000))))
+    assert.ok(
+      xusdAfter.borrowedSupply.val.eq(xusdBefore.borrowedSupply.val.sub(new BN(8_000_000_000)))
+    )
   })
 })
