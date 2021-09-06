@@ -243,14 +243,6 @@ pub fn adjust_vault_entry_interest_debt(
     // commit adjustment by setting interest nominator as new interest denominator
     vault_entry.last_accumulated_interest_rate = interest_nominator;
 }
-
-pub fn set_synthetic_supply(synthetic: &mut Synthetic, new_supply: Decimal) -> ProgramResult {
-    if new_supply.gt(synthetic.max_supply).unwrap() {
-        return Err(ErrorCode::MaxSupply.into());
-    }
-    synthetic.supply = new_supply;
-    Ok(())
-}
 impl Synthetic {
     pub fn set_supply_safely(self: &mut Self, new_supply: Decimal) -> ProgramResult {
         // increase can throw error
@@ -265,8 +257,8 @@ impl Synthetic {
 impl Vault {
     pub fn set_mint_amount_safely(self: &mut Self, new_mint_amount: Decimal) -> ProgramResult {
         // increase can throw error
-        if new_mint_amount.gt(self.mint_amount)? && new_mint_amount.gt(self.mint_amount)? {
-            return Err(ErrorCode::MaxSupply.into());
+        if new_mint_amount.gt(self.mint_amount)? && new_mint_amount.gt(self.max_borrow)? {
+            return Err(ErrorCode::VaultBorrowLimit.into());
         }
         // decrease is always safe
         self.mint_amount = new_mint_amount;
@@ -310,14 +302,6 @@ impl VaultEntry {
         synthetic.set_supply_safely(new_synthetic_supply)?;
         Ok(())
     }
-}
-
-pub fn set_new_vault_mint_amount(vault: &mut Vault, new_mint_amount: Decimal) -> ProgramResult {
-    if vault.max_borrow.lt(new_mint_amount).unwrap() {
-        return Err(ErrorCode::VaultBorrowLimit.into());
-    }
-    vault.mint_amount = new_mint_amount;
-    Ok(())
 }
 pub fn get_user_sny_collateral_balance(
     exchange_account: &ExchangeAccount,
@@ -743,49 +727,6 @@ mod tests {
         assert!(check_feed_update(&list.assets, 0, 1, 10, 20).is_ok());
         // No tolerance
         assert!(check_feed_update(&list.assets, 0, 1, 0, 10).is_ok());
-    }
-    #[test]
-    fn test_set_synthetic_supply() {
-        // Regular
-        {
-            let scale = 6;
-            let max_supply = Decimal::new(100, scale);
-            let mut synthetic = Synthetic {
-                supply: Decimal::new(10, scale),
-                max_supply,
-                ..Default::default()
-            };
-            let new_supply = Decimal::new(50, scale);
-            let result = set_synthetic_supply(&mut synthetic, new_supply);
-            assert!(result.is_ok());
-            assert_eq!({ synthetic.max_supply }, max_supply);
-            assert_eq!({ synthetic.supply }, new_supply);
-        }
-        // Up to limit
-        {
-            let scale = 7;
-            let max_supply = Decimal::new(100, scale);
-            let mut synthetic = Synthetic {
-                supply: Decimal::new(10, scale),
-                max_supply,
-                ..Default::default()
-            };
-
-            let result = set_synthetic_supply(&mut synthetic, max_supply);
-            assert!(result.is_ok());
-            assert_eq!({ synthetic.supply }, max_supply);
-        }
-        // Over limit
-        {
-            let scale = 8;
-            let mut synthetic = Synthetic {
-                supply: Decimal::new(10, scale),
-                max_supply: Decimal::new(100, scale),
-                ..Default::default()
-            };
-            let result = set_synthetic_supply(&mut synthetic, Decimal::new(101, scale));
-            assert!(result.is_err());
-        }
     }
     #[test]
     fn test_get_user_sny_collateral_balance() {

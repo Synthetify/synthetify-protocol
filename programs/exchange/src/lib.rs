@@ -1970,18 +1970,7 @@ pub mod exchange {
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
         }
-
-        // update vault
-        let new_mint_amount = vault.mint_amount.add(borrow_amount).unwrap();
-        set_new_vault_mint_amount(vault, new_mint_amount)?;
-
-        // update vault_entry
-        vault_entry.synthetic_amount = amount_after_borrow;
-
-        // update synthetic
-        synthetic.borrowed_supply = synthetic.borrowed_supply.add(borrow_amount)?;
-        let new_synthetic_supply = synthetic.supply.add(borrow_amount).unwrap();
-        set_synthetic_supply(synthetic, new_synthetic_supply)?;
+        vault_entry.increase_supply_cascade(vault, synthetic, borrow_amount)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -2092,12 +2081,7 @@ pub mod exchange {
         if repay_amount.gt(vault_entry.synthetic_amount)? {
             repay_amount = vault_entry.synthetic_amount;
         };
-
-        // update synthetic, vault, vault_entry supply
-        vault.mint_amount = vault.mint_amount.sub(repay_amount).unwrap();
-        vault_entry.synthetic_amount = vault_entry.synthetic_amount.sub(repay_amount).unwrap();
-        synthetic.supply = synthetic.supply.sub(repay_amount).unwrap();
-        synthetic.borrowed_supply = synthetic.borrowed_supply.sub(repay_amount).unwrap();
+        vault_entry.decrease_supply_cascade(vault, synthetic, repay_amount)?;
 
         // burn tokens
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -2219,18 +2203,7 @@ pub mod exchange {
             .sub(seized_collateral_in_token)
             .unwrap();
 
-        vault_entry.synthetic_amount = vault_entry
-            .synthetic_amount
-            .sub(liquidation_amount)
-            .unwrap();
-        // Adjust vault variables
-        vault.collateral_amount = vault
-            .collateral_amount
-            .sub(seized_collateral_in_token)
-            .unwrap();
-        vault.mint_amount = vault.mint_amount.sub(liquidation_amount).unwrap();
-        // Change supply of burned synthetic
-        set_synthetic_supply(synthetic, synthetic.supply.sub(liquidation_amount).unwrap()).unwrap();
+        vault_entry.decrease_supply_cascade(vault, synthetic, liquidation_amount)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer_seeds = &[&seeds[..]];
