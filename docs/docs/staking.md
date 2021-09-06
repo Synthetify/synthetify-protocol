@@ -55,7 +55,7 @@ To [mint](/docs/glossary#mint), go to the Mint tab.
 
 #### Choose amount
 
-Fill the _Amount_ field with the amount you want to mint and click the _Mint_ button. Choosing _Max_ automatically fills the field with the maximum valid xUSD amount. On the right side, there is a field with the amount of the selected asset available to mint.
+Fill the _Amount_ field with the amount you want to mint and click the _Mint_ button. If you want to mint the maximum available amount you can use the _Max_ button. As the amount you can mint can change in real-time due to price and [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to mint.
 
 ![Mint-amount](https://i.imgur.com/CW2CwPi.png)
 
@@ -84,7 +84,7 @@ To [withdraw](/docs/glossary#withdraw), go to Withdraw tab.
 
 #### Choose amount
 
-Fill the _Amount_ field with the amount you want to withdraw and click _Withdraw_ button. Choosing _Max_ will withdraw the maximum available amount of selected collateral. On the right side, there is a field with the amount of the selected asset available to withdraw.
+Fill the _Amount_ field with the amount you want to withdraw and click the_Withdraw_ button. If you want to withdraw the maximum available amount you can use the _Max_ button. As the amount you can withdraw can change in real-time due to price and [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to withdraw.
 
 ![Withdraw-amount](https://i.imgur.com/GAEycMH.png)
 
@@ -114,7 +114,7 @@ To [burn](/docs/glossary#burn), go to the Burn tab.
 
 #### Choose amount
 
-Fill the _Amount_ field with the amount you want to burn and click the _Burn_ button. Choosing _Max_ automatically fills the field with the maximum available xUSD amount. On the right side, there is a field with the amount of the selected asset available to burn.
+Fill the _Amount_ field with the amount you want to burn and click the _Burn_ button. If you want to burn the maximum available amount you can use the _Max_ button. As the amount you can burn can change in real-time due to [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to burn.
 
 ![Burn-amount](https://i.imgur.com/N0SghCc.png)
 
