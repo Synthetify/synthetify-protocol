@@ -1426,34 +1426,64 @@ mod tests {
             max_supply: Decimal::from_integer(1000).to_scale(synthetic_decimal),
             ..Default::default()
         };
+        let vault = Vault {
+            mint_amount: Decimal::from_integer(3).to_scale(synthetic_decimal),
+            max_borrow: Decimal::from_integer(50).to_scale(synthetic_decimal),
+            ..Default::default()
+        };
         // increase supply, not crossed max supply
         {
             let mut synthetic = synthetic.clone();
+            let mut vault = vault.clone();
+
             let new_supply = Decimal::from_integer(179).to_scale(synthetic_decimal);
+            let new_mint_amount = Decimal::from_integer(21).to_scale(synthetic_decimal);
             let supply_result = synthetic.set_supply_safely(new_supply);
+            let mint_amount_result = vault.set_mint_amount_safely(new_mint_amount);
+
             assert!(supply_result.is_ok());
+            assert!(mint_amount_result.is_ok());
         }
         // increase supply, crossed max supply
         {
             let mut synthetic = synthetic.clone();
+            let mut vault = vault.clone();
+
             let new_supply = Decimal::from_integer(1001).to_scale(synthetic_decimal);
+            let new_mint_amount = Decimal::from_integer(61).to_scale(synthetic_decimal);
             let setting_result = synthetic.set_supply_safely(new_supply);
-            assert!(setting_result.is_err())
+            let mint_amount_result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(setting_result.is_err());
+            assert!(mint_amount_result.is_err());
         }
         // decrease supply, not crossed max supply
         {
             let mut synthetic = synthetic.clone();
+            let mut vault = vault.clone();
+
             let new_supply = Decimal::from_integer(1).to_scale(synthetic_decimal);
+            let new_mint_amount = Decimal::from_integer(1).to_scale(synthetic_decimal);
             let setting_result = synthetic.set_supply_safely(new_supply);
-            assert!(setting_result.is_ok())
+            let mint_amount_result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(setting_result.is_ok());
+            assert!(mint_amount_result.is_ok());
         }
         // decrease supply, crossed max supply
         {
             let mut synthetic = synthetic.clone();
+            let mut vault = vault.clone();
             synthetic.supply = Decimal::from_integer(1800).to_scale(synthetic_decimal);
+            vault.mint_amount = Decimal::from_integer(150).to_scale(synthetic_decimal);
+
             let new_supply = Decimal::from_integer(1300).to_scale(synthetic_decimal);
+            let new_mint_amount = Decimal::from_integer(90).to_scale(synthetic_decimal);
             let setting_result = synthetic.set_supply_safely(new_supply);
-            assert!(setting_result.is_ok())
+            let mint_amount_result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(setting_result.is_ok());
+            assert!(mint_amount_result.is_ok());
         }
     }
 }
