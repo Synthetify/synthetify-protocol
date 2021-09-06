@@ -1,7 +1,6 @@
 module.exports = {
   docs: [
     'home',
-    'whats-new',
     'faq',
     {
       type: 'category',

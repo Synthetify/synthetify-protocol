@@ -4,7 +4,7 @@ title: Faucet
 slug: /faucet
 ---
 
-Faucet gives you test tokens. Transaction default amount is 100 000 000 SNY.
+The faucet gives you test tokens. The default amount is 100 SNY.
 
 ### Get test SNY tokens
 
@@ -14,7 +14,7 @@ The button is placed in the top right corner, on the left side of the Devnet but
 
 ### Transaction approval
 
-After clicking Faucet button, there should show up an approval transaction pop-up. Click Approve to get test SNY tokens.
+After clicking the Faucet button, there should show up an approval transaction pop-up. Click Approve to get test SNY tokens.
 
 ![Approval](https://i.imgur.com/uz7BNi9.png)
 

@@ -9,7 +9,7 @@ By minting synthetic assets user enters the _debt pool_. To do it it needs to de
 
 ## Debt
 
-Debt is stored as *debt_shares* in [_ExchangeAccount_](/docs/technical/account). To convert it to actual amount total amount of *debt_shares* from [state](/docs/technical/state#structure-of-state) and a total debt calculated from supply (excluding borrowed and swapline supplies).
+Debt is stored as *debt_shares* in [_ExchangeAccount_](/docs/technical/account). To convert it to the actual amount total amount of *debt_shares* from [state](/docs/technical/state#structure-of-state) and a total debt calculated from the sum of supplies of minted tokens (excluding borrowed and _swapline_ supplies).
 
 Total debt is calculated [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/math.rs#L14-L42) as a sum of all minted assets converted to USD.
 
@@ -21,18 +21,18 @@ Every time total debt is calculated interest rate is added to it. It's is compou
 
 ### Max debt
 
-Maximum amount of debt user can have before it can be liquidated.
+The maximum amount of debt a user can have before it can be liquidated.
 
 
 ### Mint limit
 
-Maximum amount of tokens user can mint is their mint limit. It's calculated by multiplying [*max debt*](#max-debt) by [health factor](/docs/technical/state#structure-of-state)
+The maximum amount of tokens a user can mint is their mint limit. It's calculated by multiplying [*max debt*](#max-debt) by [health factor](/docs/technical/state#structure-of-state)
 
 
 
 ## Mint
 
-User can get xUSD by minting it. Afterwards it can be swapped for other synthetics. Method responsible for minting is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L299-L360). It checks if [debt](/docs/technical/synthetics#debt) and amount is less than [*mint_limit*](#mint-limit) and if so mints token to specified account.
+A user can get xUSD by minting it. Afterward, it can be swapped for other synthetics. The method responsible for minting is defined [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L299-L360). It checks if the sum of [debt](/docs/technical/synthetics#debt) and amount is less than [*mint_limit*](#mint-limit) and if so mints token to the specified account.
 
 It takes _amount_ (u64) and following context
 
@@ -49,12 +49,12 @@ It takes _amount_ (u64) and following context
 
   * **state** - account with [data of the program](/docs/technical/state)
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
   * **usd_token** - address of xUSD token
   * **to** - account to which xUSD is minted
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
-  * **owner** - owner of _exchange account_
+  * **owner** - the owner of the _exchange account_
 
 
 
@@ -74,17 +74,17 @@ Method responsible for burning is defined [here](https://github.com/Synthetify/s
     }
 
   * **state** - account with [data of the program](/docs/technical/state)
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
   * **usd_token** - address of xUSD token
   * **user_token_account_burn** - account on token from which tokens will be burned
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
-  * **owner** - owner of _exchange account_
+  * **owner** - the owner of the _exchange account_
 
 
 ## Swap 
-Synthetic tokens can be swapped inside exchange. Constant fee is 0.3% for all pairs. Having SNY as a collateral gives user a discount
+Synthetic tokens can be swapped inside the Exchange. The constant fee is 0.3% for all pairs. Having SNY as collateral gives the user a discount
 
 
 ### Discount
@@ -128,20 +128,20 @@ Method responsible for swap is defined [here](https://github.com/Synthetify/synt
     }
 
   * **state** - account with [data of the program](/docs/technical/state)
-  * **exchange_authority** - pubkey of exchange program
+  * **exchange_authority** - pubkey of the exchange program
   * **assets_list** - list of assets, structured like [this](/docs/technical/state#assetslist-structure)
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
-  * **token_in** - token which is send to exchange
-  * **token_for** - token which is send back to user
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
+  * **token_in** - the token which is sent to the Exchange
+  * **token_for** - THE token which is sent back to the user
   * **user_token_account_in** - user's account from which tokens will be taken
-  * **user_token_account_for** - user's account to which tokens will be send
+  * **user_token_account_for** - user's account to which tokens will be sent
   * **exchange_account** - account with [user data](/docs/technical/account#structure-of-account)
-  * **owner** - owner of _exchange account_
+  * **owner** - the owner of the _exchange account_
 
 
 ## Settlement
 
-Admin can set settlement slot (stored in [state](/docs/technical/state#structure-of-state)). When it is reached (or passed) settlement will be triggered.
+Admin can set settlement slot (stored in [the state](/docs/technical/state#structure-of-state)). When it is reached (or passed) settlement will be triggered.
 
 ### Settlement data
 
@@ -157,13 +157,13 @@ Data needed for settlement is stored in this structure:
         pub ratio: u64,
     }
 
-  * **bump** - used to [confirm address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
+  * **bump** - used to [confirm the address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
   * **reserve_address** - account belonging to exchange where deposited collaterals are kept
-  * **token_in_address** - token which was settled
-  * **token_out_address** - token in which settlement will be pain (equal to xUSD token)
-  * **decimals_in** - amount of decimal places in settled token
-  * **decimals_out** - amount of decimal places in target token
-  * **ratio** - ratio of prices of both tokens at moment of settlement (for xUSD just price of token)
+  * **token_in_address** - the token which was settled
+  * **token_out_address** - the token in which settlement will be sent (equal to xUSD token)
+  * **decimals_in** - the number of decimal places in the settled token
+  * **decimals_out** - the number of decimal places in the target token
+  * **ratio** - the ratio of prices of both tokens at the moment of settlement (for xUSD just price of token)
 
 
 ### Swapping settled synthetic
@@ -185,11 +185,11 @@ Method *swap_settled_synthetic* is defined [here](https://github.com/Synthetify/
 
   * **settlement** - _Settlement_ structure with data needed for settlement (see [above](#settlement-data))
   * **state** - account with [data of the program](/docs/technical/state)
-  * **token_to_settle** - address of settled token
-  * **user_settled_token_account** - account on settled token belonging to user
+  * **token_to_settle** - address of the settled token
+  * **user_settled_token_account** - account on settled token belonging to the user
   * **user_usd_account** - account on xUSD
   * **settlement_reserve** - account from which xUSD is transferred (specified in _Settlement_ structure)
   * **usd_token** - address of xUSD token
-  * **exchange_authority** - pubkey belonging to program
-  * **token_program** - address of solana's [_Token Program_](https://spl.solana.com/token)
-  * **signer** - owner of account on settled token
+  * **exchange_authority** - pubkey belonging to the program
+  * **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
+  * **signer** - the owner of the account on settled token

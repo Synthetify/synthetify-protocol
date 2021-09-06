@@ -4,9 +4,9 @@ title: Solana
 slug: /solana
 ---
 
-Solana is an open source blockchain project. Its architecture is based on Proof of History. The main assumption of its architecture is to prove existence of combination software algorithms set and blockchain implementation which removes software as a performance bottleneck.
+Solana is an open-source blockchain project. Its architecture is based on Proof of History. The main assumption of its architecture is to prove the existence of a combination of software algorithms set and blockchain implementation which removes software as a performance bottleneck.
 
-Solana has a mechanism for time synchronization. All nodes elect the one node leader, which provides universal source of time for all of them in a decentralized network, which means that transactions need less time to be verified.
+Solana has a mechanism for time synchronization. All nodes elect the one node leader, which provides a universal source of time for all of them in a decentralized network, which means that transactions need less time to be verified.
 
 For more information, please see its official [documentation](https://docs.solana.com/introduction).
 
@@ -28,6 +28,6 @@ For more information, please see its official [documentation](https://docs.solan
 - The highest transactions/second rate. Using PoH allows Solana blockchain to currently handle over 50 000 transactions per second. It means that it is faster than Visa.
 - Fast confirmation. The average time is 0.4s.
 - Low transaction cost. The average fee per transaction is 0.00025$
-- Perpetual oracles updating, push updates to the blockchain in sub-seconds interval, which eliminates arbitrage.
-- No front running - each transaction has its own timestamp, which disables the decision on the order in which transactions get recorded onto the blockchain.
+- Perpetual oracles updating, push updates to the blockchain in the sub-seconds interval, which eliminates arbitrage.
+- No front running - each transaction has its timestamp, which disables the decision on the order in which transactions get recorded onto the blockchain.
 - No sharding - no security risk. Less vulnerable to consensus attacks.
