@@ -1067,7 +1067,9 @@ pub struct TriggerVaultEntryDebtAdjustment<'info> {
     pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
     #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
     pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
-    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub owner: AccountInfo<'info>,
 }
