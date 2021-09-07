@@ -2259,7 +2259,7 @@ pub mod exchange {
         Ok(())
     }
 
-    #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
     pub fn trigger_vault_entry_debt_adjustment(
         ctx: Context<TriggerVaultEntryDebtAdjustment>,
     ) -> Result<()> {

@@ -1059,6 +1059,8 @@ pub struct LiquidateVault<'info> {
 pub struct TriggerVaultEntryDebtAdjustment<'info> {
     #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
     #[account(mut, has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]

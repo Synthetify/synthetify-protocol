@@ -80,11 +80,9 @@ describe('Vault interest borrow accumulation', () => {
   let xsol: Synthetic
   let btc: Collateral
   const accountOwner = Keypair.generate()
-  const otherAccountOwner = Keypair.generate()
 
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
-    await connection.requestAirdrop(otherAccountOwner.publicKey, 10e9)
     await connection.requestAirdrop(EXCHANGE_ADMIN.publicKey, 10e9)
 
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -274,15 +272,12 @@ describe('Vault interest borrow accumulation', () => {
 
       await skipTimestamps(adjustmentPeriod, connection)
 
-      const triggerIx = await exchange.triggerVaultEntryDebtAdjustmentInstruction(
-        {
-          owner: accountOwner.publicKey,
-          collateral: btc.collateralAddress,
-          synthetic: xsol.assetAddress
-        },
-        otherAccountOwner
-      )
-      await signAndSend(new Transaction().add(triggerIx), [otherAccountOwner], connection)
+      const triggerIx = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
+        owner: accountOwner.publicKey,
+        collateral: btc.collateralAddress,
+        synthetic: xsol.assetAddress
+      })
+      await signAndSend(new Transaction().add(triggerIx), [EXCHANGE_ADMIN], connection)
 
       // supply before adjustment
       // 831 XSOL

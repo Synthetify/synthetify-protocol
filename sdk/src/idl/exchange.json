@@ -2189,6 +2189,11 @@
           "isSigner": false
         },
         {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
           "name": "vaultEntry",
           "isMut": true,
           "isSigner": false
@@ -3483,5 +3488,8 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "EMuccTdpYF86KiSYoDqkbARBgrtDLHHR9xBFs5Eg8Jqb"
+  }
 }

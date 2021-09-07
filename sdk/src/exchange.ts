@@ -1631,6 +1631,7 @@ export class Exchange {
         synthetic,
         collateral,
         owner,
+        admin: this.state.admin,
         state: this.stateAddress,
         vault: vaultAddress,
         vaultEntry: vaultEntryAddress,
