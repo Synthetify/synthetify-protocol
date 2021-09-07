@@ -169,10 +169,16 @@ pub struct InitializeAssetsList<'info> {
     pub collateral_token: CpiAccount<'info, anchor_spl::token::Mint>,
     pub collateral_token_feed: AccountInfo<'info>,
     #[account(constraint = usd_token.to_account_info().owner == &anchor_spl::token::ID)]
-    pub usd_token: CpiAccount<'info, TokenAccount>,
-    #[account(constraint = &sny_reserve.owner == exchange_authority.key)]
+    pub usd_token: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(
+        constraint = &sny_reserve.owner == exchange_authority.key,
+        constraint = &sny_reserve.mint == collateral_token.to_account_info().key
+    )]
     pub sny_reserve: CpiAccount<'info, TokenAccount>,
-    #[account(constraint = &sny_liquidation_fund.owner == exchange_authority.key)]
+    #[account(
+        constraint = &sny_liquidation_fund.owner == exchange_authority.key,
+        constraint = &sny_liquidation_fund.mint == collateral_token.to_account_info().key
+    )]
     pub sny_liquidation_fund: CpiAccount<'info, TokenAccount>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
