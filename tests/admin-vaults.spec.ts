@@ -229,6 +229,35 @@ describe('ADMIN VAULTS', () => {
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
     })
   })
+  describe('#triggerVaultEntryDebtAdjustmentInstruction', async () => {
+    before(async () => {
+      const { ix } = await exchange.createVaultEntryInstruction({
+        collateral: collateralAddress,
+        synthetic: syntheticAddress,
+        owner: accountOwner.publicKey
+      })
+      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+    })
+    it('should failed without admin signature', async () => {
+      const ix = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
+        collateral: collateralAddress,
+        synthetic: syntheticAddress,
+        owner: accountOwner.publicKey
+      })
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(ix), [accountOwner], connection),
+        ERRORS.SIGNATURE
+      )
+    })
+    it('should trigger vault entry', async () => {
+      const ix = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
+        collateral: collateralAddress,
+        synthetic: syntheticAddress,
+        owner: accountOwner.publicKey
+      })
+      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+    })
+  })
   describe('#setVaultHalted', async () => {
     it('should failed without admin signature', async () => {
       const ix = await exchange.setVaultHaltedInstruction({

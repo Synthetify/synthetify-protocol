@@ -272,17 +272,13 @@ describe('Vault interest borrow accumulation', () => {
 
       await skipTimestamps(adjustmentPeriod, connection)
 
-      // trigger vault and vault entry adjustment
-      await exchange.vaultDeposit({
-        amount: new BN(0),
+      const triggerIx = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
         owner: accountOwner.publicKey,
         collateral: btc.collateralAddress,
-        synthetic: xsol.assetAddress,
-        userCollateralAccount: userBtcTokenAccount,
-        reserveAddress: btcVaultReserve,
-        collateralToken: btcToken,
-        signers: [accountOwner]
+        synthetic: xsol.assetAddress
       })
+      await signAndSend(new Transaction().add(triggerIx), [EXCHANGE_ADMIN], connection)
+
       // supply before adjustment
       // 831 XSOL
 

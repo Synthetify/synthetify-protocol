@@ -1056,6 +1056,27 @@ pub struct LiquidateVault<'info> {
 }
 
 #[derive(Accounts)]
+pub struct TriggerVaultEntryDebtAdjustment<'info> {
+    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(mut, has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    pub vault_entry: Loader<'info, VaultEntry>,
+    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    pub vault: Loader<'info, Vault>,
+    #[account(constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID)]
+    pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
+    pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
+    #[account(mut,
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+    )]
+    pub assets_list: Loader<'info, AssetsList>,
+    pub owner: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct SetVaultHalted<'info> {
     #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
     pub state: Loader<'info, State>,

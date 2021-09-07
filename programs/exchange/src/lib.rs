@@ -323,7 +323,7 @@ pub mod exchange {
 
         // We can only mint xUSD
         // Both xUSD and collateral token have static index in assets array
-        let mut xusd_synthetic = &mut synthetics[0];
+        let xusd_synthetic = &mut synthetics[0];
         let amount: Decimal = match amount {
             u64::MAX => mint_limit.sub(user_debt).unwrap(),
             _ => Decimal {
@@ -350,7 +350,8 @@ pub mod exchange {
         state.staking.next_round.all_points = state.debt_shares;
 
         let new_supply = xusd_synthetic.supply.add(amount).unwrap();
-        set_synthetic_supply(&mut xusd_synthetic, new_supply)?;
+        xusd_synthetic.set_supply_safely(new_supply)?;
+
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         // Mint xUSD to user
@@ -554,21 +555,23 @@ pub mod exchange {
 
         // Update xUSD supply based on tax
         let new_xusd_supply = synthetics[0].supply.add(swap_tax_reserve).unwrap();
-        set_synthetic_supply(&mut synthetics[0], new_xusd_supply)?;
+        synthetics[0].set_supply_safely(new_xusd_supply)?;
 
         // Set new supply output token
         let new_supply_output = synthetics[synthetic_for_index]
             .supply
             .add(amount_for)
             .unwrap();
-        set_synthetic_supply(&mut synthetics[synthetic_for_index], new_supply_output)?;
+
         // Set new supply input token
+        synthetics[synthetic_for_index].set_supply_safely(new_supply_output)?;
 
         let new_supply_input = synthetics[synthetic_in_index]
             .supply
             .sub(amount_decimal)
             .unwrap();
-        set_synthetic_supply(&mut synthetics[synthetic_in_index], new_supply_input)?;
+        synthetics[synthetic_in_index].set_supply_safely(new_supply_input)?;
+
         // Burn input token
         let cpi_ctx_burn: CpiContext<Burn> = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::burn(cpi_ctx_burn, amount)?;
@@ -640,10 +643,8 @@ pub mod exchange {
             exchange_account.user_staking_data.current_round_points = 0;
 
             // Change supply
-            set_synthetic_supply(
-                burn_synthetic,
-                burn_synthetic.supply.sub(user_debt).unwrap(),
-            )?;
+            burn_synthetic.set_supply_safely(burn_synthetic.supply.sub(user_debt).unwrap())?;
+
             // Burn token
             // We do not use full allowance maybe its better to burn full allowance
             // and mint matching amount
@@ -685,10 +686,8 @@ pub mod exchange {
             }
 
             // Change supply
-            set_synthetic_supply(
-                burn_synthetic,
-                burn_synthetic.supply.sub(amount_decimal).unwrap(),
-            )?;
+            burn_synthetic.set_supply_safely(burn_synthetic.supply.sub(amount_decimal).unwrap())?;
+
             // Burn token
             let cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
             token::burn(cpi_ctx, amount)?;
@@ -908,7 +907,8 @@ pub mod exchange {
                 .supply
                 .sub(liquidation_amount)
                 .unwrap();
-            set_synthetic_supply(&mut assets_list.synthetics[0], new_supply)?;
+            assets_list.synthetics[0].set_supply_safely(new_supply)?;
+
             let burn_accounts = Burn {
                 mint: ctx.accounts.usd_token.to_account_info(),
                 to: ctx.accounts.liquidator_usd_account.to_account_info(),
@@ -1527,7 +1527,7 @@ pub mod exchange {
 
         // Mint xUSD
         let new_supply = usd_synthetic.supply.add(usd_value).unwrap();
-        set_synthetic_supply(usd_synthetic, new_supply).unwrap();
+        usd_synthetic.set_supply_safely(new_supply)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
@@ -1683,7 +1683,7 @@ pub mod exchange {
         let amount_out = amount.sub(fee).unwrap().to_scale(synthetic.supply.scale);
         let new_supply = synthetic.supply.add(amount_out).unwrap();
 
-        set_synthetic_supply(synthetic, new_supply).unwrap();
+        synthetic.set_supply_safely(new_supply)?;
         synthetic.swapline_supply = synthetic.swapline_supply.add(amount_out).unwrap();
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
@@ -1749,7 +1749,7 @@ pub mod exchange {
         let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
         let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
 
-        set_synthetic_supply(synthetic, new_supply_synthetic).unwrap();
+        synthetic.set_supply_safely(new_supply_synthetic)?;
         synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
         swapline.balance = swapline.balance.sub(amount_out).unwrap();
 
@@ -1970,18 +1970,7 @@ pub mod exchange {
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
         }
-
-        // update vault
-        let new_mint_amount = vault.mint_amount.add(borrow_amount).unwrap();
-        set_new_vault_mint_amount(vault, new_mint_amount)?;
-
-        // update vault_entry
-        vault_entry.synthetic_amount = amount_after_borrow;
-
-        // update synthetic
-        synthetic.borrowed_supply = synthetic.borrowed_supply.add(borrow_amount)?;
-        let new_synthetic_supply = synthetic.supply.add(borrow_amount).unwrap();
-        set_synthetic_supply(synthetic, new_synthetic_supply)?;
+        vault_entry.increase_supply_cascade(vault, synthetic, borrow_amount)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -2092,12 +2081,7 @@ pub mod exchange {
         if repay_amount.gt(vault_entry.synthetic_amount)? {
             repay_amount = vault_entry.synthetic_amount;
         };
-
-        // update synthetic, vault, vault_entry supply
-        vault.mint_amount = vault.mint_amount.sub(repay_amount).unwrap();
-        vault_entry.synthetic_amount = vault_entry.synthetic_amount.sub(repay_amount).unwrap();
-        synthetic.supply = synthetic.supply.sub(repay_amount).unwrap();
-        synthetic.borrowed_supply = synthetic.borrowed_supply.sub(repay_amount).unwrap();
+        vault_entry.decrease_supply_cascade(vault, synthetic, repay_amount)?;
 
         // burn tokens
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
@@ -2219,18 +2203,12 @@ pub mod exchange {
             .sub(seized_collateral_in_token)
             .unwrap();
 
-        vault_entry.synthetic_amount = vault_entry
-            .synthetic_amount
-            .sub(liquidation_amount)
-            .unwrap();
-        // Adjust vault variables
         vault.collateral_amount = vault
             .collateral_amount
             .sub(seized_collateral_in_token)
             .unwrap();
-        vault.mint_amount = vault.mint_amount.sub(liquidation_amount).unwrap();
-        // Change supply of burned synthetic
-        set_synthetic_supply(synthetic, synthetic.supply.sub(liquidation_amount).unwrap()).unwrap();
+
+        vault_entry.decrease_supply_cascade(vault, synthetic, liquidation_amount)?;
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer_seeds = &[&seeds[..]];
@@ -2278,6 +2256,31 @@ pub mod exchange {
             let burn = CpiContext::new(token_program, exchange_accounts).with_signer(signer_seeds);
             token::burn(burn, liquidation_amount.to_u64())?;
         }
+        Ok(())
+    }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn trigger_vault_entry_debt_adjustment(
+        ctx: Context<TriggerVaultEntryDebtAdjustment>,
+    ) -> Result<()> {
+        msg!("Synthetify: TRIGGER VAULT ENTRY DEBT ADJUSTMENT");
+        let timestamp = Clock::get()?.unix_timestamp;
+
+        let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
+        let vault = &mut ctx.accounts.vault.load_mut()?;
+
+        let synthetic = assets_list
+            .synthetics
+            .iter_mut()
+            .find(|x| {
+                x.asset_address
+                    .eq(ctx.accounts.synthetic.to_account_info().key)
+            })
+            .unwrap();
+
+        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
         Ok(())
     }
 

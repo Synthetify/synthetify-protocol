@@ -2181,6 +2181,52 @@
       ]
     },
     {
+      "name": "triggerVaultEntryDebtAdjustment",
+      "accounts": [
+        {
+          "name": "state",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vaultEntry",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "synthetic",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setVaultHalted",
       "accounts": [
         {
@@ -3444,6 +3490,6 @@
     }
   ],
   "metadata": {
-    "address": "3V7ZLhTi3EFSQ3j1szadrfM5Am8368RPQVPRnYqUsbBB"
+    "address": "EMuccTdpYF86KiSYoDqkbARBgrtDLHHR9xBFs5Eg8Jqb"
   }
 }

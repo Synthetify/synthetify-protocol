@@ -1618,6 +1618,27 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
+  public async triggerVaultEntryDebtAdjustmentInstruction({
+    synthetic,
+    collateral,
+    owner
+  }: VaultEntryId) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
+
+    return (await this.program.instruction.triggerVaultEntryDebtAdjustment({
+      accounts: {
+        synthetic,
+        collateral,
+        owner,
+        admin: this.state.admin,
+        state: this.stateAddress,
+        vault: vaultAddress,
+        vaultEntry: vaultEntryAddress,
+        assetsList: this.state.assetsList
+      }
+    })) as TransactionInstruction
+  }
 }
 export interface InitializeAssetList {
   admin: Keypair | Account
@@ -2064,6 +2085,12 @@ export interface WithdrawSwaplineFee {
 export interface SetVaultParameter {
   synthetic: PublicKey
   collateral: PublicKey
+}
+
+export interface VaultEntryId {
+  synthetic: PublicKey
+  collateral: PublicKey
+  owner: PublicKey
 }
 
 export interface WithdrawVaultAccumulatedInterest {
