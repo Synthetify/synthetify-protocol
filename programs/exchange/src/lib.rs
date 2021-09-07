@@ -42,12 +42,7 @@ pub mod exchange {
         Ok(())
     }
     #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
-    pub fn create_list(
-        ctx: Context<InitializeAssetsList>,
-        collateral_token: Pubkey,
-        collateral_token_feed: Pubkey,
-        usd_token: Pubkey,
-    ) -> Result<()> {
+    pub fn create_list(ctx: Context<InitializeAssetsList>) -> Result<()> {
         let assets_list = &mut ctx.accounts.assets_list.load_init()?;
 
         let usd_asset = Asset {
@@ -60,7 +55,7 @@ pub mod exchange {
             twac: Decimal::from_price(0),
         };
         let usd_synthetic = Synthetic {
-            asset_address: usd_token,
+            asset_address: *ctx.accounts.usd_token.to_account_info().key,
             supply: Decimal::from_usd(0),
             borrowed_supply: Decimal::from_usd(0),
             max_supply: Decimal::from_usd(u64::MAX.into()), // no limit for usd asset
@@ -69,7 +64,7 @@ pub mod exchange {
             asset_index: 0,
         };
         let sny_asset = Asset {
-            feed_address: collateral_token_feed,
+            feed_address: *ctx.accounts.collateral_token_feed.key,
             last_update: 0,
             price: Decimal::from_integer(2).to_price(),
             confidence: Decimal::from_price(0),
@@ -80,10 +75,10 @@ pub mod exchange {
         let sny_collateral = Collateral {
             asset_index: 1,
             collateral_ratio: Decimal::from_percent(10), // 10%
-            collateral_address: collateral_token,
+            collateral_address: *ctx.accounts.collateral_token.to_account_info().key,
             reserve_balance: Decimal::from_sny(0),
-            reserve_address: *ctx.accounts.sny_reserve.key,
-            liquidation_fund: *ctx.accounts.sny_liquidation_fund.key,
+            reserve_address: *ctx.accounts.sny_reserve.to_account_info().key,
+            liquidation_fund: *ctx.accounts.sny_liquidation_fund.to_account_info().key,
             max_collateral: Decimal::from_sny(u64::MAX.into()),
         };
 

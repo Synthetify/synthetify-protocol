@@ -57,6 +57,21 @@
           "isSigner": true
         },
         {
+          "name": "collateralToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralTokenFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "snyReserve",
           "isMut": false,
           "isSigner": false
@@ -67,25 +82,17 @@
           "isSigner": false
         },
         {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "rent",
           "isMut": false,
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "collateralToken",
-          "type": "publicKey"
-        },
-        {
-          "name": "collateralTokenFeed",
-          "type": "publicKey"
-        },
-        {
-          "name": "usdToken",
-          "type": "publicKey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "setAssetsList",
@@ -3488,8 +3495,5 @@
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
     }
-  ],
-  "metadata": {
-    "address": "EMuccTdpYF86KiSYoDqkbARBgrtDLHHR9xBFs5Eg8Jqb"
-  }
+  ]
 }

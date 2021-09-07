@@ -165,8 +165,17 @@ pub struct InitializeAssetsList<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    pub sny_reserve: AccountInfo<'info>,
-    pub sny_liquidation_fund: AccountInfo<'info>,
+    #[account(constraint = collateral_token.to_account_info().owner == &anchor_spl::token::ID)]
+    pub collateral_token: CpiAccount<'info, anchor_spl::token::Mint>,
+    pub collateral_token_feed: AccountInfo<'info>,
+    #[account(constraint = usd_token.to_account_info().owner == &anchor_spl::token::ID)]
+    pub usd_token: CpiAccount<'info, TokenAccount>,
+    #[account(constraint = &sny_reserve.owner == exchange_authority.key)]
+    pub sny_reserve: CpiAccount<'info, TokenAccount>,
+    #[account(constraint = &sny_liquidation_fund.owner == exchange_authority.key)]
+    pub sny_liquidation_fund: CpiAccount<'info, TokenAccount>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
