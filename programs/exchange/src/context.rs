@@ -252,7 +252,7 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
         constraint = &to.mint == usd_token.to_account_info().key
     )]
     pub to: CpiAccount<'info, TokenAccount>, // admin withdraw to any accounts
-    #[account(constraint = token_program.key == &token::ID)]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
@@ -1163,7 +1163,7 @@ pub struct WithdrawVaultAccumulatedInterest<'info> {
         constraint = &to.mint == synthetic.to_account_info().key
     )]
     pub to: CpiAccount<'info, TokenAccount>, // withdraw to any account
-    #[account(constraint = token_program.key == &token::ID)]
+    #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&WithdrawVaultAccumulatedInterest<'info>>
