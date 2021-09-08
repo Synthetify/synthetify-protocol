@@ -186,7 +186,7 @@ pub struct InitializeAssetsList<'info> {
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
-    #[account(mut)]
+    #[account(mut)] // constraint with state not required
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
@@ -217,7 +217,9 @@ pub struct AdminWithdraw<'info> {
         constraint = usd_token.to_account_info().owner == &anchor_spl::token::ID
     )]
     pub usd_token: CpiAccount<'info, anchor_spl::token::Mint>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &to.mint == usd_token.to_account_info().key
+    )]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
