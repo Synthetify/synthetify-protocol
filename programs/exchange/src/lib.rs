@@ -711,6 +711,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let signer = ctx.accounts.signer.key;
         let reserve_account = &ctx.accounts.reserve_account;
+        let liquidation_fund = &ctx.accounts.liquidation_fund;
         let liquidator_usd_account = &ctx.accounts.liquidator_usd_account;
 
         // Signer need to be owner of source amount
@@ -745,10 +746,11 @@ pub mod exchange {
         }
         let (assets, collaterals, _) = assets_list.split_borrow();
 
-        let liquidated_collateral = match collaterals
-            .iter_mut()
-            .find(|x| x.collateral_address.eq(&reserve_account.mint))
-        {
+        // finding collateral also checks valid reserve_account and liquidation_fund mint
+        let liquidated_collateral = match collaterals.iter_mut().find(|x| {
+            x.collateral_address.eq(&reserve_account.mint)
+                && x.liquidation_fund.eq(&liquidation_fund.mint)
+        }) {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };

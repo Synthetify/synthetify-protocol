@@ -526,6 +526,7 @@ pub struct Liquidate<'info> {
         constraint = &liquidator_usd_account.owner == signer.key
     )]
     pub liquidator_usd_account: CpiAccount<'info, TokenAccount>,
+    // collateral can be send to any account 
     #[account(mut)]
     pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -536,7 +537,9 @@ pub struct Liquidate<'info> {
         constraint = liquidation_fund.mint == liquidator_collateral_account.mint
     )]
     pub liquidation_fund: CpiAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = reserve_account.mint == liquidator_collateral_account.mint
+    )]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
 }
 #[derive(Accounts)]

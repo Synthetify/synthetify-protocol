@@ -3494,6 +3494,11 @@
       "code": 335,
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
+    },
+    {
+      "code": 336,
+      "name": "InvalidAccount",
+      "msg": "Invalid Account"
     }
   ]
 }
