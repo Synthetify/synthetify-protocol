@@ -220,7 +220,7 @@ pub struct AdminWithdraw<'info> {
     #[account(mut,
         constraint = &to.mint == usd_token.to_account_info().key
     )]
-    pub to: CpiAccount<'info, TokenAccount>,
+    pub to: CpiAccount<'info, TokenAccount>, // admin can withdraw to any account
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
@@ -257,8 +257,8 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     #[account(mut,
         constraint = &to.mint == usd_token.to_account_info().key
     )]
-    pub to: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    pub to: CpiAccount<'info, TokenAccount>, // admin withdraw to any accounts
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
@@ -408,7 +408,9 @@ pub struct Withdraw<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = reserve_account.owner == state.load()?.exchange_authority
+    )]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
@@ -448,7 +450,7 @@ pub struct Mint<'info> {
     #[account(mut,
         constraint = &to.mint == usd_token.to_account_info().key
     )]
-    pub to: CpiAccount<'info, TokenAccount>,
+    pub to: CpiAccount<'info, TokenAccount>, // withdraw xusd to any account
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -534,11 +536,13 @@ pub struct Liquidate<'info> {
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut,
-        constraint = liquidation_fund.mint == liquidator_collateral_account.mint
+        constraint = liquidation_fund.mint == liquidator_collateral_account.mint,
+        constraint = &liquidation_fund.owner == exchange_authority.key
     )]
     pub liquidation_fund: CpiAccount<'info, TokenAccount>,
     #[account(mut,
-        constraint = reserve_account.mint == liquidator_collateral_account.mint
+        constraint = reserve_account.mint == liquidator_collateral_account.mint,
+        constraint = &reserve_account.owner == exchange_authority.key
     )]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
 }
@@ -546,7 +550,7 @@ pub struct Liquidate<'info> {
 pub struct BurnToken<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account(constraint= exchange_authority.key == &state.load()?.exchange_authority)]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -785,7 +789,8 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address
+        constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address,
+        constraint = &settlement_reserve.owner == exchange_authority.key
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account(
@@ -1061,7 +1066,8 @@ pub struct LiquidateVault<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
-        constraint = &collateral_reserve.mint == collateral.to_account_info().key
+        constraint = &collateral_reserve.mint == collateral.to_account_info().key,
+        constraint = &collateral_reserve.owner == exchange_authority.key
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(mut,
@@ -1125,8 +1131,6 @@ pub struct SetVaultHalted<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
-    pub exchange_authority: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -1164,8 +1168,8 @@ pub struct WithdrawVaultAccumulatedInterest<'info> {
     #[account(mut,
         constraint = &to.mint == synthetic.to_account_info().key
     )]
-    pub to: CpiAccount<'info, TokenAccount>,
-    #[account("token_program.key == &token::ID")]
+    pub to: CpiAccount<'info, TokenAccount>, // withdraw to any account
+    #[account(constraint = token_program.key == &token::ID)]
     pub token_program: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&WithdrawVaultAccumulatedInterest<'info>>

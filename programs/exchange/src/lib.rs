@@ -746,7 +746,7 @@ pub mod exchange {
         }
         let (assets, collaterals, _) = assets_list.split_borrow();
 
-        // finding collateral also checks valid reserve_account and liquidation_fund mint
+        // finding collateral also checks reserve_account.mint and liquidation_fund.mint
         let liquidated_collateral = match collaterals.iter_mut().find(|x| {
             x.collateral_address.eq(&reserve_account.mint)
                 && x.liquidation_fund.eq(&liquidation_fund.mint)
