@@ -526,7 +526,7 @@ pub struct Liquidate<'info> {
         constraint = &liquidator_usd_account.owner == signer.key
     )]
     pub liquidator_usd_account: CpiAccount<'info, TokenAccount>,
-    // collateral can be send to any account 
+    // liquidated collateral can be send to any account 
     #[account(mut)]
     pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -584,7 +584,7 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 pub struct Swap<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
-    #[account("exchange_authority.key == &state.load()?.exchange_authority")]
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
@@ -597,11 +597,13 @@ pub struct Swap<'info> {
     #[account(mut,constraint = token_for.to_account_info().owner == &anchor_spl::token::ID)]
     pub token_for: CpiAccount<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = &user_token_account_in.mint == token_in.to_account_info().key
+        constraint = &user_token_account_in.mint == token_in.to_account_info().key,
+        constraint = &user_token_account_in.owner  == owner.key
     )]
     pub user_token_account_in: CpiAccount<'info, TokenAccount>,
+    // out token can be transfer to any account
     #[account(mut,
-        constraint = &user_token_account_for.mint == token_for.to_account_info().key
+        constraint = &user_token_account_for.mint == token_for.to_account_info().key,
     )]
     pub user_token_account_for: CpiAccount<'info, TokenAccount>,
     #[account(mut, has_one = owner)]
@@ -647,6 +649,7 @@ pub struct CheckCollateralization<'info> {
 pub struct ClaimRewards<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
+    // everyone can trigger claim any exchange_account
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
 }
@@ -662,6 +665,7 @@ pub struct WithdrawRewards<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
+    // rewards can be withdraw to any accounts
     #[account(mut)]
     pub user_token_account: CpiAccount<'info, TokenAccount>,
     #[account(mut,
@@ -681,6 +685,7 @@ pub struct WithdrawLiquidationPenalty<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
+    // admin can withdraw liquidated penalty to any account
     #[account(mut)]
     pub to: CpiAccount<'info, TokenAccount>,
     #[account(mut,
@@ -769,8 +774,11 @@ pub struct SwapSettledSynthetic<'info> {
         constraint = token_to_settle.to_account_info().owner == &anchor_spl::token::ID
     )]
     pub token_to_settle: CpiAccount<'info, anchor_spl::token::Mint>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = &user_settled_token_account.owner == signer.key
+    )]
     pub user_settled_token_account: CpiAccount<'info, TokenAccount>,
+    // user can transfer settled usd token to any account
     #[account(mut,
         constraint = usd_token.key == &user_usd_account.mint
     )]
@@ -781,16 +789,14 @@ pub struct SwapSettledSynthetic<'info> {
     )]
     pub settlement_reserve: CpiAccount<'info, TokenAccount>,
     #[account(
-        constraint = usd_token.key == &settlement.load()?.token_out_address
+        constraint = usd_token.key == &settlement.load()?.token_out_address,
     )]
     pub usd_token: AccountInfo<'info>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    #[account(signer,
-        constraint = &user_settled_token_account.owner == signer.key
-    )]
+    #[account(signer)]
     pub signer: AccountInfo<'info>,
 }
 impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
