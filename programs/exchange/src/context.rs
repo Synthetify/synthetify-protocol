@@ -309,10 +309,17 @@ pub struct AddCollateral<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account(constraint = asset_address.to_account_info().owner == &anchor_spl::token::ID)]
     pub asset_address: AccountInfo<'info>,
-    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    #[account(
+        constraint = liquidation_fund.owner == state.load()?.exchange_authority,
+        constraint = &liquidation_fund.mint == asset_address.to_account_info().key
+    )]
     pub liquidation_fund: CpiAccount<'info,TokenAccount>,
-    #[account(constraint = liquidation_fund.owner == state.load()?.exchange_authority)]
+    #[account(
+        constraint = reserve_account.owner == state.load()?.exchange_authority,
+        constraint = &reserve_account.mint == asset_address.to_account_info().key
+    )]
     pub reserve_account: CpiAccount<'info,TokenAccount>,
     pub feed_address: AccountInfo<'info>,
 }
