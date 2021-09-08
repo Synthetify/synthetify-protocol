@@ -248,6 +248,7 @@ pub mod exchange {
         // adjust current staking points for exchange account
         adjust_staking_account(exchange_account, &state.staking);
 
+        // finding also valid reserve_address of collateral
         let collateral_index = assets_list
             .collaterals
             .iter_mut()
@@ -712,6 +713,7 @@ pub mod exchange {
         let signer = ctx.accounts.signer.key;
         let reserve_account = &ctx.accounts.reserve_account;
         let liquidation_fund = &ctx.accounts.liquidation_fund;
+        let liquidator_collateral_account = &ctx.accounts.liquidator_collateral_account;
         let liquidator_usd_account = &ctx.accounts.liquidator_usd_account;
 
         // Signer need to be owner of source amount
@@ -746,10 +748,11 @@ pub mod exchange {
         }
         let (assets, collaterals, _) = assets_list.split_borrow();
 
-        // finding collateral also checks reserve_account.mint and liquidation_fund.mint
+        // finding collateral also validate reserve_account.mint, liquidation_fund.mint, liquidator_collateral_account.mint
         let liquidated_collateral = match collaterals.iter_mut().find(|x| {
             x.collateral_address.eq(&reserve_account.mint)
-                && x.liquidation_fund.eq(&liquidation_fund.mint)
+                && x.collateral_address.eq(&liquidation_fund.mint)
+                && x.collateral_address.eq(&liquidator_collateral_account.mint)
         }) {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),

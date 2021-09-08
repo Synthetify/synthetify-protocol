@@ -46,15 +46,12 @@ pub struct UseSwapLine<'info> {
     pub synthetic: CpiAccount<'info, anchor_spl::token::Mint>,
     #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
     pub collateral: CpiAccount<'info, anchor_spl::token::Mint>,
-    #[account(
-        mut,
+    #[account(mut,
         constraint = &user_collateral_account.mint == collateral.to_account_info().key,
         constraint = &user_collateral_account.owner == signer.key
     )]
     pub user_collateral_account: CpiAccount<'info, TokenAccount>,
-    #[account(
-        mut,
-
+    #[account(mut,
         constraint = &user_synthetic_account.mint == synthetic.to_account_info().key,
         constraint = &user_synthetic_account.owner == signer.key
     )]
@@ -63,11 +60,10 @@ pub struct UseSwapLine<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(
-        mut,
+    #[account(mut,
         constraint = &collateral_reserve.mint == collateral.to_account_info().key,
-        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
-        constraint = collateral_reserve.owner == state.load()?.exchange_authority
+        constraint = &collateral_reserve.owner == exchange_authority.key,
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
     #[account(signer)]
@@ -114,15 +110,13 @@ pub struct WithdrawSwaplineFee<'info> {
     pub admin: AccountInfo<'info>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(
-        mut,
-        constraint = collateral_reserve.owner == state.load()?.exchange_authority,
-        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve,
-        constraint = &collateral_reserve.mint == collateral.to_account_info().key
+    #[account(mut,
+        constraint = &collateral_reserve.owner == exchange_authority.key,
+        constraint = &collateral_reserve.mint == collateral.to_account_info().key,
+        constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
     )]
     pub collateral_reserve: CpiAccount<'info, TokenAccount>,
-    #[account(
-        mut,
+    #[account(mut,
         constraint = &to.mint == collateral.to_account_info().key,
     )]
     pub to: CpiAccount<'info, TokenAccount>,
@@ -409,7 +403,7 @@ pub struct Withdraw<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
-        constraint = reserve_account.owner == state.load()?.exchange_authority
+        constraint = &reserve_account.owner == exchange_authority.key
     )]
     pub reserve_account: CpiAccount<'info, TokenAccount>,
     #[account(mut)]
@@ -779,7 +773,8 @@ pub struct SwapSettledSynthetic<'info> {
     )]
     pub token_to_settle: CpiAccount<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = &user_settled_token_account.owner == signer.key
+        constraint = &user_settled_token_account.mint == token_to_settle.to_account_info().key,
+        constraint = &user_settled_token_account.owner == signer.key,
     )]
     pub user_settled_token_account: CpiAccount<'info, TokenAccount>,
     // user can transfer settled usd token to any account
@@ -787,8 +782,7 @@ pub struct SwapSettledSynthetic<'info> {
         constraint = usd_token.key == &user_usd_account.mint
     )]
     pub user_usd_account: CpiAccount<'info, TokenAccount>,
-    #[account(
-        mut,
+    #[account(mut,
         constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address,
         constraint = &settlement_reserve.owner == exchange_authority.key
     )]
