@@ -387,6 +387,10 @@ pub mod exchange {
             Some(v) => v,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
+        require!(
+            collateral.reserve_address == *ctx.accounts.reserve_account.to_account_info().key,
+            InvalidAccount
+        );
 
         let (entry_index, mut exchange_account_collateral) = match exchange_account
             .collaterals
@@ -2457,6 +2461,7 @@ pub mod exchange {
     }
 }
 
+// some error code may be unused (future use)
 #[error]
 pub enum ErrorCode {
     #[msg("You are not admin")]
@@ -2531,6 +2536,8 @@ pub enum ErrorCode {
     VaultBorrowLimit = 34,
     #[msg("Vault withdraw limit")]
     VaultWithdrawLimit = 35,
+    #[msg("Invalid Account")]
+    InvalidAccount = 36,
 }
 
 // Access control modifiers.
