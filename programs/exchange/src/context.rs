@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::account::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
+use anchor_lang::solana_program::system_program;
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
@@ -33,6 +34,7 @@ pub struct CreateSwapline<'info> {
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -370,6 +372,7 @@ pub struct CreateExchangeAccount<'info> {
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
 
@@ -684,6 +687,7 @@ pub struct Init<'info> {
     pub exchange_authority: AccountInfo<'info>,
     pub staking_fund_account: Account<'info, TokenAccount>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
 
@@ -712,6 +716,7 @@ pub struct SettleSynthetic<'info> {
     )]
     pub usd_token: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
@@ -817,6 +822,7 @@ pub struct CreateVault<'info> {
     #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -837,6 +843,7 @@ pub struct CreateVaultEntry<'info> {
     #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     pub rent: Sysvar<'info, Rent>,
+    #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -849,6 +856,7 @@ pub struct DepositVault<'info> {
     pub vault: Loader<'info, Vault>,
     #[account(constraint = synthetic.to_account_info().owner == &anchor_spl::token::ID)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
+    // #[account(owner = anchor_spl::token::ID)]
     #[account(constraint = collateral.to_account_info().owner == &anchor_spl::token::ID)]
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
