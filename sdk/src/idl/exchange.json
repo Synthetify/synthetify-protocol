@@ -57,6 +57,21 @@
           "isSigner": true
         },
         {
+          "name": "collateralToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralTokenFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "usdToken",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "snyReserve",
           "isMut": false,
           "isSigner": false
@@ -67,25 +82,17 @@
           "isSigner": false
         },
         {
+          "name": "exchangeAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "rent",
           "isMut": false,
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "collateralToken",
-          "type": "publicKey"
-        },
-        {
-          "name": "collateralTokenFeed",
-          "type": "publicKey"
-        },
-        {
-          "name": "usdToken",
-          "type": "publicKey"
-        }
-      ]
+      "args": []
     },
     {
       "name": "setAssetsList",
@@ -355,12 +362,12 @@
         },
         {
           "name": "tokenIn",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
           "name": "tokenFor",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1931,7 +1938,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2058,7 +2065,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2119,7 +2126,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2261,11 +2268,6 @@
         },
         {
           "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "exchangeAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -3487,9 +3489,11 @@
       "code": 335,
       "name": "VaultWithdrawLimit",
       "msg": "Vault withdraw limit"
+    },
+    {
+      "code": 336,
+      "name": "InvalidAccount",
+      "msg": "Invalid Account"
     }
-  ],
-  "metadata": {
-    "address": "EMuccTdpYF86KiSYoDqkbARBgrtDLHHR9xBFs5Eg8Jqb"
-  }
+  ]
 }

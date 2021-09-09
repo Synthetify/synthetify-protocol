@@ -63,7 +63,8 @@ export enum ERRORS_EXCHANGE {
   COLLATERAL_LIMIT_EXCEEDED = '0x14c', //32
   USER_BORROW_LIMIT = '0x14d', // 33
   VAULT_BORROW_LIMIT = '0x14e', // 34
-  VAULT_WITHDRAW_LIMIT = '0x14f' // 35
+  VAULT_WITHDRAW_LIMIT = '0x14f', // 35
+  INVALID_ACCOUNT = '0x150' // 36
 }
 export const signAndSend = async (
   tx: Transaction,

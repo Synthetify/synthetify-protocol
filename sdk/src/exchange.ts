@@ -1044,13 +1044,17 @@ export class Exchange {
     snyReserve
   }: InitializeAssetList) {
     const assetListAccount = Keypair.generate()
-    await this.program.rpc.createList(collateralToken, collateralTokenFeed, usdToken, {
+    await this.program.rpc.createList({
       accounts: {
+        collateralToken,
+        collateralTokenFeed,
+        usdToken,
         admin: admin.publicKey,
         state: this.stateAddress,
         assetsList: assetListAccount.publicKey,
         snyReserve: snyReserve,
         snyLiquidationFund: snyLiquidationFund,
+        exchangeAuthority: this.exchangeAuthority,
         rent: SYSVAR_RENT_PUBKEY
       },
       signers: [admin, assetListAccount],
