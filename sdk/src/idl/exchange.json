@@ -362,12 +362,12 @@
         },
         {
           "name": "tokenIn",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "tokenFor",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1938,7 +1938,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2065,7 +2065,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2126,7 +2126,7 @@
         },
         {
           "name": "synthetic",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {

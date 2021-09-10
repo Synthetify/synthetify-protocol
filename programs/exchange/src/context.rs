@@ -935,6 +935,7 @@ pub struct BorrowVault<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
+    #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
@@ -1016,6 +1017,7 @@ pub struct RepayVault<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
     pub vault: Loader<'info, Vault>,
+    #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
@@ -1053,6 +1055,7 @@ pub struct LiquidateVault<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
     pub vault: Loader<'info, Vault>,
+    #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
