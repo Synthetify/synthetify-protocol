@@ -570,44 +570,6 @@ describe('admin', () => {
       assert.ok(state.staking.roundLength === length)
     })
   })
-  describe('#addNewAsset', async () => {
-    it('Should add new asset ', async () => {
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const newAssetFeedPublicKey = new Account().publicKey
-      const ix = await exchange.addNewAssetInstruction({
-        assetsList: assetsList,
-        assetFeedAddress: newAssetFeedPublicKey
-      })
-      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-      const afterAssetList = await exchange.getAssetsList(assetsList)
-
-      // Length should be increased by 1
-      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
-
-      // Check new asset is included in asset list
-      const addedNewAsset = afterAssetList.assets.find((a) =>
-        a.feedAddress.equals(newAssetFeedPublicKey)
-      ) as Asset
-      // Check new asset exist
-      assert.ok(addedNewAsset)
-
-      // Check new asset initial fields
-      assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
-      assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
-      assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
-    }),
-      it('Should fail without admin signature', async () => {
-        const newAssetFeedPublicKey = new Account().publicKey
-        const ix = await exchange.addNewAssetInstruction({
-          assetsList: assetsList,
-          assetFeedAddress: newAssetFeedPublicKey
-        })
-        await assertThrowsAsync(
-          signAndSend(new Transaction().add(ix), [wallet], connection),
-          ERRORS.SIGNATURE
-        )
-      })
-  })
   describe('#addSynthetic()', async () => {
     const syntheticDecimal = 8
     it('Should add new synthetic ', async () => {
@@ -1049,6 +1011,45 @@ describe('admin', () => {
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+    // should be located after #setAssetsPrices test (#addNewAsset create phantom assets without collateral or synthetic)
+    describe('#addNewAsset', async () => {
+      it('Should add new asset ', async () => {
+        const beforeAssetList = await exchange.getAssetsList(assetsList)
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+        const afterAssetList = await exchange.getAssetsList(assetsList)
+
+        // Length should be increased by 1
+        assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+        // Check new asset is included in asset list
+        const addedNewAsset = afterAssetList.assets.find((a) =>
+          a.feedAddress.equals(newAssetFeedPublicKey)
+        ) as Asset
+        // Check new asset exist
+        assert.ok(addedNewAsset)
+
+        // Check new asset initial fields
+        assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
+        assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
+        assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
+      }),
+        it('Should fail without admin signature', async () => {
+          const newAssetFeedPublicKey = new Account().publicKey
+          const ix = await exchange.addNewAssetInstruction({
+            assetsList: assetsList,
+            assetFeedAddress: newAssetFeedPublicKey
+          })
+          await assertThrowsAsync(
+            signAndSend(new Transaction().add(ix), [wallet], connection),
+            ERRORS.SIGNATURE
+          )
+        })
     })
   })
 })
