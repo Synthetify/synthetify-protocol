@@ -585,7 +585,9 @@ pub struct Swap<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
+    #[account(mut)]
     pub token_in: Account<'info, anchor_spl::token::Mint>,
+    #[account(mut)]
     pub token_for: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
         constraint = &user_token_account_in.mint == token_in.to_account_info().key,
