@@ -47,7 +47,8 @@ pub struct UseSwapLine<'info> {
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
         constraint = &user_collateral_account.mint == collateral.to_account_info().key,
-        constraint = &user_collateral_account.owner == signer.key
+        constraint = &user_collateral_account.owner == signer.key,
+        constraint = user_collateral_account.to_account_info().key != collateral_reserve.to_account_info().key
     )]
     pub user_collateral_account: Account<'info, TokenAccount>,
     #[account(mut,
@@ -112,11 +113,12 @@ pub struct WithdrawSwaplineFee<'info> {
         constraint = &collateral_reserve.mint == collateral.to_account_info().key,
         constraint = collateral_reserve.to_account_info().key == &swapline.load()?.collateral_reserve
     )]
-    pub collateral_reserve: CpiAccount<'info, TokenAccount>,
+    pub collateral_reserve: Account<'info, TokenAccount>,
     #[account(mut,
-        constraint = &to.mint == collateral.to_account_info().key
+        constraint = &to.mint == collateral.to_account_info().key,
+        constraint = to.to_account_info().key != collateral_reserve.to_account_info().key
     )]
-    pub to: Account<'info, TokenAccount>,
+    pub to: Account<'info, TokenAccount>, // withdraw fee to any account expect collateral_reserve
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
@@ -154,21 +156,20 @@ pub struct InitializeAssetsList<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(constraint = collateral_token.to_account_info().owner == &anchor_spl::token::ID)]
-    pub collateral_token: CpiAccount<'info, anchor_spl::token::Mint>,
+    pub collateral_token: Account<'info, anchor_spl::token::Mint>,
     pub collateral_token_feed: AccountInfo<'info>,
-    #[account(constraint = usd_token.to_account_info().owner == &anchor_spl::token::ID)]
-    pub usd_token: CpiAccount<'info, anchor_spl::token::Mint>,
+    pub usd_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
         constraint = &sny_reserve.owner == exchange_authority.key,
-        constraint = &sny_reserve.mint == collateral_token.to_account_info().key
+        constraint = &sny_reserve.mint == collateral_token.to_account_info().key,
+        constraint = sny_reserve.to_account_info().key != sny_liquidation_fund.to_account_info().key
     )]
-    pub sny_reserve: CpiAccount<'info, TokenAccount>,
+    pub sny_reserve: Account<'info, TokenAccount>,
     #[account(
         constraint = &sny_liquidation_fund.owner == exchange_authority.key,
         constraint = &sny_liquidation_fund.mint == collateral_token.to_account_info().key
     )]
-    pub sny_liquidation_fund: CpiAccount<'info, TokenAccount>,
+    pub sny_liquidation_fund: Account<'info, TokenAccount>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
@@ -244,7 +245,7 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     #[account(mut,
         constraint = &to.mint == usd_token.to_account_info().key
     )]
-    pub to: Account<'info, TokenAccount>, // admin withdraw to any accounts
+    pub to: Account<'info, TokenAccount>, // admin can withdraw to any accounts
 	#[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
 }
@@ -296,7 +297,6 @@ pub struct AddCollateral<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = asset_address.to_account_info().owner == &anchor_spl::token::ID)]
     pub asset_address: AccountInfo<'info>,
     #[account(
         constraint = liquidation_fund.owner == state.load()?.exchange_authority,
@@ -305,7 +305,8 @@ pub struct AddCollateral<'info> {
     pub liquidation_fund: Account<'info,TokenAccount>,
     #[account(
         constraint = reserve_account.owner == state.load()?.exchange_authority,
-        constraint = &reserve_account.mint == asset_address.to_account_info().key
+        constraint = &reserve_account.mint == asset_address.to_account_info().key,
+        constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info,TokenAccount>,
     pub feed_address: AccountInfo<'info>,
@@ -396,8 +397,10 @@ pub struct Withdraw<'info> {
         constraint = &reserve_account.owner == exchange_authority.key
     )]
     pub reserve_account: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub user_collateral_account: Account<'info, TokenAccount>,
+    #[account(mut,
+        constraint = user_collateral_account.to_account_info().key != reserve_account.to_account_info().key
+    )]
+    pub user_collateral_account: Account<'info, TokenAccount>, // can withdraw to any account except reserve_account
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
@@ -464,6 +467,7 @@ pub struct Deposit<'info> {
     pub reserve_address: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = &user_collateral_account.owner == owner.key,
+        constraint = user_collateral_account.to_account_info().key != reserve_address.to_account_info().key
     )]
     pub user_collateral_account: Account<'info, TokenAccount>,
     #[account(address = token::ID)]
@@ -510,8 +514,11 @@ pub struct Liquidate<'info> {
         constraint = &liquidator_usd_account.owner == signer.key
     )]
     pub liquidator_usd_account: Account<'info, TokenAccount>,
-    // liquidated collateral can be send to any account 
-    #[account(mut)]
+    // liquidated collateral can be send to any account except liquidation_fund and reserve_account
+    #[account(mut,
+        constraint = liquidator_collateral_account.to_account_info().key != liquidation_fund.to_account_info().key,
+        constraint = liquidator_collateral_account.to_account_info().key != reserve_account.to_account_info().key,
+    )]
     pub liquidator_collateral_account: Account<'info, TokenAccount>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -524,7 +531,8 @@ pub struct Liquidate<'info> {
     pub liquidation_fund: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = reserve_account.mint == liquidator_collateral_account.mint,
-        constraint = &reserve_account.owner == exchange_authority.key
+        constraint = &reserve_account.owner == exchange_authority.key,
+        constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info, TokenAccount>,
 }
@@ -648,8 +656,10 @@ pub struct WithdrawRewards<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    // rewards can be withdraw to any accounts
-    #[account(mut)]
+    // rewards can be withdraw to any accounts except staking_fund_account
+    #[account(mut,
+        constraint = user_token_account.to_account_info().key != staking_fund_account.to_account_info().key
+    )]
     pub user_token_account: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = user_token_account.mint == staking_fund_account.mint,
@@ -668,8 +678,10 @@ pub struct WithdrawLiquidationPenalty<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
-    // admin can withdraw liquidated penalty to any account
-    #[account(mut)]
+    // admin can withdraw liquidated penalty to any account except liquidation_fund
+    #[account(mut,
+        constraint = to.to_account_info().key != liquidation_fund.to_account_info().key
+    )]
     pub to: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = liquidation_fund.mint == to.mint,
@@ -764,9 +776,10 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_settled_token_account: Account<'info, TokenAccount>,
     // user can transfer settled usd token to any account
     #[account(mut,
-        constraint = usd_token.key == &user_usd_account.mint
+        constraint = usd_token.key == &user_usd_account.mint,
+        constraint = user_usd_account.to_account_info().key != settlement_reserve.to_account_info().key
     )]
-    pub user_usd_account: Account<'info, TokenAccount>,
+    pub user_usd_account: Account<'info, TokenAccount>, // out token can be transfer to any account except settlement_reserve
     #[account(mut,
         constraint = settlement_reserve.to_account_info().key == &settlement.load()?.reserve_address,
         constraint = &settlement_reserve.owner == exchange_authority.key
@@ -872,7 +885,8 @@ pub struct DepositVault<'info> {
     pub reserve_address: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = &user_collateral_account.mint == collateral.to_account_info().key,
-        constraint = &user_collateral_account.owner == owner.key
+        constraint = &user_collateral_account.owner == owner.key,
+        constraint = user_collateral_account.to_account_info().key != reserve_address.to_account_info().key
     )]
     pub user_collateral_account: Account<'info, TokenAccount>,
     #[account(address = token::ID)]
@@ -954,9 +968,9 @@ pub struct WithdrawVault<'info> {
     pub reserve_address: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = &user_collateral_account.mint == collateral.to_account_info().key,
-        constraint = &user_collateral_account.owner == owner.key
+        constraint = user_collateral_account.to_account_info().key != reserve_address.to_account_info().key
     )]
-    pub user_collateral_account: Account<'info, TokenAccount>,
+    pub user_collateral_account: Account<'info, TokenAccount>, // can withdraw to any accounts except reserve_address
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
@@ -1044,12 +1058,15 @@ pub struct LiquidateVault<'info> {
     pub liquidator_synthetic_account: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = &liquidator_collateral_account.owner == liquidator.key,
-        constraint = &liquidator_collateral_account.mint == collateral.to_account_info().key
+        constraint = &liquidator_collateral_account.mint == collateral.to_account_info().key,
+        constraint = liquidator_collateral_account.to_account_info().key != liquidation_fund.to_account_info().key,
+        constraint = liquidator_collateral_account.to_account_info().key != collateral_reserve.to_account_info().key,
     )]
     pub liquidator_collateral_account: Account<'info, TokenAccount>,
     #[account(mut,
         constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
-        constraint = &liquidation_fund.mint == collateral.to_account_info().key
+        constraint = &liquidation_fund.mint == collateral.to_account_info().key,
+        constraint = liquidation_fund.to_account_info().key != collateral_reserve.to_account_info().key
     )]
     pub liquidation_fund: Account<'info, TokenAccount>,
     #[account(address = token::ID)]
