@@ -1079,13 +1079,13 @@ pub struct LiquidateVault<'info> {
         constraint = liquidator_collateral_account.to_account_info().key != liquidation_fund.to_account_info().key,
         constraint = liquidator_collateral_account.to_account_info().key != collateral_reserve.to_account_info().key,
     )]
-    pub liquidator_collateral_account: Account<'info, TokenAccount>,
+    pub liquidator_collateral_account: CpiAccount<'info, TokenAccount>,
     #[account(mut,
         constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
         constraint = &liquidation_fund.mint == collateral.to_account_info().key,
         constraint = liquidation_fund.to_account_info().key != collateral_reserve.to_account_info().key
     )]
-    pub liquidation_fund: Account<'info, TokenAccount>,
+    pub liquidation_fund: CpiAccount<'info, TokenAccount>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     pub owner: AccountInfo<'info>,
