@@ -157,6 +157,9 @@ pub struct InitializeAssetsList<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
+    #[account(
+        constraint = collateral_token_feed.data_len() == 3312
+    )]
     pub collateral_token_feed: AccountInfo<'info>,
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
@@ -285,6 +288,9 @@ pub struct SetPriceFeed<'info> {
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account(
+        constraint = price_feed.data_len() == 3312
+    )]
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -309,6 +315,9 @@ pub struct AddCollateral<'info> {
         constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info,TokenAccount>,
+    #[account(
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -366,6 +375,9 @@ pub struct AddSynthetic<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
+    #[account(
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 
