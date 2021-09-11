@@ -445,7 +445,7 @@ pub struct Mint<'info> {
     #[account(mut,
         constraint = &to.mint == usd_token.to_account_info().key
     )]
-    pub to: Account<'info, TokenAccount>, // withdraw xusd to any account
+    pub to: Account<'info, TokenAccount>, // mint xusd to any account
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut, has_one = owner)]
