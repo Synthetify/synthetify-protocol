@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::account::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use anchor_lang::solana_program::system_program;
+use crate::decimal::XUSD_SCALE;
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
@@ -159,6 +160,7 @@ pub struct InitializeAssetsList<'info> {
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
     #[account(constraint = collateral_token_feed.data_len() == 3312)]
     pub collateral_token_feed: AccountInfo<'info>,
+    #[account(constraint = usd_token.decimals == XUSD_SCALE)]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
         constraint = &sny_reserve.owner == exchange_authority.key,
@@ -204,6 +206,7 @@ pub struct AdminWithdraw<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
+        constraint = usd_token.decimals == XUSD_SCALE,
         constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -240,6 +243,7 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
+        constraint = usd_token.decimals == XUSD_SCALE,
         constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -434,6 +438,7 @@ pub struct Mint<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
+        constraint = usd_token.decimals == XUSD_SCALE,
         constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -510,6 +515,7 @@ pub struct Liquidate<'info> {
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
+        constraint = usd_token.decimals == XUSD_SCALE,
         constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -553,6 +559,7 @@ pub struct BurnToken<'info> {
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
+        constraint = usd_token.decimals == XUSD_SCALE,
         constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -737,13 +744,14 @@ pub struct SettleSynthetic<'info> {
     #[account(
         mut,
         constraint = &settlement_reserve.owner == exchange_authority.key,
-        constraint = &settlement_reserve.mint == usd_token.key
+        constraint = &settlement_reserve.mint == usd_token.to_account_info().key
     )]
     pub settlement_reserve: Account<'info, TokenAccount>,
     #[account(mut,
-        constraint = usd_token.key == &assets_list.load()?.synthetics[0].asset_address
+        constraint = usd_token.decimals == XUSD_SCALE,
+        constraint = usd_token.to_account_info().key == &assets_list.load()?.synthetics[0].asset_address
     )]
-    pub usd_token: AccountInfo<'info>,
+    pub usd_token: Account<'info, anchor_spl::token::Mint>,
     pub rent: Sysvar<'info, Rent>,
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
@@ -782,7 +790,7 @@ pub struct SwapSettledSynthetic<'info> {
     pub user_settled_token_account: Account<'info, TokenAccount>,
     // user can transfer settled usd token to any account
     #[account(mut,
-        constraint = usd_token.key == &user_usd_account.mint,
+        constraint = usd_token.to_account_info().key == &user_usd_account.mint,
         constraint = user_usd_account.to_account_info().key != settlement_reserve.to_account_info().key
     )]
     pub user_usd_account: Account<'info, TokenAccount>, // out token can be transfer to any account except settlement_reserve
@@ -792,9 +800,10 @@ pub struct SwapSettledSynthetic<'info> {
     )]
     pub settlement_reserve: Account<'info, TokenAccount>,
     #[account(
-        constraint = usd_token.key == &settlement.load()?.token_out_address,
+        constraint = usd_token.decimals == XUSD_SCALE,
+        constraint = usd_token.to_account_info().key == &settlement.load()?.token_out_address,
     )]
-    pub usd_token: AccountInfo<'info>,
+    pub usd_token: Account<'info, anchor_spl::token::Mint>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(address = token::ID)]
