@@ -11,6 +11,9 @@ use pyth::pc::{Price, PriceStatus};
 use utils::*;
 
 const SYNTHETIFY_EXCHANGE_SEED: &str = "Synthetify";
+
+declare_id!("e9P7yZnZdYpvEWJbbbBbu8XEsYkFGuD3rMsVxMMfrf2");
+
 #[program]
 pub mod exchange {
     use std::{borrow::BorrowMut, convert::TryInto};
