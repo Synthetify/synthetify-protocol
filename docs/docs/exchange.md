@@ -59,3 +59,11 @@ You can check whether everything went smoothly:
 - Go to the Staking tab, in _Synthetic_ section, you should see that the asset you sold decreased, and bought increased.
 
 ![Confirmation](/img/docs/exchangeConfirmation.png)
+
+### Token chart
+
+You can view: 
+- Information about the token you want to swap to 
+- Price chart from last 24 hours
+
+![Exchange-Chart](/img/docs/exchangeChart.png)
