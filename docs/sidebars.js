@@ -12,7 +12,7 @@ module.exports = {
       type: 'category',
       label: 'User Guide',
       collapsed: true,
-      items: ['connect-to-wallet', 'faucet', 'staking', 'exchange']
+      items: ['connect-to-wallet', 'faucet', 'staking', 'exchange', 'stats']
     },
     'architecture-overview',
     {
