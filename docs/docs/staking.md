@@ -10,131 +10,126 @@ Staking view includes three different parts:
 
 - the top part provides general information about the user's situation:
   - Staked Value
-  - Current Debt
-  - Collateral Ratio
+  - Debt status
 - the middle part contains assets managing activities
-- the bottom part shows particular information about owned tokens.
+- the bottom part shows particular information about staked and owned synthetic tokens.
 
-![Staking view](https://i.imgur.com/ISd3pKL.png)
+![Staking view](/img/docs/stakingView.png)
 
 ### Deposit
 
 To [deposit](/docs/glossary#deposit), go to the Deposit tab
 
-![Deposit-tab](https://i.imgur.com/5RbIzpY.png)
+![Deposit-tab](/img/docs/deposit.png)
 
 #### Choose amount
 
 Fill the _Amount_ field. Use as much SNY as you want to deposit in collateral. On the right side, there is information about the amount of the selected asset available to deposit. Choosing _Max_ automatically fills the field with the maximum available SNY amount. Click _Deposit_ to send assets.
 
-![Deposit-amount](https://i.imgur.com/Hk1IBT0.png)
+![Deposit-amount](/img/docs/depositAmount.png)
 
 #### Transaction approval
 
 Next, your wallet wants you to confirm the transaction. Check whether all information is correct first. On the right side of the _Deposit_ button, you can see 'Depositing in progress'.
 
-![Deposit-Transaction-approval](https://i.imgur.com/qpfZuc0.png)
+![Deposit-Transaction-approval](/img/docs/depositTransaction.png)
 
 #### Confirmation
 
 If everything went smoothly, you can see that:
 
 - Staked Value increased by the amount you deposited
-- Collateral Ratio increased
 - On the right of the _Deposit_ button, there is a green tick and message _Successfully deposited_
 - On the bottom left of the site, you can see a green field _Successfully deposited collateral_ (not shown here)
-- In section _Owned tokens_ amount of SNY tokens decreased by those you deposited.
+- In section _Deposit_ , click on the drop down list _SNY_, amount of tokens decreased by those you deposited.
 
-![Deposit-Confirmation](https://i.imgur.com/R2q2uYA.png)
+![Deposit-Confirmation](/img/docs/depositConfirmation.png)
 
 ### Mint
 
 To [mint](/docs/glossary#mint), go to the Mint tab.
 
-![Mint-tab](https://i.imgur.com/bhlklSC.png)
+![Mint-tab](/img/docs/mint.png)
 
 #### Choose amount
 
 Fill the _Amount_ field with the amount you want to mint and click the _Mint_ button. If you want to mint the maximum available amount you can use the _Max_ button. As the amount you can mint can change in real-time due to price and [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to mint.
 
-![Mint-amount](https://i.imgur.com/CW2CwPi.png)
+![Mint-amount](/img/docs/mintAmount.png)
 
 #### Transaction approval
 
 Next, your wallet wants you to confirm the transaction. Check whether all information is correct first.
 
-![Mint-Transaction-approval](https://i.imgur.com/zzkkRig.png)
+![Mint-Transaction-approval](/img/docs/mintTransaction.png)
 
 #### Confirmation
 
 If everything went smoothly, you should see that:
 
 - Current Debt increased by the amount you minted
-- Collateral Ratio decreased
 - On the right of the _Mint_ button, there is a green tick and message _Successfully minted_
 - On the bottom left of the site, you can see a green field _Successfully minted xUSD_ (not shown here)
 
-![Mint-Confirmation](https://i.imgur.com/ttfW3iJ.png)
+![Mint-Confirmation](/img/docs/mintConfirmation.png)
 
 ### Withdraw
 
 To [withdraw](/docs/glossary#withdraw), go to Withdraw tab.
 
-![Withdraw-tab](https://i.imgur.com/lA3sfBP.png)
+![Withdraw-tab](/img/docs/withdraw.png)
 
 #### Choose amount
 
 Fill the _Amount_ field with the amount you want to withdraw and click the_Withdraw_ button. If you want to withdraw the maximum available amount you can use the _Max_ button. As the amount you can withdraw can change in real-time due to price and [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to withdraw.
 
-![Withdraw-amount](https://i.imgur.com/GAEycMH.png)
+![Withdraw-amount](/img/docs/withdrawAmount.png)
 
 #### Transaction approval
 
 Next, your wallet wants you to confirm the transaction. Check whether all information is correct first. Until you approve the transaction, on the right side of _Withdraw_ button, you can see _Withdrawing in progress_.
 
-![Withdraw-Transaction-approval](https://i.imgur.com/8cQOvIr.png)
+![Withdraw-Transaction-approval](/img/docs/withdrawTransaction.png)
 
 #### Confirmation
 
 If everything went smoothly, you should see that:
 
 - Current Debt decreased by the amount you withdrew
-- Collateral Ratio decreased
 - On the right of _Withdraw_ button, there is a green tick and the message _Successfully withdrawn_
-- In section _Owned tokens_ amount of SNY tokens increased by those you withdrew
+- In section _Stacked_ amount of SNY tokens increased by those you withdrew
 - In the down-left corner of the site, you can see a green field _Successfully withdrew Collateral_.
 
-![Mint-Confirmation](https://i.imgur.com/vMYyVPY.png)
+![Mint-Confirmation](/img/docs/withdrawConfirmation.png)
 
 ### Burn
 
 To [burn](/docs/glossary#burn), go to the Burn tab.
 
-![Burn-tab](https://i.imgur.com/j6fXNrQ.png)
+![Burn-tab](/img/docs/burn.png)
 
 #### Choose amount
 
 Fill the _Amount_ field with the amount you want to burn and click the _Burn_ button. If you want to burn the maximum available amount you can use the _Max_ button. As the amount you can burn can change in real-time due to [debt pool](https://docs.synthetify.io/docs/glossary#dept) fluctuation the field will just show _Max_ instead of precise amount and calculate it on the blockchain. On the right side, there is a field with the amount of the selected asset available to burn.
 
-![Burn-amount](https://i.imgur.com/N0SghCc.png)
+![Burn-amount](/img/docs/burnAmount.png)
 
 #### Transaction approval
 
 Next, your wallet wants you to confirm the transaction. Check whether all information is correct first. Until you approve the transaction, on the right side of the _Burn_ button, you can see 'Burning in progress'.
 
-![Burn-Transaction-approval](https://i.imgur.com/djLiDm7.png)
+![Burn-Transaction-approval](/img/docs/burnTransaction.png)
 
 #### Confirmation
 
 If everything went smoothly, you should see that:
 
 - Current Debt decreased by the amount you burned
-- Collateral Ratio increased
 - On the right of the _Burn_ button, there is a green tick and a message _Successfully burned_
-- In section _Owned tokens_ amount of SNY tokens decreased by those you burned
+- In section _Synthetic_ amount of xUSD tokens decreased by those you burned
 - On the bottom left of the site, you can see a green field _Successfully burned tokens_ (not shown here).
 
-![Burn-Confirmation](https://i.imgur.com/Yq9hjNi.png)
+![Burn-Confirmation](/img/docs/burnConfirmation.png)
 
 ### Rewards
 
@@ -154,12 +149,12 @@ The amount of SNY you can receive as a reward is dependent on the number of poin
 - _Current round_ - shows the round that is currently in the Staking phase
 - _Finished round_ - shows the round that is currently in the Claiming phase
 
-![Rewards tab](https://i.imgur.com/9EEwYcd.png)
+![Rewards tab](/img/docs/rewards.png)
 
 You can see the number of your points and SNY for each round next to the round in the table.
-You can check the time at which the phase will end when you hover over the question mark on the left of each phase. To claim your rewards from the finished round click on the _Claim_ button in the left bottom corner. You should see the amount of SNY you received in the top right corner of the table. To transfer this amount to your account click on the _Withdraw_ button in the left bottom corner. At each step, you should approve the transaction in your Wallet extension. You should see that the number of SNY available in your account increased.
+You can check the time at which the phase will end when you hover over the icon on the left of each phase. To claim your rewards from the finished round click on the _Claim_ button in the right bottom corner. You should see the amount of SNY you received in the top right corner of the table. To transfer this amount to your account click on the _Withdraw_ button in the left bottom corner. At each step, you should approve the transaction in your Wallet extension. You should see that the number of SNY available in your account increased.
 
-![Time of rounds and claiming](https://i.imgur.com/c6p5LoN.png)
+![Time of rounds and claiming](/img/docs/rewardsHover.png)
 
 ### Something failed
 
