@@ -469,9 +469,19 @@ describe('admin', () => {
     let addedSynthetic: Synthetic
     before(async () => {
       const state = await exchange.getState()
-      const assetsList = await exchange.getAssetsList(state.assetsList)
 
-      const assetForSynthetic = assetsList.assets[0]
+      // add mocked asset - required for price feed space validation
+      const priceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1,
+        expo: -6
+      })
+      const addAssetIx = await exchange.addNewAssetInstruction({
+        assetsList: state.assetsList,
+        assetFeedAddress: priceFeed
+      })
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
+
       const newSynthetic = await createToken({
         connection,
         payer: wallet,
@@ -482,7 +492,7 @@ describe('admin', () => {
         assetAddress: newSynthetic.publicKey,
         assetsList: state.assetsList,
         maxSupply: new BN(100),
-        priceFeed: assetForSynthetic.feedAddress
+        priceFeed: priceFeed
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(state.assetsList)
@@ -560,49 +570,23 @@ describe('admin', () => {
       assert.ok(state.staking.roundLength === length)
     })
   })
-  describe('#addNewAsset', async () => {
-    it('Should add new asset ', async () => {
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const newAssetFeedPublicKey = new Account().publicKey
-      const ix = await exchange.addNewAssetInstruction({
-        assetsList: assetsList,
-        assetFeedAddress: newAssetFeedPublicKey
-      })
-      await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
-      const afterAssetList = await exchange.getAssetsList(assetsList)
-
-      // Length should be increased by 1
-      assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
-
-      // Check new asset is included in asset list
-      const addedNewAsset = afterAssetList.assets.find((a) =>
-        a.feedAddress.equals(newAssetFeedPublicKey)
-      ) as Asset
-      // Check new asset exist
-      assert.ok(addedNewAsset)
-
-      // Check new asset initial fields
-      assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
-      assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
-      assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
-    }),
-      it('Should fail without admin signature', async () => {
-        const newAssetFeedPublicKey = new Account().publicKey
-        const ix = await exchange.addNewAssetInstruction({
-          assetsList: assetsList,
-          assetFeedAddress: newAssetFeedPublicKey
-        })
-        await assertThrowsAsync(
-          signAndSend(new Transaction().add(ix), [wallet], connection),
-          ERRORS.SIGNATURE
-        )
-      })
-  })
   describe('#addSynthetic()', async () => {
     const syntheticDecimal = 8
     it('Should add new synthetic ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const assetForSynthetic = beforeAssetList.assets[0]
+
+      // add mocked asset - required for price feed space validation
+      const priceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1,
+        expo: -6
+      })
+      const addAssetIx = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: priceFeed
+      })
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
+
       const newSynthetic = await createToken({
         connection,
         payer: wallet,
@@ -613,7 +597,7 @@ describe('admin', () => {
         assetAddress: newSynthetic.publicKey,
         assetsList,
         maxSupply: new BN(100),
-        priceFeed: assetForSynthetic.feedAddress
+        priceFeed: priceFeed
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
       const afterAssetList = await exchange.getAssetsList(assetsList)
@@ -630,11 +614,7 @@ describe('admin', () => {
       assert.ok(eqDecimals(addedSynthetic.maxSupply, toDecimal(new BN(100), syntheticDecimal)))
       assert.ok(eqDecimals(addedSynthetic.supply, toDecimal(new BN(0), syntheticDecimal)))
       assert.ok(addedSynthetic.settlementSlot.eq(U64_MAX))
-      assert.ok(
-        afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(
-          assetForSynthetic.feedAddress
-        )
-      )
+      assert.ok(afterAssetList.assets[addedSynthetic.assetIndex].feedAddress.equals(priceFeed))
     })
     it('Should fail without admin signature', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
@@ -660,7 +640,23 @@ describe('admin', () => {
   describe('#addCollateral()', async () => {
     it('should add new collateral ', async () => {
       const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const assetForCollateral = beforeAssetList.assets[0]
+
+      // add mocked asset - required for price feed space validation
+      const priceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1,
+        expo: -6
+      })
+      const addAssetIx = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: priceFeed
+      })
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
+      const assetListAfterAddedAsset = await exchange.getAssetsList(assetsList)
+      const assetIndex = assetListAfterAddedAsset.assets.findIndex((a: Asset) =>
+        a.feedAddress.equals(priceFeed)
+      )
+
       const decimals = 8
       const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
       const newCollateral = await createToken({
@@ -677,7 +673,7 @@ describe('admin', () => {
         assetsList,
         assetAddress: newCollateral.publicKey,
         liquidationFund,
-        feedAddress: assetForCollateral.feedAddress,
+        feedAddress: priceFeed,
         reserveAccount,
         reserveBalance,
         collateralRatio,
@@ -693,7 +689,7 @@ describe('admin', () => {
       assert.ok(beforeAssetList.collaterals.length + 1 === afterAssetList.collaterals.length)
 
       // Check collateral initial fields
-      assert.ok(addedCollateral.assetIndex === 0)
+      assert.ok(addedCollateral.assetIndex === assetIndex)
       assert.ok(addedCollateral.collateralAddress.equals(newCollateral.publicKey))
       assert.ok(eqDecimals(addedCollateral.collateralRatio, collateralRatio))
       assert.ok(addedCollateral.liquidationFund.equals(liquidationFund))
@@ -730,8 +726,18 @@ describe('admin', () => {
       )
     })
     it('should fail because of out of range paramter', async () => {
-      const beforeAssetList = await exchange.getAssetsList(assetsList)
-      const assetForCollateral = beforeAssetList.assets[0]
+      // add mocked asset - required for price feed space validation
+      const priceFeed = await createPriceFeed({
+        oracleProgram,
+        initPrice: 1,
+        expo: -6
+      })
+      const addAssetIx = await exchange.addNewAssetInstruction({
+        assetsList: assetsList,
+        assetFeedAddress: priceFeed
+      })
+      await signAndSend(new Transaction().add(addAssetIx), [EXCHANGE_ADMIN], connection)
+
       const decimals = 8
       const reserveBalance = toDecimal(new BN(10 ** decimals), decimals)
       const newCollateral = await createToken({
@@ -748,7 +754,7 @@ describe('admin', () => {
         assetsList,
         assetAddress: newCollateral.publicKey,
         liquidationFund,
-        feedAddress: assetForCollateral.feedAddress,
+        feedAddress: priceFeed,
         reserveAccount,
         reserveBalance,
         collateralRatio,
@@ -1005,6 +1011,45 @@ describe('admin', () => {
 
       // Check last_update new value
       assert.ok(collateralAsset.lastUpdate > collateralAssetLastUpdateBefore)
+    })
+    // should be located after #setAssetsPrices test (#addNewAsset create phantom assets without collateral or synthetic)
+    describe('#addNewAsset', async () => {
+      it('Should add new asset ', async () => {
+        const beforeAssetList = await exchange.getAssetsList(assetsList)
+        const newAssetFeedPublicKey = new Account().publicKey
+        const ix = await exchange.addNewAssetInstruction({
+          assetsList: assetsList,
+          assetFeedAddress: newAssetFeedPublicKey
+        })
+        await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
+        const afterAssetList = await exchange.getAssetsList(assetsList)
+
+        // Length should be increased by 1
+        assert.ok(beforeAssetList.assets.length + 1 === afterAssetList.assets.length)
+
+        // Check new asset is included in asset list
+        const addedNewAsset = afterAssetList.assets.find((a) =>
+          a.feedAddress.equals(newAssetFeedPublicKey)
+        ) as Asset
+        // Check new asset exist
+        assert.ok(addedNewAsset)
+
+        // Check new asset initial fields
+        assert.ok(addedNewAsset.feedAddress.equals(newAssetFeedPublicKey))
+        assert.ok(addedNewAsset.lastUpdate.eq(new BN(0)))
+        assert.ok(eqDecimals(addedNewAsset.price, toDecimal(new BN(0), ORACLE_OFFSET)))
+      }),
+        it('Should fail without admin signature', async () => {
+          const newAssetFeedPublicKey = new Account().publicKey
+          const ix = await exchange.addNewAssetInstruction({
+            assetsList: assetsList,
+            assetFeedAddress: newAssetFeedPublicKey
+          })
+          await assertThrowsAsync(
+            signAndSend(new Transaction().add(ix), [wallet], connection),
+            ERRORS.SIGNATURE
+          )
+        })
     })
   })
 })
