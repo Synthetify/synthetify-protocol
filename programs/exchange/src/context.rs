@@ -515,13 +515,14 @@ impl<'a, 'b, 'c, 'info> From<&Withdraw<'info>> for CpiContext<'a, 'b, 'c, 'info,
 #[derive(Accounts)]
 pub struct Mint<'info> {
     #[account(mut,
-        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
-        constraint = state.to_account_info().key == program_id
+        seeds = [b"statev1".as_ref()],
+        bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
-        constraint = assets_list.to_account_info().key == program_id
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
@@ -560,7 +561,7 @@ pub struct Deposit<'info> {
         constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
-    #[account(mut,has_one = owner)]
+    #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(mut,
         constraint = &reserve_address.owner == exchange_authority.key
