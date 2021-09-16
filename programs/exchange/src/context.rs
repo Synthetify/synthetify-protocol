@@ -6,8 +6,12 @@ use crate::decimal::XUSD_SCALE;
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id,
+    )]
     pub state: Loader<'info, State>,
+    #[account(constraint = assets_list.to_account_info().owner == program_id)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -15,14 +19,18 @@ pub struct SetAssetsList<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(init,seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()], bump=bump, payer=admin )]
+    #[account(init, seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()], bump=bump, payer=admin )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
@@ -39,9 +47,15 @@ pub struct CreateSwapline<'info> {
 #[derive(Accounts)]
 
 pub struct UseSwapLine<'info> {
-    #[account(seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()], bump = swapline.load()?.bump)]
+    #[account(mut,
+        seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()], bump = swapline.load()?.bump,
+        constraint = swapline.to_account_info().owner == program_id
+    )]
     pub swapline: Loader<'info, Swapline>,
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
@@ -58,7 +72,8 @@ pub struct UseSwapLine<'info> {
     )]
     pub user_synthetic_account: Account<'info, TokenAccount>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id,
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
@@ -99,15 +114,23 @@ impl<'a, 'b, 'c, 'info> From<&UseSwapLine<'info>> for CpiContext<'a, 'b, 'c, 'in
 
 #[derive(Accounts)]
 pub struct WithdrawSwaplineFee<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut,seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()],bump = swapline.load()?.bump)]
+    #[account(mut,
+        seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()],bump = swapline.load()?.bump,
+        constraint = swapline.to_account_info().owner == program_id
+    )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    #[account(
+        constraint = exchange_authority.key == &state.load()?.exchange_authority
+    )]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = &collateral_reserve.owner == exchange_authority.key,
@@ -140,9 +163,15 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawSwaplineFee<'info>>
 }
 #[derive(Accounts)]
 pub struct SetHaltedSwapline<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id,
+    )]
     pub state: Loader<'info, State>,
-     #[account(mut,seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()],bump = swapline.load()?.bump)]
+     #[account(mut,
+        seeds = [b"swaplinev1", synthetic.to_account_info().key.as_ref(),collateral.to_account_info().key.as_ref()],bump = swapline.load()?.bump,
+        constraint = swapline.to_account_info().owner == program_id,
+    )]
     pub swapline: Loader<'info, Swapline>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
@@ -151,7 +180,10 @@ pub struct SetHaltedSwapline<'info> {
 }
 #[derive(Accounts)]
 pub struct InitializeAssetsList<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id,
+    )]
     pub state: Loader<'info, State>,
     #[account(zero)]
     pub assets_list: Loader<'info, AssetsList>,
@@ -179,30 +211,41 @@ pub struct InitializeAssetsList<'info> {
 }
 #[derive(Accounts)]
 pub struct SetAssetsPrices<'info> {
-    #[account(mut)] // constraint with state not required
+    #[account(mut)] // constraint with state not required (maximize context space)
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct AddNewAsset<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct AdminWithdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    #[account(
+        constraint = exchange_authority.key == &state.load()?.exchange_authority,
+        constraint = exchange_authority.to_account_info().owner == program_id
+    )]
     pub exchange_authority: AccountInfo<'info>,
     #[account(
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id    
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
@@ -232,14 +275,21 @@ impl<'a, 'b, 'c, 'info> From<&AdminWithdraw<'info>>
 }
 #[derive(Accounts)]
 pub struct WithdrawAccumulatedDebtInterest<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    #[account(
+        constraint = exchange_authority.key == &state.load()?.exchange_authority,
+        constraint = exchange_authority.to_account_info().owner == program_id
+    )]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
@@ -271,23 +321,31 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawAccumulatedDebtInterest<'info>>
 }
 #[derive(Accounts)]
 pub struct SetMaxSupply<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+         seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+         constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct SetPriceFeed<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub signer: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(constraint = price_feed.data_len() == 3312)]
@@ -295,12 +353,16 @@ pub struct SetPriceFeed<'info> {
 }
 #[derive(Accounts)]
 pub struct AddCollateral<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: AccountInfo<'info>,
@@ -320,31 +382,42 @@ pub struct AddCollateral<'info> {
 }
 #[derive(Accounts)]
 pub struct SetCollateralRatio<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub collateral_address: Account<'info, anchor_spl::token::Mint>,
 }
 #[derive(Accounts)]
 pub struct SetMaxCollateral<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub collateral_address: Account<'info, anchor_spl::token::Mint>,
 }
 #[derive(Accounts)]
 pub struct SetAdmin<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -352,24 +425,32 @@ pub struct SetAdmin<'info> {
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic_address: Account<'info, anchor_spl::token::Mint>,
 }
 #[derive(Accounts)]
 pub struct AddSynthetic<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
@@ -380,7 +461,7 @@ pub struct AddSynthetic<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateExchangeAccount<'info> {
-    #[account(init,seeds = [b"accountv1", admin.key.as_ref()], bump=bump, payer=payer )]
+    #[account(init, seeds = [b"accountv1", admin.key.as_ref()], bump=bump, payer=payer )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     pub admin: AccountInfo<'info>,
     #[account(mut, signer)]
@@ -393,13 +474,16 @@ pub struct CreateExchangeAccount<'info> {
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = &reserve_account.owner == exchange_authority.key
@@ -432,7 +516,8 @@ pub struct Mint<'info> {
     #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
     pub state: Loader<'info, State>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().key == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
@@ -466,7 +551,10 @@ impl<'a, 'b, 'c, 'info> From<&Mint<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 }
 #[derive(Accounts)]
 pub struct Deposit<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = assets_list.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut,has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -482,7 +570,8 @@ pub struct Deposit<'info> {
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     // owner can deposit to any exchange_account
@@ -509,7 +598,8 @@ pub struct Liquidate<'info> {
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().key == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
@@ -548,12 +638,16 @@ pub struct Liquidate<'info> {
 }
 #[derive(Accounts)]
 pub struct BurnToken<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
@@ -586,12 +680,16 @@ impl<'a, 'b, 'c, 'info> From<&BurnToken<'info>> for CpiContext<'a, 'b, 'c, 'info
 }
 #[derive(Accounts)]
 pub struct Swap<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
@@ -640,18 +738,25 @@ impl<'a, 'b, 'c, 'info> From<&Swap<'info>> for CpiContext<'a, 'b, 'c, 'info, Min
 
 #[derive(Accounts)]
 pub struct CheckCollateralization<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     // everyone can trigger claim any exchange_account
     #[account(mut)]
@@ -659,7 +764,10 @@ pub struct ClaimRewards<'info> {
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut, has_one = owner)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
@@ -683,7 +791,10 @@ pub struct WithdrawRewards<'info> {
 }
 #[derive(Accounts)]
 pub struct WithdrawLiquidationPenalty<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -702,13 +813,17 @@ pub struct WithdrawLiquidationPenalty<'info> {
     )]
     pub liquidation_fund: Account<'info, TokenAccount>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
 }
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
-    #[account(mut, seeds = [b"statev1".as_ref()],bump = state.load()?.bump)]
+    #[account(mut,
+        seeds = [b"statev1".as_ref()],bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
@@ -733,10 +848,14 @@ pub struct Init<'info> {
 pub struct SettleSynthetic<'info> {
     #[account(init, seeds = [b"settlement".as_ref(), token_to_settle.to_account_info().key.as_ref()], bump=bump, payer = payer)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub payer: AccountInfo<'info>,
@@ -777,7 +896,10 @@ impl<'a, 'b, 'c, 'info> From<&SettleSynthetic<'info>>
 pub struct SwapSettledSynthetic<'info> {
     #[account(seeds = [b"settlement".as_ref(), token_to_settle.to_account_info().key.as_ref()],bump = settlement.load()?.bump)]
     pub settlement: Loader<'info, Settlement>,
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(mut,
         constraint = token_to_settle.to_account_info().key == &settlement.load()?.token_in_address
@@ -844,13 +966,19 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(init, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()], bump=bump, payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
-    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    #[account(
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
         constraint = &collateral_reserve.mint == collateral.to_account_info().key,
@@ -866,15 +994,24 @@ pub struct CreateVault<'info> {
 #[derive(Accounts)]
 #[instruction(bump: u8)]
 pub struct CreateVaultEntry<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(init, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()], bump=bump, payer=owner)]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut, signer)]
     pub owner: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        constraint = vault.to_account_info().owner == program_id,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump 
+    )]
     pub vault: Loader<'info, Vault>,
-    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    #[account(
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
@@ -884,11 +1021,20 @@ pub struct CreateVaultEntry<'info> {
 }
 #[derive(Accounts)]
 pub struct DepositVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id 
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump,
+        constraint = vault_entry.to_account_info().owner == program_id 
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id 
+    )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
@@ -907,7 +1053,8 @@ pub struct DepositVault<'info> {
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
@@ -930,17 +1077,27 @@ impl<'a, 'b, 'c, 'info> From<&DepositVault<'info>>
 }
 #[derive(Accounts)]
 pub struct BorrowVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump,
+        constraint = vault_entry.to_account_info().owner == program_id
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
@@ -968,11 +1125,20 @@ impl<'a, 'b, 'c, 'info> From<&BorrowVault<'info>> for CpiContext<'a, 'b, 'c, 'in
 
 #[derive(Accounts)]
 pub struct WithdrawVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump,
+        constraint = vault_entry.to_account_info().owner == program_id
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
@@ -990,7 +1156,8 @@ pub struct WithdrawVault<'info> {
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, signer)]
@@ -1012,17 +1179,27 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawVault<'info>>
 }
 #[derive(Accounts)]
 pub struct RepayVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump,
+        constraint = vault_entry.to_account_info().owner == program_id
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump)]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut, 
@@ -1050,17 +1227,28 @@ impl<'a, 'b, 'c, 'info> From<&RepayVault<'info>> for CpiContext<'a, 'b, 'c, 'inf
 }
 #[derive(Accounts)]
 pub struct LiquidateVault<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
-    #[account(mut,has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        has_one = owner,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump,
+        constraint = vault_entry.to_account_info().owner == program_id
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump ,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
-        constraint = assets_list.to_account_info().key == &state.load()?.assets_list
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
@@ -1098,17 +1286,28 @@ pub struct LiquidateVault<'info> {
 
 #[derive(Accounts)]
 pub struct TriggerVaultEntryDebtAdjustment<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut, has_one = owner, seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump)]
+    #[account(mut,
+        has_one = owner,
+        constraint = vault_entry.to_account_info().owner == program_id,
+        seeds = [b"vault_entryv1", owner.key.as_ref(), vault.to_account_info().key.as_ref()],bump=vault_entry.load()?.bump
+    )]
     pub vault_entry: Loader<'info, VaultEntry>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        constraint = vault.to_account_info().owner == program_id,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump
+    )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
+        constraint = assets_list.to_account_info().owner == program_id,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list
     )]
     pub assets_list: Loader<'info, AssetsList>,
@@ -1117,15 +1316,24 @@ pub struct TriggerVaultEntryDebtAdjustment<'info> {
 
 #[derive(Accounts)]
 pub struct SetVaultHalted<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    #[account(
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
@@ -1133,11 +1341,19 @@ pub struct SetVaultHalted<'info> {
 
 #[derive(Accounts)]
 pub struct SetVaultParameter<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()],
+        bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
@@ -1145,18 +1361,28 @@ pub struct SetVaultParameter<'info> {
 
 #[derive(Accounts)]
 pub struct WithdrawVaultAccumulatedInterest<'info> {
-    #[account(seeds = [b"statev1".as_ref()], bump = state.load()?.bump)]
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(mut, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump )]
+    #[account(mut,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
     pub vault: Loader<'info, Vault>,
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
     pub exchange_authority: AccountInfo<'info>,
-    #[account(constraint = assets_list.to_account_info().key == &state.load()?.assets_list)]
+    #[account(
+        constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
+        constraint = assets_list.to_account_info().owner == program_id
+    )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &to.mint == synthetic.to_account_info().key
