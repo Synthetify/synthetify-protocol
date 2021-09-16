@@ -1600,7 +1600,6 @@ pub mod exchange {
                 .eq(&ctx.accounts.collateral.to_account_info().key)
         }) {
             Some(c) => c,
-            Some(c) => c,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
