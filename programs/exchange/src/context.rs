@@ -292,7 +292,6 @@ pub struct WithdrawAccumulatedDebtInterest<'info> {
     pub admin: AccountInfo<'info>,
     #[account(
         constraint = exchange_authority.key == &state.load()?.exchange_authority,
-        constraint = exchange_authority.to_account_info().owner == program_id
     )]
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
@@ -1411,8 +1410,7 @@ pub struct SetVaultParameter<'info> {
 #[derive(Accounts)]
 pub struct WithdrawVaultAccumulatedInterest<'info> {
     #[account(
-        seeds = [b"statev1".as_ref()],
-        bump = state.load()?.bump,
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
         constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
