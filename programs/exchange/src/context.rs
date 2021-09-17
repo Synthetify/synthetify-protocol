@@ -625,7 +625,7 @@ pub struct Liquidate<'info> {
     pub exchange_authority: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
-        constraint = assets_list.to_account_info().key == program_id
+        constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(address = token::ID)]
