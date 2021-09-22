@@ -490,13 +490,6 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let user_token_account_in = &ctx.accounts.user_token_account_in;
-        let tx_signer = ctx.accounts.owner.key;
-
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_token_account_in.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
         // Swapping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
@@ -2029,8 +2022,6 @@ pub mod exchange {
             vault.collateral_ratio,
         )
         .unwrap();
-
-        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
