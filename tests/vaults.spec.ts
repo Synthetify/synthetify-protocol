@@ -499,6 +499,7 @@ describe('vaults', () => {
     })
   })
   describe('#withdrawVault', async () => {
+    // it('withdraw without updating price should failed')
     it('withdraw over limit should failed', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -520,7 +521,7 @@ describe('vaults', () => {
       const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
         assetsListData.assets[usdc.assetIndex].feedAddress
       ])
-      const ix = await exchange.withdrawVaultInstruction({
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
@@ -529,7 +530,11 @@ describe('vaults', () => {
       })
 
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(updateCollateralIx).add(ix), [accountOwner], connection),
+        signAndSend(
+          new Transaction().add(updateCollateralIx).add(withdrawIx),
+          [accountOwner],
+          connection
+        ),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
@@ -568,11 +573,10 @@ describe('vaults', () => {
         userUsdcTokenAccount
       )
 
-      // await exchange.updatePrices(assetsList)
       const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
         assetsListData.assets[usdc.assetIndex].feedAddress
       ])
-      const ix = await exchange.withdrawVaultInstruction({
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
@@ -580,7 +584,7 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount
       })
       await signAndSend(
-        new Transaction().add(updateCollateralIx).add(ix),
+        new Transaction().add(updateCollateralIx).add(withdrawIx),
         [accountOwner],
         connection
       )
@@ -632,7 +636,7 @@ describe('vaults', () => {
       const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
         assetsListData.assets[usdc.assetIndex].feedAddress
       ])
-      const ix = await exchange.withdrawVaultInstruction({
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
@@ -640,7 +644,7 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount
       })
       await signAndSend(
-        new Transaction().add(updateCollateralIx).add(ix),
+        new Transaction().add(updateCollateralIx).add(withdrawIx),
         [accountOwner],
         connection
       )
