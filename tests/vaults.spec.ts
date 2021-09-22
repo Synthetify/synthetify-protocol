@@ -517,6 +517,9 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
       const ix = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
@@ -526,7 +529,7 @@ describe('vaults', () => {
       })
 
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [accountOwner], connection),
+        signAndSend(new Transaction().add(updateCollateralIx).add(ix), [accountOwner], connection),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
@@ -565,6 +568,10 @@ describe('vaults', () => {
         userUsdcTokenAccount
       )
 
+      // await exchange.updatePrices(assetsList)
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
       const ix = await exchange.withdrawVaultInstruction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
@@ -572,7 +579,11 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+      await signAndSend(
+        new Transaction().add(updateCollateralIx).add(ix),
+        [accountOwner],
+        connection
+      )
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -618,6 +629,9 @@ describe('vaults', () => {
       const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
 
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
       const ix = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
@@ -625,7 +639,11 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+      await signAndSend(
+        new Transaction().add(updateCollateralIx).add(ix),
+        [accountOwner],
+        connection
+      )
 
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
