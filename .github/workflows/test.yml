@@ -68,6 +68,7 @@ jobs:
           cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
       - name: install
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install -g @project-serum/anchor
           npm install
       - name: build programs
