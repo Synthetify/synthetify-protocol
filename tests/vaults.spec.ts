@@ -538,7 +538,25 @@ describe('vaults', () => {
     })
   })
   describe('#withdrawVault', async () => {
-    // it('withdraw without updating price should failed')
+    it('withdraw without updating oracle price should failed', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      await sleep(1000)
+      const withdrawIx = await exchange.withdrawVaultInstruction({
+        amount: new BN(1),
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userCollateralAccount: userUsdcTokenAccount
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
+        ERRORS_EXCHANGE.OUTDATED_ORACLE
+      )
+    })
     it('withdraw over limit should failed', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
