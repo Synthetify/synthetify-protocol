@@ -33,7 +33,7 @@ pub mod exchange {
 
     use super::*;
 
-    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> ProgramResult {
+    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> Result<()> {
         let exchange_account = &mut ctx.accounts.exchange_account.load_init()?;
         exchange_account.owner = *ctx.accounts.admin.key;
         exchange_account.debt_shares = 0;
@@ -114,59 +114,67 @@ pub mod exchange {
             match asset {
                 Some(asset) => {
                     let offset = (PRICE_SCALE as i32).checked_add(price_feed.expo).unwrap();
-                    if offset >= 0 {
-                        let scaled_price = price_feed
+
+                    let scaled_price = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .price
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .agg
+                            .price
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_twap = match offset >= 0 {
+                        true => price_feed
                             .twap
                             .val
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .twap
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_confidence = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .conf
                             .checked_mul(10u64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
-                            .twac
-                            .val
-                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    } else {
-                        let scaled_price = price_feed
-                            .agg
-                            .price
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
-                            .twap
-                            .val
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
                             .agg
                             .conf
                             .checked_div(10u64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
+                            .unwrap(),
+                    };
+                    let scaled_twac = match offset >= 0 {
+                        true => price_feed
+                            .twac
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap(),
+                        false => price_feed
                             .twac
                             .val
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    }
+                            .unwrap(),
+                    };
+
+                    // validate price confidence
+                    let confidence: i64 = scaled_confidence.try_into().unwrap();
+                    let confidence_100x = confidence.checked_mul(100).unwrap();
+                    if confidence_100x > scaled_price {
+                        return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+                    };
+
+                    asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
+                    asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
+                    asset.confidence = Decimal::from_price(scaled_confidence.try_into().unwrap());
+                    asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
                     asset.status = price_feed.agg.status.into();
                     asset.last_update = Clock::get()?.slot;
                 }
@@ -2548,6 +2556,8 @@ pub enum ErrorCode {
     VaultWithdrawLimit = 35,
     #[msg("Invalid Account")]
     InvalidAccount = 36,
+    #[msg("Price confidence out of range")]
+    PriceConfidenceOutOfRange = 37,
 }
 
 // Access control modifiers.
