@@ -59,7 +59,7 @@ jobs:
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
 
-      - name: build sdk
+      - name: build sdk2
         run: |
           npm install
           npm run build
