@@ -81,6 +81,9 @@ jobs:
           npm install
           npm run build
         working-directory: ./sdk
+      - name: ls
+        run: |
+          ls
       # - name: test
       #   run: |
       #     export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
