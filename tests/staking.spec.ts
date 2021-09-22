@@ -127,7 +127,7 @@ describe('staking', () => {
     assert.ok(state.nonce === nonce)
     assert.ok(state.maxDelay === 0)
     assert.ok(eqDecimals(state.fee, toDecimal(new BN(300), 5)))
-    assert.ok(state.liquidationBuffer === 172800)
+    assert.ok(state.liquidationBuffer === 2250)
     assert.ok(state.debtShares.eq(new BN(0)))
     assert.ok(state.staking.fundAccount.equals(stakingFundAccount))
     assert.ok(eqDecimals(state.staking.amountPerRound, amountPerRound))

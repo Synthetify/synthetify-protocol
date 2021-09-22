@@ -14,7 +14,7 @@ export const createPriceFeed = async ({
   confidence,
   expo = -8
 }: ICreatePriceFeed) => {
-  const conf = confidence || new BN(initPrice / 10).mul(new BN(10).pow(new BN(-expo)))
+  const conf = confidence || new BN(0)
   const collateralTokenFeed = new web3.Account()
 
   await oracleProgram.rpc.initialize(
