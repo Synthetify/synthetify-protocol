@@ -207,9 +207,7 @@ pub mod exchange {
         state.accumulated_debt_interest = Decimal::from_usd(0);
         state.liquidation_rate = Decimal::from_percent(20); // 20%
 
-        // TODO decide about length of buffer
-        // Maybe just couple of minutes will be enough ?
-        state.liquidation_buffer = 172800; // about 24 Hours;
+        state.liquidation_buffer = 2250; // about 15 minutes
         state.staking = Staking {
             round_length: staking_round_length,
             amount_per_round: Decimal {
@@ -312,6 +310,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -376,6 +375,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -593,6 +593,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
@@ -721,7 +722,7 @@ pub mod exchange {
         if exchange_account.liquidation_deadline > slot {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
-
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -942,6 +943,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp)
                 .unwrap();
@@ -1485,6 +1487,7 @@ pub mod exchange {
         Ok(())
     }
     pub fn settle_synthetic(ctx: Context<SettleSynthetic>, bump: u8) -> Result<()> {
+        msg!("Synthetify: SETTLE SYNTHETIC");
         let slot = Clock::get()?.slot;
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1835,6 +1838,7 @@ pub mod exchange {
     }
     #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
+        msg!("Synthetify: CREATE VAULT ENTRY");
         let timestamp = Clock::get()?.unix_timestamp;
 
         let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
