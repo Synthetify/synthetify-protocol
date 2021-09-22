@@ -3,15 +3,29 @@ name: Test project
 on:
   push:
     branches:
-      - master
+      - test-CI
   pull_request:
     branches:
-      - master
+      - test-CI
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-${{ runner.os }}-v0000-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v2
+        name: Get npm cache directory
+        with:
+          path: |
+            ~/.npm/
+          key: npm-${{ runner.os }}-v0000-${{ hashFiles('**/package-lock.json') }}
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v2
         with:
@@ -50,8 +64,8 @@ jobs:
           npm install
           npm run build
         working-directory: ./sdk
-      - name: test
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm run test:full
-          cargo test
+      # - name: test
+      #   run: |
+      #     export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+      #     npm run test:full
+      #     cargo test
