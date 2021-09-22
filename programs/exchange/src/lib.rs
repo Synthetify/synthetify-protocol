@@ -1987,8 +1987,8 @@ pub mod exchange {
     #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW_VAULT");
-
         let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
 
         let state = ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -2017,6 +2017,13 @@ pub mod exchange {
         let synthetic = &mut synthetics[synthetic_position];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
 
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_asset,
