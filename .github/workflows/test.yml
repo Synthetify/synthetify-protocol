@@ -50,9 +50,11 @@ jobs:
           override: true
       - name: install global mocha
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install -g mocha
           npm install -g ts-mocha
           npm install -g typescript
+          npm install -g @project-serum/anchor
           ts-mocha -h
       - name: install essential
         run: |
@@ -74,11 +76,6 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo install --git https://github.com/project-serum/anchor -tag v${{ env.anchor_version }} anchor-cli --locked
-      - name: install
-        run: |
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm install -g @project-serum/anchor
-          npm install
       - name: build programs
         if: steps.cache-programs.outputs.cache-hit != 'true'
         run: |
@@ -89,6 +86,10 @@ jobs:
           npm install
           npm run build
         working-directory: ./sdk
+      - name: install
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          npm install
       - name: ls
         run: |
           ls
