@@ -3,10 +3,10 @@ name: Test project
 on:
   push:
     branches:
-      - test-CI
+      - master
   pull_request:
     branches:
-      - test-CI
+      - master
 env:
   solana_verion: 1.7.11
   anchor_version: 0.15.0
@@ -41,9 +41,6 @@ jobs:
           path: |
             ./target
           key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**/*.rs') }}-${{ hashFiles('**/programs/**/*.toml') }}
-      - name: ls
-        run: |
-          ls -a
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
@@ -79,15 +76,7 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo install --git https://github.com/project-serum/anchor --tag v${{ env.anchor_version }} anchor-cli --locked
-      - name: ls
-        run: |
-          ls
-      # - name: ls
-      #   run: |
-      #     ls
-      #   working-directory: ./target
       - name: build programs
-        # if: steps.cache-programs.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
@@ -103,8 +92,8 @@ jobs:
       - name: ls
         run: |
           ls
-      # - name: test
-      #   run: |
-      #     export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-      #     npm run test:full
-      #     cargo test
+      - name: test
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          npm run test:full
+          cargo test
