@@ -15,7 +15,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - uses: actions/cache@v2
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -41,6 +41,9 @@ jobs:
           path: |
             ./target
           key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**/*.rs') }}-${{ hashFiles('**/programs/**/*.toml') }}
+      - name: ls
+        run: |
+          ls -a
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
@@ -72,7 +75,7 @@ jobs:
           solana --version
           solana-keygen new
       - name: install Anchor
-        # if: steps.cache-anchor.outputs.cache-hit != 'true'
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo install --git https://github.com/project-serum/anchor --tag v${{ env.anchor_version }} anchor-cli --locked
