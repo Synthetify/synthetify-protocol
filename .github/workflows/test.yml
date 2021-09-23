@@ -76,6 +76,13 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo install --git https://github.com/project-serum/anchor -tag v${{ env.anchor_version }} anchor-cli --locked
+      - name: ls
+        run: |
+          ls
+      - name: ls
+        run: |
+          ls
+        working-directory: ./target
       - name: build programs
         if: steps.cache-programs.outputs.cache-hit != 'true'
         run: |
