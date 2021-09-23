@@ -164,7 +164,7 @@ pub mod exchange {
                             .unwrap(),
                     };
 
-                    // validate price confidence
+                    // validate price confidence - confidence/price ratio should be less than 1%
                     let confidence: i64 = scaled_confidence.try_into().unwrap();
                     let confidence_100x = confidence.checked_mul(100).unwrap();
                     if confidence_100x > scaled_price {

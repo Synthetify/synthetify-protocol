@@ -58,6 +58,20 @@ export const setFeedTrading = async (
     accounts: { price: priceFeed }
   })
 }
+export const setConfidence = async (
+  oracleProgram: Program,
+  newConfidence: number,
+  priceFeed: web3.PublicKey
+) => {
+  const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
+  const data = parsePriceData(info.data)
+  const scaledConf = new BN(newConfidence * 10 ** -data.exponent)
+
+  await oracleProgram.rpc.setConfidence(scaledConf, {
+    accounts: { price: priceFeed }
+  })
+}
 export const setTwap = async (
   oracleProgram: Program,
   newTwap: number,
