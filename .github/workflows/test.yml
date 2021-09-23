@@ -16,7 +16,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ['npm run test:exchange', 'npm run test:liquidation']
+        node:
+          [
+            'npm run test:exchange',
+            'test:interest-debt',
+            'test:isolated-burn',
+            'test:liquidation',
+            'test:admin',
+            'test:admin-withdraw',
+            'test:staking',
+            'test:staking-multiuser',
+            'test:multi',
+            'test:multicollateral',
+            'test:settlement',
+            'test:swapline',
+            'test:vaults',
+            'test:vaultsliquidation',
+            'test:vaults-interest',
+            'test:admin-vaults',
+            'cargo test'
+          ]
     steps:
       - uses: actions/checkout@v2
       - name: test
@@ -108,4 +127,3 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           ${{ matrix.node }}
-          cargo test
