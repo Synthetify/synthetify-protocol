@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [npm run test:exchange, npm run test:liquidation]
+        node: ['npm run test:exchange', 'npm run test:liquidation']
     steps:
       - uses: actions/checkout@v2
       - name: test
