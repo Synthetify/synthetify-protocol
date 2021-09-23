@@ -12,7 +12,7 @@ env:
   anchor_version: 0.15.0
 
 jobs:
-  test:
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -98,8 +98,26 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install
+      # - name: test
+      #   run: |
+      #     export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+      #     npm run test:full
+      #     cargo test
+  test2:
+    name: test2
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
       - name: test
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm run test:full
-          cargo test
+          npm run test:exchange
+  test3:
+    name: test3
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - name: test
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          npm run test:liquidation
