@@ -9,6 +9,7 @@ on:
       - test-CI
 env:
   solana_verion: 1.7.11
+  anchor_version: 0.15.0
 
 jobs:
   test:
@@ -31,7 +32,14 @@ jobs:
           path: |
             ~/.cache/solana/
             ~/.local/share/solana/
-          key: solana-${{ runner.os }}-v0001-${{ env.solana_verion }}
+          key: solana-${{ runner.os }}-v0000-${{ env.solana_verion }}
+      - uses: actions/cache@v2
+        name: Cache target folder
+        id: cache-programs
+        with:
+          path: |
+            ~/target
+          key: solana-${{ runner.os }}-v0000-${{ hashFiles('./programs') }}
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v2
         with:
@@ -53,7 +61,7 @@ jobs:
       - name: install solana
         if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.7.11/install)"
+          sh -c "$(curl -sSfL https://release.solana.com/v${{ env.solana_verion }}/install)"
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
       - name: setup solana
@@ -65,18 +73,18 @@ jobs:
         if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
+          cargo install --git https://github.com/project-serum/anchor -tag v${{ env.anchor_version }} anchor-cli --locked
       - name: install
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install -g @project-serum/anchor
           npm install
       - name: build programs
+        if: steps.cache-programs.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
-
-      - name: build sdk2
+      - name: build sdk
         run: |
           npm install
           npm run build
