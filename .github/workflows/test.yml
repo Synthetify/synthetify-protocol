@@ -39,7 +39,7 @@ jobs:
         with:
           path: |
             ./target
-          key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**') }}
+          key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**/*.rs') }}-${{ hashFiles('**/programs/**/*.toml') }}
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v2
         with:
@@ -79,12 +79,12 @@ jobs:
       - name: ls
         run: |
           ls
-      - name: ls
-        run: |
-          ls
-        working-directory: ./target
+      # - name: ls
+      #   run: |
+      #     ls
+      #   working-directory: ./target
       - name: build programs
-        if: steps.cache-programs.outputs.cache-hit != 'true'
+        # if: steps.cache-programs.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
