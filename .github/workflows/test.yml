@@ -38,7 +38,7 @@ jobs:
         id: cache-programs
         with:
           path: |
-            ~/target
+            ./target
           key: solana-${{ runner.os }}-v0000-${{ hashFiles('./programs') }}
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v2
