@@ -12,10 +12,35 @@ env:
   anchor_version: 0.15.0
 
 jobs:
-  test:
+  install:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          [
+            'npm run test:exchange',
+            'npm run test:interest-debt',
+            'npm run test:isolated-burn',
+            'npm run test:liquidation',
+            'npm run test:admin',
+            'npm run test:admin-withdraw',
+            'npm run test:staking',
+            'npm run test:staking-multiuser',
+            'npm run test:multi',
+            'npm run test:multicollateral',
+            'npm run test:settlement',
+            'npm run test:swapline',
+            'npm run test:vaults',
+            'npm run test:vaultsliquidation',
+            'npm run test:vaults-interest',
+            'npm run test:admin-vaults',
+            'cargo test'
+          ]
     steps:
       - uses: actions/checkout@v2
+      - name: test
+        run: |
+          echo "${{ matrix.node }}"
       - uses: actions/cache@v2
         name: Cache Cargo registry + index
         id: cache-anchor
@@ -41,6 +66,14 @@ jobs:
           path: |
             ./target
           key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**/*.rs') }}-${{ hashFiles('**/programs/**/*.toml') }}
+      - uses: actions/cache@v2
+        name: Cache Node Modules
+        id: cache-node-modules
+        with:
+          path: |
+            ~/.npm/
+            ./node_modules
+          key: npm-${{ runner.os }}-v0000-${{ hashFiles('**/package-lock.json') }}
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
@@ -86,14 +119,11 @@ jobs:
           npm run build
         working-directory: ./sdk
       - name: install
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install
-      - name: ls
-        run: |
-          ls
       - name: test
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm run test:full
-          cargo test
+          ${{ matrix.node }}
