@@ -39,7 +39,7 @@ jobs:
         with:
           path: |
             ./target
-          key: solana-${{ runner.os }}-v0000-${{ hashFiles('./programs') }}
+          key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**') }}
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v2
         with:
