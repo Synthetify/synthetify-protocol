@@ -141,7 +141,7 @@ describe('admin', () => {
     assert.ok(eqDecimals(state.liquidationRate, percentToDecimal(20)))
     assert.ok(eqDecimals(state.penaltyToLiquidator, percentToDecimal(5)))
     assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
-    assert.ok(state.liquidationBuffer === 172800)
+    assert.ok(state.liquidationBuffer === 2250)
     assert.ok(state.debtShares.eq(new BN(0)))
 
     // Check size of state

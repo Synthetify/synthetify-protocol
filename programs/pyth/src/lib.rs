@@ -50,6 +50,13 @@ pub mod pyth {
 
         Ok(())
     }
+    pub fn set_confidence(ctx: Context<SetPrice>, value: u64) -> ProgramResult {
+        let oracle = &ctx.accounts.price;
+        let mut price_oracle = Price::load(&oracle).unwrap();
+        price_oracle.agg.conf = value;
+
+        Ok(())
+    }
 }
 #[derive(Accounts)]
 pub struct SetPrice<'info> {

@@ -165,7 +165,7 @@ describe('liquidation', () => {
     assert.ok(eqDecimals(state.penaltyToExchange, percentToDecimal(5)))
     assert.ok(eqDecimals(state.penaltyToLiquidator, percentToDecimal(5)))
     assert.ok(eqDecimals(state.liquidationRate, percentToDecimal(20)))
-    assert.ok(state.liquidationBuffer === 172800)
+    assert.ok(state.liquidationBuffer === 2250)
   })
   describe('#liquidate()', async () => {
     afterEach(async () => {

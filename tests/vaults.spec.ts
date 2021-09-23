@@ -74,6 +74,7 @@ describe('vaults', () => {
   let userXusdTokenAccount: PublicKey
   let allUserCollateralAmount: BN
   let borrowAmount: BN
+  let maxBorrow: Decimal
   const accountOwner = Keypair.generate()
 
   before(async () => {
@@ -157,6 +158,10 @@ describe('vaults', () => {
     })
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+
+    const assetsListData = await exchange.getAssetsList(assetsList)
+    const xusd = assetsListData.synthetics[0]
+    maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
   })
   describe('#createVault', async () => {
     let assetsListData
@@ -168,7 +173,6 @@ describe('vaults', () => {
     let liquidationThreshold: Decimal
     let liquidationPenaltyExchange: Decimal
     let liquidationPenaltyLiquidator: Decimal
-    let maxBorrow: Decimal
     let createVaultIx: TransactionInstruction
     before(async () => {
       assetsListData = await exchange.getAssetsList(assetsList)
@@ -180,7 +184,6 @@ describe('vaults', () => {
       liquidationThreshold = percentToDecimal(90)
       liquidationPenaltyExchange = percentToDecimal(5)
       liquidationPenaltyLiquidator = percentToDecimal(5)
-      maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
@@ -440,9 +443,6 @@ describe('vaults', () => {
         ERRORS_EXCHANGE.USER_BORROW_LIMIT
       )
     })
-    it('borrow over vault limit should failed', async () => {
-      // TODO: change borrow limit
-    })
     it('should borrow xusd from usdc/xusd vault entry', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -497,8 +497,66 @@ describe('vaults', () => {
       assert.ok(eqDecimals(xusdAfterBorrow.supply, expectedBorrowAmount))
       assert.ok(eqDecimals(xusdAfterBorrow.borrowedSupply, expectedBorrowAmount))
     })
+    it('borrow over vault limit should failed', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+
+      const changeVaultBorrowLimitIx = await exchange.setVaultMaxBorrowInstruction(
+        toDecimal(new BN(1e2), vault.maxBorrow.scale),
+        {
+          collateral: usdc.collateralAddress,
+          synthetic: xusd.assetAddress
+        }
+      )
+      await signAndSend(
+        new Transaction().add(changeVaultBorrowLimitIx),
+        [EXCHANGE_ADMIN],
+        connection
+      )
+
+      await assertThrowsAsync(
+        exchange.borrowVault({
+          amount: new BN(1),
+          owner: accountOwner.publicKey,
+          to: userXusdTokenAccount,
+          collateral: usdc.collateralAddress,
+          synthetic: xusd.assetAddress,
+          signers: [accountOwner]
+        }),
+        ERRORS_EXCHANGE.VAULT_BORROW_LIMIT
+      )
+
+      // clean after test - return to previous max borrow
+      const cleanUpTx = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress
+      })
+      await signAndSend(new Transaction().add(cleanUpTx), [EXCHANGE_ADMIN], connection)
+    })
   })
   describe('#withdrawVault', async () => {
+    it('withdraw without updating oracle price should failed', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+      const usdc = assetsListData.collaterals[1]
+
+      await sleep(1000)
+      const withdrawIx = await exchange.withdrawVaultInstruction({
+        amount: new BN(1),
+        owner: accountOwner.publicKey,
+        collateral: usdc.collateralAddress,
+        synthetic: xusd.assetAddress,
+        userCollateralAccount: userUsdcTokenAccount
+      })
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
+        ERRORS_EXCHANGE.OUTDATED_ORACLE
+      )
+    })
     it('withdraw over limit should failed', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -517,7 +575,10 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
-      const ix = await exchange.withdrawVaultInstruction({
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
@@ -526,7 +587,11 @@ describe('vaults', () => {
       })
 
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(ix), [accountOwner], connection),
+        signAndSend(
+          new Transaction().add(updateCollateralIx).add(withdrawIx),
+          [accountOwner],
+          connection
+        ),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
@@ -565,14 +630,21 @@ describe('vaults', () => {
         userUsdcTokenAccount
       )
 
-      const ix = await exchange.withdrawVaultInstruction({
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+      await signAndSend(
+        new Transaction().add(updateCollateralIx).add(withdrawIx),
+        [accountOwner],
+        connection
+      )
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -618,14 +690,21 @@ describe('vaults', () => {
       const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
 
-      const ix = await exchange.withdrawVaultInstruction({
+      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
+        assetsListData.assets[usdc.assetIndex].feedAddress
+      ])
+      const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(new Transaction().add(ix), [accountOwner], connection)
+      await signAndSend(
+        new Transaction().add(updateCollateralIx).add(withdrawIx),
+        [accountOwner],
+        connection
+      )
 
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,

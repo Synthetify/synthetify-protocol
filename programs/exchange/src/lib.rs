@@ -33,7 +33,7 @@ pub mod exchange {
 
     use super::*;
 
-    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> ProgramResult {
+    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> Result<()> {
         let exchange_account = &mut ctx.accounts.exchange_account.load_init()?;
         exchange_account.owner = *ctx.accounts.admin.key;
         exchange_account.debt_shares = 0;
@@ -114,59 +114,67 @@ pub mod exchange {
             match asset {
                 Some(asset) => {
                     let offset = (PRICE_SCALE as i32).checked_add(price_feed.expo).unwrap();
-                    if offset >= 0 {
-                        let scaled_price = price_feed
+
+                    let scaled_price = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .price
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .agg
+                            .price
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_twap = match offset >= 0 {
+                        true => price_feed
                             .twap
                             .val
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .twap
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_confidence = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .conf
                             .checked_mul(10u64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
-                            .twac
-                            .val
-                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    } else {
-                        let scaled_price = price_feed
-                            .agg
-                            .price
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
-                            .twap
-                            .val
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
                             .agg
                             .conf
                             .checked_div(10u64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
+                            .unwrap(),
+                    };
+                    let scaled_twac = match offset >= 0 {
+                        true => price_feed
+                            .twac
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap(),
+                        false => price_feed
                             .twac
                             .val
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    }
+                            .unwrap(),
+                    };
+
+                    // validate price confidence - confidence/price ratio should be less than 1%
+                    let confidence: i64 = scaled_confidence.try_into().unwrap();
+                    let confidence_100x = confidence.checked_mul(100).unwrap();
+                    if confidence_100x > scaled_price {
+                        return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+                    };
+
+                    asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
+                    asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
+                    asset.confidence = Decimal::from_price(scaled_confidence.try_into().unwrap());
+                    asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
                     asset.status = price_feed.agg.status.into();
                     asset.last_update = Clock::get()?.slot;
                 }
@@ -207,9 +215,7 @@ pub mod exchange {
         state.accumulated_debt_interest = Decimal::from_usd(0);
         state.liquidation_rate = Decimal::from_percent(20); // 20%
 
-        // TODO decide about length of buffer
-        // Maybe just couple of minutes will be enough ?
-        state.liquidation_buffer = 172800; // about 24 Hours;
+        state.liquidation_buffer = 2250; // about 15 minutes
         state.staking = Staking {
             round_length: staking_round_length,
             amount_per_round: Decimal {
@@ -312,6 +318,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -376,6 +383,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -490,13 +498,6 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let user_token_account_in = &ctx.accounts.user_token_account_in;
-        let tx_signer = ctx.accounts.owner.key;
-
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_token_account_in.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
         // Swapping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
@@ -607,6 +608,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
@@ -735,7 +737,7 @@ pub mod exchange {
         if exchange_account.liquidation_deadline > slot {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
-
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -956,6 +958,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp)
                 .unwrap();
@@ -1503,6 +1506,7 @@ pub mod exchange {
         Ok(())
     }
     pub fn settle_synthetic(ctx: Context<SettleSynthetic>, bump: u8) -> Result<()> {
+        msg!("Synthetify: SETTLE SYNTHETIC");
         let slot = Clock::get()?.slot;
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -2006,8 +2010,8 @@ pub mod exchange {
     #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW_VAULT");
-
         let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
 
         let state = ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -2037,6 +2041,13 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
+        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_asset,
             synthetic_asset,
@@ -2045,8 +2056,6 @@ pub mod exchange {
             vault.collateral_ratio,
         )
         .unwrap();
-
-        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
@@ -2561,6 +2570,8 @@ pub enum ErrorCode {
     VaultWithdrawLimit = 35,
     #[msg("Invalid Account")]
     InvalidAccount = 36,
+    #[msg("Price confidence out of range")]
+    PriceConfidenceOutOfRange = 37,
 }
 
 // Access control modifiers.
