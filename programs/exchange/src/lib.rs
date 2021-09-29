@@ -1388,7 +1388,7 @@ pub mod exchange {
 
         let new_collateral = Collateral {
             asset_index: asset_index as u8,
-            collateral_address: *ctx.accounts.asset_address.key,
+            collateral_address: *ctx.accounts.asset_address.to_account_info().key,
             liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,

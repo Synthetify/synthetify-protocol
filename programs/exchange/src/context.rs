@@ -375,7 +375,7 @@ pub struct AddCollateral<'info> {
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    pub asset_address: AccountInfo<'info>,
+    pub asset_address: Account<'info, anchor_spl::token::Mint>,
     #[account(
         constraint = liquidation_fund.owner == state.load()?.exchange_authority,
         constraint = &liquidation_fund.mint == asset_address.to_account_info().key
