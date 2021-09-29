@@ -1605,4 +1605,132 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_append_exchange_account(){
+
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 3,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 5,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry = CollateralEntry{
+                amount: 7,
+                index: 4,
+                ..Default::default()
+            };
+            
+            exchange_account.append(
+                entry,
+            );
+
+            assert_eq!(exchange_account.head, 6);
+            assert_eq!(exchange_account.collaterals[5], entry);
+        }
+    }
+
+    #[test]
+    fn test_remove_exchange_account(){
+        
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 10,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 10,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 8;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(
+                index,
+            );
+
+            assert_eq!(exchange_account.head, 9);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
+    }
+
+    #[test]
+    fn test_append_asset_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_asset = Asset{
+                ..Default::default()
+            };
+
+            assets_list.append_asset(
+                new_asset,
+            );
+
+            assert_eq!(assets_list.assets[(assets_list.head_assets-1) as usize], new_asset);
+            assert_eq!(assets_list.head_assets, 2);
+        }
+    }
+
+    #[test]
+    fn test_append_collateral_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_collateral = Collateral{
+                ..Default::default()
+            };
+
+            assets_list.append_collateral(
+                new_collateral,
+            );
+
+            assert_eq!(assets_list.collaterals[(assets_list.head_collaterals-1) as usize], new_collateral);
+            assert_eq!(assets_list.head_collaterals, 1);
+        }
+    }
+
+    #[test]
+    fn test_append_synthetic_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_synthetic = Synthetic{
+                ..Default::default()
+            };
+
+            assets_list.append_synthetic(
+                new_synthetic,
+            );
+
+            assert_eq!(assets_list.synthetics[(assets_list.head_synthetics-1) as usize], new_synthetic);
+            assert_eq!(assets_list.head_synthetics, 2);
+        }
+    }
+
+    // next function to add: remove_synthetic && split_borrow
 }
