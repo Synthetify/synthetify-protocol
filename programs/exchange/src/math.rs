@@ -190,7 +190,7 @@ pub fn calculate_swap_out_amount(
 ) -> Result<(Decimal, Decimal)> {
     let value_in_usd = (asset_in.price).mul(amount).to_usd();
     // Check min swap value
-    if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
+    if value_in_usd.lt(MIN_SWAP_USD_VALUE)? {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
     let fee = value_in_usd.mul_up(fee);

@@ -113,7 +113,7 @@ pub mod exchange {
                 .find(|x| x.feed_address == *feed_address);
             match asset {
                 Some(asset) => {
-                    let offset = (PRICE_SCALE as i32).checked_add(price_feed.expo).unwrap();
+                    let offset = price_feed.expo.checked_add(PRICE_SCALE.into()).unwrap();
 
                     let scaled_price = match offset >= 0 {
                         true => price_feed
@@ -273,7 +273,7 @@ pub mod exchange {
             scale: collateral.reserve_balance.scale,
         };
         let new_reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
-        if new_reserve_balance.gt(collateral.max_collateral).unwrap() {
+        if new_reserve_balance.gt(collateral.max_collateral)? {
             return Err(ErrorCode::CollateralLimitExceeded.into());
         }
         collateral.reserve_balance = new_reserve_balance;
@@ -339,7 +339,7 @@ pub mod exchange {
         };
         let debt_after_mint = user_debt.add(amount).unwrap();
 
-        if mint_limit.lt(debt_after_mint).unwrap() {
+        if mint_limit.lt(debt_after_mint)? {
             return Err(ErrorCode::MintLimit.into());
         }
 
@@ -436,7 +436,7 @@ pub mod exchange {
                 collateral.reserve_balance.scale,
             );
 
-            if max_withdrawable_in_token.gt(amount_collateral).unwrap() {
+            if max_withdrawable_in_token.gt(amount_collateral)? {
                 amount_to_withdraw = amount_collateral;
             } else {
                 amount_to_withdraw = max_withdrawable_in_token;
@@ -449,10 +449,7 @@ pub mod exchange {
             let amount_to_withdraw_in_usd =
                 calculate_value_in_usd(collateral_asset.price, amount_to_withdraw);
 
-            if max_withdrawable_in_usd
-                .lt(amount_to_withdraw_in_usd)
-                .unwrap()
-            {
+            if max_withdrawable_in_usd.lt(amount_to_withdraw_in_usd)? {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
         }
@@ -535,8 +532,7 @@ pub mod exchange {
             synthetics[synthetic_for_index].asset_index as usize,
             state.max_delay,
             slot,
-        )
-        .unwrap();
+        )?;
         let sny_collateral = &mut collaterals[0];
 
         let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
@@ -744,7 +740,7 @@ pub mod exchange {
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
         // Check collateral ratio
-        if max_debt.gt(user_debt).unwrap() {
+        if max_debt.gt(user_debt)? {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
         // Cannot payback more than liquidation_rate of user debt
@@ -999,6 +995,7 @@ pub mod exchange {
             .amount
             .gt(Decimal::from_sny(0))?
         {
+            // as u64
             let reward_amount: u64 = state
                 .staking
                 .finished_round
@@ -1012,7 +1009,9 @@ pub mod exchange {
                 )
                 .unwrap()
                 .checked_div(state.staking.finished_round.all_points.into())
-                .unwrap() as u64;
+                .unwrap()
+                .try_into()
+                .unwrap();
 
             exchange_account.user_staking_data.amount_to_claim = exchange_account
                 .user_staking_data
@@ -1709,7 +1708,7 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.lte(swapline.limit).unwrap(), SwaplineLimit);
+        require!(swapline.balance.lte(swapline.limit)?, SwaplineLimit);
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -2159,12 +2158,10 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
-        {
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
-        {
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -2178,9 +2175,7 @@ pub mod exchange {
         );
         // Fail if user is safe
         require!(
-            amount_liquidation_limit
-                .lt(vault_entry.synthetic_amount)
-                .unwrap(),
+            amount_liquidation_limit.lt(vault_entry.synthetic_amount)?,
             InvalidLiquidation
         );
         // Amount of synthetic to repay
@@ -2191,9 +2186,7 @@ pub mod exchange {
         };
         // Fail if liquidator wants to liquidate more than allowed number
         require!(
-            liquidation_amount
-                .lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))
-                .unwrap(),
+            liquidation_amount.lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))?,
             InvalidLiquidation
         );
         // Amount seized in usd
