@@ -782,8 +782,6 @@ pub struct CheckCollateralization<'info> {
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
@@ -796,8 +794,6 @@ pub struct ClaimRewards<'info> {
     // everyone can trigger claim any exchange_account
     #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {

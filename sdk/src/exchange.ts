@@ -541,8 +541,7 @@ export class Exchange {
     return await (this.program.instruction.claimRewards({
       accounts: {
         state: this.stateAddress,
-        exchangeAccount: exchangeAccount,
-        systemProgram: SystemProgram.programId
+        exchangeAccount: exchangeAccount
       }
     }) as TransactionInstruction)
   }
@@ -568,8 +567,7 @@ export class Exchange {
       accounts: {
         state: this.stateAddress,
         exchangeAccount: exchangeAccount,
-        assetsList: this.state.assetsList,
-        systemProgram: SystemProgram.programId
+        assetsList: this.state.assetsList
       }
     }) as TransactionInstruction)
   }
