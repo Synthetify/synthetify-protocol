@@ -1506,4 +1506,14 @@ mod tests {
             assert_eq!(vault_withdraw_limit, btc_amount);
         }
     }
+
+    #[test]
+    fn test_calculate_debt_interest_rate() {
+        let debt_interest_rate = 150;
+        let actual = calculate_debt_interest_rate(debt_interest_rate);
+        let expected = Decimal::new(1500000000000000, 18);
+
+        assert_eq!({actual.val}, {expected.val});
+        assert_eq!(actual.scale, expected.scale);
+    }
 }
