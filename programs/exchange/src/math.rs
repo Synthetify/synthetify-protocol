@@ -1506,11 +1506,4 @@ mod tests {
             assert_eq!(vault_withdraw_limit, btc_amount);
         }
     }
-
-    #[test]
-    fn test() {
-        let a: u8 = 0;
-        let b = a - 1;
-        println!("b = {:?}", b);
-    }
 }
