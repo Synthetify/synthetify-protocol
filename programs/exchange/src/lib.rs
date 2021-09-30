@@ -288,7 +288,7 @@ pub mod exchange {
             None => exchange_account.append(CollateralEntry {
                 amount,
                 collateral_address: collateral.collateral_address,
-                index: collateral_index as u8,
+                index: collateral_index.try_into().unwrap(),
                 ..Default::default()
             }),
         }
@@ -995,7 +995,6 @@ pub mod exchange {
             .amount
             .gt(Decimal::from_sny(0))?
         {
-            // as u64
             let reward_amount: u64 = state
                 .staking
                 .finished_round
@@ -1091,7 +1090,7 @@ pub mod exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        token::transfer(cpi_ctx, amount.val as u64)?;
+        token::transfer(cpi_ctx, amount.val.try_into().unwrap())?;
         Ok(())
     }
     // admin methods
@@ -1386,7 +1385,7 @@ pub mod exchange {
         );
 
         let new_collateral = Collateral {
-            asset_index: asset_index as u8,
+            asset_index: asset_index.try_into().unwrap(),
             collateral_address: *ctx.accounts.asset_address.to_account_info().key,
             liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
@@ -1484,7 +1483,7 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
         let new_synthetic = Synthetic {
-            asset_index: asset_index as u8,
+            asset_index: asset_index.try_into().unwrap(),
             asset_address: *ctx.accounts.asset_address.to_account_info().key,
             max_supply: Decimal {
                 val: max_supply.into(),
@@ -1526,7 +1525,7 @@ pub mod exchange {
         let asset = assets[synthetic.asset_index as usize];
         let usd_synthetic = &mut synthetics[0];
 
-        if asset.last_update < (slot - state.max_delay as u64) {
+        if asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
         if synthetic.settlement_slot > slot {
@@ -1971,10 +1970,10 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -2040,10 +2039,10 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -2058,7 +2057,7 @@ pub mod exchange {
 
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
-            _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
+            _ => Decimal::new(amount.into(), vault_entry.collateral_amount.scale),
         };
 
         if amount_to_withdraw.gt(vault_withdraw_limit)? {

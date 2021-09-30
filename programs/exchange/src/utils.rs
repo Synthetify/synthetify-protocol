@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
+use std::convert::TryInto;
 
 use crate::decimal::{Add, Compare, Div, Mul, MulUp, PowAccuracy, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
@@ -14,11 +15,11 @@ pub fn check_feed_update(
     slot: u64,
 ) -> Result<()> {
     // Check assetA
-    if (assets[index_a].last_update as u64) < slot - max_delay as u64 {
+    if assets[index_a].last_update < slot.checked_sub(max_delay.into()).unwrap() {
         return Err(ErrorCode::OutdatedOracle.into());
     }
     // Check assetB
-    if (assets[index_b].last_update as u64) < slot - max_delay as u64 {
+    if assets[index_b].last_update < slot.checked_sub(max_delay.into()).unwrap() {
         return Err(ErrorCode::OutdatedOracle.into());
     }
     return Ok(());
@@ -37,7 +38,9 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
         return;
     }
     let slot_diff = slot.checked_sub(state.staking.next_round.start).unwrap();
-    let round_diff = div_up(slot_diff as u128, state.staking.round_length.into()) as u32;
+    let round_diff: u32 = div_up(slot_diff.into(), state.staking.round_length.into())
+        .try_into()
+        .unwrap();
     match round_diff {
         1 => {
             state.staking.finished_round = state.staking.current_round.clone();
@@ -70,7 +73,7 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.checked_mul(2).unwrap() as u64)
+                    .checked_add(state.staking.round_length.checked_mul(2).unwrap().into())
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -87,7 +90,8 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                             .staking
                             .round_length
                             .checked_mul(round_diff.checked_sub(2).unwrap())
-                            .unwrap() as u64,
+                            .unwrap()
+                            .into(),
                     )
                     .unwrap(),
                 all_points: state.debt_shares,
@@ -103,7 +107,8 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                             .staking
                             .round_length
                             .checked_mul(round_diff.checked_sub(1).unwrap())
-                            .unwrap() as u64,
+                            .unwrap()
+                            .into(),
                     )
                     .unwrap(),
                 all_points: state.debt_shares,
@@ -114,7 +119,14 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.checked_mul(round_diff).unwrap() as u64)
+                    .checked_add(
+                        state
+                            .staking
+                            .round_length
+                            .checked_mul(round_diff)
+                            .unwrap()
+                            .into(),
+                    )
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -140,7 +152,8 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
         }
     }
 
-    exchange_account.user_staking_data.last_update = staking.current_round.start + 1;
+    exchange_account.user_staking_data.last_update =
+        staking.current_round.start.checked_add(1).unwrap();
     return;
 }
 
@@ -169,8 +182,11 @@ pub fn adjust_interest_debt(
     if diff >= 1 {
         let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
         let minute_interest_rate = calculate_minute_interest_rate(state.debt_interest_rate);
-        let compounded_interest =
-            calculate_compounded_interest(total_debt_twap, minute_interest_rate, diff as u128);
+        let compounded_interest = calculate_compounded_interest(
+            total_debt_twap,
+            minute_interest_rate,
+            diff.try_into().unwrap(),
+        );
         let usd = &mut assets_list.borrow_mut().synthetics[0];
 
         // increase in interest supply may exceed the max supply limit
@@ -199,7 +215,7 @@ pub fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64) {
         let minute_interest_rate = calculate_minute_interest_rate(vault.debt_interest_rate);
         let one = Decimal::from_integer(1).to_interest_rate();
         let base = minute_interest_rate.add(one).unwrap();
-        let time_period_interest = base.pow_with_accuracy(diff as u128);
+        let time_period_interest = base.pow_with_accuracy(diff.try_into().unwrap());
 
         vault.accumulated_interest_rate = vault.accumulated_interest_rate.mul(time_period_interest);
         vault.last_update = diff
@@ -338,13 +354,13 @@ mod tests {
             current_round: StakingRound {
                 all_points: 2,
                 amount: Decimal::from_sny(0),
-                start: slot.checked_add(staking_round_length as u64).unwrap(),
+                start: slot.checked_add(staking_round_length.into()).unwrap(),
             },
             next_round: StakingRound {
                 all_points: 3,
                 amount: amount_per_round,
                 start: slot
-                    .checked_add(staking_round_length as u64)
+                    .checked_add(staking_round_length.into())
                     .unwrap()
                     .checked_add(staking_round_length.into())
                     .unwrap(),

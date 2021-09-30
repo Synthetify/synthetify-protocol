@@ -192,7 +192,11 @@ impl DivUp<Decimal> for Decimal {
 }
 impl DivScale<Decimal> for Decimal {
     fn div_to_scale(self, other: Decimal, to_scale: u8) -> Self {
-        let decimal_difference = self.scale as i32 - to_scale as i32 - other.scale as i32;
+        let decimal_difference = (self.scale as i32)
+            .checked_sub(to_scale.into())
+            .unwrap()
+            .checked_sub(other.scale.into())
+            .unwrap();
 
         let val = if decimal_difference > 0 {
             self.val
@@ -216,7 +220,7 @@ impl DivScale<Decimal> for Decimal {
 impl PowAccuracy<u128> for Decimal {
     fn pow_with_accuracy(self, exp: u128) -> Self {
         let one = Decimal {
-            val: 1 * self.denominator(),
+            val: self.denominator(),
             scale: self.scale,
         };
         if exp == 0 {
