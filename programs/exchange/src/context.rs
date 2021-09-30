@@ -434,7 +434,10 @@ pub struct SetAdmin<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(owner = system_program)]
     pub new_admin: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
@@ -772,13 +775,17 @@ pub struct CheckCollateralization<'info> {
         constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
-    #[account(mut)]
+    #[account(mut,
+        owner = system_program
+    )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
@@ -789,8 +796,12 @@ pub struct ClaimRewards<'info> {
     )]
     pub state: Loader<'info, State>,
     // everyone can trigger claim any exchange_account
-    #[account(mut)]
+    #[account(mut,
+        owner = system_program
+    )]
     pub exchange_account: Loader<'info, ExchangeAccount>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct WithdrawRewards<'info> {
@@ -867,6 +878,7 @@ pub struct AdminAction<'info> {
 pub struct Init<'info> {
     #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
+    #[account(owner = system_program)]
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
