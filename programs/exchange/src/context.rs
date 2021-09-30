@@ -775,9 +775,7 @@ pub struct CheckCollateralization<'info> {
         constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
-    #[account(mut,
-        owner = system_program
-    )]
+    #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
@@ -796,9 +794,7 @@ pub struct ClaimRewards<'info> {
     )]
     pub state: Loader<'info, State>,
     // everyone can trigger claim any exchange_account
-    #[account(mut,
-        owner = system_program
-    )]
+    #[account(mut)]
     pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
