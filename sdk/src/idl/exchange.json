@@ -532,11 +532,6 @@
           "name": "assetsList",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": []
@@ -552,11 +547,6 @@
         {
           "name": "exchangeAccount",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
           "isSigner": false
         }
       ],
