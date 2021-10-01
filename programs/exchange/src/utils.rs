@@ -1796,5 +1796,23 @@ mod tests {
         }
     }
 
+    #[test]
+    #[should_panic]
+    fn test_remove_synthetic_asset_list_with_panic(){
+        
+        // panic because self.head == -1
+        {   
+            let mut assets_list = AssetsList{
+                head_synthetics: 0,
+                ..Default::default()
+            };
+            let index = 1;
+
+            assets_list.remove_synthetic(
+                index,
+            ).unwrap();
+        }
+    }
+
     // next function to add: remove_synthetic && split_borrow
 }
