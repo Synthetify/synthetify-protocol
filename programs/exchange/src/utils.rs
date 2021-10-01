@@ -1664,6 +1664,28 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_remove_exchange_account_with_panic(){
+        
+        // panic because self.head == -1
+        {   
+            let collateral_entry = CollateralEntry{
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 1;
+
+            exchange_account.remove(
+                index,
+            );
+        }
+    }
+
+    #[test]
     fn test_append_asset_asset_list(){
         
         {   
