@@ -1612,16 +1612,16 @@ mod tests {
         {   
             let collateral_entry = CollateralEntry{
                 amount: 10,
-                index: 3,
+                index: 7,
                 ..Default::default()
             };
             let mut exchange_account = ExchangeAccount{
-                head: 5,
+                head: 0,
                 collaterals: [collateral_entry; 32],
                 ..Default::default()
             };
             let entry = CollateralEntry{
-                amount: 7,
+                amount: 10,
                 index: 4,
                 ..Default::default()
             };
@@ -1630,22 +1630,22 @@ mod tests {
                 entry,
             );
 
-            assert_eq!(exchange_account.head, 6);
-            assert_eq!(exchange_account.collaterals[5], entry);
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry);
         }
     }
 
     #[test]
     fn test_remove_exchange_account(){
         
-        {   
+            {   
             let collateral_entry = CollateralEntry{
                 amount: 10,
                 index: 10,
                 ..Default::default()
             };
             let mut exchange_account = ExchangeAccount{
-                head: 10,
+                head: 1,
                 collaterals: [collateral_entry; 32],
                 ..Default::default()
             };
@@ -1657,7 +1657,7 @@ mod tests {
                 index,
             );
 
-            assert_eq!(exchange_account.head, 9);
+            assert_eq!(exchange_account.head, 0);
             assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
             assert_eq!(check, exchange_account.collaterals[(index) as usize]);
         }
