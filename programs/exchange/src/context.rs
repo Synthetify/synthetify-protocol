@@ -1,8 +1,36 @@
 use anchor_lang::prelude::*;
-use crate::account::*;
+use crate::{ErrorCode, account::*};
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use anchor_lang::solana_program::system_program;
 use crate::decimal::XUSD_SCALE;
+use std::str::FromStr;
+
+const SELECTED_ORACLE: Oracle = Oracle::E2E;
+
+#[allow(dead_code)]
+enum Oracle {
+    MAINNET,
+    TESTNET,
+    DEVNET,
+    E2E,
+}
+
+impl Oracle {
+    fn get_pubkey(&self) -> &str {
+        match *self {
+            Oracle::MAINNET => "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J",
+            Oracle::TESTNET => "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z",
+            Oracle::DEVNET => "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2",
+            Oracle::E2E => "3URDD3Eutw6SufPBzNm2dbwqwvQjRUFCtqkKVsjk3uSE",
+        }
+    }
+    pub fn get_valid_program() -> Result<Pubkey, ErrorCode> {
+        match Pubkey::from_str(&SELECTED_ORACLE.get_pubkey()) {
+            Ok(pubkey) => Ok(pubkey),
+            Err(_) => Err(ErrorCode::InvalidOracleProgram),
+        }
+    }
+}
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
@@ -196,7 +224,10 @@ pub struct InitializeAssetsList<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
-    #[account(constraint = collateral_token_feed.data_len() == 3312)]
+    #[account(
+        constraint = collateral_token_feed.owner == &Oracle::get_valid_program()?,
+        constraint = collateral_token_feed.data_len() == 3312
+    )]
     pub collateral_token_feed: AccountInfo<'info>,
     #[account(constraint = usd_token.decimals == XUSD_SCALE)]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -357,7 +388,10 @@ pub struct SetPriceFeed<'info> {
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = price_feed.data_len() == 3312)]
+    #[account(
+        constraint = price_feed.owner == &Oracle::get_valid_program()?,
+        constraint = price_feed.data_len() == 3312
+    )]
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -387,7 +421,10 @@ pub struct AddCollateral<'info> {
         constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info,TokenAccount>,
-    #[account(constraint = feed_address.data_len() == 3312)]
+    #[account(
+        constraint = feed_address.owner == &Oracle::get_valid_program()?,
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -472,7 +509,10 @@ pub struct AddSynthetic<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
-    #[account(constraint = feed_address.data_len() == 3312)]
+    #[account(
+        constraint = feed_address.owner == &Oracle::get_valid_program()?,
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 
