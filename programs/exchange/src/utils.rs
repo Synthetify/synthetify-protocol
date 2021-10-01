@@ -1821,7 +1821,7 @@ mod tests {
             let mut assets_list = AssetsList{
                 ..Default::default()
             };
-            let assets_list_copy = assets_list;
+            let assets_list_copy = assets_list.clone();
 
             let result = assets_list.split_borrow();
 
