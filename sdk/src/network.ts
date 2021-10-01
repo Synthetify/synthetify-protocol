@@ -17,3 +17,8 @@ export const TEST_NET = {
   oracle: new PublicKey('4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'),
   exchangeAuthority: new PublicKey('AHhuSXACqtyPfYZ7DZUg5xqPGViKux34hXTGqRNw392B')
 }
+export const MAIN_NET = {
+  exchange: new PublicKey('5TeGDBaMNPc2uxvx6YLDycsoxFnBuqierPt3a8Bk4xFX'),
+  // oracle: new PublicKey('4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'),
+  exchangeAuthority: new PublicKey('4f1XgkC1dSvvovZ9EU85pY8pwNdJRhqy7jjq188b1DjJ')
+}

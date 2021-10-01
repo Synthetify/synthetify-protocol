@@ -267,5 +267,12 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   GwRebgnFXqBhTjaY1xTtPeKxvuNANEAUDxN7273Zunf1: 'xSOL',
   '3bfRuPDDDdwtUNB7QaE2ZKVbu8S962nSvVtoN8kYq1dr': 'xSRM',
   D7gP4wHnc1TaGUxjJwN4TgmwPHTdVLDT43RCYPrNadhN: 'xFTT',
-  ueMoKFUHeyxXjXgbxPAERQ5p6dWkqwQvHEPkwPb1kaZ: 'xETH'
+  ueMoKFUHeyxXjXgbxPAERQ5p6dWkqwQvHEPkwPb1kaZ: 'xETH',
+  //Mainnet
+  '83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y': 'xUSD',
+  '4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y': 'SNY',
+  HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D: 'xBTC',
+  BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
+  Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
+  '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH'
 }

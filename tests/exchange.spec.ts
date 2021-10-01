@@ -1698,8 +1698,10 @@ describe('exchange', () => {
     // })
   })
   describe('Oracle confidence', async () => {
-    it('updating oracle price with confidence to price ratio greater than 1% should failed', async () => {
-      await setConfidence(oracleProgram, 900, btcFeed)
+    const confidenceThreshold = 50000 * 0.025
+
+    it('updating oracle price with confidence to price ratio greater than 2.5% should failed', async () => {
+      await setConfidence(oracleProgram, confidenceThreshold + 1, btcFeed)
       const updateOracleIx = await exchange.updateSelectedPricesInstruction(assetsList, [btcFeed])
 
       await assertThrowsAsync(
@@ -1707,8 +1709,8 @@ describe('exchange', () => {
         ERRORS_EXCHANGE.PRICE_CONFIDENCE_OUT_OF_RANGE
       )
     })
-    it('updating oracle price with confidence to price ratio less than 1%', async () => {
-      await setConfidence(oracleProgram, 300, btcFeed)
+    it('updating oracle price with confidence to price ratio less than 2.5%', async () => {
+      await setConfidence(oracleProgram, confidenceThreshold - 1, btcFeed)
       const updateOracleIx = await exchange.updateSelectedPricesInstruction(assetsList, [btcFeed])
       await signAndSend(new Transaction().add(updateOracleIx), [wallet], connection)
     })
