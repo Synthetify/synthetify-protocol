@@ -1814,5 +1814,22 @@ mod tests {
         }
     }
 
-    // next function to add: remove_synthetic && split_borrow
+    #[test]
+    fn test_split_borrow_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                ..Default::default()
+            };
+            let assets_list_copy = assets_list;
+
+            let result = assets_list.split_borrow();
+
+              for i in 0..255{
+                assert_eq!((result.0)[i],(assets_list_copy.assets)[i]);
+                assert_eq!((result.1)[i],(assets_list_copy.collaterals)[i]);
+                assert_eq!((result.2)[i],(assets_list_copy.synthetics)[i]);
+            }
+        }
+    }
 }
