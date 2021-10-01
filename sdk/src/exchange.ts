@@ -900,7 +900,7 @@ export class Exchange {
       to
     })
     await this.getState()
-    await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
+    return await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
   }
   public async deposit({
     amount,
