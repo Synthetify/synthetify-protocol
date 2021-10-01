@@ -1732,5 +1732,47 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_remove_synthetic_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 1;
+
+            let check = assets_list.synthetics[(assets_list.head_synthetics - 1) as usize]; // create copy before using function
+
+            assets_list.remove_synthetic(
+                index,
+            ).unwrap();
+
+            
+
+            assert_eq!(assets_list.synthetics[index], check);
+            assert_eq!(assets_list.synthetics[(assets_list.head_synthetics) as usize], Synthetic {..Default::default()});
+            assert_eq!(assets_list.head_synthetics, 0);
+        }
+        // check error
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 0;
+
+            let result = assets_list.remove_synthetic(
+                index,
+            );
+
+            assert!(result.is_err());
+        }
+    }
+
     // next function to add: remove_synthetic && split_borrow
 }
