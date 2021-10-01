@@ -1639,29 +1639,6 @@ mod tests {
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
     #[test]
     fn test_append_exchange_account(){
 
