@@ -1607,6 +1607,62 @@ mod tests {
     }
 
     #[test]
+    fn test_set_mint_amount_safely(){
+        
+        // decrease is safety
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(1);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+            
+        }
+        // checking error
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            let result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(result.is_err());
+            
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    #[test]
     fn test_append_exchange_account(){
 
         {   
