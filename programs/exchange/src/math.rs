@@ -22,7 +22,7 @@ pub fn calculate_debt(
     let head = assets_list.head_synthetics as usize;
     for synthetic in synthetics[..head].iter() {
         let asset = &assets_list.assets[synthetic.asset_index as usize];
-        if asset.last_update < (slot - max_delay as u64) {
+        if asset.last_update < slot.checked_sub(max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
         let price = match twap {
@@ -131,9 +131,9 @@ pub fn amount_to_shares_by_rounding_down(all_shares: u64, full_amount: u64, amou
         return 0;
     }
     let shares = (amount as u128)
-        .checked_mul(all_shares as u128)
+        .checked_mul(all_shares.into())
         .unwrap()
-        .checked_div(full_amount as u128)
+        .checked_div(full_amount.into())
         .unwrap();
     return shares.try_into().unwrap();
 }
@@ -143,8 +143,8 @@ pub fn amount_to_shares_by_rounding_up(all_shares: u64, full_amount: u64, amount
         return 0;
     }
     let shares = div_up(
-        (amount as u128).checked_mul(all_shares as u128).unwrap(),
-        full_amount as u128,
+        (amount as u128).checked_mul(all_shares.into()).unwrap(),
+        full_amount.into(),
     );
     return shares.try_into().unwrap();
 }
@@ -190,7 +190,7 @@ pub fn calculate_swap_out_amount(
 ) -> Result<(Decimal, Decimal)> {
     let value_in_usd = (asset_in.price).mul(amount).to_usd();
     // Check min swap value
-    if value_in_usd.lt(MIN_SWAP_USD_VALUE).unwrap() {
+    if value_in_usd.lt(MIN_SWAP_USD_VALUE)? {
         return Err(ErrorCode::InsufficientValueTrade.into());
     }
     let fee = value_in_usd.mul_up(fee);

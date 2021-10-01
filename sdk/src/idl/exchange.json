@@ -1216,6 +1216,11 @@
           "name": "newAdmin",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -3500,8 +3505,5 @@
       "name": "PriceConfidenceOutOfRange",
       "msg": "Price confidence out of range"
     }
-  ],
-  "metadata": {
-    "address": "e9P7yZnZdYpvEWJbbbBbu8XEsYkFGuD3rMsVxMMfrf2"
-  }
+  ]
 }

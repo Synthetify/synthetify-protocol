@@ -375,7 +375,7 @@ pub struct AddCollateral<'info> {
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    pub asset_address: AccountInfo<'info>,
+    pub asset_address: Account<'info, anchor_spl::token::Mint>,
     #[account(
         constraint = liquidation_fund.owner == state.load()?.exchange_authority,
         constraint = &liquidation_fund.mint == asset_address.to_account_info().key
@@ -434,7 +434,10 @@ pub struct SetAdmin<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
+    #[account(owner = system_program)]
     pub new_admin: AccountInfo<'info>,
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
@@ -867,6 +870,7 @@ pub struct AdminAction<'info> {
 pub struct Init<'info> {
     #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
+    #[account(owner = system_program)]
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,
