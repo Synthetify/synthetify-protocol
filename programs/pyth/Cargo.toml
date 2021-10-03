@@ -13,7 +13,11 @@ doctest = false
 no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
-default = []
+mainnet = []
+testnet = []
+devnet = []
+localnet = []
+default = ["localnet"]
 
 [dependencies]
 anchor-lang = "0.16.2"

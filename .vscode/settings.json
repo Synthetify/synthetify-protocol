@@ -19,6 +19,7 @@
     "lamports",
     "ledgerhq",
     "libudev",
+    "localnet",
     "muln",
     "multicollateral",
     "multiuser",

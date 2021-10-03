@@ -5,31 +5,26 @@ use anchor_lang::solana_program::system_program;
 use crate::decimal::XUSD_SCALE;
 use std::str::FromStr;
 
-const SELECTED_ORACLE: Oracle = Oracle::E2E;
+const PYTH_MAINNET: &str = "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J";
+const PYTH_TESTNET: &str = "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z";
+const PYTH_DEVNET: &str = "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2";
+const PYTH_LOCAL: &str = "3URDD3Eutw6SufPBzNm2dbwqwvQjRUFCtqkKVsjk3uSE";
 
-#[allow(dead_code)]
-enum Oracle {
-    MAINNET,
-    TESTNET,
-    DEVNET,
-    E2E,
-}
+pub fn get_oracle_pubkey() -> Result<Pubkey, ErrorCode> {
+    let address = if cfg!(feature = "mainnet") {
+       PYTH_MAINNET
+   } else if  cfg!(feature = "testnet") {
+       PYTH_TESTNET
+   } else if  cfg!(feature = "devnet") {
+       PYTH_DEVNET
+   } else {
+       PYTH_LOCAL
+   };
 
-impl Oracle {
-    fn get_pubkey(&self) -> &str {
-        match *self {
-            Oracle::MAINNET => "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J",
-            Oracle::TESTNET => "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z",
-            Oracle::DEVNET => "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2",
-            Oracle::E2E => "3URDD3Eutw6SufPBzNm2dbwqwvQjRUFCtqkKVsjk3uSE",
-        }
-    }
-    pub fn get_valid_program() -> Result<Pubkey, ErrorCode> {
-        match Pubkey::from_str(&SELECTED_ORACLE.get_pubkey()) {
-            Ok(pubkey) => Ok(pubkey),
-            Err(_) => Err(ErrorCode::InvalidOracleProgram),
-        }
-    }
+   match Pubkey::from_str(address) {
+       Ok(pubkey) => Ok(pubkey),
+       Err(_) => Err(ErrorCode::InvalidOracleProgram),
+   }
 }
 
 #[derive(Accounts)]
@@ -225,7 +220,7 @@ pub struct InitializeAssetsList<'info> {
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        constraint = collateral_token_feed.owner == &Oracle::get_valid_program()?,
+        constraint = collateral_token_feed.owner == &get_oracle_pubkey()?,
         constraint = collateral_token_feed.data_len() == 3312
     )]
     pub collateral_token_feed: AccountInfo<'info>,
@@ -389,7 +384,7 @@ pub struct SetPriceFeed<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
-        constraint = price_feed.owner == &Oracle::get_valid_program()?,
+        constraint = price_feed.owner == &get_oracle_pubkey()?,
         constraint = price_feed.data_len() == 3312
     )]
     pub price_feed: AccountInfo<'info>,
@@ -422,7 +417,7 @@ pub struct AddCollateral<'info> {
     )]
     pub reserve_account: Account<'info,TokenAccount>,
     #[account(
-        constraint = feed_address.owner == &Oracle::get_valid_program()?,
+        constraint = feed_address.owner == &get_oracle_pubkey()?,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,
@@ -508,7 +503,7 @@ pub struct AddSynthetic<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        constraint = feed_address.owner == &Oracle::get_valid_program()?,
+        constraint = feed_address.owner == &get_oracle_pubkey()?,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,

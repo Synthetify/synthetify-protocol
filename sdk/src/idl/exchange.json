@@ -3307,26 +3307,6 @@
           }
         ]
       }
-    },
-    {
-      "name": "Oracle",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "MAINNET"
-          },
-          {
-            "name": "TESTNET"
-          },
-          {
-            "name": "DEVNET"
-          },
-          {
-            "name": "E2E"
-          }
-        ]
-      }
     }
   ],
   "errors": [
