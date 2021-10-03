@@ -220,7 +220,7 @@ pub struct InitializeAssetsList<'info> {
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        constraint = collateral_token_feed.owner == &get_oracle_pubkey()?,
+        owner = get_oracle_pubkey()?,
         constraint = collateral_token_feed.data_len() == 3312
     )]
     pub collateral_token_feed: AccountInfo<'info>,
@@ -384,7 +384,7 @@ pub struct SetPriceFeed<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
-        constraint = price_feed.owner == &get_oracle_pubkey()?,
+        owner = get_oracle_pubkey()?,
         constraint = price_feed.data_len() == 3312
     )]
     pub price_feed: AccountInfo<'info>,
@@ -417,7 +417,7 @@ pub struct AddCollateral<'info> {
     )]
     pub reserve_account: Account<'info,TokenAccount>,
     #[account(
-        constraint = feed_address.owner == &get_oracle_pubkey()?,
+        owner = get_oracle_pubkey()?,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,
@@ -503,7 +503,7 @@ pub struct AddSynthetic<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        constraint = feed_address.owner == &get_oracle_pubkey()?,
+        owner = get_oracle_pubkey()?,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,
