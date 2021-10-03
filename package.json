@@ -20,7 +20,11 @@
     "test:vaultsliquidation": "anchor test --skip-build tests/vaults-liquidation.spec.ts",
     "test:vaults-interest": "anchor test --skip-build tests/vaults-interest-debt.spec.ts",
     "test:admin-vaults": "anchor test --skip-build tests/admin-vaults.spec.ts",
-    "build": "cd sdk && npm run build"
+    "build": "cd sdk && npm run build",
+    "program:mainnet": "anchor build -- --features \"mainnet\"",
+    "program:testnet": "anchor build -- --features \"testnet\"",
+    "program:devnet": "anchor build -- --features \"devnet\"",
+    "program:localnet": "anchor build -- --features \"localnet\""
   },
   "author": "Norbert Bodziony",
   "dependencies": {
