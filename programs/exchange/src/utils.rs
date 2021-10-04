@@ -1888,5 +1888,37 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_adjust_vault_interest_rate() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        let initial_interest_rate = Decimal::from_percent(100).to_interest_rate();
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        });
 
+        let vault = Vault {
+            // APR 5.5%
+            debt_interest_rate: Decimal::new(55, 3).to_interest_rate(),
+            accumulated_interest_rate: initial_interest_rate,
+            last_update: 0,
+            ..Default::default()
+        };
+
+        {
+            let timestamp = 430;
+            let vault = &mut vault.clone();
+            adjust_vault_interest_rate(vault, timestamp);
+
+            let expected_accumulated_interest_rate = Decimal::from_interest_rate(1000000732496424772);
+            let expected_last_update = 420;
+
+            // verify vault adjustment
+            assert_eq!(vault.accumulated_interest_rate , expected_accumulated_interest_rate);
+            assert_eq!({vault.last_update}, expected_last_update);
+            
+        }
+    }
 }
