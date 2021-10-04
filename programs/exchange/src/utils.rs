@@ -1609,7 +1609,7 @@ mod tests {
     #[test]
     fn test_set_mint_amount_safely(){
         
-        // decrease is safety
+        // decrease is safe
         {
             let mut vault = Vault{
                 mint_amount: Decimal::from_integer(2),
