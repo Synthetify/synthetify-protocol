@@ -1832,7 +1832,7 @@ mod tests {
             );
 
             assert_eq!(assets_list.collaterals[(assets_list.head_collaterals-1) as usize], new_collateral);
-            assert_eq!(assets_list.head_collaterals, 1);
+            assert_eq!(assets_list.head_collaterals, 2);
         }
     }
 
