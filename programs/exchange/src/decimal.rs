@@ -435,7 +435,7 @@ mod test {
 
     #[test]
     fn test_to_usd() {
-        //Checked_div case
+        //Greater than XUSD_SCALE
         {
             {
                 let decimal = Decimal::new(7777, 8);
@@ -456,31 +456,31 @@ mod test {
             }
         }
 
-        //Checked_mul case
+        //Same as XUSD_SCALE
         {
-            {
-                let decimal = Decimal::new(7777, 6);
-                let actual = decimal.to_usd();
-                let expected = Decimal::new(7777, 6);
+            let decimal = Decimal::new(7777, 6);
+            let actual = decimal.to_usd();
+            let expected = Decimal::new(7777, 6);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
 
-            {
-                let decimal = Decimal::new(7777, 4);
-                let actual = decimal.to_usd();
-                let expected = Decimal::new(777700, 6);
+        //Less than XUSD_SCALE
+        {
+            let decimal = Decimal::new(7777, 4);
+            let actual = decimal.to_usd();
+            let expected = Decimal::new(777700, 6);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
         }
     }
+    
 
     #[test]
     fn test_to_usd_up() {
-        //Div_up case
+        //Greater than XUSD_SCALE
         {
             {
                 let decimal = Decimal::new(8888, 11);
@@ -499,19 +499,19 @@ mod test {
                 assert_eq!({actual.val}, {expected.val});
                 assert_eq!(actual.scale, expected.scale);
             }
-
-            {
-                let decimal = Decimal::new(8888, 6);
-                let actual = decimal.to_usd_up();
-                let expected = Decimal::new(8888, 6);
-
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
-            
         }
 
-        //Mul_up case
+        //Same as XUSD_SCALE
+        {
+            let decimal = Decimal::new(8888, 6);
+            let actual = decimal.to_usd_up();
+            let expected = Decimal::new(8888, 6);
+
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
+
+        //Less than XUSD_SCALE
         {
             let decimal = Decimal::new(8888, 4);
             let actual = decimal.to_usd_up();
@@ -520,11 +520,22 @@ mod test {
             assert_eq!({actual.val}, {expected.val});
             assert_eq!(actual.scale, expected.scale);
         }
+
+        //No rounding
+        {
+            let decimal = Decimal::new(1000, 8);
+            let actual = decimal.to_usd_up();
+            let expected = Decimal::new(10, 6);
+            
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
+        
     }
 
     #[test]
     fn test_to_sny() {
-        //Checked_div case
+        //Greater than SNY_SCALE
         {
             {
                 let decimal = Decimal::new(9999, 8);
@@ -545,71 +556,70 @@ mod test {
             }
         }
 
-        //Checked_mul case
+        //Same as SNY_SCALE
         {
-            {
-                let decimal = Decimal::new(9999, 6);
-                let actual = decimal.to_sny();
-                let expected = Decimal::new(9999, 6);
+            let decimal = Decimal::new(9999, 6);
+            let actual = decimal.to_sny();
+            let expected = Decimal::new(9999, 6);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
 
-            {
-                let decimal = Decimal::new(9999, 4);
-                let actual = decimal.to_usd();
-                let expected = Decimal::new(999900, 6);
+        //Less than SNY_SCALE
+        {
+            let decimal = Decimal::new(9999, 4);
+            let actual = decimal.to_usd();
+            let expected = Decimal::new(999900, 6);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
         }
     }
 
     #[test]
     fn test_to_price() {
-        //Checked_div case
+        //Greater than PRICE_SCALE
         {
             {
                 let decimal = Decimal::new(1111, 10);
                 let actual = decimal.to_price();
                 let expected = Decimal::new(11, 8);
-
+    
                 assert_eq!({actual.val}, {expected.val});
                 assert_eq!(actual.scale, expected.scale);
             }
-
+    
             {
                 let decimal = Decimal::new(1111, 13);
                 let actual = decimal.to_price();
                 let expected = Decimal::new(0, 8);
-
+    
                 assert_eq!({actual.val}, {expected.val});
                 assert_eq!(actual.scale, expected.scale);
             }
         }
-
-        //Checked_mul case
+        
+        //Same as PRICE_SCALE
         {
-            {
-                let decimal = Decimal::new(1111, 8);
-                let actual = decimal.to_price();
-                let expected = Decimal::new(1111, 8);
+            let decimal = Decimal::new(1111, 8);
+            let actual = decimal.to_price();
+            let expected = Decimal::new(1111, 8);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
-
-            {
-                let decimal = Decimal::new(1111, 6);
-                let actual = decimal.to_price();
-                let expected = Decimal::new(111100, 8);
-
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
         }
+
+        //Less than PRICE_SCALE
+        {
+            let decimal = Decimal::new(1111, 6);
+            let actual = decimal.to_price();
+            let expected = Decimal::new(111100, 8);
+
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
+        
     }
 
     #[test]
@@ -623,7 +633,7 @@ mod test {
 
     #[test]
     fn test_to_interest_rate() {
-        //Checked_div case
+        //Greater than INTEREST_RATE_SCALE
         {
             {
                 let decimal = Decimal::new(2222, 20);
@@ -644,31 +654,30 @@ mod test {
             }
         }
 
-        //Checked_mul case
+        //Same as INTEREST_RATE_SCALE
         {
-            {
-                let decimal = Decimal::new(2222, 18);
-                let actual = decimal.to_interest_rate();
-                let expected = Decimal::new(2222, 18);
+            let decimal = Decimal::new(2222, 18);
+            let actual = decimal.to_interest_rate();
+            let expected = Decimal::new(2222, 18);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
 
-            {
-                let decimal = Decimal::new(2222, 16);
-                let actual = decimal.to_interest_rate();
-                let expected = Decimal::new(222200, 18);
+        //Less than INTEREST_RATE_SCALE
+        {
+            let decimal = Decimal::new(2222, 16);
+            let actual = decimal.to_interest_rate();
+            let expected = Decimal::new(222200, 18);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
         }
     }
 
     #[test]
     fn test_to_percent() {
-        //Checked_div case
+        //Greater than UNIFIED_PERCENT_SCALE
         {
             {
                 let decimal = Decimal::new(7777, 7);
@@ -689,25 +698,24 @@ mod test {
             }
         }
 
-        //Checked_mul case
+        //Same as UNIFIED_PERCENT_SCALE
         {
-            {
-                let decimal = Decimal::new(7777, 5);
-                let actual = decimal.to_percent();
-                let expected = Decimal::new(7777, 5);
+            let decimal = Decimal::new(7777, 5);
+            let actual = decimal.to_percent();
+            let expected = Decimal::new(7777, 5);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }
 
-            {
-                let decimal = Decimal::new(7777, 3);
-                let actual = decimal.to_percent();
-                let expected = Decimal::new(777700, 5);
+        //Less than UNIFIED_PERCENT_SCALE
+        {
+            let decimal = Decimal::new(7777, 3);
+            let actual = decimal.to_percent();
+            let expected = Decimal::new(777700, 5);
 
-                assert_eq!({actual.val}, {expected.val});
-                assert_eq!(actual.scale, expected.scale);
-            }
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
         }
     }
 
@@ -769,7 +777,6 @@ mod test {
 
     #[test]
     fn test_mul_decimal() {
-        {
         let decimal = Decimal::new(1234, 3);
         let multiply_by = Decimal::new(4321, 5);
         let actual = decimal.mul(multiply_by);
@@ -777,19 +784,35 @@ mod test {
 
         assert_eq!({actual.val}, {expected.val});
         assert_eq!(actual.scale, expected.scale);
-        }
+    }
 
+    #[test]
+    #[should_panic]
+    fn test_mul_decimal_panic() {
+        let decimal = Decimal::new(u128::MAX - 1, 3);
+        let multiply_by = Decimal::new(2, 3);
+        decimal.mul(multiply_by);
     }
 
     #[test]
     fn test_mul_u128() {
-        let decimal = Decimal::new(9876, 2);
-        let multiply_by: u128 = 555;
-        let actual = decimal.mul(multiply_by);
-        let expected = Decimal::new(5481180, 2);
+        {
+            let decimal = Decimal::new(9876, 2);
+            let multiply_by: u128 = 555;
+            let actual = decimal.mul(multiply_by);
+            let expected = Decimal::new(5481180, 2);
 
-        assert_eq!({actual.val}, {expected.val});
-        assert_eq!(actual.scale, expected.scale);
+            assert_eq!({actual.val}, {expected.val});
+            assert_eq!(actual.scale, expected.scale);
+        }        
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_mul_u128_panic() {
+        let decimal = Decimal::new(u128::MAX - 1, 2);
+        let multiply_by = 2;
+        decimal.mul(multiply_by);
     }
 
     #[test]
@@ -813,6 +836,14 @@ mod test {
     }
 
     #[test]
+    #[should_panic]
+    fn test_add_panic() {
+        let decimal = Decimal::new(u128::MAX - 1, 2);
+        let increase_by = Decimal::new(2, 2);
+        assert!(decimal.add(increase_by).is_err());
+    }
+
+    #[test]
     fn test_sub() {
         {
             let decimal = Decimal::new(1337, 6);
@@ -833,31 +864,72 @@ mod test {
     }
 
     #[test]
-    fn test_div() {
-        let decimal = Decimal::new(1, 8);
-        let divided_by = Decimal::new(22, 3);
-        let actual = decimal.div(divided_by);
-        let expected = Decimal::new(45, 8);
+    #[should_panic]
+    fn test_sub_panic() {
+        let decimal = Decimal::new(1, 1);
+        let decrease_by = Decimal::new(2, 1);
+        assert!(decimal.sub(decrease_by).is_err());
+    }
 
-        assert_eq!({actual.val}, {expected.val});
+    #[test]
+    fn test_div() {
+        {
+            let decimal = Decimal::new(20, 8);
+            let divide_by = Decimal::new(2, 3);
+            let actual = decimal.div(divide_by);
+            let expected = Decimal::new(10000, 8);
+    
+            assert_eq!({actual.val}, {expected.val});
+        }
+
+        {
+            let decimal = Decimal::new(20, 8);
+            let divide_by = Decimal::new(3, 3);
+            let actual = decimal.div(divide_by);
+            let expected = Decimal::new(6666, 8);
+
+            assert_eq!({actual.val}, {expected.val});
+        } 
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_div_panic() {
+        let decimal = Decimal::new(10, 3);
+        let divide_by = Decimal::new(0, 1);
+        decimal.div(divide_by);
     }
 
     #[test]
     fn test_into_u64() {
-        let decimal = Decimal::new(333333333333333, 15);
-        let actual: u64 = decimal.into();
-        let expected: u64 = 333333333333333;
+        {
+            let decimal = Decimal::new(333333333333333, 15);
+            let actual: u64 = decimal.into();
+            let expected: u64 = 333333333333333;
+    
+            assert_eq!(actual, expected);
+        }
+    }
 
-        assert_eq!(actual, expected);
+    #[test]
+    #[should_panic]
+    #[allow(unused_variables)]
+    fn test_into_u64_panic() {
+        let decimal = Decimal::new(u128::MAX - 1, 15);
+        let result: u64 = decimal.into();
     }
 
     #[test]
     fn test_into_u128() {
-        let decimal = Decimal::new(111000111, 10);
-        let actual: u128 = decimal.into();
-        let expected: u128 = 111000111;
-
-        assert_eq!(actual, expected);
+        {
+            let decimal = Decimal::new(111000111, 10);
+            let actual: u128 = decimal.into();
+            let expected: u128 = 111000111;
+    
+            assert_eq!(actual, expected);
+        }
+        
+        
     }
 
     #[test]
