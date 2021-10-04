@@ -1623,6 +1623,20 @@ mod tests {
             assert_eq!(vault.mint_amount, new_mint_amount)
             
         }
+        // increase without error
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(4),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+            
+        }
         // checking error
         {
             let mut vault = Vault{
