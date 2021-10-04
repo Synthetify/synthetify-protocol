@@ -1865,4 +1865,28 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_div_up() {
+        // div of zero
+        {
+            let a = 0;
+            let b = 1;
+            assert_eq!(div_up(a,b),0);
+        }
+        // // div check rounding up
+        {
+            let a = 1;
+            let b = 2;
+            assert_eq!(div_up(a,b), 1);
+        }
+        // // div big number
+        {
+            let a = 200_000_000_001;
+            let b = 200_000_000_000;
+            assert_eq!(div_up(a,b), 2);
+        }
+    }
+
+
 }
