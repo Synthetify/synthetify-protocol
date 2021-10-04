@@ -1680,6 +1680,31 @@ mod tests {
             assert_eq!(exchange_account.head, 1);
             assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry);
         }
+        // double append to the same account
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 7,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry = CollateralEntry{
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            
+            exchange_account.append(
+                entry,
+            );
+
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry);
+        }
     }
 
     #[test]
