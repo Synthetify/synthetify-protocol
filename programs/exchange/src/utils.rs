@@ -1692,18 +1692,27 @@ mod tests {
                 collaterals: [collateral_entry; 32],
                 ..Default::default()
             };
-            let entry = CollateralEntry{
+            let entry1 = CollateralEntry{
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            let entry2 = CollateralEntry{
                 amount: 10,
                 index: 4,
                 ..Default::default()
             };
             
             exchange_account.append(
-                entry,
+                entry1,
+            );
+            exchange_account.append(
+                entry2,
             );
 
-            assert_eq!(exchange_account.head, 1);
-            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry);
+
+            assert_eq!(exchange_account.head, 2);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry2);
         }
     }
 
