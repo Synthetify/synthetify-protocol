@@ -65,7 +65,8 @@ export enum ERRORS_EXCHANGE {
   VAULT_BORROW_LIMIT = '0x14e', // 34
   VAULT_WITHDRAW_LIMIT = '0x14f', // 35
   INVALID_ACCOUNT = '0x150', // 36
-  PRICE_CONFIDENCE_OUT_OF_RANGE = '0x151' // 37
+  PRICE_CONFIDENCE_OUT_OF_RANGE = '0x151', // 37
+  INVALID_ORACLE_PROGRAM = '0x152'
 }
 export const signAndSend = async (
   tx: Transaction,
