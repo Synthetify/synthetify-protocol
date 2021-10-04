@@ -1621,4 +1621,392 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_set_mint_amount_safely(){
+        
+        // decrease is safe
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(1);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+            
+        }
+        // increase without error
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(4),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+            
+        }
+        // checking error
+        {
+            let mut vault = Vault{
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            let result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(result.is_err());
+            
+        }
+    }
+
+    #[test]
+    fn test_append_exchange_account(){
+
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 7,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry = CollateralEntry{
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            
+            exchange_account.append(
+                entry,
+            );
+
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry);
+        }
+        // double append to the same account
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 7,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry1 = CollateralEntry{
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            let entry2 = CollateralEntry{
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            
+            exchange_account.append(
+                entry1,
+            );
+            exchange_account.append(
+                entry2,
+            );
+
+
+            assert_eq!(exchange_account.head, 2);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head-1) as usize], entry2);
+        }
+    }
+
+    #[test]
+    fn test_remove_exchange_account(){
+        
+            {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 10,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 1,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 8;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(
+                index,
+            );
+
+            assert_eq!(exchange_account.head, 0);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
+        // remove not last entry
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 8,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 5,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 7;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(
+                index,
+            );
+
+            assert_eq!(exchange_account.head, 4);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_remove_exchange_account_with_panic(){
+        
+        // panic because self.head == -1
+        {   
+            let collateral_entry = CollateralEntry{
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 1;
+
+            exchange_account.remove(
+                index,
+            );
+        }
+    }
+
+    #[test]
+    fn test_append_asset_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_asset = Asset{
+                ..Default::default()
+            };
+
+            assets_list.append_asset(
+                new_asset,
+            );
+
+            assert_eq!(assets_list.assets[(assets_list.head_assets-1) as usize], new_asset);
+            assert_eq!(assets_list.head_assets, 2);
+        }
+    }
+
+    #[test]
+    fn test_append_collateral_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_collateral = Collateral{
+                ..Default::default()
+            };
+
+            assets_list.append_collateral(
+                new_collateral,
+            );
+
+            assert_eq!(assets_list.collaterals[(assets_list.head_collaterals-1) as usize], new_collateral);
+            assert_eq!(assets_list.head_collaterals, 2);
+        }
+    }
+
+    #[test]
+    fn test_append_synthetic_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_synthetic = Synthetic{
+                ..Default::default()
+            };
+
+            assets_list.append_synthetic(
+                new_synthetic,
+            );
+
+            assert_eq!(assets_list.synthetics[(assets_list.head_synthetics-1) as usize], new_synthetic);
+            assert_eq!(assets_list.head_synthetics, 2);
+        }
+    }
+
+    #[test]
+    fn test_remove_synthetic_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 1;
+
+            let check = assets_list.synthetics[(assets_list.head_synthetics - 1) as usize]; // create copy before using function
+
+            assets_list.remove_synthetic(
+                index,
+            ).unwrap();
+
+            
+
+            assert_eq!(assets_list.synthetics[index], check);
+            assert_eq!(assets_list.synthetics[(assets_list.head_synthetics) as usize], Synthetic {..Default::default()});
+            assert_eq!(assets_list.head_synthetics, 0);
+        }
+        // check error
+        {   
+            let mut assets_list = AssetsList{
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 0;
+
+            let result = assets_list.remove_synthetic(
+                index,
+            );
+
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_remove_synthetic_asset_list_with_panic(){
+        
+        // panic because self.head == -1
+        {   
+            let mut assets_list = AssetsList{
+                head_synthetics: 0,
+                ..Default::default()
+            };
+            let index = 1;
+
+            assets_list.remove_synthetic(
+                index,
+            ).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_split_borrow_asset_list(){
+        
+        {   
+            let mut assets_list = AssetsList{
+                ..Default::default()
+            };
+            let assets_list_copy = assets_list.clone();
+
+            let result = assets_list.split_borrow();
+
+              for i in 0..255{
+                assert_eq!((result.0)[i],(assets_list_copy.assets)[i]);
+                assert_eq!((result.1)[i],(assets_list_copy.collaterals)[i]);
+                assert_eq!((result.2)[i],(assets_list_copy.synthetics)[i]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_div_up() {
+        // div of zero
+        {
+            let a = 0;
+            let b = 1;
+            assert_eq!(div_up(a,b),0);
+        }
+        // // div check rounding up
+        {
+            let a = 1;
+            let b = 2;
+            assert_eq!(div_up(a,b), 1);
+        }
+        // // div big number
+        {
+            let a = 200_000_000_001;
+            let b = 200_000_000_000;
+            assert_eq!(div_up(a,b), 2);
+        }
+    }
+
+    #[test]
+    fn test_adjust_vault_interest_rate() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        let initial_interest_rate = Decimal::from_percent(100).to_interest_rate();
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        });
+
+        let vault = Vault {
+            // APR 5.5%
+            debt_interest_rate: Decimal::new(55, 3).to_interest_rate(),
+            accumulated_interest_rate: initial_interest_rate,
+            last_update: 0,
+            ..Default::default()
+        };
+
+        {
+            let timestamp = 430;
+            let vault = &mut vault.clone();
+            adjust_vault_interest_rate(vault, timestamp);
+
+            let expected_accumulated_interest_rate = Decimal::from_interest_rate(1000000732496424772);
+            let expected_last_update = 420;
+
+            // verify vault adjustment
+            assert_eq!(vault.accumulated_interest_rate , expected_accumulated_interest_rate);
+            assert_eq!({vault.last_update}, expected_last_update);
+            
+        }
+    }
 }
