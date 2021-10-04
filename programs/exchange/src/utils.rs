@@ -1742,6 +1742,30 @@ mod tests {
             assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
             assert_eq!(check, exchange_account.collaterals[(index) as usize]);
         }
+        // remove not last entry
+        {   
+            let collateral_entry = CollateralEntry{
+                amount: 10,
+                index: 8,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount{
+                head: 5,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 7;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(
+                index,
+            );
+
+            assert_eq!(exchange_account.head, 4);
+            assert_eq!(exchange_account.collaterals[(exchange_account.head) as usize], CollateralEntry {..Default::default()});
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
     }
 
     #[test]
