@@ -668,8 +668,7 @@ export class Exchange {
       accounts: {
         state: this.stateAddress,
         admin: this.state.admin,
-        newAdmin: newAdmin,
-        systemProgram: SystemProgram.programId
+        newAdmin: newAdmin
       }
     }) as TransactionInstruction)
   }

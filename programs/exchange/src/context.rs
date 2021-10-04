@@ -1,8 +1,31 @@
 use anchor_lang::prelude::*;
-use crate::account::*;
+use crate::{ErrorCode, account::*};
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use anchor_lang::solana_program::system_program;
 use crate::decimal::XUSD_SCALE;
+use std::str::FromStr;
+
+const PYTH_MAINNET: &str = "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J";
+const PYTH_TESTNET: &str = "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z";
+const PYTH_DEVNET: &str = "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2";
+const PYTH_LOCAL: &str = "3URDD3Eutw6SufPBzNm2dbwqwvQjRUFCtqkKVsjk3uSE";
+
+pub fn get_oracle_pubkey() -> Result<Pubkey, ErrorCode> {
+    let address = if cfg!(feature = "mainnet") {
+       PYTH_MAINNET
+   } else if  cfg!(feature = "testnet") {
+       PYTH_TESTNET
+   } else if  cfg!(feature = "devnet") {
+       PYTH_DEVNET
+   } else {
+       PYTH_LOCAL
+   };
+
+   match Pubkey::from_str(address) {
+       Ok(pubkey) => Ok(pubkey),
+       Err(_) => Err(ErrorCode::InvalidOracleProgram),
+   }
+}
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
@@ -196,7 +219,10 @@ pub struct InitializeAssetsList<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
-    #[account(constraint = collateral_token_feed.data_len() == 3312)]
+    #[account(
+        owner = get_oracle_pubkey()?,
+        constraint = collateral_token_feed.data_len() == 3312
+    )]
     pub collateral_token_feed: AccountInfo<'info>,
     #[account(constraint = usd_token.decimals == XUSD_SCALE)]
     pub usd_token: Account<'info, anchor_spl::token::Mint>,
@@ -357,7 +383,10 @@ pub struct SetPriceFeed<'info> {
         constraint = assets_list.to_account_info().owner == program_id
     )]
     pub assets_list: Loader<'info, AssetsList>,
-    #[account(constraint = price_feed.data_len() == 3312)]
+    #[account(
+        owner = get_oracle_pubkey()?,
+        constraint = price_feed.data_len() == 3312
+    )]
     pub price_feed: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -387,7 +416,10 @@ pub struct AddCollateral<'info> {
         constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info,TokenAccount>,
-    #[account(constraint = feed_address.data_len() == 3312)]
+    #[account(
+        owner = get_oracle_pubkey()?,
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
@@ -434,10 +466,8 @@ pub struct SetAdmin<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(owner = system_program)]
+    #[account(owner = system_program::ID)]
     pub new_admin: AccountInfo<'info>,
-    #[account(address = system_program::ID)]
-    pub system_program: AccountInfo<'info>,
 }
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
@@ -472,7 +502,10 @@ pub struct AddSynthetic<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
-    #[account(constraint = feed_address.data_len() == 3312)]
+    #[account(
+        owner = get_oracle_pubkey()?,
+        constraint = feed_address.data_len() == 3312
+    )]
     pub feed_address: AccountInfo<'info>,
 }
 
@@ -870,7 +903,7 @@ pub struct AdminAction<'info> {
 pub struct Init<'info> {
     #[account(init, seeds = [b"statev1".as_ref()], bump = bump, payer = payer)]
     pub state: Loader<'info, State>,
-    #[account(owner = system_program)]
+    #[account(owner = system_program::ID)]
     pub payer: AccountInfo<'info>,
     pub admin: AccountInfo<'info>,
     pub exchange_authority: AccountInfo<'info>,

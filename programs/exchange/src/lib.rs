@@ -2564,6 +2564,8 @@ pub enum ErrorCode {
     InvalidAccount = 36,
     #[msg("Price confidence out of range")]
     PriceConfidenceOutOfRange = 37,
+    #[msg("Invalid oracle program")]
+    InvalidOracleProgram = 38,
 }
 
 // Access control modifiers.

@@ -13,10 +13,14 @@ doctest = false
 no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
-default = []
+mainnet = []
+testnet = []
+devnet = []
+localnet = []
+default = ["localnet"]
 
 [dependencies]
-anchor-lang = "0.15.0"
-anchor-spl = "0.15.0"
+anchor-lang = "0.16.2"
+anchor-spl = "0.16.2"
 arrayref = "0.3.6"
 bytemuck = { version = "1.7.2" }

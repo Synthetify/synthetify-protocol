@@ -1216,11 +1216,6 @@
           "name": "newAdmin",
           "isMut": false,
           "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
         }
       ],
       "args": []
@@ -3504,6 +3499,11 @@
       "code": 337,
       "name": "PriceConfidenceOutOfRange",
       "msg": "Price confidence out of range"
+    },
+    {
+      "code": 338,
+      "name": "InvalidOracleProgram",
+      "msg": "Invalid oracle program"
     }
   ]
 }
