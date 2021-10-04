@@ -330,7 +330,7 @@ mod test {
         {
             let decimal = Decimal::new(1000003, 0);
             let actual = decimal.denominator();
-            let expected = 10u128.pow(0);
+            let expected = 1;
             assert_eq!(actual, expected);
         }
     }
@@ -350,7 +350,7 @@ mod test {
         let percent: u16 = 69;
         let actual = Decimal::from_percent(percent);
         let expected = Decimal {
-            val: 69000 as u128,
+            val: 69000,
             scale: 5,
         };
 
