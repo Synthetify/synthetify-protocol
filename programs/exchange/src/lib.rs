@@ -2,6 +2,7 @@ pub mod account;
 pub mod context;
 pub mod decimal;
 pub mod math;
+pub mod oracle;
 pub mod utils;
 use account::*;
 use anchor_lang::prelude::*;
@@ -105,7 +106,7 @@ pub mod exchange {
         msg!("SYNTHETIFY: SET ASSETS PRICES");
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         for oracle_account in ctx.remaining_accounts {
-            if oracle_account.owner != &get_oracle_pubkey()? {
+            if oracle_account.owner != &pyth::ID {
                 return Err(ErrorCode::InvalidOracleProgram.into());
             }
 
@@ -170,8 +171,8 @@ pub mod exchange {
 
                     // validate price confidence - confidence/price ratio should be less than 2.5%
                     let confidence: i64 = scaled_confidence.try_into().unwrap();
-                    let confidence_100x = confidence.checked_mul(40).unwrap();
-                    if confidence_100x > scaled_price {
+                    let confidence_40x = confidence.checked_mul(40).unwrap();
+                    if confidence_40x > scaled_price {
                         return Err(ErrorCode::PriceConfidenceOutOfRange.into());
                     };
 
