@@ -106,7 +106,7 @@ pub mod exchange {
         msg!("SYNTHETIFY: SET ASSETS PRICES");
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         for oracle_account in ctx.remaining_accounts {
-            if oracle_account.owner != &pyth::ID {
+            if oracle_account.owner != &oracle::oracle::ID {
                 return Err(ErrorCode::InvalidOracleProgram.into());
             }
 
