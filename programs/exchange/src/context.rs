@@ -1,31 +1,9 @@
 use anchor_lang::prelude::*;
-use crate::{ErrorCode, account::*};
+use crate::account::*;
+use crate::oracle::*;
 use anchor_spl::token::{self, Burn, MintTo, TokenAccount, Transfer};
 use anchor_lang::solana_program::system_program;
 use crate::decimal::XUSD_SCALE;
-use std::str::FromStr;
-
-const PYTH_MAINNET: &str = "AHtgzX45WTKfkPG53L6WYhGEXwQkN1BVknET3sVsLL8J";
-const PYTH_TESTNET: &str = "AFmdnt9ng1uVxqCmqwQJDAYC5cKTkw8gJKSM5PnzuF6z";
-const PYTH_DEVNET: &str = "BmA9Z6FjioHJPpjT39QazZyhDRUdZy2ezwx4GiDdE2u2";
-const PYTH_LOCAL: &str = "3URDD3Eutw6SufPBzNm2dbwqwvQjRUFCtqkKVsjk3uSE";
-
-pub fn get_oracle_pubkey() -> Result<Pubkey, ErrorCode> {
-    let address = if cfg!(feature = "mainnet") {
-       PYTH_MAINNET
-   } else if  cfg!(feature = "testnet") {
-       PYTH_TESTNET
-   } else if  cfg!(feature = "devnet") {
-       PYTH_DEVNET
-   } else {
-       PYTH_LOCAL
-   };
-
-   match Pubkey::from_str(address) {
-       Ok(pubkey) => Ok(pubkey),
-       Err(_) => Err(ErrorCode::InvalidOracleProgram),
-   }
-}
 
 #[derive(Accounts)]
 pub struct SetAssetsList<'info> {
@@ -220,7 +198,7 @@ pub struct InitializeAssetsList<'info> {
     pub admin: AccountInfo<'info>,
     pub collateral_token: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        owner = get_oracle_pubkey()?,
+        owner = oracle::ID,
         constraint = collateral_token_feed.data_len() == 3312
     )]
     pub collateral_token_feed: AccountInfo<'info>,
@@ -384,7 +362,7 @@ pub struct SetPriceFeed<'info> {
     )]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(
-        owner = get_oracle_pubkey()?,
+        owner = oracle::ID,
         constraint = price_feed.data_len() == 3312
     )]
     pub price_feed: AccountInfo<'info>,
@@ -417,7 +395,7 @@ pub struct AddCollateral<'info> {
     )]
     pub reserve_account: Account<'info,TokenAccount>,
     #[account(
-        owner = get_oracle_pubkey()?,
+        owner = oracle::ID,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,
@@ -503,7 +481,7 @@ pub struct AddSynthetic<'info> {
     pub assets_list: Loader<'info, AssetsList>,
     pub asset_address: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        owner = get_oracle_pubkey()?,
+        owner = oracle::ID,
         constraint = feed_address.data_len() == 3312
     )]
     pub feed_address: AccountInfo<'info>,

@@ -987,7 +987,7 @@ describe('admin', () => {
             assetsList: assetsList
           }
         }),
-        ERRORS.PANICKED
+        ERRORS_EXCHANGE.INVALID_ORACLE_PROGRAM
       )
       const assetList = await exchange.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
@@ -1005,7 +1005,6 @@ describe('admin', () => {
       const assetList = await exchange.getAssetsList(assetsList)
       const collateralAsset = assetList.assets[1]
 
-      // Check new price
       const expectedPrice = toScale(toDecimal(new BN(newPrice), 0), ORACLE_OFFSET)
       assert.ok(eqDecimals(collateralAsset.price, expectedPrice))
 
