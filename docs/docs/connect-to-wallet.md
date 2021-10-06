@@ -19,11 +19,7 @@ Synthetify cooperates only with Solana based wallets:
 
 Connect button is placed in the top right corner.
 
-<<<<<<< HEAD
 ![Connect button](/img/docs/howToConnectWallet.png)
-=======
-![Connect button](/img/docs/howToConnect.png)
->>>>>>> origin/master
 
 ### Choose your wallet
 
