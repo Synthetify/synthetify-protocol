@@ -13,11 +13,15 @@ doctest = false
 no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
-default = []
+mainnet = []
+testnet = []
+devnet = []
+localnet = []
+default = ["localnet"]
 
 [dependencies]
-anchor-lang = { git = "https://github.com/project-serum/anchor", branch = "master" }
-anchor-spl = { git = "https://github.com/project-serum/anchor", branch = "master" }
-thincollections = "0.5"
-spl-token = { version = "3.0.1", features = ["no-entrypoint"] }
+anchor-lang = "0.16.2"
+anchor-spl = "0.16.2"
+thincollections = "0.5.3"
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 pyth = { path = "../pyth", features = ["cpi"] }

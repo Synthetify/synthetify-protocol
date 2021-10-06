@@ -64,7 +64,9 @@ export enum ERRORS_EXCHANGE {
   USER_BORROW_LIMIT = '0x14d', // 33
   VAULT_BORROW_LIMIT = '0x14e', // 34
   VAULT_WITHDRAW_LIMIT = '0x14f', // 35
-  INVALID_ACCOUNT = '0x150' // 36
+  INVALID_ACCOUNT = '0x150', // 36
+  PRICE_CONFIDENCE_OUT_OF_RANGE = '0x151', // 37
+  INVALID_ORACLE_PROGRAM = '0x152'
 }
 export const signAndSend = async (
   tx: Transaction,
@@ -266,5 +268,12 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   GwRebgnFXqBhTjaY1xTtPeKxvuNANEAUDxN7273Zunf1: 'xSOL',
   '3bfRuPDDDdwtUNB7QaE2ZKVbu8S962nSvVtoN8kYq1dr': 'xSRM',
   D7gP4wHnc1TaGUxjJwN4TgmwPHTdVLDT43RCYPrNadhN: 'xFTT',
-  ueMoKFUHeyxXjXgbxPAERQ5p6dWkqwQvHEPkwPb1kaZ: 'xETH'
+  ueMoKFUHeyxXjXgbxPAERQ5p6dWkqwQvHEPkwPb1kaZ: 'xETH',
+  //Mainnet
+  '83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y': 'xUSD',
+  '4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y': 'SNY',
+  HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D: 'xBTC',
+  BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
+  Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
+  '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH'
 }

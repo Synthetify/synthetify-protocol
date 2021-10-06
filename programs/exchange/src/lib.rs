@@ -2,6 +2,7 @@ pub mod account;
 pub mod context;
 pub mod decimal;
 pub mod math;
+pub mod oracle;
 pub mod utils;
 use account::*;
 use anchor_lang::prelude::*;
@@ -33,7 +34,7 @@ pub mod exchange {
 
     use super::*;
 
-    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> ProgramResult {
+    pub fn create_exchange_account(ctx: Context<CreateExchangeAccount>, bump: u8) -> Result<()> {
         let exchange_account = &mut ctx.accounts.exchange_account.load_init()?;
         exchange_account.owner = *ctx.accounts.admin.key;
         exchange_account.debt_shares = 0;
@@ -105,6 +106,10 @@ pub mod exchange {
         msg!("SYNTHETIFY: SET ASSETS PRICES");
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         for oracle_account in ctx.remaining_accounts {
+            if oracle_account.owner != &oracle::oracle::ID {
+                return Err(ErrorCode::InvalidOracleProgram.into());
+            }
+
             let price_feed = Price::load(oracle_account)?;
             let feed_address = oracle_account.key;
             let asset = assets_list
@@ -113,60 +118,68 @@ pub mod exchange {
                 .find(|x| x.feed_address == *feed_address);
             match asset {
                 Some(asset) => {
-                    let offset = (PRICE_SCALE as i32).checked_add(price_feed.expo).unwrap();
-                    if offset >= 0 {
-                        let scaled_price = price_feed
+                    let offset = price_feed.expo.checked_add(PRICE_SCALE.into()).unwrap();
+
+                    let scaled_price = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .price
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .agg
+                            .price
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_twap = match offset >= 0 {
+                        true => price_feed
                             .twap
                             .val
                             .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
+                            .twap
+                            .val
+                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+                            .unwrap(),
+                    };
+                    let scaled_confidence = match offset >= 0 {
+                        true => price_feed
                             .agg
                             .conf
                             .checked_mul(10u64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
-                            .twac
-                            .val
-                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    } else {
-                        let scaled_price = price_feed
-                            .agg
-                            .price
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twap = price_feed
-                            .twap
-                            .val
-                            .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_confidence = price_feed
+                            .unwrap(),
+                        false => price_feed
                             .agg
                             .conf
                             .checked_div(10u64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        let scaled_twac = price_feed
+                            .unwrap(),
+                    };
+                    let scaled_twac = match offset >= 0 {
+                        true => price_feed
+                            .twac
+                            .val
+                            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+                            .unwrap(),
+                        false => price_feed
                             .twac
                             .val
                             .checked_div(10i64.pow((-offset).try_into().unwrap()))
-                            .unwrap();
-                        asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
-                        asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
-                        asset.confidence =
-                            Decimal::from_price(scaled_confidence.try_into().unwrap());
-                        asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
-                    }
+                            .unwrap(),
+                    };
+
+                    // validate price confidence - confidence/price ratio should be less than 2.5%
+                    let confidence: i64 = scaled_confidence.try_into().unwrap();
+                    let confidence_40x = confidence.checked_mul(40).unwrap();
+                    if confidence_40x > scaled_price {
+                        return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+                    };
+
+                    asset.price = Decimal::from_price(scaled_price.try_into().unwrap());
+                    asset.twap = Decimal::from_price(scaled_twap.try_into().unwrap());
+                    asset.confidence = Decimal::from_price(scaled_confidence.try_into().unwrap());
+                    asset.twac = Decimal::from_price(scaled_twac.try_into().unwrap());
                     asset.status = price_feed.agg.status.into();
                     asset.last_update = Clock::get()?.slot;
                 }
@@ -207,9 +220,7 @@ pub mod exchange {
         state.accumulated_debt_interest = Decimal::from_usd(0);
         state.liquidation_rate = Decimal::from_percent(20); // 20%
 
-        // TODO decide about length of buffer
-        // Maybe just couple of minutes will be enough ?
-        state.liquidation_buffer = 172800; // about 24 Hours;
+        state.liquidation_buffer = 2250; // about 15 minutes
         state.staking = Staking {
             round_length: staking_round_length,
             amount_per_round: Decimal {
@@ -252,14 +263,14 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         // finding also valid reserve_address of collateral
-        let collateral_index = assets_list
-            .collaterals
-            .iter_mut()
-            .position(|x| {
-                x.reserve_address
-                    .eq(ctx.accounts.reserve_address.to_account_info().key)
-            })
-            .unwrap();
+        let collateral_index = match assets_list.collaterals.iter_mut().position(|x| {
+            x.reserve_address
+                .eq(ctx.accounts.reserve_address.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
         let collateral = &mut assets_list.collaterals[collateral_index];
 
         let amount_decimal = Decimal {
@@ -267,7 +278,7 @@ pub mod exchange {
             scale: collateral.reserve_balance.scale,
         };
         let new_reserve_balance = collateral.reserve_balance.add(amount_decimal).unwrap();
-        if new_reserve_balance.gt(collateral.max_collateral).unwrap() {
+        if new_reserve_balance.gt(collateral.max_collateral)? {
             return Err(ErrorCode::CollateralLimitExceeded.into());
         }
         collateral.reserve_balance = new_reserve_balance;
@@ -282,7 +293,7 @@ pub mod exchange {
             None => exchange_account.append(CollateralEntry {
                 amount,
                 collateral_address: collateral.collateral_address,
-                index: collateral_index as u8,
+                index: collateral_index.try_into().unwrap(),
                 ..Default::default()
             }),
         }
@@ -312,6 +323,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -332,7 +344,7 @@ pub mod exchange {
         };
         let debt_after_mint = user_debt.add(amount).unwrap();
 
-        if mint_limit.lt(debt_after_mint).unwrap() {
+        if mint_limit.lt(debt_after_mint)? {
             return Err(ErrorCode::MintLimit.into());
         }
 
@@ -376,6 +388,7 @@ pub mod exchange {
 
         // Calculate debt
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
@@ -428,7 +441,7 @@ pub mod exchange {
                 collateral.reserve_balance.scale,
             );
 
-            if max_withdrawable_in_token.gt(amount_collateral).unwrap() {
+            if max_withdrawable_in_token.gt(amount_collateral)? {
                 amount_to_withdraw = amount_collateral;
             } else {
                 amount_to_withdraw = max_withdrawable_in_token;
@@ -441,10 +454,7 @@ pub mod exchange {
             let amount_to_withdraw_in_usd =
                 calculate_value_in_usd(collateral_asset.price, amount_to_withdraw);
 
-            if max_withdrawable_in_usd
-                .lt(amount_to_withdraw_in_usd)
-                .unwrap()
-            {
+            if max_withdrawable_in_usd.lt(amount_to_withdraw_in_usd)? {
                 return Err(ErrorCode::WithdrawLimit.into());
             }
         }
@@ -490,26 +500,26 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let user_token_account_in = &ctx.accounts.user_token_account_in;
-        let tx_signer = ctx.accounts.owner.key;
-
-        // Signer need to be owner of source account
-        if !tx_signer.eq(&user_token_account_in.owner) {
-            return Err(ErrorCode::InvalidSigner.into());
-        }
         // Swapping for same assets is forbidden
         if token_address_in.eq(token_address_for) {
             return Err(ErrorCode::WashTrade.into());
         }
         //Get indexes of both assets
-        let synthetic_in_index = synthetics
+        let synthetic_in_index = match synthetics
             .iter()
             .position(|x| x.asset_address == *token_address_in)
-            .unwrap();
-        let synthetic_for_index = synthetics
+        {
+            Some(s_in) => s_in,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        let synthetic_for_index = match synthetics
             .iter()
             .position(|x| x.asset_address == *token_address_for)
-            .unwrap();
+        {
+            Some(s_for) => s_for,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
         let asset_in = assets[synthetics[synthetic_in_index].asset_index as usize];
         let asset_for = assets[synthetics[synthetic_for_index].asset_index as usize];
 
@@ -527,8 +537,7 @@ pub mod exchange {
             synthetics[synthetic_for_index].asset_index as usize,
             state.max_delay,
             slot,
-        )
-        .unwrap();
+        )?;
         let sny_collateral = &mut collaterals[0];
 
         let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
@@ -600,6 +609,7 @@ pub mod exchange {
         adjust_staking_account(exchange_account, &state.staking);
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let (assets, _, synthetics) = assets_list.split_borrow();
@@ -728,14 +738,14 @@ pub mod exchange {
         if exchange_account.liquidation_deadline > slot {
             return Err(ErrorCode::LiquidationDeadline.into());
         }
-
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list, slot, timestamp).unwrap();
         let user_debt = calculate_user_debt_in_usd(exchange_account, total_debt, state.debt_shares);
         let max_debt = calculate_max_debt_in_usd(exchange_account, assets_list);
 
         // Check collateral ratio
-        if max_debt.gt(user_debt).unwrap() {
+        if max_debt.gt(user_debt)? {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
         // Cannot payback more than liquidation_rate of user debt
@@ -949,6 +959,7 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
 
+        // calculate debt also validate if oracles are up-to-date
         let total_debt =
             calculate_debt_with_adjustment(state, assets_list.borrow_mut(), slot, timestamp)
                 .unwrap();
@@ -1002,7 +1013,9 @@ pub mod exchange {
                 )
                 .unwrap()
                 .checked_div(state.staking.finished_round.all_points.into())
-                .unwrap() as u64;
+                .unwrap()
+                .try_into()
+                .unwrap();
 
             exchange_account.user_staking_data.amount_to_claim = exchange_account
                 .user_staking_data
@@ -1061,11 +1074,15 @@ pub mod exchange {
 
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let liquidation_fund = ctx.accounts.liquidation_fund.to_account_info().key;
-        let collateral = assets_list
+        let collateral = match assets_list
             .collaterals
             .iter_mut()
             .find(|x| x.liquidation_fund.eq(liquidation_fund))
-            .unwrap();
+        {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
         collateral.reserve_balance = collateral.reserve_balance.sub(amount)?;
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer_seeds = &[&seeds[..]];
@@ -1078,7 +1095,7 @@ pub mod exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        token::transfer(cpi_ctx, amount.val as u64)?;
+        token::transfer(cpi_ctx, amount.val.try_into().unwrap())?;
         Ok(())
     }
     // admin methods
@@ -1373,8 +1390,8 @@ pub mod exchange {
         );
 
         let new_collateral = Collateral {
-            asset_index: asset_index as u8,
-            collateral_address: *ctx.accounts.asset_address.key,
+            asset_index: asset_index.try_into().unwrap(),
+            collateral_address: *ctx.accounts.asset_address.to_account_info().key,
             liquidation_fund: *ctx.accounts.liquidation_fund.to_account_info().key,
             reserve_address: *ctx.accounts.reserve_account.to_account_info().key,
             collateral_ratio,
@@ -1471,7 +1488,7 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
         let new_synthetic = Synthetic {
-            asset_index: asset_index as u8,
+            asset_index: asset_index.try_into().unwrap(),
             asset_address: *ctx.accounts.asset_address.to_account_info().key,
             max_supply: Decimal {
                 val: max_supply.into(),
@@ -1492,6 +1509,7 @@ pub mod exchange {
         Ok(())
     }
     pub fn settle_synthetic(ctx: Context<SettleSynthetic>, bump: u8) -> Result<()> {
+        msg!("Synthetify: SETTLE SYNTHETIC");
         let slot = Clock::get()?.slot;
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
@@ -1512,7 +1530,7 @@ pub mod exchange {
         let asset = assets[synthetic.asset_index as usize];
         let usd_synthetic = &mut synthetics[0];
 
-        if asset.last_update < (slot - state.max_delay as u64) {
+        if asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
         if synthetic.settlement_slot > slot {
@@ -1577,22 +1595,21 @@ pub mod exchange {
         let mut swapline = ctx.accounts.swapline.load_init()?;
         let assets_list = ctx.accounts.assets_list.load()?;
 
-        let synthetic = assets_list
-            .synthetics
-            .iter()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
-        let collateral = assets_list
-            .collaterals
-            .iter()
-            .find(|x| {
-                x.collateral_address
-                    .eq(&ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match assets_list.synthetics.iter().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let collateral = match assets_list.collaterals.iter().find(|x| {
+            x.collateral_address
+                .eq(&ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
         require!(
             synthetic.asset_index == collateral.asset_index,
             MismatchedTokens
@@ -1661,20 +1678,20 @@ pub mod exchange {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic = synthetics
-            .iter_mut()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
-        let collateral = collaterals
-            .iter_mut()
-            .find(|x| {
-                x.collateral_address
-                    .eq(&ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match synthetics.iter_mut().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let collateral = match collaterals.iter_mut().find(|x| {
+            x.collateral_address
+                .eq(&ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         require!(
             synthetic.asset_index == collateral.asset_index,
@@ -1695,7 +1712,7 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.lte(swapline.limit).unwrap(), SwaplineLimit);
+        require!(swapline.balance.lte(swapline.limit)?, SwaplineLimit);
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1726,20 +1743,20 @@ pub mod exchange {
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic = synthetics
-            .iter_mut()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
-        let collateral = collaterals
-            .iter_mut()
-            .find(|x| {
-                x.collateral_address
-                    .eq(&ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match synthetics.iter_mut().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let collateral = match collaterals.iter_mut().find(|x| {
+            x.collateral_address
+                .eq(&ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         require!(
             synthetic.asset_index == collateral.asset_index,
@@ -1795,22 +1812,21 @@ pub mod exchange {
         let assets_list = ctx.accounts.assets_list.load()?;
         let timestamp = Clock::get()?.unix_timestamp;
 
-        let synthetic = assets_list
-            .synthetics
-            .iter()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
-        let collateral = assets_list.collaterals.iter().find(|x| {
+        let synthetic = match assets_list.synthetics.iter().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        let collateral = match assets_list.collaterals.iter().find(|x| {
             x.collateral_address
                 .eq(ctx.accounts.collateral.to_account_info().key)
-        });
-        if collateral == None {
-            return Err(ErrorCode::NoAssetFound.into());
-        }
-        let collateral = collateral.unwrap();
+        }) {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         require!(
             collateral_ratio.lte(Decimal::from_percent(100))?,
@@ -1842,22 +1858,29 @@ pub mod exchange {
     }
     #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn create_vault_entry(ctx: Context<CreateVaultEntry>, bump: u8) -> Result<()> {
+        msg!("Synthetify: CREATE VAULT ENTRY");
         let timestamp = Clock::get()?.unix_timestamp;
 
         let mut vault_entry = ctx.accounts.vault_entry.load_init()?;
         let mut vault = ctx.accounts.vault.load_mut()?;
         let assets_list = ctx.accounts.assets_list.load()?;
 
-        let synthetic = assets_list
+        let synthetic = match assets_list
             .synthetics
             .iter()
             .find(|x| x.asset_address.eq(&vault.synthetic))
-            .unwrap();
-        let collateral = assets_list
+        {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+        let collateral = match assets_list
             .collaterals
             .iter()
             .find(|x| x.collateral_address.eq(&vault.collateral))
-            .unwrap();
+        {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         adjust_vault_interest_rate(&mut vault, timestamp);
         // Init vault entry
@@ -1884,21 +1907,21 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
-        let collateral = collaterals
-            .iter()
-            .find(|x| {
-                x.collateral_address
-                    .eq(ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let collateral = match collaterals.iter().find(|x| {
+            x.collateral_address
+                .eq(ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(c) => c,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
-        let synthetic = synthetics
-            .iter_mut()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match synthetics.iter_mut().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
@@ -1929,21 +1952,21 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic_position = synthetics
-            .iter_mut()
-            .position(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic_position = match synthetics.iter_mut().position(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
-        let collateral_position = collaterals
-            .iter()
-            .position(|x| {
-                x.collateral_address
-                    .eq(ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let collateral_position = match collaterals.iter().position(|x| {
+            x.collateral_address
+                .eq(ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         let synthetic = &mut synthetics[synthetic_position];
         let collateral = &mut collaterals[collateral_position];
@@ -1952,10 +1975,10 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot - state.max_delay as u64 {
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -1990,8 +2013,8 @@ pub mod exchange {
     #[access_control(halted(&ctx.accounts.state) vault_halted(&ctx.accounts.vault))]
     pub fn withdraw_vault(ctx: Context<WithdrawVault>, amount: u64) -> Result<()> {
         msg!("Synthetify: WITHDRAW_VAULT");
-
         let timestamp = Clock::get()?.unix_timestamp;
+        let slot = Clock::get()?.slot;
 
         let state = ctx.accounts.state.load()?;
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
@@ -1999,27 +2022,34 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic_position = synthetics
-            .iter_mut()
-            .position(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic_position = match synthetics.iter_mut().position(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
-        let collateral_position = collaterals
-            .iter()
-            .position(|x| {
-                x.collateral_address
-                    .eq(ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let collateral_position = match collaterals.iter().position(|x| {
+            x.collateral_address
+                .eq(ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         let synthetic_asset = assets[synthetics[synthetic_position].asset_index as usize];
         let collateral_asset = assets[collaterals[collateral_position].asset_index as usize];
         let synthetic = &mut synthetics[synthetic_position];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
+
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
+            return Err(ErrorCode::OutdatedOracle.into());
+        }
 
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_asset,
@@ -2030,11 +2060,9 @@ pub mod exchange {
         )
         .unwrap();
 
-        adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
-
         let amount_to_withdraw = match amount {
             u64::MAX => vault_withdraw_limit,
-            _ => Decimal::new(amount as u128, vault_entry.collateral_amount.scale),
+            _ => Decimal::new(amount.into(), vault_entry.collateral_amount.scale),
         };
 
         if amount_to_withdraw.gt(vault_withdraw_limit)? {
@@ -2069,13 +2097,13 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let (_, _, synthetics) = assets_list.split_borrow();
 
-        let synthetic = synthetics
-            .iter_mut()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match synthetics.iter_mut().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
@@ -2111,21 +2139,21 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
         let (assets, collaterals, synthetics) = assets_list.split_borrow();
 
-        let synthetic_position = synthetics
-            .iter_mut()
-            .position(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic_position = match synthetics.iter_mut().position(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
-        let collateral_position = collaterals
-            .iter()
-            .position(|x| {
-                x.collateral_address
-                    .eq(ctx.accounts.collateral.to_account_info().key)
-            })
-            .unwrap();
+        let collateral_position = match collaterals.iter().position(|x| {
+            x.collateral_address
+                .eq(ctx.accounts.collateral.to_account_info().key)
+        }) {
+            Some(i) => i,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         let synthetic = &mut synthetics[synthetic_position];
         let collateral = &mut collaterals[collateral_position];
@@ -2134,12 +2162,10 @@ pub mod exchange {
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
-        if (synthetic_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
-        {
+        if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if (collateral_asset.last_update as u64) < slot.checked_sub(state.max_delay as u64).unwrap()
-        {
+        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
 
@@ -2153,9 +2179,7 @@ pub mod exchange {
         );
         // Fail if user is safe
         require!(
-            amount_liquidation_limit
-                .lt(vault_entry.synthetic_amount)
-                .unwrap(),
+            amount_liquidation_limit.lt(vault_entry.synthetic_amount)?,
             InvalidLiquidation
         );
         // Amount of synthetic to repay
@@ -2166,9 +2190,7 @@ pub mod exchange {
         };
         // Fail if liquidator wants to liquidate more than allowed number
         require!(
-            liquidation_amount
-                .lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))
-                .unwrap(),
+            liquidation_amount.lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))?,
             InvalidLiquidation
         );
         // Amount seized in usd
@@ -2277,14 +2299,13 @@ pub mod exchange {
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
 
-        let synthetic = assets_list
-            .synthetics
-            .iter_mut()
-            .find(|x| {
-                x.asset_address
-                    .eq(ctx.accounts.synthetic.to_account_info().key)
-            })
-            .unwrap();
+        let synthetic = match assets_list.synthetics.iter_mut().find(|x| {
+            x.asset_address
+                .eq(ctx.accounts.synthetic.to_account_info().key)
+        }) {
+            Some(s) => s,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
@@ -2546,6 +2567,10 @@ pub enum ErrorCode {
     VaultWithdrawLimit = 35,
     #[msg("Invalid Account")]
     InvalidAccount = 36,
+    #[msg("Price confidence out of range")]
+    PriceConfidenceOutOfRange = 37,
+    #[msg("Invalid oracle program")]
+    InvalidOracleProgram = 38,
 }
 
 // Access control modifiers.

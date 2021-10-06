@@ -1,4 +1,4 @@
-import { DEV_NET, Network, TEST_NET } from './network'
+import { DEV_NET, Network, TEST_NET, MAIN_NET } from './network'
 import idl from './idl/exchange.json'
 import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
@@ -58,6 +58,11 @@ export class Exchange {
       case Network.TEST:
         this.programId = TEST_NET.exchange
         this.exchangeAuthority = TEST_NET.exchangeAuthority
+        this.program = new Program(idl as Idl, this.programId, provider)
+        break
+      case Network.MAIN:
+        this.programId = MAIN_NET.exchange
+        this.exchangeAuthority = MAIN_NET.exchangeAuthority
         this.program = new Program(idl as Idl, this.programId, provider)
         break
       default:
@@ -899,7 +904,7 @@ export class Exchange {
       to
     })
     await this.getState()
-    await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
+    return await this.updatePricesAndSend([mintIx], signers, this.assetsList.headAssets >= 20)
   }
   public async deposit({
     amount,

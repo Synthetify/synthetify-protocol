@@ -22,7 +22,7 @@ import {
   eqDecimals,
   mulByDecimal
 } from './utils'
-import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
+import { createPriceFeed, getFeedData, setConfidence, setFeedTrading } from './oracleUtils'
 import {
   ERRORS,
   percentToDecimal,
@@ -32,7 +32,7 @@ import {
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Asset, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('exchange', () => {
@@ -54,6 +54,7 @@ describe('exchange', () => {
   let snyLiquidationFund: PublicKey
   let stakingFundAccount: PublicKey
   let CollateralTokenMinter: Account = wallet
+  let btcFeed: PublicKey
   let nonce: number
   before(async () => {
     const [_mintAuthority, _nonce] = await anchor.web3.PublicKey.findProgramAddress(
@@ -660,7 +661,6 @@ describe('exchange', () => {
     let btcToken: Token
     let ethToken: Token
     let zeroMaxSupplyToken: Token
-    let btcFeed: PublicKey
     let healthFactor: Decimal
 
     before(async () => {
@@ -1696,6 +1696,24 @@ describe('exchange', () => {
     //     })
     //   )
     // })
+  })
+  describe('Oracle confidence', async () => {
+    const confidenceThreshold = 50000 * 0.025
+
+    it('updating oracle price with confidence to price ratio greater than 2.5% should failed', async () => {
+      await setConfidence(oracleProgram, confidenceThreshold + 1, btcFeed)
+      const updateOracleIx = await exchange.updateSelectedPricesInstruction(assetsList, [btcFeed])
+
+      await assertThrowsAsync(
+        signAndSend(new Transaction().add(updateOracleIx), [wallet], connection),
+        ERRORS_EXCHANGE.PRICE_CONFIDENCE_OUT_OF_RANGE
+      )
+    })
+    it('updating oracle price with confidence to price ratio less than 2.5%', async () => {
+      await setConfidence(oracleProgram, confidenceThreshold - 1, btcFeed)
+      const updateOracleIx = await exchange.updateSelectedPricesInstruction(assetsList, [btcFeed])
+      await signAndSend(new Transaction().add(updateOracleIx), [wallet], connection)
+    })
   })
   describe('System Halted', async () => {
     it('#deposit()', async () => {

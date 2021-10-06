@@ -73,6 +73,22 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "setConfidence",
+      "accounts": [
+        {
+          "name": "price",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "types": [
@@ -127,8 +143,5 @@
         ]
       }
     }
-  ],
-  "metadata": {
-    "address": "DUTaRHQcejLHkDdsnR8cUUv2BakxCJfJQmWQNK2hzizE"
-  }
+  ]
 }

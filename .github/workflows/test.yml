@@ -7,12 +7,73 @@ on:
   pull_request:
     branches:
       - master
+env:
+  solana_verion: 1.7.11
+  anchor_version: 0.16.2
 
 jobs:
-  test:
+  install:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          [
+            'npm run test:exchange',
+            'npm run test:interest-debt',
+            'npm run test:isolated-burn',
+            'npm run test:liquidation',
+            'npm run test:admin',
+            'npm run test:admin-withdraw',
+            'npm run test:staking',
+            'npm run test:staking-multiuser',
+            'npm run test:multi',
+            'npm run test:multicollateral',
+            'npm run test:settlement',
+            'npm run test:swapline',
+            'npm run test:vaults',
+            'npm run test:vaultsliquidation',
+            'npm run test:vaults-interest',
+            'npm run test:admin-vaults',
+            'cargo test'
+          ]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
+      - name: test
+        run: |
+          echo "${{ matrix.node }}"
+      - uses: actions/cache@v2
+        name: Cache Cargo registry + index
+        id: cache-anchor
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-${{ runner.os }}-v0000-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v2
+        name: Cache Solana Tool Suite
+        id: cache-solana
+        with:
+          path: |
+            ~/.cache/solana/
+            ~/.local/share/solana/
+          key: solana-${{ runner.os }}-v0000-${{ env.solana_verion }}
+      - uses: actions/cache@v2
+        name: Cache target folder
+        id: cache-programs
+        with:
+          path: |
+            ./target
+          key: solana-${{ runner.os }}-v0000-${{ hashFiles('**/programs/**/*.rs') }}-${{ hashFiles('**/programs/**/*.toml') }}
+      - uses: actions/cache@v2
+        name: Cache Node Modules
+        id: cache-node-modules
+        with:
+          path: |
+            ~/.npm/
+            ./node_modules
+          key: npm-${{ runner.os }}-v0000-${{ hashFiles('**/package-lock.json') }}
       - uses: actions/setup-node@v2
         with:
           node-version: '14'
@@ -22,36 +83,47 @@ jobs:
           override: true
       - name: install global mocha
         run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install -g mocha
           npm install -g ts-mocha
           npm install -g typescript
+          npm install -g @project-serum/anchor
           ts-mocha -h
-      - name: install solana
+      - name: install essential
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config build-essential libudev-dev
-          sh -c "$(curl -sSfL https://release.solana.com/v1.7.11/install)"
+      - name: install solana
+        if: steps.cache-solana.outputs.cache-hit != 'true'
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v${{ env.solana_verion }}/install)"
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
+      - name: setup solana
+        run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           solana --version
           solana-keygen new
-      - name: install
+      - name: install Anchor
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm install -g @project-serum/anchor
-          cargo install --git https://github.com/project-serum/anchor anchor-cli --locked
-          npm install
+          cargo install --git https://github.com/project-serum/anchor --tag v${{ env.anchor_version }} anchor-cli --locked
       - name: build programs
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
-
       - name: build sdk
         run: |
           npm install
           npm run build
         working-directory: ./sdk
+      - name: install
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          npm install
       - name: test
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
-          npm run test:full
-          cargo test
+          ${{ matrix.node }}

@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
+use std::convert::TryInto;
 
 use crate::decimal::{Add, Compare, Div, Mul, MulUp, PowAccuracy, Sub};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
@@ -14,11 +15,11 @@ pub fn check_feed_update(
     slot: u64,
 ) -> Result<()> {
     // Check assetA
-    if (assets[index_a].last_update as u64) < slot - max_delay as u64 {
+    if assets[index_a].last_update < slot.checked_sub(max_delay.into()).unwrap() {
         return Err(ErrorCode::OutdatedOracle.into());
     }
     // Check assetB
-    if (assets[index_b].last_update as u64) < slot - max_delay as u64 {
+    if assets[index_b].last_update < slot.checked_sub(max_delay.into()).unwrap() {
         return Err(ErrorCode::OutdatedOracle.into());
     }
     return Ok(());
@@ -37,7 +38,9 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
         return;
     }
     let slot_diff = slot.checked_sub(state.staking.next_round.start).unwrap();
-    let round_diff = div_up(slot_diff as u128, state.staking.round_length.into()) as u32;
+    let round_diff: u32 = div_up(slot_diff.into(), state.staking.round_length.into())
+        .try_into()
+        .unwrap();
     match round_diff {
         1 => {
             state.staking.finished_round = state.staking.current_round.clone();
@@ -70,7 +73,7 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.checked_mul(2).unwrap() as u64)
+                    .checked_add(state.staking.round_length.checked_mul(2).unwrap().into())
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -87,7 +90,8 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                             .staking
                             .round_length
                             .checked_mul(round_diff.checked_sub(2).unwrap())
-                            .unwrap() as u64,
+                            .unwrap()
+                            .into(),
                     )
                     .unwrap(),
                 all_points: state.debt_shares,
@@ -103,7 +107,8 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                             .staking
                             .round_length
                             .checked_mul(round_diff.checked_sub(1).unwrap())
-                            .unwrap() as u64,
+                            .unwrap()
+                            .into(),
                     )
                     .unwrap(),
                 all_points: state.debt_shares,
@@ -114,7 +119,14 @@ pub fn adjust_staking_rounds(state: &mut State, slot: u64) {
                     .staking
                     .next_round
                     .start
-                    .checked_add(state.staking.round_length.checked_mul(round_diff).unwrap() as u64)
+                    .checked_add(
+                        state
+                            .staking
+                            .round_length
+                            .checked_mul(round_diff)
+                            .unwrap()
+                            .into(),
+                    )
                     .unwrap(),
                 all_points: state.debt_shares,
                 amount: state.staking.amount_per_round,
@@ -140,7 +152,8 @@ pub fn adjust_staking_account(exchange_account: &mut ExchangeAccount, staking: &
         }
     }
 
-    exchange_account.user_staking_data.last_update = staking.current_round.start + 1;
+    exchange_account.user_staking_data.last_update =
+        staking.current_round.start.checked_add(1).unwrap();
     return;
 }
 
@@ -169,8 +182,11 @@ pub fn adjust_interest_debt(
     if diff >= 1 {
         let total_debt_twap = calculate_debt(assets_list, slot, state.max_delay, true).unwrap();
         let minute_interest_rate = calculate_minute_interest_rate(state.debt_interest_rate);
-        let compounded_interest =
-            calculate_compounded_interest(total_debt_twap, minute_interest_rate, diff as u128);
+        let compounded_interest = calculate_compounded_interest(
+            total_debt_twap,
+            minute_interest_rate,
+            diff.try_into().unwrap(),
+        );
         let usd = &mut assets_list.borrow_mut().synthetics[0];
 
         // increase in interest supply may exceed the max supply limit
@@ -199,7 +215,7 @@ pub fn adjust_vault_interest_rate(vault: &mut Vault, timestamp: i64) {
         let minute_interest_rate = calculate_minute_interest_rate(vault.debt_interest_rate);
         let one = Decimal::from_integer(1).to_interest_rate();
         let base = minute_interest_rate.add(one).unwrap();
-        let time_period_interest = base.pow_with_accuracy(diff as u128);
+        let time_period_interest = base.pow_with_accuracy(diff.try_into().unwrap());
 
         vault.accumulated_interest_rate = vault.accumulated_interest_rate.mul(time_period_interest);
         vault.last_update = diff
@@ -338,13 +354,13 @@ mod tests {
             current_round: StakingRound {
                 all_points: 2,
                 amount: Decimal::from_sny(0),
-                start: slot.checked_add(staking_round_length as u64).unwrap(),
+                start: slot.checked_add(staking_round_length.into()).unwrap(),
             },
             next_round: StakingRound {
                 all_points: 3,
                 amount: amount_per_round,
                 start: slot
-                    .checked_add(staking_round_length as u64)
+                    .checked_add(staking_round_length.into())
                     .unwrap()
                     .checked_add(staking_round_length.into())
                     .unwrap(),
@@ -1603,6 +1619,387 @@ mod tests {
                 synthetic.supply,
                 Decimal::from_integer(290).to_scale(synthetic_decimal)
             );
+        }
+    }
+
+    #[test]
+    fn test_set_mint_amount_safely() {
+        // decrease is safe
+        {
+            let mut vault = Vault {
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(1);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+        }
+        // increase without error
+        {
+            let mut vault = Vault {
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(4),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            vault.set_mint_amount_safely(new_mint_amount).unwrap();
+
+            assert_eq!(vault.mint_amount, new_mint_amount)
+        }
+        // checking error
+        {
+            let mut vault = Vault {
+                mint_amount: Decimal::from_integer(2),
+                max_borrow: Decimal::from_integer(2),
+                ..Default::default()
+            };
+            let new_mint_amount = Decimal::from_integer(3);
+
+            let result = vault.set_mint_amount_safely(new_mint_amount);
+
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    fn test_append_exchange_account() {
+        {
+            let collateral_entry = CollateralEntry {
+                amount: 10,
+                index: 7,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount {
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry = CollateralEntry {
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+
+            exchange_account.append(entry);
+
+            assert_eq!(exchange_account.head, 1);
+            assert_eq!(
+                exchange_account.collaterals[(exchange_account.head - 1) as usize],
+                entry
+            );
+        }
+        // double append to the same account
+        {
+            let collateral_entry = CollateralEntry {
+                amount: 10,
+                index: 7,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount {
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let entry1 = CollateralEntry {
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+            let entry2 = CollateralEntry {
+                amount: 10,
+                index: 4,
+                ..Default::default()
+            };
+
+            exchange_account.append(entry1);
+            exchange_account.append(entry2);
+
+            assert_eq!(exchange_account.head, 2);
+            assert_eq!(
+                exchange_account.collaterals[(exchange_account.head - 1) as usize],
+                entry2
+            );
+        }
+    }
+
+    #[test]
+    fn test_remove_exchange_account() {
+        {
+            let collateral_entry = CollateralEntry {
+                amount: 10,
+                index: 10,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount {
+                head: 1,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 8;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(index);
+
+            assert_eq!(exchange_account.head, 0);
+            assert_eq!(
+                exchange_account.collaterals[(exchange_account.head) as usize],
+                CollateralEntry {
+                    ..Default::default()
+                }
+            );
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
+        // remove not last entry
+        {
+            let collateral_entry = CollateralEntry {
+                amount: 10,
+                index: 8,
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount {
+                head: 5,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 7;
+
+            let check = exchange_account.collaterals[(exchange_account.head - 1) as usize]; // create copy before using function
+
+            exchange_account.remove(index);
+
+            assert_eq!(exchange_account.head, 4);
+            assert_eq!(
+                exchange_account.collaterals[(exchange_account.head) as usize],
+                CollateralEntry {
+                    ..Default::default()
+                }
+            );
+            assert_eq!(check, exchange_account.collaterals[(index) as usize]);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_remove_exchange_account_with_panic() {
+        // panic because self.head == -1
+        {
+            let collateral_entry = CollateralEntry {
+                ..Default::default()
+            };
+            let mut exchange_account = ExchangeAccount {
+                head: 0,
+                collaterals: [collateral_entry; 32],
+                ..Default::default()
+            };
+            let index = 1;
+
+            exchange_account.remove(index);
+        }
+    }
+
+    #[test]
+    fn test_append_asset_asset_list() {
+        {
+            let mut assets_list = AssetsList {
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_asset = Asset {
+                ..Default::default()
+            };
+
+            assets_list.append_asset(new_asset);
+
+            assert_eq!(
+                assets_list.assets[(assets_list.head_assets - 1) as usize],
+                new_asset
+            );
+            assert_eq!(assets_list.head_assets, 2);
+        }
+    }
+
+    #[test]
+    fn test_append_collateral_asset_list() {
+        {
+            let mut assets_list = AssetsList {
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_collateral = Collateral {
+                ..Default::default()
+            };
+
+            assets_list.append_collateral(new_collateral);
+
+            assert_eq!(
+                assets_list.collaterals[(assets_list.head_collaterals - 1) as usize],
+                new_collateral
+            );
+            assert_eq!(assets_list.head_collaterals, 2);
+        }
+    }
+
+    #[test]
+    fn test_append_synthetic_asset_list() {
+        {
+            let mut assets_list = AssetsList {
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let new_synthetic = Synthetic {
+                ..Default::default()
+            };
+
+            assets_list.append_synthetic(new_synthetic);
+
+            assert_eq!(
+                assets_list.synthetics[(assets_list.head_synthetics - 1) as usize],
+                new_synthetic
+            );
+            assert_eq!(assets_list.head_synthetics, 2);
+        }
+    }
+
+    #[test]
+    fn test_remove_synthetic_asset_list() {
+        {
+            let mut assets_list = AssetsList {
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 1;
+
+            let check = assets_list.synthetics[(assets_list.head_synthetics - 1) as usize]; // create copy before using function
+
+            assets_list.remove_synthetic(index).unwrap();
+
+            assert_eq!(assets_list.synthetics[index], check);
+            assert_eq!(
+                assets_list.synthetics[(assets_list.head_synthetics) as usize],
+                Synthetic {
+                    ..Default::default()
+                }
+            );
+            assert_eq!(assets_list.head_synthetics, 0);
+        }
+        // check error
+        {
+            let mut assets_list = AssetsList {
+                head_assets: 1,
+                head_collaterals: 1,
+                head_synthetics: 1,
+                ..Default::default()
+            };
+            let index = 0;
+
+            let result = assets_list.remove_synthetic(index);
+
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_remove_synthetic_asset_list_with_panic() {
+        // panic because self.head == -1
+        {
+            let mut assets_list = AssetsList {
+                head_synthetics: 0,
+                ..Default::default()
+            };
+            let index = 1;
+
+            assets_list.remove_synthetic(index).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_split_borrow_asset_list() {
+        {
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            let assets_list_copy = assets_list.clone();
+
+            let result = assets_list.split_borrow();
+
+            for i in 0..255 {
+                assert_eq!((result.0)[i], (assets_list_copy.assets)[i]);
+                assert_eq!((result.1)[i], (assets_list_copy.collaterals)[i]);
+                assert_eq!((result.2)[i], (assets_list_copy.synthetics)[i]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_div_up() {
+        // div of zero
+        {
+            let a = 0;
+            let b = 1;
+            assert_eq!(div_up(a, b), 0);
+        }
+        // // div check rounding up
+        {
+            let a = 1;
+            let b = 2;
+            assert_eq!(div_up(a, b), 1);
+        }
+        // // div big number
+        {
+            let a = 200_000_000_001;
+            let b = 200_000_000_000;
+            assert_eq!(div_up(a, b), 2);
+        }
+    }
+
+    #[test]
+    fn test_adjust_vault_interest_rate() {
+        let mut assets_list = AssetsList {
+            ..Default::default()
+        };
+        let initial_interest_rate = Decimal::from_percent(100).to_interest_rate();
+        assets_list.append_asset(Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        });
+
+        let vault = Vault {
+            // APR 5.5%
+            debt_interest_rate: Decimal::new(55, 3).to_interest_rate(),
+            accumulated_interest_rate: initial_interest_rate,
+            last_update: 0,
+            ..Default::default()
+        };
+
+        {
+            let timestamp = 430;
+            let vault = &mut vault.clone();
+            adjust_vault_interest_rate(vault, timestamp);
+
+            let expected_accumulated_interest_rate =
+                Decimal::from_interest_rate(1000000732496424772);
+            let expected_last_update = 420;
+
+            // verify vault adjustment
+            assert_eq!(
+                vault.accumulated_interest_rate,
+                expected_accumulated_interest_rate
+            );
+            assert_eq!({ vault.last_update }, expected_last_update);
         }
     }
 }

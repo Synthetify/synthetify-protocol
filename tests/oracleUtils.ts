@@ -14,7 +14,7 @@ export const createPriceFeed = async ({
   confidence,
   expo = -8
 }: ICreatePriceFeed) => {
-  const conf = confidence || new BN(initPrice / 10).mul(new BN(10).pow(new BN(-expo)))
+  const conf = confidence || new BN(0)
   const collateralTokenFeed = new web3.Account()
 
   await oracleProgram.rpc.initialize(
@@ -55,6 +55,20 @@ export const setFeedTrading = async (
   priceFeed: web3.PublicKey
 ) => {
   await oracleProgram.rpc.setTrading(newStatus, {
+    accounts: { price: priceFeed }
+  })
+}
+export const setConfidence = async (
+  oracleProgram: Program,
+  newConfidence: number,
+  priceFeed: web3.PublicKey
+) => {
+  const info = await oracleProgram.provider.connection.getAccountInfo(priceFeed)
+  //@ts-expect-error
+  const data = parsePriceData(info.data)
+  const scaledConf = new BN(newConfidence * 10 ** -data.exponent)
+
+  await oracleProgram.rpc.setConfidence(scaledConf, {
     accounts: { price: priceFeed }
   })
 }

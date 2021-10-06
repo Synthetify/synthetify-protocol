@@ -3494,6 +3494,16 @@
       "code": 336,
       "name": "InvalidAccount",
       "msg": "Invalid Account"
+    },
+    {
+      "code": 337,
+      "name": "PriceConfidenceOutOfRange",
+      "msg": "Price confidence out of range"
+    },
+    {
+      "code": 338,
+      "name": "InvalidOracleProgram",
+      "msg": "Invalid oracle program"
     }
   ]
 }
