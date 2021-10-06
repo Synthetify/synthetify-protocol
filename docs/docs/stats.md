@@ -4,22 +4,22 @@ title: Stats
 slug: /stats
 ---
 
-### Statistic View
+### Statistic Tab
 
-Statistic view includes four different parts:
+Statistic tab includes four different parts:
 - the top part contains a line graph.
 - the middle section consists of:
     - Statistic cards
-    - Debt pool
+    - Total debt
 - the bottom part consists of a bar showing the collateral structure.
 
 ### Top chart
 
 On the chart we can observe the daily change: 
-- volume
-- liquidation
-- mint
-- burn
+- exchange volume
+- liquidation value
+- minted synthetics
+- burnt synthetics
 - user count
 
 ![Stats-top-chart](/img/docs/topChart.png)
@@ -27,8 +27,8 @@ On the chart we can observe the daily change:
 ### Statistic Cards
 
 There are five cards with: 
-- the actual value of the collateral
-- actual value debt
+- the current value of the collateral
+- current value debt
 - volume from 24h ago
 - fee from 24h ago
 - mint from 24h ago
@@ -37,13 +37,13 @@ There are five cards with:
 
 ### Debt Pool
 
-On the chart we can observe the real change of the debt and the proportion of total debt for each available synthetic asset.
+On the chart we can observe the live change of the debt and the proportion of total debt for each available synthetic asset.
 
 ![Stats-debt-pool](/img/docs/statsDebtPool.png)
 
 ### Collateral structure
 
-In the graph, we can observe the actual change in indebtedness and the proportion of total deposit for each available collateral
+In the graph, we can observe the live-changing debt and its distribution.
 
 ![Stats-collateral](/img/docs/statsCollateral.png)
 
