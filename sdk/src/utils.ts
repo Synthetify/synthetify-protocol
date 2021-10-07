@@ -245,6 +245,12 @@ export const toEffectiveFee = (fee: Decimal, userCollateralBalance: BN) => {
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
+export const SWAPLINE_MAP = [
+  {
+    synthetic: new PublicKey('6w9cNSAchLU4FSupCc2hMT3fkppABrZZPx6AZzojvzwe'),
+    collateral: new PublicKey('GeXDUSYeCVn5opXJ3pFzQguiHjqSXaEifSoEzHVTu1rW')
+  }
+]
 export const addressToAssetSymbol: { [key: string]: string } = {
   //Local
   '8V8JuSxR4SCSbqp2f74w7Kiv93FBbqfmPQGSJ1x2MPYi': 'xUSD',
@@ -261,6 +267,7 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   '9N7FjVABh8Uwfcq7XF3FGK8H4g7bd55Qnu2Rh34j7yaW': 'xETH',
   So11111111111111111111111111111111111111112: 'WSOL',
   oBNJxzeq1bkmSyULuqQoQtyHQMh8st8yfm4e7WqoJky: 'stSOL',
+  GeXDUSYeCVn5opXJ3pFzQguiHjqSXaEifSoEzHVTu1rW: 'USDC',
   //Testnet
   CWNmJ2zkQjydFGhH2s1dXEn9USL4k5kq9kCBJL3SmyDh: 'xUSD',
   BdbHaw8usXhdM2sAZVzpvk5xsgeUfW5yh23h1acPR4Tq: 'SNY',
