@@ -27,8 +27,8 @@ On the chart we can observe the daily change:
 ### Statistic Cards
 
 There are five cards with: 
-- current debt of the collateral
-- current value debt
+- current value of the collateral
+- current debt value 
 - volume from 24h ago
 - fee from 24h ago
 - mint from 24h ago
