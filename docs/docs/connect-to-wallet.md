@@ -12,12 +12,14 @@ Synthetify cooperates only with Solana based wallets:
 
 - Phantom
 - Sollet
+- Math Wallet
+- Solflare
 
 ### How to connect
 
 Connect button is placed in the top right corner.
 
-![Connect button](/img/docs/howToConnect.png)
+![Connect button](/img/docs/howToConnectWallet.png)
 
 ### Choose your wallet
 
