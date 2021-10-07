@@ -27,7 +27,7 @@ On the chart we can observe the daily change:
 ### Statistic Cards
 
 There are five cards with: 
-- the current value of the collateral
+- current debt of the collateral
 - current value debt
 - volume from 24h ago
 - fee from 24h ago
@@ -43,7 +43,7 @@ On the chart we can observe the live change of the debt and the proportion of to
 
 ### Collateral structure
 
-In the graph, we can observe the live-changing debt and its distribution.
+In the graph, we can observe the debt changing in real time and its distribution.
 
 ![Stats-collateral](/img/docs/statsCollateral.png)
 
