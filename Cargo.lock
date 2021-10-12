@@ -481,6 +481,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "exchange"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "pyth",
+ "spl-token",
+ "thincollections",
+]
+
+[[package]]
 name = "feature-probe"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -806,7 +817,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth-anchor"
+name = "pyth"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
@@ -1176,17 +1187,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
-]
-
-[[package]]
-name = "synthetify-exchange"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "pyth-anchor",
- "spl-token",
- "thincollections",
 ]
 
 [[package]]

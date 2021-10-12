@@ -1,5 +1,5 @@
 [package]
-name = "pyth-anchor"
+name = "pyth"
 version = "0.1.0"
 description = "Pyth oracle interface implementation in anchor"
 edition = "2018"

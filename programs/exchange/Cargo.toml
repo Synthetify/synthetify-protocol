@@ -1,5 +1,5 @@
 [package]
-name = "synthetify-exchange"
+name = "exchange"
 version = "0.1.0"
 description = "Synthetify synthetic assets exchange"
 edition = "2018"
@@ -26,4 +26,4 @@ anchor-lang = "0.16.2"
 anchor-spl = "0.16.2"
 thincollections = "0.5.3"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
-pyth-anchor = { path = "../pyth", version = "0.1.0", features = ["cpi"] }
+pyth = { path = "../pyth", version = "0.1.0", features = ["cpi"] }
