@@ -394,10 +394,6 @@ pub struct AddCollateral<'info> {
         constraint = reserve_account.to_account_info().key != liquidation_fund.to_account_info().key
     )]
     pub reserve_account: Account<'info,TokenAccount>,
-    #[account(
-        owner = oracle::ID,
-        constraint = feed_address.data_len() == 3312
-    )]
     pub feed_address: AccountInfo<'info>,
 }
 #[derive(Accounts)]
