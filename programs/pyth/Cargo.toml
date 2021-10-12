@@ -1,8 +1,10 @@
 [package]
-name = "pyth"
+name = "pyth-anchor"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Pyth oracle interface implementation in anchor"
 edition = "2018"
+license = "Apache-2.0"
+authors = ["Synthetify Labs <contact@synthetify.io>"]
 
 [lib]
 crate-type = ["cdylib", "lib"]
