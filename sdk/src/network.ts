@@ -8,14 +8,14 @@ export enum Network {
 }
 
 export const DEV_NET = {
-  exchange: new PublicKey('3V7ZLhTi3EFSQ3j1szadrfM5Am8368RPQVPRnYqUsbBB'),
+  exchange: new PublicKey('HcyCw29qWC77CTnmJkwjnW1whbTppv4xh2SQQzjMin55'),
   oracle: new PublicKey('DUTaRHQcejLHkDdsnR8cUUv2BakxCJfJQmWQNK2hzizE'),
-  exchangeAuthority: new PublicKey('Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i')
+  exchangeAuthority: new PublicKey('6dcLU83ferGcEAjeUeLuJ8q7JbSV2vK3EGajW895tZBj')
 }
 export const TEST_NET = {
-  exchange: new PublicKey('9drf22jv2L8HvW3uDu7cmQTaYVoJM1W8cEjqD3NfDmAM'),
+  exchange: new PublicKey('HcyCw29qWC77CTnmJkwjnW1whbTppv4xh2SQQzjMin55'),
   oracle: new PublicKey('4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'),
-  exchangeAuthority: new PublicKey('AHhuSXACqtyPfYZ7DZUg5xqPGViKux34hXTGqRNw392B')
+  exchangeAuthority: new PublicKey('6dcLU83ferGcEAjeUeLuJ8q7JbSV2vK3EGajW895tZBj')
 }
 export const MAIN_NET = {
   exchange: new PublicKey('5TeGDBaMNPc2uxvx6YLDycsoxFnBuqierPt3a8Bk4xFX'),

@@ -1,16 +1,8 @@
 import { Idl, Program, Provider, web3 } from '@project-serum/anchor'
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
-import {
-  createAssetsList,
-  createToken,
-  EXCHANGE_ADMIN,
-  sleep,
-  SYNTHETIFY_EXCHANGE_SEED
-} from '../tests/utils'
+import { createAssetsList, createToken, sleep, SYNTHETIFY_EXCHANGE_SEED } from '../tests/utils'
 import { MINTER } from './minter'
-import oracleIdl from '../target/idl/pyth.json'
 import { PublicKey, Transaction } from '@solana/web3.js'
-import { createPriceFeed } from '../tests/oracleUtils'
 
 const initialTokens = [
   {
@@ -56,18 +48,14 @@ const provider = Provider.local('https://api.testnet.solana.com', {
 const connection = provider.connection
 
 const exchangeProgramId: web3.PublicKey = new web3.PublicKey(
-  '9drf22jv2L8HvW3uDu7cmQTaYVoJM1W8cEjqD3NfDmAM'
+  'HcyCw29qWC77CTnmJkwjnW1whbTppv4xh2SQQzjMin55'
 )
-const oracleProgramId: web3.PublicKey = new web3.PublicKey(
-  '4nopYr9nYL5MN1zVgvQQfLhDdqAyVHtR5ZkpPcS12M5b'
-)
-const authority = 'Gs1oPECd79PkytEaUPutykRoZomXVY8T68yMQ6Lpbo7i'
+const authority = '6dcLU83ferGcEAjeUeLuJ8q7JbSV2vK3EGajW895tZBj'
 
 const main = async () => {
   // const connection = provider.connection
   // @ts-expect-error
   const wallet = provider.wallet.payer as web3.Account
-  const oracleProgram = new Program(oracleIdl as Idl, oracleProgramId, provider)
 
   const [exchangeAuthority, nonce] = await web3.PublicKey.findProgramAddress(
     [SYNTHETIFY_EXCHANGE_SEED],
@@ -75,11 +63,7 @@ const main = async () => {
   )
   console.log('exchangeAuthority')
   console.log(exchangeAuthority.toString())
-  const collateralTokenFeed = await createPriceFeed({
-    oracleProgram,
-    initPrice: 2,
-    expo: -6
-  })
+  const collateralTokenFeed = new PublicKey('5nUp9xa8UD63Wmew3uRi9d1A8sE9muYt3jMAj6ecBCqF')
 
   const collateralToken = await createToken({
     connection,
