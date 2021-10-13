@@ -1,175 +1,165 @@
 ---
 title: State
 
-slug: /technical/state 
+slug: /technical/state
 ---
 
 ## Program data
 
-The protocol needs a place to store persistent data. Most of it is stored inside the _State_ structure that is passed to methods just like any other account.
+The protocol needs a place to store persistent data. Most of it is stored inside the _State_ structure, that is passed to methods just like any other account.
 
 ### Structure of state
 
 State is structured like this:
 
     pub struct State {
-        // 2048
-        pub admin: Pubkey,                      // 32
-        pub halted: bool,                       // 1
-        pub nonce: u8,                          // 1
-        pub debt_shares: u64,                   // 8
-        pub assets_list: Pubkey,                // 32
-        pub health_factor: Decimal,             // 17 In % 1-100% modifier for debt
-        pub max_delay: u32,                     // 4  In slots delay between last oracle update 100 blocks ~ 1 min
-        pub fee: Decimal,                       // 17 In % default fee per swap
-        pub swap_tax_ratio: Decimal,            // 17 In % range 0-20%
-        pub swap_tax_reserve: Decimal,          // 17 Amount on tax from swap
-        pub liquidation_rate: Decimal,          // 17 Percentage of debt repay in liquidation
-        pub penalty_to_liquidator: Decimal,     // 17 In % range 0-25%
-        pub penalty_to_exchange: Decimal,       // 17 In % range 0-25%
-        pub liquidation_buffer: u32,            // 4  Time given user to fix collateralization ratio (in slots)
-        pub debt_interest_rate: Decimal,        // 17 In % range 0-20%
-        pub accumulated_debt_interest: Decimal, // 17 Accumulated debt interest
-        pub last_debt_adjustment: i64,          // 8
-        pub staking: Staking,                   // 152
-        pub exchange_authority: Pubkey,         // 32
-        pub bump: u8,                           // 1
-        pub padding: [u8; 1620],                // 1620 (2048 - 428) reserved for future use
+        pub admin: Pubkey,
+        pub halted: bool,
+        pub nonce: u8,
+        pub debt_shares: u64,
+        pub assets_list: Pubkey,
+        pub health_factor: Decimal,
+        pub max_delay: u32,
+        pub fee: Decimal,
+        pub swap_tax_ratio: Decimal,
+        pub swap_tax_reserve: Decimal,
+        pub liquidation_rate: Decimal,
+        pub penalty_to_liquidator: Decimal,
+        pub penalty_to_exchange: Decimal,
+        pub liquidation_buffer: u32,
+        pub debt_interest_rate: Decimal,
+        pub accumulated_debt_interest: Decimal,
+        pub last_debt_adjustment: i64,
+        pub staking: Staking,
+        pub exchange_authority: Pubkey,
+        pub bump: u8,
+        pub padding: [u8; 1620],
     }
 
-Respectively these fields are used for:
-  * **admin** - the pubkey of admin, only admin can modify state using setters
-  * **halted** - if set to _true_ access to methods is blocked
-  * **nonce** - one of the seeds of the _exchangeAuthority_, used to sign transactions
-  * **debt_shares** - the total amount of _debt shares_, together with user _debt shares_ allows calculating debt, more on that [here](/docs/technical/synthetics#debt)
-  * **assets_list** - address used to confirm the correctness of [asset list](/docs/technical/state#structure-of-assetslist) passed to a method
-  * **health_factor** - coefficient of [mint limit](/docs/glossary#mint-limit) to [max debt](/docs/glossary#max-debt) as a [decimal](#decimal)
-  * **max_delay** - the maximum amount of [slots](https://docs.solana.com/terminology#slot) a price can be outdated by
-  * **fee** - the percentage paid as a fee on swap
-  * **swap_tax_ratio** - the percentage of the fee going to the _tax reserve_
-  * **swap_tax_reserve** - part of the total amount of charged tax, can be withdrawn by admin
-  * **liquidation_rate** - part of user debt repaid on [liquidation](/docs/technical/collateral#liquidation)
-  * **penalty_to_liquidator** - penalty on liquidation going to the user that is liquidating
-  * **penalty_to_exchange** - liquidation penalty going to liquidation fund
-  * **liquidation_buffer** - the number of blocks between exceeding [max debt](/docs/glossary/max-debt) and liquidation
-  * **debt_interest_rate** - the amount of interest rate charged on debt (yearly percentage, charged minutely)
-  * **accumulated_debt_interest** - the total amount charged as interest
-  * **last_debt_adjustment** - timestamp of the last charge of interest
-  * **staking** - structure with all data needed for staking. Details are [here](/docs/technical/staking)
-  * **exchange_authority** - the pubkey belonging to the exchange, used to sign transactions
-  * **bump** - used to [confirm the address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
-  * **padding** - used as padding to reserve space up to 2kB for future use
+Respectively, these fields are :
 
+- **admin** - pubkey of the admin. Only admin can modify state using setters
+- **halted** - if set to _true_, access to methods is blocked
+- **nonce** - one of the seeds of the _exchangeAuthority_. Used to sign transactions
+- **debt_shares** - total amount of _debt shares_. Together with user _debt shares_, it allows calculating debt. More on that [here](/docs/technical/synthetics#debt)
+- **assets_list** - address used to confirm the correctness of [asset list](/docs/technical/state#structure-of-assetslist) passed to a method
+- **health_factor** - ratio of [mint limit](/docs/glossary#mint-limit) to [max debt](/docs/glossary#max-debt) as a [decimal](#decimal)
+- **max_delay** - maximum amount of [slots](https://docs.solana.com/terminology#slot) a price can be outdated by
+- **fee** - percentage paid as a fee on swap
+- **swap_tax_ratio** - percentage of the fee going to the _tax reserve_
+- **swap_tax_reserve** - part of the total amount of charged tax. Can be withdrawn by admin
+- **liquidation_rate** - part of user's debt repaid on [liquidation](/docs/technical/collateral#liquidation)
+- **penalty_to_liquidator** - penalty on liquidation going to the user that is liquidating
+- **penalty_to_exchange** - liquidation penalty going to liquidation fund
+- **liquidation_buffer** - number of blocks between exceeding [max debt](/docs/glossary/max-debt) and liquidation
+- **debt_interest_rate** - amount of interest rate charged on debt (yearly percentage, charged minutely)
+- **accumulated_debt_interest** - total amount charged as interest
+- **last_debt_adjustment** - timestamp of the last charge of interest
+- **staking** - structure with all data needed for staking. Details are [here](/docs/technical/staking)
+- **exchange_authority** - pubkey belonging to the exchange, used to sign transactions
+- **bump** - used to [confirm the address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
+- **padding** - used as padding to reserve space up to 2kB for future use
 
-The state is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L180-L239). It can later be changed using admin methods signed by the admin.
-
+The state is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L180-L239). It can be changed later using admin methods signed by the admin.
 
 ## Assets
 
-All assets used in the platform are stored here. Data about prices comes from [Pyth](https://pyth.network/) but is aggregated here. It also keeps data about decimal places and addresses of tokens and total supply.
+All assets used in the platform are stored here. Data about prices comes from [Pyth](https://pyth.network/) and is aggregated here. It also keeps data about decimal point's placing, addresses of tokens and total supply.
 
 ### Structure of _AssetsList_
 
 Data related to assets is kept inside AssetsList:
 
     struct AssetsList {
-        // 93333
-        pub head_assets: u8,                // 1
-        pub head_collaterals: u8,           // 1
-        pub head_synthetics: u8,            // 1
-        pub assets: [Asset; 255],           // 27795
-        pub collaterals: [Collateral; 255], // 37740
-        pub synthetics: [Synthetic; 255],   // 27795
+        pub head_assets: u8,
+        pub head_collaterals: u8,
+        pub head_synthetics: u8,
+        pub assets: [Asset; 255],
+        pub collaterals: [Collateral; 255],
+        pub synthetics: [Synthetic; 255],
     }
 
-The first three are indexes of corresponding arrays, points to the last element, used as length. The next three keep data and are described below:
-
+The first three are indexes of corresponding arrays, pointing to the last element and used as length. The next three keep data and are described below:
 
 ### Asset
 
-Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of all assets and stores them in one place for ease of use. Data related to price is kept inside _Asset_ structure: 
+Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of all assets and stores them in one place for ease of use. Data related to the prices is kept inside _Asset_ structure:
 
     pub struct Asset {
-        // 109
-        pub feed_address: Pubkey, // 32 Pyth oracle account address
-        pub price: Decimal,       // 17
-        pub last_update: u64,     // 8
-        pub twap: Decimal,        // 17
-        pub twac: Decimal,        // 17 unused
-        pub status: u8,           // 1
-        pub confidence: Decimal,  // 17 unused
+        pub feed_address: Pubkey,
+        pub price: Decimal,
+        pub last_update: u64,
+        pub twap: Decimal,
+        pub twac: Decimal,
+        pub status: u8,
+        pub confidence: Decimal,
     }
 
-* **feed_address** - address of Pyth oracle account
-* **price** - price multiplied by 10 to the power of _PRICE OFFSET_ equal to 8
-* **last_update** - the slot of the last price update
-* **twap** - stands for [Time-weighted average price](https://en.wikipedia.org/wiki/Time-weighted_average_price)
-* **twac** - stands for Time-weighted average confidence
-* **status** - status, taken from oracle saved as [_PriceStatus_](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/pyth/src/pc.rs#L14-L19), the token can be swapped only if status is equal to 1
-* **confidence** - confidence of price in USD
+- **feed_address** - address of Pyth oracle account
+- **price** - price multiplied by 10 to the power of _PRICE OFFSET_ equaling 8
+- **last_update** - the slot of the last price update
+- **twap** - stands for [Time-weighted average price](https://en.wikipedia.org/wiki/Time-weighted_average_price)
+- **twac** - stands for Time-weighted average confidence
+- **status** - status taken from oracle and saved as [_PriceStatus_](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/pyth/src/pc.rs#L14-L19). Tokens can be swapped only if status is equal to 1
+- **confidence** - confidence of price in USD
 
-Every collateral and synthetic asset has to have a corresponding _Asset_ but they can share it. For example, BTC and xBTC will have common _Asset_ as they share a price.
-
+Every collateral and synthetic asset has to have a corresponding _Asset_ but they can share it. For example, BTC and xBTC will have common _Asset_ as they share the same price.
 
 ### Collateral asset
 
-Data of that can be used as a [collateral](/docs/technical/collateral) are stored inside a _Collateral_ structure:
+Data representing [collateral](/docs/technical/collateral) is stored inside a _Collateral_ structure:
 
     pub struct Collateral {
-        // 148
-        pub asset_index: u8,            // 1
-        pub collateral_address: Pubkey, // 32
-        pub reserve_address: Pubkey,    // 32
-        pub liquidation_fund: Pubkey,   // 32
-        pub reserve_balance: Decimal,   // 17
-        pub collateral_ratio: Decimal,  // 17
-        pub max_collateral: Decimal,    // 17
+        pub asset_index: u8,
+        pub collateral_address: Pubkey,
+        pub reserve_address: Pubkey,
+        pub liquidation_fund: Pubkey,
+        pub reserve_balance: Decimal,
+        pub collateral_ratio: Decimal,
+        pub max_collateral: Decimal,
     }
 
-  * **asset_index** - index of the corresponding [asset](#asset) used to get price
-  * **collateral_address** - address of token used as a collateral
-  * **reserve_address** - address of account where exchange keeps deposited tokens
-  * **liquidation_fund** - address of account where [liquidation](/docs/technical/collateral#liquidation) penalty is kept until it is withdrawn
-  * **reserve_balance** - the amount of tokens in the reserve account
-  * **collateral_ratio** - coefficient of collateral to debt user can have
-  * **max_collateral** - maximum amount that can be used as a collateral
-
+- **asset_index** - index of the corresponding [asset](#asset) used to get its price
+- **collateral_address** - address of a token used as collateral
+- **reserve_address** - address of an account, where the exchange keeps deposited tokens
+- **liquidation_fund** - address of an account, where [liquidation](/docs/technical/collateral#liquidation) penalty is kept until it is withdrawn
+- **reserve_balance** - amount of tokens in the reserve account
+- **collateral_ratio** - ratio of collateral to debt user can have
+- **max_collateral** - maximum amount that can be used as collateral
 
 ### Synthetic asset
 
 Synthetic assets created by Synthetify keep their data inside this structure:
 
     pub struct Synthetic {
-        // 109
-        pub asset_index: u8,          // 1
-        pub asset_address: Pubkey,    // 32
-        pub supply: Decimal,          // 17
-        pub max_supply: Decimal,      // 17
-        pub borrowed_supply: Decimal, // 17
-        pub swapline_supply: Decimal, // 17
-        pub settlement_slot: u64,     // 8
+        pub asset_index: u8,
+        pub asset_address: Pubkey,
+        pub supply: Decimal,
+        pub max_supply: Decimal,
+        pub borrowed_supply: Decimal,
+        pub swapline_supply: Decimal,
+    p   ub settlement_slot: u64,
     }
 
-* **asset_index** - index of the corresponding [asset](#asset)
-* **asset_address** - address of the synthetic token
-* **supply** - the total amount of minted tokens
-* **max_supply** - limit of tokens that can be minted. It exists to increase the safety of the platform (can be changed by the admin)
-* **borrowed_supply** - the amount of tokens minted using [vaults](/docs/technical/vaults)
-* **swapline_supply** - the amount of tokens swapped using the [swapline](/docs/technical/swapline)
-* **settlement_slot** - slot when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
-
+- **asset_index** - index of the corresponding [asset](#asset)
+- **asset_address** - address of the synthetic token
+- **supply** - total amount of minted tokens
+- **max_supply** - limit of tokens that can be minted. It exists to increase safety of the platform (can be changed by the admin)
+- **borrowed_supply** - amount of tokens minted using [vaults](/docs/technical/vaults)
+- **swapline_supply** - amount of tokens swapped using the [swapline](/docs/technical/swapline)
+- **settlement_slot** - slot, when an asset will have a [settlement](/docs/technical/minting#settlement) (never by default)
 
 ### _AssetsList_ inside SDK
 
-Assets List can be fetched by using: 
+AssetsList can be fetched by using:
 
     await exchange.getAssetsList(assetsList)
 
 Where the _exchange_ is an instance of _Exchange_ singleton. The argument of the _assetsList_ is PublicKey, which can be found in the state. The whole structure is similar, but arrays are trimmed to the correct length.
 
-
 ## Decimal
-In many places in synthetify code, there is a need for numbers with decimal places. Tokens have them, percentages can be saved as them as well as the interest rate. To avoid floating point numbers _Decimal_ was created.
+
+In many places in the Synthetify code, there is a need for numbers with decimal point, ie. fractions of tokens, the interest rate percentage. To avoid floating point numbers _Decimal_ was created.
 
 ### Implementation
 
@@ -178,12 +168,11 @@ In many places in synthetify code, there is a need for numbers with decimal plac
         pub scale: u8,
     }
 
-  Here _val_ is the value of the decimal. _Scale_ can be interpreted as a position of a dot in decimal notation. _Val_ can be divided by 10 to the power of _scale_ to get a regular number. 
+Here _val_ is the value of the decimal. _Scale_ can be interpreted as a position of the point in decimal notation. _Val_ can be divided by 10 to the power of _scale_ to get a regular number.
 
-  To make _Decimal_ easier to use it also contains a few methods [defined here](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/decimal.rs). Simple math methods like _add_ and _div_ with their rounding up counterparts where they were needed like *mul_up*. It also contains few factory methods like *from_price* and *from_percent*.
+To make _Decimal_ easier to use it also contains a few methods [defined here](https://github.com/Synthetify/synthetify-protocol/blob/master/programs/exchange/src/decimal.rs), ie. simple math methods like _add_ and _div_ and their rounding up counterparts like _mul_up_. It also contains few factory methods like _from_price_ and _from_percent_.
 
-
-Inside SDK _Decimal_ is stored as a simple object of the following interface:
+Inside SDK, _Decimal_ is stored as a simple object of the following interface:
 
     interface Decimal {
         val: BN
