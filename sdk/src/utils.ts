@@ -10,6 +10,7 @@ import {
   Keypair
 } from '@solana/web3.js'
 import { Asset, AssetsList, Collateral, Decimal, ExchangeAccount } from './exchange'
+import { Network } from './network'
 
 export const DEFAULT_PUBLIC_KEY = new PublicKey(0)
 export const ORACLE_OFFSET = 8
@@ -245,12 +246,20 @@ export const toEffectiveFee = (fee: Decimal, userCollateralBalance: BN) => {
 export const sleep = async (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
-export const SWAPLINE_MAP = [
-  {
-    synthetic: new PublicKey('6w9cNSAchLU4FSupCc2hMT3fkppABrZZPx6AZzojvzwe'),
-    collateral: new PublicKey('GeXDUSYeCVn5opXJ3pFzQguiHjqSXaEifSoEzHVTu1rW')
-  }
-]
+export const SWAPLINE_MAP: {
+  [key in Network]: Array<{ synthetic: PublicKey; collateral: PublicKey }>
+} = {
+  [Network.DEV]: [
+    {
+      synthetic: new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF'),
+      collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
+    }
+  ],
+  [Network.LOCAL]: [],
+  [Network.MAIN]: [],
+  [Network.TEST]: []
+}
+
 export const addressToAssetSymbol: { [key: string]: string } = {
   //Local
   '8V8JuSxR4SCSbqp2f74w7Kiv93FBbqfmPQGSJ1x2MPYi': 'xUSD',
@@ -267,7 +276,7 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   '6QARYJsmN7EfnUFPn8X1qFANhT2CssLU6DyTtCkE3JNX': 'xETH',
   So11111111111111111111111111111111111111112: 'WSOL',
   oBNJxzeq1bkmSyULuqQoQtyHQMh8st8yfm4e7WqoJky: 'stSOL',
-  GeXDUSYeCVn5opXJ3pFzQguiHjqSXaEifSoEzHVTu1rW: 'USDC',
+  HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG: 'USDC',
   //Testnet
   '2XyMRw6MHMFVu1VBLGYKJa8GSjM5h7AvNkynu2wPpnfH': 'xUSD',
   Cf21AhB2VnwNTJk7Wf6jRHEyjXriVyprEHVp6bQzzVXX: 'SNY',
@@ -282,5 +291,6 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D: 'xBTC',
   BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
   Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
-  '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH'
+  '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH',
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'USDC'
 }
