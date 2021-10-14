@@ -4,7 +4,7 @@ title: Connect to wallet
 slug: /connect-to-wallet
 ---
 
-Connection to wallet allows users to use platform functionalities.
+Connecting to a wallet allows users to use platform's functionalities.
 
 ### Wallets
 
@@ -41,6 +41,6 @@ If you followed the steps before properly, you should see your wallet address in
 
 ### Disconnection
 
-To disconnect click the downward arrow on the right side of your wallet address to expand options and choose Disconnect.
+To disconnect click the downward arrow on the right side of your wallet address to expand options list and choose Disconnect.
 
 ![Disconnection](/img/docs/disconnection.png)
