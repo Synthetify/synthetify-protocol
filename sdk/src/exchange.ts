@@ -394,6 +394,17 @@ export class Exchange {
     const swaplineData = (await this.program.account.swapline.fetch(swapline)) as Swapline
     return swaplineData
   }
+  public async getSwaplineAddress(synthetic: PublicKey, collateral: PublicKey) {
+    const [swaplineAddress, bump] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from(utils.bytes.utf8.encode('swaplinev1')),
+        synthetic.toBuffer(),
+        collateral.toBuffer()
+      ],
+      this.program.programId
+    )
+    return { swaplineAddress, bump }
+  }
   public async createExchangeAccountInstruction(owner: PublicKey) {
     const [account, bump] = await PublicKey.findProgramAddress(
       [Buffer.from(utils.bytes.utf8.encode('accountv1')), owner.toBuffer()],
@@ -1083,6 +1094,18 @@ export class Exchange {
       signers: [exchangeAdmin]
     })
   }
+  public async setAssetMaxSupplyInstruction({
+    assetAddress,
+    newMaxSupply
+  }: SetAssetMaxSupplyInstruction) {
+    return await this.program.instruction.setMaxSupply(assetAddress, newMaxSupply, {
+      accounts: {
+        state: this.stateAddress,
+        signer: this.state.admin,
+        assetsList: this.state.assetsList
+      }
+    })
+  }
   public async addNewAssetInstruction({ assetsList, assetFeedAddress }: AddNewAssetInstruction) {
     return (await this.program.instruction.addNewAsset(assetFeedAddress, {
       accounts: {
@@ -1713,6 +1736,10 @@ export interface SetAssetMaxSupply {
   assetAddress: PublicKey
   assetsList: PublicKey
   exchangeAdmin: Account
+  newMaxSupply: Decimal
+}
+export interface SetAssetMaxSupplyInstruction {
+  assetAddress: PublicKey
   newMaxSupply: Decimal
 }
 export interface AddNewAssetInstruction {
