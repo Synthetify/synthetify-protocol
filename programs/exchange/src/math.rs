@@ -1,3 +1,4 @@
+use std::ops::Neg;
 use std::{cell::RefMut, convert::TryInto};
 
 use crate::decimal::{
@@ -29,14 +30,37 @@ pub fn calculate_debt(
             true => asset.twap,
             _ => asset.price,
         };
-        let debt_supply = synthetic
-            .supply
-            .sub(synthetic.swapline_supply)
+        require!(
+            synthetic.supply.scale == synthetic.swapline_supply.scale,
+            DifferentScale
+        );
+        require!(
+            synthetic.supply.scale == synthetic.borrowed_supply.scale,
+            DifferentScale
+        );
+        // Cast to i128 since supply might be negative
+        let synthetic_supply: i128 = synthetic.supply.val.try_into().unwrap();
+        let debt_supply = synthetic_supply
+            .checked_sub(synthetic.swapline_supply.val.try_into().unwrap())
             .unwrap()
-            .sub(synthetic.borrowed_supply)
+            .checked_sub(synthetic.borrowed_supply.val.try_into().unwrap())
             .unwrap();
-        // rounding up to be sure that debt is not less than minted tokens
-        debt = debt.add(price.mul_up(debt_supply).to_usd_up()).unwrap();
+        debt = match debt_supply > 0 {
+            true => {
+                let delta_supply =
+                    Decimal::new(debt_supply.try_into().unwrap(), synthetic.supply.scale);
+                // rounding up to be sure that debt is not less than minted tokens
+                debt.add(price.mul_up(delta_supply).to_usd_up()).unwrap()
+            }
+            false => {
+                let delta_supply = Decimal::new(
+                    debt_supply.neg().try_into().unwrap(),
+                    synthetic.supply.scale,
+                );
+                // rounding down to be sure that debt is not less than minted tokens
+                debt.sub(price.mul_up(delta_supply).to_usd()).unwrap()
+            }
+        };
     }
     Ok(debt)
 }
@@ -426,6 +450,109 @@ mod tests {
         }
     }
     #[test]
+    fn test_calculate_debt_negative_supply() {
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            // price debt 10000 USD
+            // twap debt 11000 USD
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(10).to_price(),
+                twap: Decimal::from_integer(11).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(1000).to_scale(6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
+                ..Default::default()
+            });
+            // price debt -2000 USD
+            // twap debt -2000 USD
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(2).to_price(),
+                twap: Decimal::from_integer(2).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(0).to_scale(8),
+                swapline_supply: Decimal::from_integer(1000).to_scale(8),
+                borrowed_supply: Decimal::from_integer(0).to_scale(8),
+                asset_index: assets_list.head_assets - 1,
+                ..Default::default()
+            });
+
+            let assets_ref = RefCell::new(assets_list);
+            let assets_ref = assets_ref.borrow_mut();
+
+            let price_debt = calculate_debt(&assets_ref, slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref, slot, 100, true);
+            match price_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(8000).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(9000).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
+        {
+            let slot = 100;
+            let mut assets_list = AssetsList {
+                ..Default::default()
+            };
+            // price debt 10000 USD
+            // twap debt 11000 USD
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(10).to_price(),
+                twap: Decimal::from_integer(11).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(1000).to_scale(6),
+                swapline_supply: Decimal::from_integer(0).to_scale(6),
+                borrowed_supply: Decimal::from_integer(0).to_scale(6),
+                asset_index: assets_list.head_assets - 1,
+                ..Default::default()
+            });
+            // price debt -3000 USD
+            // twap debt -3000 USD
+            assets_list.append_asset(Asset {
+                price: Decimal::from_integer(3).to_price(),
+                twap: Decimal::from_integer(3).to_price(),
+                last_update: slot,
+                ..Default::default()
+            });
+            assets_list.append_synthetic(Synthetic {
+                supply: Decimal::from_integer(0).to_scale(4),
+                swapline_supply: Decimal::from_integer(0).to_scale(4),
+                borrowed_supply: Decimal::from_integer(1000).to_scale(4),
+                asset_index: assets_list.head_assets - 1,
+                ..Default::default()
+            });
+
+            let assets_ref = RefCell::new(assets_list);
+            let assets_ref = assets_ref.borrow_mut();
+
+            let price_debt = calculate_debt(&assets_ref, slot, 100, false);
+            let twap_debt = calculate_debt(&assets_ref, slot, 100, true);
+            match price_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(7000).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+            match twap_debt {
+                Ok(debt) => assert_eq!(debt, Decimal::from_integer(8000).to_usd()),
+                Err(_) => assert!(false, "Shouldn't check"),
+            }
+        }
+    }
+    #[test]
     fn test_calculate_debt() {
         {
             let slot = 100;
@@ -442,6 +569,7 @@ mod tests {
                 Err(_) => assert!(false, "Shouldn't check"),
             }
         }
+
         {
             let slot = 100;
             let mut assets_list = AssetsList {
@@ -1513,7 +1641,7 @@ mod tests {
         let actual = calculate_debt_interest_rate(debt_interest_rate);
         let expected = Decimal::new(1500000000000000, 18);
 
-        assert_eq!({actual.val}, {expected.val});
+        assert_eq!({ actual.val }, { expected.val });
         assert_eq!(actual.scale, expected.scale);
     }
 }
