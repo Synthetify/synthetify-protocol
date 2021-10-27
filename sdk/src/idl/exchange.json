@@ -3505,5 +3505,8 @@
       "name": "InvalidOracleProgram",
       "msg": "Invalid oracle program"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "HcyCw29qWC77CTnmJkwjnW1whbTppv4xh2SQQzjMin55"
+  }
 }
