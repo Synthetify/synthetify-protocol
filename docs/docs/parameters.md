@@ -23,9 +23,9 @@ slug: /Parameters
 - **_Health factor_** - ratio of mint limit to max debt
 - **_Debt interest rate_** - amount of interest rate charged on debt
 - **_Protocol fee_** - percentage of the fee going to the tax reserve
-- **_Liquidation buffer_** - number of blocks between exceeding max debt and liquidation
 - **_Penalty to liquidator_** - penalty on liquidation going to the user that is liquidating
 - **_Penalty to exchange_** - liquidation penalty going to liquidation fund
+- **_Liquidation buffer_** - number of slots between exceeding max debt and liquidation
 - **_Liquidation rate_** - maximum part of user's debt repaid on liquidation
 
 ### Collateral parameters
