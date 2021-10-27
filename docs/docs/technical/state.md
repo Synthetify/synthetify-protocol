@@ -48,16 +48,16 @@ Respectively, these fields are :
 - **fee** - percentage paid as a fee on swap
 - **swap_tax_ratio** - percentage of the fee going to the _tax reserve_
 - **swap_tax_reserve** - part of the total amount of charged tax. Can be withdrawn by admin
-- **liquidation_rate** - part of user's debt repaid on [liquidation](/docs/technical/collateral#liquidation)
+- **liquidation_rate** - maximum part of user's debt repaid on [liquidation](/docs/technical/collateral#liquidation)
 - **penalty_to_liquidator** - penalty on liquidation going to the user that is liquidating
 - **penalty_to_exchange** - liquidation penalty going to liquidation fund
-- **liquidation_buffer** - number of blocks between exceeding [max debt](/docs/glossary/max-debt) and liquidation
+- **liquidation_buffer** - number of slots between exceeding [max debt](/docs/glossary/max-debt) and liquidation
 - **debt_interest_rate** - amount of interest rate charged on debt (yearly percentage, charged minutely)
 - **accumulated_debt_interest** - total amount charged as interest
 - **last_debt_adjustment** - timestamp of the last charge of interest
 - **staking** - structure with all data needed for staking. Details are [here](/docs/technical/staking)
 - **exchange_authority** - pubkey belonging to the exchange, used to sign transactions
-- **bump** - used to [confirm the address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of state passed to a method
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 - **padding** - used as padding to reserve space up to 2kB for future use
 
 The state is initialized [here](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/exchange/src/lib.rs#L180-L239). It can be changed later using admin methods signed by the admin.
@@ -101,7 +101,7 @@ Synthetify uses [Pyth oracles](https://pyth.network/) to get accurate prices of 
 - **twap** - stands for [Time-weighted average price](https://en.wikipedia.org/wiki/Time-weighted_average_price)
 - **twac** - stands for Time-weighted average confidence
 - **status** - status taken from oracle and saved as [_PriceStatus_](https://github.com/Synthetify/synthetify-protocol/blob/8bd95bc1f4f31f8e774b2b02d1866abbe35404a5/programs/pyth/src/pc.rs#L14-L19). Tokens can be swapped only if status is equal to 1
-- **confidence** - confidence of price in USD
+- **confidence** - confidence interval representing asset's price uncertainty. The tighter the interval the lower possible price variation.
 
 Every collateral and synthetic asset has to have a corresponding _Asset_ but they can share it. For example, BTC and xBTC will have common _Asset_ as they share the same price.
 

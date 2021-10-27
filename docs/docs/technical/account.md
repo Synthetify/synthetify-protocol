@@ -28,7 +28,7 @@ The data structure is defined as:
 - **debt_shares** - number of user's debt shares. Used to calculate debt. More about it [here](/docs/technical/synthetics#debt)
 - **liquidation_deadline** - [slot](https://docs.solana.com/terminology#slot) when a user can be [liquidated](/docs/technical/collateral#liquidation)
 - **user_staking_data** - all data that are needed for [staking](/docs/technical/staking)
-- **bump** - used with the [generation of program addresses](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses)
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 - **head** - index pointing to the last used fields in collaterals array
 - **collaterals** - an array of [collaterals](/docs/technical/collateral) owned by account, having up to 32 different ones at the same time.
 
