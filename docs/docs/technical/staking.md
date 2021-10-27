@@ -89,5 +89,5 @@ User can withdraw its claimed rewards using [this](https://github.com/Synthetify
 - **owner** - the owner of the _exchange account_
 - **exchange_authority** - pubkey of the exchange program
 - **token_program** - address of Solana's [_Token Program_](https://spl.solana.com/token)
-- **user_token_account** - users account on
+- **user_token_account** - users account on SNY token
 - **staking_fund_account** - account, from which tokens will be transferred, the same as in [_Staking_](/docs/technical/staking#staking-structure) struct

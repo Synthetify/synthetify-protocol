@@ -41,6 +41,7 @@ If everything went smoothly, you can see that:
 - Staked value increased by the amount you deposited
 - On the right from the _Deposit_ button, there is a green tick and message _Successfully deposited_
 - On the bottom left of the site, you can see a green field _Collateral deposited successfully_ (not shown here)
+- In section _Deposit_ , click on the drop down list _SNY_. Amount of tokens decreased by those you deposited.
 
 ![Deposit-Confirmation](/img/docs/depositConfirmation.png)
 

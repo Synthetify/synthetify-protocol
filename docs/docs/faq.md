@@ -14,7 +14,7 @@ Synthetic token created on Synthetify exchange is an asset that strictly tracks 
 
 **3. Where can I buy SNY?**
 
-SNY is available on Raydium, Bonfida, FTX, Blockfolio, Dexlab, CCAI, and Kermit Finance.
+SNY is available on Gate.io, FTX, Raydium, Serum DEX, Orca, ZT and Hotbit.
 
 **5. What is the Synthetify Token distribution and vesting schedule?**
 
@@ -31,7 +31,7 @@ Synthetify is available 24/7. Trading and minting can be done at any time.
 
 **8. What wallets can I use?**
 
-There are four wallets available: Phantom, Sollet, Math Wallet and Solflare.
+There are four wallets available: Phantom, Sollet, Math Wallet, Solflare and Coin98.
 
 **9. Is it required to have SNY in order to use Synthetify?**
 

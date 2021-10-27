@@ -98,7 +98,7 @@ Discount is calculated [here](https://github.com/Synthetify/synthetify-protocol/
 500,000-1,000,000 => 12%  
 1,000,000-2,000,000 => 13%  
 2,000,000-5,000,000 => 14%  
-5,000,000-10,000,000 => 15%
+5,000,000+ => 15%
 
 ### Swap method
 
@@ -146,7 +146,7 @@ Data needed for settlement is stored in this structure:
         pub ratio: Decimal,
     }
 
-- **bump** - used to [confirm the address](https://docs.solana.com/developing/programming-model/calling-between-programs#hash-based-generated-program-addresses) of the state passed to a method
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 - **reserve_address** - account belonging to the exchange, where deposited collateral is kept
 - **token_in_address** - token, which was settled
 - **token_out_address** - token, in which settlement will be sent (equal to xUSD token)
