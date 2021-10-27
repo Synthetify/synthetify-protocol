@@ -36,7 +36,7 @@ Data describing a vault is stored inside a _Vault_ struct. Its address is genera
 - **debt_interest_rate** - yearly interest rate (charged minutely)
 - **collateral_ratio** - ratio of collateral to synthetic token that can be [borrowed](#borrow) using it
 - **liquidation_threshold** - ratio of debt to the value of collateral defining when an account can be [liquidated](#liquidation)
-- **liquidation_ratio** - percentage of user's collateral that can be liquidated at once
+- **liquidation_ratio** - maximum percentage of user's collateral that can be liquidated at once
 - **liquidation_penalty_liquidator** - percentage of additional collateral going to a liquidator
 - **liquidation_penalty_exchange** - percentage of liquidation that goes to liquidation fund as a penalty
 - **accumulated_interest** - interest rate of minted tokens. Can be withdrawn by admin
@@ -46,7 +46,7 @@ Data describing a vault is stored inside a _Vault_ struct. Its address is genera
 - **collateral_amount** - the amount of deposited collateral in reserve
 - **max_borrow** - limit of total synthetic that can be borrowed
 - **last_update** - timestamp since the last update of interest rate
-- **bump** - used to generate the address of an account
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 
 ## Vault entry
 
@@ -66,7 +66,7 @@ Vault entry is created for every user using a vault and it stores data for it.
 - **last_accumulated_interest_rate** - the value of _accumulated_interest_rate_ when it was last charged to the user
 - **synthetic_amount** - the amount of minted synthetic, is increased by interest rate
 - **collateral_amount** - the amount of deposited collateral token
-- **bump** - bump used as a seed
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 
 ### Creation of _Vault Entry_
 

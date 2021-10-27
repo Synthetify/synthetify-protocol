@@ -28,7 +28,7 @@ The Swapline is a more straightforward way to get synthetic tokens. It exists to
 - **limit** - limit of synthetic tokens that can be minted
 - **collateral_reserve** - account where collateral tokens are deposited (different from both debt pool and vault counterparts)
 - **halted** - swapline can be halted independently of rest of exchange (but halt of exchange affects it too)
-- **bump** - used to check the address of Swapline
+- **bump** - seed used to ensure the generated address doesn't collide with any other existing one
 
 ## Swapping tokens
 
