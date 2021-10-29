@@ -1736,7 +1736,14 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.lte(swapline.limit)?, SwaplineLimit);
+        require!(
+            swapline
+                .balance
+                .sub(swapline.accumulated_fee)
+                .unwrap()
+                .lte(swapline.limit)?,
+            SwaplineLimit
+        );
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
