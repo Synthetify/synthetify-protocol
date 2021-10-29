@@ -193,7 +193,7 @@ describe('swap-line', () => {
       assert.ok(swapLine.synthetic.equals(syntheticToken.publicKey))
       assert.ok(swapLine.collateralReserve.equals(collateralReserve))
       assert.ok(swapLine.halted === false)
-      assert.ok(eqDecimals(swapLine.fee, percentToDecimal(1)))
+      assert.ok(eqDecimals(swapLine.fee, percentToDecimal(0.2)))
       assert.ok(eqDecimals(swapLine.balance, toDecimal(new BN(0), collateral.reserveBalance.scale)))
       assert.ok(
         eqDecimals(swapLine.accumulatedFee, toDecimal(new BN(0), collateral.reserveBalance.scale))
