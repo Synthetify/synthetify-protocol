@@ -591,6 +591,19 @@ pub mod exchange {
         // Mint output token
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::mint_to(cpi_ctx_mint, amount_for.into())?;
+        // Risk check to prevent leveraged debt
+        require!(
+            synthetics[0]
+                .supply
+                .gte(
+                    synthetics[0]
+                        .borrowed_supply
+                        .add(synthetics[0].swapline_supply)
+                        .unwrap()
+                )
+                .unwrap(),
+            SwapUnavailable
+        );
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state))]
