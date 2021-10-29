@@ -1645,7 +1645,7 @@ pub mod exchange {
         };
         swapline.collateral = collateral.collateral_address;
         swapline.collateral_reserve = *collateral_reserve.to_account_info().key;
-        swapline.fee = Decimal::from_percent(1);
+        swapline.fee = Decimal::from_unified_percent(200);
         swapline.accumulated_fee = Decimal {
             val: 0,
             scale: collateral.reserve_balance.scale,
