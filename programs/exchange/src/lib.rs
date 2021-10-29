@@ -1674,7 +1674,7 @@ pub mod exchange {
         };
 
         swapline.accumulated_fee = swapline.accumulated_fee.sub(amount).unwrap();
-
+        swapline.balance = swapline.balance.sub(amount).unwrap();
         // Mint synthetic to user
         let cpi_ctx_transfer: CpiContext<Transfer> =
             CpiContext::from(&*ctx.accounts).with_signer(signer);
