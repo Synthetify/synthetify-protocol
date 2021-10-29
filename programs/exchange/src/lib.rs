@@ -1799,7 +1799,7 @@ pub mod exchange {
 
         synthetic.set_supply_safely(new_supply_synthetic)?;
 
-        synthetic.swapline_supply = synthetic.swapline_supply.sub(amount_out).unwrap();
+        synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
 
         swapline.balance = swapline.balance.sub(amount_out).unwrap();
 
