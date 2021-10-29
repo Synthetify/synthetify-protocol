@@ -1791,8 +1791,6 @@ pub mod exchange {
             val: amount.into(),
             scale: synthetic.supply.scale,
         };
-        // fee is removed from synthetic supply
-        // this causes pro rata distribution to stakers
         let fee = amount.mul(swapline.fee);
         let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
         let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
@@ -1800,8 +1798,11 @@ pub mod exchange {
         synthetic.set_supply_safely(new_supply_synthetic)?;
 
         synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
-
         swapline.balance = swapline.balance.sub(amount_out).unwrap();
+        swapline.accumulated_fee = swapline
+            .accumulated_fee
+            .add(fee.to_scale(swapline.accumulated_fee.scale))
+            .unwrap();
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
