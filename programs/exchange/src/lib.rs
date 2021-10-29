@@ -1690,6 +1690,7 @@ pub mod exchange {
         swapline.halted = halted;
         Ok(())
     }
+    #[access_control(halted(&ctx.accounts.state) swapline_halted(&ctx.accounts.swapline))]
     pub fn native_to_synthetic(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: NATIVE TO SYNTHETIC");
@@ -1762,6 +1763,7 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(halted(&ctx.accounts.state) swapline_halted(&ctx.accounts.swapline))]
     pub fn synthetic_to_native(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: SYNTHETIC TO NATIVE");
@@ -2643,6 +2645,13 @@ fn vault_halted<'info>(vault_loader: &Loader<Vault>) -> Result<()> {
     require!(!vault.halted, Halted);
     Ok(())
 }
+// Check if swapline is halted
+fn swapline_halted<'info>(swapline_loader: &Loader<Swapline>) -> Result<()> {
+    let swapline = swapline_loader.load()?;
+    require!(!swapline.halted, Halted);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
