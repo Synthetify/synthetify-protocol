@@ -1798,7 +1798,9 @@ pub mod exchange {
         let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
 
         synthetic.set_supply_safely(new_supply_synthetic)?;
-        synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
+
+        synthetic.swapline_supply = synthetic.swapline_supply.sub(amount_out).unwrap();
+
         swapline.balance = swapline.balance.sub(amount_out).unwrap();
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
