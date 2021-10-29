@@ -748,17 +748,28 @@ pub mod exchange {
         if max_debt.gt(user_debt)? {
             return Err(ErrorCode::InvalidLiquidation.into());
         }
+
         // Cannot payback more than liquidation_rate of user debt
-        let max_repay = user_debt.mul(state.liquidation_rate).to_usd().to_u64();
+        // If user debt is below 1 USD we can liquidate entire debt
+
+        let max_repay = match user_debt.lte(Decimal::from_integer(1).to_usd())? {
+            true => user_debt.to_usd().to_u64(),
+            false => user_debt.mul(state.liquidation_rate).to_usd().to_u64(),
+        };
 
         let amount: u64 = match amount {
             u64::MAX => max_repay,
             _ => amount,
         };
+        // Amount to repay must be less or equal max_repay
+        require!(amount.le(&max_repay), InvalidLiquidation);
 
-        if amount.gt(&max_repay) {
-            return Err(ErrorCode::InvalidLiquidation.into());
-        }
+        // Fail if liquidator wants to liquidate more than allowed number
+        require!(
+            amount.le(&max_repay) || user_debt.lte(Decimal::from_integer(1).to_usd())?,
+            InvalidLiquidation
+        );
+
         let (assets, collaterals, _) = assets_list.split_borrow();
 
         // finding collateral also validate reserve_account.mint, liquidation_fund.mint, liquidator_collateral_account.mint
@@ -2182,15 +2193,32 @@ pub mod exchange {
             amount_liquidation_limit.lt(vault_entry.synthetic_amount)?,
             InvalidLiquidation
         );
+
         // Amount of synthetic to repay
         // U64::MAX mean debt * liquidation_ratio (percent of position able to liquidate in single liquidation)
+        // If user debt is below 1 USD we can liquidate entire debt
+        let amount_in_usd =
+            calculate_value_in_usd(synthetic_asset.price, vault_entry.synthetic_amount);
         let liquidation_amount = match amount {
-            u64::MAX => vault_entry.synthetic_amount.mul(vault.liquidation_ratio),
+            u64::MAX => {
+                if amount_in_usd.lte(Decimal::from_integer(1).to_usd())? {
+                    vault_entry.synthetic_amount
+                } else {
+                    vault_entry.synthetic_amount.mul(vault.liquidation_ratio)
+                }
+            }
             _ => Decimal::new(amount.into(), vault_entry.synthetic_amount.scale),
         };
         // Fail if liquidator wants to liquidate more than allowed number
+
         require!(
-            liquidation_amount.lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))?,
+            liquidation_amount.lte(vault_entry.synthetic_amount)?,
+            InvalidLiquidation
+        );
+        // Fail if liquidator wants to liquidate more than allowed number
+        require!(
+            liquidation_amount.lte(vault_entry.synthetic_amount.mul(vault.liquidation_ratio))?
+                || amount_in_usd.lte(Decimal::from_integer(1).to_usd())?,
             InvalidLiquidation
         );
         // Amount seized in usd

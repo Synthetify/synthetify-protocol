@@ -130,7 +130,12 @@ export const calculateLiquidation = (
   if (maxDebt.gt(debtValue)) {
     throw new Error('Account is safe')
   }
-  const maxAmount = debtValue.mul(liquidationRate.val).divn(10 ** liquidationRate.scale)
+  let maxAmount: BN
+  if (debtValue.lte(new BN(1 * 10 ** XUSD_DECIMALS))) {
+    maxAmount = debtValue
+  } else {
+    maxAmount = debtValue.mul(liquidationRate.val).divn(10 ** liquidationRate.scale)
+  }
   const seizedCollateralInUsd = divUp(
     maxAmount.mul(penaltyToExchange.val.add(penaltyToLiquidator.val)),
     new BN(10 ** penaltyToExchange.scale)
@@ -253,6 +258,10 @@ export const SWAPLINE_MAP: {
     {
       synthetic: new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF'),
       collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
+    },
+    {
+      synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
+      collateral: new PublicKey('So11111111111111111111111111111111111111112')
     }
   ],
   [Network.LOCAL]: [],

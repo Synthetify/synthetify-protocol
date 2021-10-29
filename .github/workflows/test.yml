@@ -22,6 +22,7 @@ jobs:
             'npm run test:interest-debt',
             'npm run test:isolated-burn',
             'npm run test:liquidation',
+            'npm run test:liquidation-small',
             'npm run test:admin',
             'npm run test:admin-withdraw',
             'npm run test:staking',
@@ -32,6 +33,7 @@ jobs:
             'npm run test:swapline',
             'npm run test:vaults',
             'npm run test:vaultsliquidation',
+            'npm run test:vaultsliquidation-small',
             'npm run test:vaults-interest',
             'npm run test:admin-vaults',
             'cargo test'
