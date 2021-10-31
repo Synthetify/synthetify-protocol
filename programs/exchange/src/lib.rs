@@ -591,6 +591,19 @@ pub mod exchange {
         // Mint output token
         let cpi_ctx_mint: CpiContext<MintTo> = CpiContext::from(&*ctx.accounts).with_signer(signer);
         token::mint_to(cpi_ctx_mint, amount_for.into())?;
+        // Risk check to prevent leveraged debt
+        require!(
+            synthetics[0]
+                .supply
+                .gte(
+                    synthetics[0]
+                        .borrowed_supply
+                        .add(synthetics[0].swapline_supply)
+                        .unwrap()
+                )
+                .unwrap(),
+            SwapUnavailable
+        );
         Ok(())
     }
     #[access_control(halted(&ctx.accounts.state))]
@@ -1632,7 +1645,7 @@ pub mod exchange {
         };
         swapline.collateral = collateral.collateral_address;
         swapline.collateral_reserve = *collateral_reserve.to_account_info().key;
-        swapline.fee = Decimal::from_percent(1);
+        swapline.fee = Decimal::from_unified_percent(200);
         swapline.accumulated_fee = Decimal {
             val: 0,
             scale: collateral.reserve_balance.scale,
@@ -1661,7 +1674,7 @@ pub mod exchange {
         };
 
         swapline.accumulated_fee = swapline.accumulated_fee.sub(amount).unwrap();
-
+        swapline.balance = swapline.balance.sub(amount).unwrap();
         // Mint synthetic to user
         let cpi_ctx_transfer: CpiContext<Transfer> =
             CpiContext::from(&*ctx.accounts).with_signer(signer);
@@ -1677,14 +1690,13 @@ pub mod exchange {
         swapline.halted = halted;
         Ok(())
     }
+    #[access_control(halted(&ctx.accounts.state) swapline_halted(&ctx.accounts.swapline))]
     pub fn native_to_synthetic(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: NATIVE TO SYNTHETIC");
 
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
-
-        require!(!swapline.halted, Halted);
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
@@ -1723,7 +1735,14 @@ pub mod exchange {
 
         swapline.accumulated_fee = swapline.accumulated_fee.add(fee).unwrap();
         swapline.balance = swapline.balance.add(amount).unwrap();
-        require!(swapline.balance.lte(swapline.limit)?, SwaplineLimit);
+        require!(
+            swapline
+                .balance
+                .sub(swapline.accumulated_fee)
+                .unwrap()
+                .lte(swapline.limit)?,
+            SwaplineLimit
+        );
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -1742,14 +1761,13 @@ pub mod exchange {
 
         Ok(())
     }
+    #[access_control(halted(&ctx.accounts.state) swapline_halted(&ctx.accounts.swapline))]
     pub fn synthetic_to_native(ctx: Context<UseSwapLine>, amount: u64) -> Result<()> {
         // Swaps are only allowed on 1:1 assets
         msg!("Synthetify: SYNTHETIC TO NATIVE");
 
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
-
-        require!(!swapline.halted, Halted);
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
@@ -1778,15 +1796,28 @@ pub mod exchange {
             val: amount.into(),
             scale: synthetic.supply.scale,
         };
-        // fee is removed from synthetic supply
-        // this causes pro rata distribution to stakers
         let fee = amount.mul(swapline.fee);
         let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
-        let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
 
+        require!(
+            synthetic.swapline_supply.gte(amount)?
+                && swapline
+                    .balance
+                    .sub(swapline.accumulated_fee)
+                    .unwrap()
+                    .gte(amount_out)?,
+            SwaplineLimit,
+        );
+
+        let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
         synthetic.set_supply_safely(new_supply_synthetic)?;
+
         synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
         swapline.balance = swapline.balance.sub(amount_out).unwrap();
+        swapline.accumulated_fee = swapline
+            .accumulated_fee
+            .add(fee.to_scale(swapline.accumulated_fee.scale))
+            .unwrap();
 
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
@@ -2620,6 +2651,13 @@ fn vault_halted<'info>(vault_loader: &Loader<Vault>) -> Result<()> {
     require!(!vault.halted, Halted);
     Ok(())
 }
+// Check if swapline is halted
+fn swapline_halted<'info>(swapline_loader: &Loader<Swapline>) -> Result<()> {
+    let swapline = swapline_loader.load()?;
+    require!(!swapline.halted, Halted);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

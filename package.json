@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test:full": "npm run test:multicollateral && npm run test:exchange && npm run test:interest-debt && npm run test:isolated-burn && npm run test:liquidation && npm run test:admin && npm run test:admin-withdraw && npm run test:staking && npm run test:staking-multiuser && npm run test:multi && npm run test:settlement && npm run test:swapline && npm run test:vaults && npm run test:admin-vaults && npm run test:vaultsliquidation && npm run test:vaults-interest",
+    "test:full": "npm run test:multicollateral && npm run test:exchange && npm run test:interest-debt && npm run test:isolated-burn && npm run test:liquidation && npm run test:admin && npm run test:admin-withdraw && npm run test:staking && npm run test:staking-multiuser && npm run test:multi && npm run test:settlement && npm run test:swapline && npm run test:swapline-decimal && npm run test:vaults && npm run test:admin-vaults && npm run test:vaultsliquidation && npm run test:vaults-interest",
     "test:exchange": "anchor test --skip-build tests/exchange.spec.ts",
     "test:interest-debt": "anchor test --skip-build tests/interest-debt.spec.ts",
     "test:isolated-burn": " anchor test --skip-build tests/isolated-burn.spec.ts",
@@ -17,6 +17,7 @@
     "test:multicollateral": "anchor test --skip-build tests/multicollateral.spec.ts",
     "test:settlement": "anchor test --skip-build tests/settlement.spec.ts",
     "test:swapline": "anchor test --skip-build tests/swap-line.spec.ts",
+    "test:swapline-decimal": "anchor test --skip-build tests/swapline-decimal.spec.ts",
     "test:vaults": "anchor test --skip-build tests/vaults.spec.ts",
     "test:vaultsliquidation": "anchor test --skip-build tests/vaults-liquidation.spec.ts",
     "test:vaultsliquidation-small": "anchor test --skip-build tests/vaults-liquidation-small.spec.ts",

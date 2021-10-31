@@ -25,8 +25,9 @@ import {
   percentToDecimal,
   toDecimal
 } from '@synthetify/sdk/lib/utils'
+import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
 
-describe('swap-line', () => {
+describe('swap-line different decimal', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -46,9 +47,6 @@ describe('swap-line', () => {
   let snyLiquidationFund: PublicKey
   let CollateralTokenMinter: Account = wallet
   let nonce: number
-
-  const amountPerRound = toDecimal(new BN(100), 6)
-  const stakingRoundLength = 20
 
   let initialCollateralPrice = 2
 
@@ -129,17 +127,17 @@ describe('swap-line', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 8
+        decimals: 9
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
       const { feed, token } = await createCollateralToken({
-        collateralRatio: 50,
+        collateralRatio: 30,
         connection,
-        decimals: 6,
+        decimals: 7,
         exchange,
         exchangeAuthority,
         oracleProgram,
-        price: 2,
+        price: 211,
         wallet
       })
       collateralToken = token
@@ -211,17 +209,17 @@ describe('swap-line', () => {
         connection,
         payer: wallet,
         mintAuthority: exchangeAuthority,
-        decimals: 8
+        decimals: 9
       })
       const newAssetLimit = new BN(10).pow(new BN(18))
       const { feed, token } = await createCollateralToken({
-        collateralRatio: 50,
+        collateralRatio: 30,
         connection,
-        decimals: 6,
+        decimals: 7,
         exchange,
         exchangeAuthority,
         oracleProgram,
-        price: 2,
+        price: 211,
         wallet
       })
       collateralToken = token
@@ -250,6 +248,7 @@ describe('swap-line', () => {
       const userSyntheticAccount = await syntheticToken.createAccount(ownerAccount.publicKey)
       await collateralToken.mintTo(userCollateralAccount, wallet, [], amountToSwap)
       const state = await exchange.getState()
+
       const ix = await exchange.nativeToSynthetic({
         collateral: collateralToken.publicKey,
         synthetic: syntheticToken.publicKey,
@@ -258,7 +257,7 @@ describe('swap-line', () => {
         userCollateralAccount,
         userSyntheticAccount
       })
-      const approveIx = await Token.createApproveInstruction(
+      const approveIx = Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         userCollateralAccount,
         exchange.exchangeAuthority,
@@ -274,27 +273,23 @@ describe('swap-line', () => {
       const swapLineAfterNativeSwap = await exchange.getSwapline(swapLinePubkey)
       const assetsListAfterNativeSwap = await exchange.getAssetsList(state.assetsList)
 
-      assert.ok(
-        await (await collateralToken.getAccountInfo(userCollateralAccount)).amount.eq(new BN(0))
-      )
+      assert.ok((await collateralToken.getAccountInfo(userCollateralAccount)).amount.eq(new BN(0)))
 
-      const { amountOut, fee } = await getSwapLineAmountOut({
-        amountIn: new BN(amountToSwap),
-        fee: swapLineAfterNativeSwap.fee,
-        inDecimals: (await collateralToken.getMintInfo()).decimals,
-        outDecimals: (await syntheticToken.getMintInfo()).decimals
-      })
+      const amountOut = new BN('99800000000') // 10^(9+outDecimals-inDecimals) * 99,8%
+      const fee = new BN('2000000') // 10^9 * 0,2%
+
       const mintedAmount = (await syntheticToken.getAccountInfo(userSyntheticAccount)).amount
       const reserveAmountAfterNativeSwap = (
         await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)
       ).amount
       // assets token transfer
-      assert.ok(almostEqual(mintedAmount, amountOut))
-      assert.ok(almostEqual(reserveAmountAfterNativeSwap, new BN(amountToSwap)))
-      assert.ok(almostEqual(swapLineAfterNativeSwap.balance.val, new BN(amountToSwap)))
+      assert.ok(new BN(mintedAmount).eq(amountOut))
+      assert.ok(new BN(reserveAmountAfterNativeSwap).eq(new BN(amountToSwap)))
+      assert.ok(swapLineAfterNativeSwap.balance.val.eq(new BN(amountToSwap)))
 
       // assets fee increase
-      assert.ok(almostEqual(swapLineAfterNativeSwap.accumulatedFee.val, fee))
+      assert.ok(swapLineAfterNativeSwap.accumulatedFee.val.eq(fee))
+
       const syntheticAfterNativeSwap = assetsListAfterNativeSwap.synthetics.find((synth) =>
         synth.assetAddress.equals(syntheticToken.publicKey)
       )
@@ -304,7 +299,6 @@ describe('swap-line', () => {
       if (syntheticBeforeNativeSwap === undefined || syntheticAfterNativeSwap === undefined) {
         throw new Error('Synthetic token not found')
       }
-
       // check synthetic supply
       assert.ok(
         syntheticAfterNativeSwap.swaplineSupply.val.eq(
@@ -314,13 +308,10 @@ describe('swap-line', () => {
       assert.ok(
         syntheticAfterNativeSwap.supply.val.eq(syntheticBeforeNativeSwap.supply.val.add(amountOut))
       )
-      // debt should not change
       assert.ok(
-        almostEqual(
-          calculateDebt(assetsListBeforeNativeSwap),
-          calculateDebt(assetsListAfterNativeSwap)
-        )
+        calculateDebt(assetsListBeforeNativeSwap).eq(calculateDebt(assetsListAfterNativeSwap))
       )
+
       // Try swap over limit
       assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -336,7 +327,7 @@ describe('swap-line', () => {
         userCollateralAccount,
         userSyntheticAccount
       })
-      const syntheticApproveIx = await Token.createApproveInstruction(
+      const syntheticApproveIx = Token.createApproveInstruction(
         TOKEN_PROGRAM_ID,
         userSyntheticAccount,
         exchange.exchangeAuthority,
@@ -349,33 +340,35 @@ describe('swap-line', () => {
         [ownerAccount],
         connection
       )
-      const { amountOut: nativeAmountOut, fee: nativeFee } = await getSwapLineAmountOut({
-        amountIn: amountOut,
-        fee: swapLineAfterNativeSwap.fee,
-        inDecimals: (await syntheticToken.getMintInfo()).decimals,
-        outDecimals: (await collateralToken.getMintInfo()).decimals
-      })
+      const nativeAmountOut = new BN('996004000') // 998 * 10^6 * 99,8% = 996004 * 10^3
+      const nativeFee = new BN('199600000') // 998 * 10^8 * 0,2% = 1996 * 10^5
+
       // assert synthetic token transfer
       assert.ok(
-        almostEqual((await syntheticToken.getAccountInfo(userSyntheticAccount)).amount, new BN(0))
+        new BN((await syntheticToken.getAccountInfo(userSyntheticAccount)).amount).eq(new BN(0))
       )
+
       // assert native token transfer
       assert.ok(
-        almostEqual(
-          (await collateralToken.getAccountInfo(userCollateralAccount)).amount,
-          nativeAmountOut
+        nativeAmountOut.eq(
+          new BN((await collateralToken.getAccountInfo(userCollateralAccount)).amount)
         )
       )
       assert.ok(
-        almostEqual(
-          (await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)).amount,
-          new BN(reserveAmountAfterNativeSwap).sub(nativeAmountOut)
-        )
+        new BN(reserveAmountAfterNativeSwap)
+          .sub(nativeAmountOut)
+          .eq(
+            new BN(
+              (
+                await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)
+              ).amount
+            )
+          )
       )
+
       const swapLineAfterSyntheticSwap = await exchange.getSwapline(swapLinePubkey)
       assert.ok(
-        almostEqual(
-          swapLineAfterSyntheticSwap.balance.val,
+        swapLineAfterSyntheticSwap.balance.val.eq(
           swapLineAfterNativeSwap.balance.val.sub(nativeAmountOut)
         )
       )
@@ -404,17 +397,42 @@ describe('swap-line', () => {
       )
       // debt should not change
       assert.ok(
-        almostEqual(
-          calculateDebt(assetsListAfterSyntheticSwap),
-          calculateDebt(assetsListAfterNativeSwap)
-        )
+        calculateDebt(assetsListAfterSyntheticSwap).eq(calculateDebt(assetsListAfterNativeSwap))
+      )
+
+      // Try swap synthetic over swapline collateral balance
+      const mintedSyntheticAmount = new BN(1)
+      syntheticToken.mintTo(userSyntheticAccount, wallet, [], mintedSyntheticAmount)
+
+      const nativeToSyntheticOverBalanceIX = await exchange.syntheticToNative({
+        collateral: collateralToken.publicKey,
+        synthetic: syntheticToken.publicKey,
+        amount: mintedSyntheticAmount,
+        signer: ownerAccount.publicKey,
+        userCollateralAccount,
+        userSyntheticAccount
+      })
+      const syntheticApproveOverBalanceIx = Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        userSyntheticAccount,
+        exchange.exchangeAuthority,
+        ownerAccount.publicKey,
+        [],
+        tou64(amountOut.toString())
+      )
+
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(syntheticApproveOverBalanceIx).add(nativeToSyntheticOverBalanceIX),
+          [ownerAccount],
+          connection
+        ),
+        ERRORS_EXCHANGE.SWAPLINE_LIMIT
       )
 
       // Withdraw Fee
       const withdrawalAccount = await collateralToken.createAccount(exchangeAuthority)
-      assert.ok(
-        await (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(new BN(0))
-      )
+      assert.ok((await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(new BN(0)))
       const withdrawalAmount = swapLineAfterSyntheticSwap.accumulatedFee.val
       // withdrawal IX
       const withdrawSwaplineFeeIX = await exchange.withdrawSwaplineFee({
@@ -434,7 +452,7 @@ describe('swap-line', () => {
       // Withdrawal entire fee
       assert.ok(swapLineAfterWithdrawalFee.accumulatedFee.val.eq(new BN(0)))
       assert.ok(
-        await (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(withdrawalAmount)
+        (await collateralToken.getAccountInfo(withdrawalAccount)).amount.eq(withdrawalAmount)
       )
     })
     it('set halted swapline', async () => {
