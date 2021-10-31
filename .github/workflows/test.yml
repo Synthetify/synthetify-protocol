@@ -31,6 +31,7 @@ jobs:
             'npm run test:multicollateral',
             'npm run test:settlement',
             'npm run test:swapline',
+            'npm run test:swapline-decimal',
             'npm run test:vaults',
             'npm run test:vaultsliquidation',
             'npm run test:vaultsliquidation-small',
