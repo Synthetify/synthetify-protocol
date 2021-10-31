@@ -27,7 +27,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { Collateral, Synthetic } from '@synthetify/sdk/lib/exchange'
 
-describe('swap-line', () => {
+describe('swap-line different decimal', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
@@ -401,32 +401,35 @@ describe('swap-line', () => {
         calculateDebt(assetsListAfterSyntheticSwap).eq(calculateDebt(assetsListAfterNativeSwap))
       )
 
-      // TODO: test not enough collateral for swap
       // Try swap synthetic over swapline collateral balance
-      // const mintedSyntheticAmount = new BN(10 ** 8)
-      // syntheticToken.mintTo(userSyntheticAccount, wallet, [], mintedSyntheticAmount)
+      const mintedSyntheticAmount = new BN(1)
+      syntheticToken.mintTo(userSyntheticAccount, wallet, [], mintedSyntheticAmount)
 
-      // const nativeToSyntheticOverBalanceIX = await exchange.syntheticToNative({
-      //   collateral: collateralToken.publicKey,
-      //   synthetic: syntheticToken.publicKey,
-      //   amount: mintedSyntheticAmount,
-      //   signer: ownerAccount.publicKey,
-      //   userCollateralAccount,
-      //   userSyntheticAccount
-      // })
-      // const syntheticApproveOverBalanceIx = Token.createApproveInstruction(
-      //   TOKEN_PROGRAM_ID,
-      //   userSyntheticAccount,
-      //   exchange.exchangeAuthority,
-      //   ownerAccount.publicKey,
-      //   [],
-      //   tou64(amountOut.toString())
-      // )
-      // await signAndSend(
-      //   new Transaction().add(syntheticApproveOverBalanceIx).add(nativeToSyntheticOverBalanceIX),
-      //   [ownerAccount],
-      //   connection
-      // )
+      const nativeToSyntheticOverBalanceIX = await exchange.syntheticToNative({
+        collateral: collateralToken.publicKey,
+        synthetic: syntheticToken.publicKey,
+        amount: mintedSyntheticAmount,
+        signer: ownerAccount.publicKey,
+        userCollateralAccount,
+        userSyntheticAccount
+      })
+      const syntheticApproveOverBalanceIx = Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        userSyntheticAccount,
+        exchange.exchangeAuthority,
+        ownerAccount.publicKey,
+        [],
+        tou64(amountOut.toString())
+      )
+
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(syntheticApproveOverBalanceIx).add(nativeToSyntheticOverBalanceIX),
+          [ownerAccount],
+          connection
+        ),
+        ERRORS_EXCHANGE.SWAPLINE_LIMIT
+      )
 
       // Withdraw Fee
       const withdrawalAccount = await collateralToken.createAccount(exchangeAuthority)

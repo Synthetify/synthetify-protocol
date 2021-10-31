@@ -1798,8 +1798,18 @@ pub mod exchange {
         };
         let fee = amount.mul(swapline.fee);
         let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
-        let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
 
+        require!(synthetic.swapline_supply.gte(amount)?, SwaplineLimit);
+        require!(
+            swapline
+                .balance
+                .sub(swapline.accumulated_fee)
+                .unwrap()
+                .gte(amount_out)?,
+            SwaplineLimit,
+        );
+
+        let new_supply_synthetic = synthetic.supply.sub(amount).unwrap();
         synthetic.set_supply_safely(new_supply_synthetic)?;
 
         synthetic.swapline_supply = synthetic.swapline_supply.sub(amount).unwrap();
