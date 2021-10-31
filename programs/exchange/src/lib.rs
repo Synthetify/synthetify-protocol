@@ -1698,8 +1698,6 @@ pub mod exchange {
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
 
-        require!(!swapline.halted, Halted);
-
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
 
@@ -1770,8 +1768,6 @@ pub mod exchange {
 
         let state = ctx.accounts.state.load()?;
         let mut swapline = ctx.accounts.swapline.load_mut()?;
-
-        require!(!swapline.halted, Halted);
 
         let mut assets_list = ctx.accounts.assets_list.load_mut()?;
         let (_, collaterals, synthetics) = assets_list.split_borrow();
