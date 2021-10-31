@@ -1799,13 +1799,13 @@ pub mod exchange {
         let fee = amount.mul(swapline.fee);
         let amount_out = amount.sub(fee).unwrap().to_scale(swapline.balance.scale);
 
-        require!(synthetic.swapline_supply.gte(amount)?, SwaplineLimit);
         require!(
-            swapline
-                .balance
-                .sub(swapline.accumulated_fee)
-                .unwrap()
-                .gte(amount_out)?,
+            synthetic.swapline_supply.gte(amount)?
+                && swapline
+                    .balance
+                    .sub(swapline.accumulated_fee)
+                    .unwrap()
+                    .gte(amount_out)?,
             SwaplineLimit,
         );
 

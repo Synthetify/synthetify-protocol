@@ -282,7 +282,6 @@ describe('swap-line different decimal', () => {
       const reserveAmountAfterNativeSwap = (
         await collateralToken.getAccountInfo(swapLineAfterNativeSwap.collateralReserve)
       ).amount
-      console.log(`reserve amount after swap: ${reserveAmountAfterNativeSwap}`)
       // assets token transfer
       assert.ok(new BN(mintedAmount).eq(amountOut))
       assert.ok(new BN(reserveAmountAfterNativeSwap).eq(new BN(amountToSwap)))
