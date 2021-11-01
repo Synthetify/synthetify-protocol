@@ -490,10 +490,6 @@ pub mod exchange {
         // Adjust staking round
         adjust_staking_rounds(&mut state, slot);
 
-        let exchange_account = &mut ctx.accounts.exchange_account.load_mut()?;
-        // adjust current staking points for exchange account
-        adjust_staking_account(exchange_account, &state.staking);
-
         let token_address_in = ctx.accounts.token_in.to_account_info().key;
         let token_address_for = ctx.accounts.token_for.to_account_info().key;
         let slot = Clock::get()?.slot;
@@ -539,11 +535,39 @@ pub mod exchange {
             slot,
         )?;
         let sny_collateral = &mut collaterals[0];
+        let mut discount = Decimal::from_percent(0);
 
-        let collateral_amount = get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+        // find exchange account from reaming accounts
+        let signer = &ctx.accounts.owner;
+        let (exchange_account_address, _) = Pubkey::find_program_address(
+            &[b"accountv1", &signer.to_account_info().key.as_ref()],
+            ctx.program_id,
+        );
+        let remaining_account = ctx
+            .remaining_accounts
+            .iter()
+            .find(|account| *account.key == exchange_account_address);
+
+        if remaining_account.is_some() {
+            // TODO: validate constraints exchange account
+            let loader = Loader::<'_, ExchangeAccount>::try_from(
+                ctx.program_id,
+                &remaining_account.unwrap(),
+            )
+            .unwrap();
+
+            let exchange_account = &mut loader.load_mut()?;
+
+            // adjust current staking points for exchange account
+            adjust_staking_account(exchange_account, &state.staking);
+
+            // modify discount
+            let collateral_amount =
+                get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+            discount = amount_to_discount(collateral_amount);
+        }
 
         // Get effective_fee base on user collateral balance
-        let discount = amount_to_discount(collateral_amount);
         let effective_fee = state.fee.sub(state.fee.mul(discount)).unwrap();
         // Output amount ~ 100% - fee of input
         let amount_decimal = Decimal {
