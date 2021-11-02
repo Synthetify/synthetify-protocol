@@ -549,7 +549,6 @@ pub mod exchange {
             .find(|account| *account.key == exchange_account_address);
 
         if remaining_account.is_some() {
-            // TODO: validate constraints exchange account
             let loader = Loader::<'_, ExchangeAccount>::try_from(
                 ctx.program_id,
                 &remaining_account.unwrap(),
@@ -557,6 +556,10 @@ pub mod exchange {
             .unwrap();
 
             let exchange_account = &mut loader.load_mut()?;
+            require!(
+                exchange_account.owner == *signer.key,
+                InvalidExchangeAccount
+            );
 
             // adjust current staking points for exchange account
             adjust_staking_account(exchange_account, &state.staking);
@@ -2654,6 +2657,8 @@ pub enum ErrorCode {
     PriceConfidenceOutOfRange = 37,
     #[msg("Invalid oracle program")]
     InvalidOracleProgram = 38,
+    #[msg("Invalid exchange account")]
+    InvalidExchangeAccount = 39,
 }
 
 // Access control modifiers.
