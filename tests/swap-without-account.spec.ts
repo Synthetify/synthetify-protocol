@@ -286,7 +286,6 @@ describe('exchange', () => {
       // expected fee 0.0135$ -> 135 * 10^2
       // expected admin tax 0.0027$ -> 27 * 10^2
       await exchange.swap({
-        // exchangeAccount,
         amount: usdMintAmount,
         owner: accountOwner.publicKey,
         userTokenAccountFor: btcTokenAccount,
@@ -340,7 +339,6 @@ describe('exchange', () => {
       // expected admin tax ratio, additional swap tax reserve, additional xUSD supply:
       // 0,002691$ -> 2691
       await exchange.swap({
-        // exchangeAccount,
         amount: btcAmountOut,
         owner: accountOwner.publicKey,
         userTokenAccountFor: ethTokenAccount,
@@ -447,7 +445,6 @@ describe('exchange', () => {
       // expected admin tax 0.06$ -> 6 * 10^4
       await exchange.swap({
         amount: usdMintAmount,
-        // exchangeAccount,
         owner: accountOwner.publicKey,
         userTokenAccountFor: btcTokenAccount,
         userTokenAccountIn: usdTokenAccount,
@@ -498,7 +495,6 @@ describe('exchange', () => {
       // 0.05982$ -> 5982 * 10^1
       await exchange.swap({
         amount: btcAmountOut,
-        // exchangeAccount,
         owner: accountOwner.publicKey,
         userTokenAccountFor: ethTokenAccount,
         userTokenAccountIn: btcTokenAccount,
