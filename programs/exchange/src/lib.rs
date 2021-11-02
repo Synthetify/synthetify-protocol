@@ -535,7 +535,6 @@ pub mod exchange {
             slot,
         )?;
         let sny_collateral = &mut collaterals[0];
-        let mut discount = Decimal::from_percent(0);
 
         // find exchange account from reaming accounts
         let signer = &ctx.accounts.owner;
@@ -548,23 +547,25 @@ pub mod exchange {
             .iter()
             .find(|account| *account.key == exchange_account_address);
 
-        if remaining_account.is_some() {
-            let loader = Loader::<'_, ExchangeAccount>::try_from(
-                ctx.program_id,
-                &remaining_account.unwrap(),
-            )
-            .unwrap();
+        let discount = match remaining_account.is_some() {
+            true => {
+                let loader = Loader::<'_, ExchangeAccount>::try_from(
+                    ctx.program_id,
+                    &remaining_account.unwrap(),
+                )
+                .unwrap();
 
-            let exchange_account = &loader.load()?;
-            require!(
-                exchange_account.owner == *signer.key,
-                InvalidExchangeAccount
-            );
-            // modify discount
-            let collateral_amount =
-                get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
-            discount = amount_to_discount(collateral_amount);
-        }
+                let exchange_account = &loader.load()?;
+                require!(
+                    exchange_account.owner == *signer.key,
+                    InvalidExchangeAccount
+                );
+                let collateral_amount =
+                    get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
+                amount_to_discount(collateral_amount)
+            }
+            false => Decimal::from_percent(0),
+        };
 
         // Get effective_fee base on user collateral balance
         let effective_fee = state.fee.sub(state.fee.mul(discount)).unwrap();
