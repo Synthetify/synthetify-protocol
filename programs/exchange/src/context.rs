@@ -746,8 +746,6 @@ pub struct Swap<'info> {
         constraint = &user_token_account_for.mint == token_for.to_account_info().key,
     )]
     pub user_token_account_for: Account<'info, TokenAccount>,
-    #[account(mut, has_one = owner)]
-    pub exchange_account: Loader<'info, ExchangeAccount>,
     #[account(signer)]
     pub owner: AccountInfo<'info>,
 }

@@ -381,11 +381,6 @@
           "isSigner": false
         },
         {
-          "name": "exchangeAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "owner",
           "isMut": false,
           "isSigner": true
@@ -3504,9 +3499,11 @@
       "code": 338,
       "name": "InvalidOracleProgram",
       "msg": "Invalid oracle program"
+    },
+    {
+      "code": 339,
+      "name": "InvalidExchangeAccount",
+      "msg": "Invalid exchange account"
     }
-  ],
-  "metadata": {
-    "address": "HcyCw29qWC77CTnmJkwjnW1whbTppv4xh2SQQzjMin55"
-  }
+  ]
 }

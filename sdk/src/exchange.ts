@@ -494,7 +494,12 @@ export class Exchange {
     userTokenAccountIn,
     exchangeAccount
   }: SwapInstruction) {
-    return await (this.program.instruction.swap(amount, {
+    const remainingAccounts = exchangeAccount
+      ? [{ pubkey: exchangeAccount, isWritable: false, isSigner: false }]
+      : []
+
+    return this.program.instruction.swap(amount, {
+      remainingAccounts,
       accounts: {
         state: this.stateAddress,
         exchangeAuthority: this.exchangeAuthority,
@@ -503,11 +508,10 @@ export class Exchange {
         userTokenAccountFor: userTokenAccountFor,
         userTokenAccountIn: userTokenAccountIn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList
       }
-    }) as TransactionInstruction)
+    }) as TransactionInstruction
   }
   public async liquidateInstruction({
     exchangeAccount,
@@ -1797,7 +1801,7 @@ export interface Liquidate {
   signers?: Array<Account>
 }
 export interface Swap {
-  exchangeAccount: PublicKey
+  exchangeAccount?: PublicKey
   owner: PublicKey
   tokenIn: PublicKey
   tokenFor: PublicKey
@@ -1844,7 +1848,7 @@ export interface MintInstruction {
   amount: BN
 }
 export interface SwapInstruction {
-  exchangeAccount: PublicKey
+  exchangeAccount?: PublicKey
   owner: PublicKey
   tokenIn: PublicKey
   tokenFor: PublicKey
