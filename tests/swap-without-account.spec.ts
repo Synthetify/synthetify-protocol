@@ -142,18 +142,6 @@ describe('exchange', () => {
     assert.ok(eqDecimals(state.accumulatedDebtInterest, toDecimal(new BN(0), XUSD_DECIMALS)))
     assert.ok(state.debtShares.eq(new BN(0)))
   })
-  it('Account Creation', async () => {
-    const accountOwner = new Account().publicKey
-    const exchangeAccount = await exchange.createExchangeAccount(accountOwner)
-
-    const userExchangeAccount = await exchange.getExchangeAccount(exchangeAccount)
-    // Owner of account
-    assert.ok(userExchangeAccount.owner.equals(accountOwner))
-    // Initial values
-    assert.ok(userExchangeAccount.debtShares.eq(new BN(0)))
-    assert.ok(userExchangeAccount.version === 0)
-    assert.ok(userExchangeAccount.collaterals.length === 0)
-  })
   describe('#swap()', async () => {
     let btcToken: Token
     let ethToken: Token

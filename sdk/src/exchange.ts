@@ -495,7 +495,7 @@ export class Exchange {
     exchangeAccount
   }: SwapInstruction) {
     const remainingAccounts = exchangeAccount
-      ? [{ pubkey: exchangeAccount, isWritable: true, isSigner: false }]
+      ? [{ pubkey: exchangeAccount, isWritable: false, isSigner: false }]
       : []
 
     return this.program.instruction.swap(amount, {

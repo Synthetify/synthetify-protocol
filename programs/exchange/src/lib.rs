@@ -555,15 +555,11 @@ pub mod exchange {
             )
             .unwrap();
 
-            let exchange_account = &mut loader.load_mut()?;
+            let exchange_account = &loader.load()?;
             require!(
                 exchange_account.owner == *signer.key,
                 InvalidExchangeAccount
             );
-
-            // adjust current staking points for exchange account
-            adjust_staking_account(exchange_account, &state.staking);
-
             // modify discount
             let collateral_amount =
                 get_user_sny_collateral_balance(&exchange_account, &sny_collateral);
