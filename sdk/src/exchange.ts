@@ -495,6 +495,7 @@ export class Exchange {
     exchangeAccount
   }: SwapInstruction) {
     return await (this.program.instruction.swap(amount, {
+      remainingAccounts: [{ pubkey: exchangeAccount, isWritable: true, isSigner: false }],
       accounts: {
         state: this.stateAddress,
         exchangeAuthority: this.exchangeAuthority,
@@ -503,7 +504,6 @@ export class Exchange {
         userTokenAccountFor: userTokenAccountFor,
         userTokenAccountIn: userTokenAccountIn,
         tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAccount: exchangeAccount,
         owner: owner,
         assetsList: this.state.assetsList
       }

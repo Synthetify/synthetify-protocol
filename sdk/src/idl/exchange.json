@@ -3499,6 +3499,11 @@
       "code": 338,
       "name": "InvalidOracleProgram",
       "msg": "Invalid oracle program"
+    },
+    {
+      "code": 339,
+      "name": "InvalidExchangeAccount",
+      "msg": "Invalid exchange account"
     }
   ]
 }
