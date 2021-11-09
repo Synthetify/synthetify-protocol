@@ -156,6 +156,14 @@ You can check each round's time when you hover over the icon on the left from ea
 
 ![Time of rounds and claiming](/img/docs/rewardsHover.png)
 
+Method of calculating APY:
+
+APR = weekly_reward_value/debt_pool_value\*52
+
+APY = (APR/52+1)^52-1
+
+52 is number of weeks, cause APY is weekly
+
 ### Something failed
 
 If the connection to the wallet could not be established:

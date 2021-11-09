@@ -46,6 +46,12 @@ module.exports = {
         }
       ]
     },
+    algolia: {
+      apiKey: 'cca60965bfece8516a34d697fbade50a',
+      indexName: 'docs',
+      appId: 'PT243LHPBF',
+      rateLimit: 5
+    },
     footer: {
       style: 'dark',
       links: [
