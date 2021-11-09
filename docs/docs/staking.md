@@ -160,7 +160,7 @@ Method of calculating APY:
 
 APR = weekly_reward_value/debt_pool_value\*52
 
-APY = ((APR/52+1)^52)-1
+APY = (APR/52+1)^52-1
 
 52 is number of weeks, cause APY is weekly
 
