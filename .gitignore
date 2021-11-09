@@ -14,3 +14,4 @@ node_modules
 docs/build
 .docusaurus
 .cache-loader
+.env
