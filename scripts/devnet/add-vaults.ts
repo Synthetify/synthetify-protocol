@@ -19,6 +19,7 @@ const xusd = new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF')
 
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
+  console.log(`ledger wallet pubkey: ${ledgerWallet.publicKey?.toString()}`)
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   await exchange.getState()
