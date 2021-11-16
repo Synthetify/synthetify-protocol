@@ -16,13 +16,16 @@ const connection = provider.connection
 
 const sny = new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE')
 const xusd = new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF')
+const usdc = new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
+const xbtc = new PublicKey('HL5aKrMbm13a6VGNRSxJmy61nRsgySDacHVpLzCwHhL5')
 
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
-  console.log(`ledger wallet pubkey: ${ledgerWallet.publicKey?.toString()}`)
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
-  await exchange.getState()
+  const state = await exchange.getState()
+  console.log(`ledger: ${ledgerWallet.publicKey?.toString()}`)
+  console.log(`admin: ${state.admin.toString()}`)
 
   const maxBorrow = { val: new BN(100_000_000_000), scale: 6 } // 100_000 USD
   const debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
@@ -47,11 +50,10 @@ const main = async () => {
     liquidationThreshold,
     liquidationRatio
   })
+  console.log(`vaultAddress = ${vaultAddress.toString()}`)
 
   await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
   const vault = await exchange.getVaultForPair(xusd, sny)
-
-  console.log(`vaultAddress = ${vaultAddress.toString()}`)
   console.log(vault)
 }
 
