@@ -17,7 +17,7 @@ const main = async () => {
   const connection = provider.connection
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
-  await exchange.getState()
+  const { staking } = await exchange.getState()
 
   // fetching all exchange accounts
   console.log('Fetching accounts...')
@@ -31,8 +31,24 @@ const main = async () => {
     accounts
       .map((fetched) => {
         // parsing accounts
-        const data = coder.decode<ExchangeAccount>('ExchangeAccount', fetched.account.data)
-        if (data.userStakingData.finishedRoundPoints.gt(new BN(0))) {
+        const { userStakingData, debtShares } = coder.decode<ExchangeAccount>(
+          'ExchangeAccount',
+          fetched.account.data
+        )
+        const { lastUpdate } = userStakingData
+
+        let pointsToClaim: BN
+
+        // based on method `adjust_staking_account()`
+        if (lastUpdate.gt(staking.currentRound.start))
+          pointsToClaim = userStakingData.finishedRoundPoints
+        else if (userStakingData.lastUpdate.lt(staking.finishedRound.start))
+          pointsToClaim = debtShares
+        else {
+          pointsToClaim = userStakingData.currentRoundPoints
+        }
+
+        if (pointsToClaim.gtn(0)) {
           return exchange.claimRewardsInstruction(fetched.pubkey)
         }
       })
