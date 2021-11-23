@@ -16,7 +16,7 @@ const main = async () => {
   const coder = new AccountsCoder(EXCHANGE_IDL as Idl)
   const connection = provider.connection
   // @ts-expect-error
-  const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
+  const exchange = await Exchange.build(connection, Network.DEV, wallet)
   const { staking } = await exchange.getState()
 
   // fetching all exchange accounts
@@ -40,7 +40,7 @@ const main = async () => {
         let pointsToClaim: BN
 
         // based on method `adjust_staking_account()`
-        if (lastUpdate.gt(staking.currentRound.start))
+        if (lastUpdate.gte(staking.currentRound.start))
           pointsToClaim = userStakingData.finishedRoundPoints
         else if (userStakingData.lastUpdate.lt(staking.finishedRound.start))
           pointsToClaim = debtShares
