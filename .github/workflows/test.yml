@@ -19,6 +19,7 @@ jobs:
         node:
           [
             'npm run test:exchange',
+            'npm run test:swap',
             'npm run test:interest-debt',
             'npm run test:isolated-burn',
             'npm run test:liquidation',

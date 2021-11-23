@@ -16,6 +16,7 @@
     "test:multi": "anchor test --skip-build tests/staking-multiuser.spec.ts",
     "test:multicollateral": "anchor test --skip-build tests/multicollateral.spec.ts",
     "test:settlement": "anchor test --skip-build tests/settlement.spec.ts",
+    "test:swap": "anchor test --skip-build tests/swap-without-account.spec.ts",
     "test:swapline": "anchor test --skip-build tests/swap-line.spec.ts",
     "test:swapline-decimal": "anchor test --skip-build tests/swapline-decimal.spec.ts",
     "test:vaults": "anchor test --skip-build tests/vaults.spec.ts",

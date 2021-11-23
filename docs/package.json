@@ -16,6 +16,7 @@
   "dependencies": {
     "@docusaurus/core": "^2.0.0-beta.ff31de0ff",
     "@docusaurus/preset-classic": "^2.0.0-beta.ff31de0ff",
+    "@docusaurus/theme-search-algolia": "^2.0.0-beta.9",
     "@mdx-js/react": "^1.6.21",
     "@solana/web3.js": "^1.21.0",
     "clsx": "^1.1.1",
