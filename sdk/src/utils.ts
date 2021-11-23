@@ -288,7 +288,7 @@ export const SWAPLINE_MAP: {
     // whETH<>xETH
     {
       synthetic: new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK'),
-      collateral: new PublicKey('KNVfdSJyq1pRQk9AKKv1g5uyGuk6wpm4WG16Bjuwdma')
+      collateral: new PublicKey('7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs')
     },
     // whFTT<>xFTT
     {
@@ -335,5 +335,5 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'USDC',
   CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5: 'renBTC',
   EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv: 'whFTT',
-  KNVfdSJyq1pRQk9AKKv1g5uyGuk6wpm4WG16Bjuwdma: 'whETH'
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': 'whETH'
 }
