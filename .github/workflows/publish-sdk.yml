@@ -87,7 +87,6 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
-      - name: enter skd
       - name: build sdk
         run: |
           npm install
