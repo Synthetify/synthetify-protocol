@@ -91,9 +91,8 @@ jobs:
         run: |
           npm install
           npm run build
-          npm publish  --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ./sdk
+      - uses: JS-DevTools/npm-publish@v1
+        with:
           token: ${{ secrets.NPM_TOKEN }}
         working-directory: ./sdk
