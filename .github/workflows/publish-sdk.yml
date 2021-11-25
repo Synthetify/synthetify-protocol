@@ -3,7 +3,7 @@ name: Publish sdk
 on:
   push:
     branches:
-      - test
+      - master
     paths:
       - 'sdk/**'
 env:
