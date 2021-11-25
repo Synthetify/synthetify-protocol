@@ -87,12 +87,13 @@ jobs:
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           anchor build
+      - name: enter skd
+        run: |
+          cd sdk
       - name: build sdk
         run: |
           npm install
           npm run build
-        working-directory: ./sdk
       - uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
-        working-directory: ./sdk
