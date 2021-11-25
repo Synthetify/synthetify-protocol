@@ -91,13 +91,7 @@ jobs:
         run: |
           npm install
           npm run build
-          npx semantic-release
+          npm publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          COMMIT_ASSETS: lib
-          GIT_AUTHOR_NAME: 'Norbert Bodziony'
-          GIT_AUTHOR_EMAIL: 'norbertbodziony@gmail.com'
-          GIT_COMMITTER_NAME: 'Norbert Bodziony'
-          GIT_COMMITTER_EMAIL: 'norbertbodziony@gmail.com'
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         working-directory: ./sdk

@@ -1,10 +1,10 @@
 {
   "name": "@synthetify/sdk",
-  "version": "0.4.6",
+  "version": "1.0.2",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "author": "Norbert Bodziony test",
+  "author": "Norbert Bodziony",
   "scripts": {
     "prebuild": "rm -rf ./src/idl && cp -r ../target/idl ./src",
     "build": "tsc"
