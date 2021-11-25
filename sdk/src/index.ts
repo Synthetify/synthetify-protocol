@@ -14,7 +14,9 @@ export interface IWallet {
   signAllTransactions(txs: Transaction[]): Promise<Transaction[]>
   publicKey: PublicKey
 }
+const A = 'TEST'
 export {
+  A,
   BN,
   Network,
   Exchange,
