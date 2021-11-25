@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "author": "Norbert Bodziony",
+  "author": "Norbert Bodziony test",
   "scripts": {
     "prebuild": "rm -rf ./src/idl && cp -r ../target/idl ./src",
     "build": "tsc"
