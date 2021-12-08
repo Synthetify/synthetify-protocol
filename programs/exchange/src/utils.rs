@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 use std::cell::RefMut;
 use std::convert::TryInto;
 
-use crate::decimal::{Add, Compare, Div, Mul, MulUp, PowAccuracy, Sub};
+use crate::decimal::{Add, Compare, Div, Mul, MulUp, PowAccuracy, Sub, PRICE_SCALE};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
 use crate::*;
 use account::*;
@@ -23,6 +23,47 @@ pub fn check_feed_update(
         return Err(ErrorCode::OutdatedOracle.into());
     }
     return Ok(());
+}
+
+pub fn load_price(
+    price_feed: &AccountInfo
+) -> Result<Decimal> {
+    let price_feed = Price::load(price_feed)?;
+    let offset = price_feed.expo.checked_add(PRICE_SCALE.into()).unwrap();
+    
+    let scaled_price = match offset >= 0 {
+        true => price_feed
+            .agg
+            .price
+            .checked_mul(10i64.pow(offset.try_into().unwrap()))
+            .unwrap(),
+        false => price_feed
+            .agg
+            .price
+            .checked_div(10i64.pow((-offset).try_into().unwrap()))
+            .unwrap(),
+    };
+    let scaled_confidence = match offset >= 0 {
+        true => price_feed
+            .agg
+            .conf
+            .checked_mul(10u64.pow(offset.try_into().unwrap()))
+            .unwrap(),
+        false => price_feed
+            .agg
+            .conf
+            .checked_div(10u64.pow((-offset).try_into().unwrap()))
+            .unwrap(),
+    };
+    // validate price confidence - confidence/price ratio should be less than 2.5%
+    let confidence: i64 = scaled_confidence.try_into().unwrap();
+    let confidence_40x = confidence.checked_mul(40).unwrap();
+    if confidence_40x > scaled_price {
+        return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+    };
+    let price = Decimal::from_price(scaled_price.try_into().unwrap());
+
+    return Ok(price);
 }
 
 pub fn div_up(a: u128, b: u128) -> u128 {
