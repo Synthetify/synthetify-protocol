@@ -1732,6 +1732,11 @@
           "isSigner": false
         },
         {
+          "name": "collateralPriceFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "rent",
           "isMut": false,
           "isSigner": false
@@ -1942,6 +1947,11 @@
           "isSigner": false
         },
         {
+          "name": "collateralPriceFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
@@ -1999,6 +2009,11 @@
         },
         {
           "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
           "isMut": false,
           "isSigner": false
         },
@@ -2130,8 +2145,13 @@
           "isSigner": false
         },
         {
-          "name": "assetsList",
+          "name": "collateralPriceFeed",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetsList",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2925,6 +2945,10 @@
             "type": "publicKey"
           },
           {
+            "name": "collateralPriceFeed",
+            "type": "publicKey"
+          },
+          {
             "name": "debtInterestRate",
             "type": {
               "defined": "Decimal"
@@ -2971,6 +2995,10 @@
             "type": {
               "defined": "Decimal"
             }
+          },
+          {
+            "name": "liquidationFund",
+            "type": "publicKey"
           },
           {
             "name": "collateralReserve",

@@ -25,7 +25,7 @@ pub fn check_feed_update(
     return Ok(());
 }
 
-pub fn load_price(
+pub fn load_price_from_feed(
     price_feed: &AccountInfo
 ) -> Result<Decimal> {
     let price_feed = Price::load(price_feed)?;

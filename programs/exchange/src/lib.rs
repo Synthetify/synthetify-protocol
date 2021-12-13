@@ -96,7 +96,6 @@ pub mod exchange {
     pub fn set_assets_list(ctx: Context<SetAssetsList>) -> Result<()> {
         msg!("Synthetify:Admin: SET ASSETS LIST");
         let state = &mut ctx.accounts.state.load_mut()?;
-        &ctx.accounts.assets_list.load()?;
 
         state.assets_list = *ctx.accounts.assets_list.to_account_info().key;
         Ok(())
@@ -2011,7 +2010,7 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        let collateral_price = load_price(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
         let amount_borrow_limit = calculate_vault_borrow_limit(
             collateral_price,
             synthetic_asset,
@@ -2068,7 +2067,7 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        let collateral_price = load_price(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
 
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_price,
@@ -2174,7 +2173,7 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        let collateral_price = load_price(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
 
         // Amount of synthetic safely collateralized
         let amount_liquidation_limit = calculate_vault_borrow_limit(
@@ -2274,14 +2273,6 @@ pub mod exchange {
             token::transfer(transfer, collateral_to_liquidator.to_u64())?;
         }
         {
-            // TODO: should be checked in context
-            if !ctx
-                .accounts
-                .liquidation_fund.key()
-                .eq(&vault.liquidation_fund)
-            {
-                return Err(ErrorCode::ExchangeLiquidationAccount.into());
-            }
             // Transfer collateral to liquidation_fund
             let exchange_accounts = Transfer {
                 from: ctx.accounts.collateral_reserve.to_account_info(),
