@@ -1550,7 +1550,7 @@ pub mod exchange {
             swapline_supply: Decimal {
                 val: 0,
                 scale: ctx.accounts.asset_address.decimals,
-            },
+            }
         };
         assets_list.append_synthetic(new_synthetic);
         Ok(())

@@ -1177,6 +1177,7 @@ export class Exchange {
     synthetic,
     collateral,
     collateralReserve,
+    collateralPriceFeed,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
@@ -1211,6 +1212,7 @@ export class Exchange {
           collateralReserve: collateralReserve,
           synthetic: synthetic,
           collateral: collateral,
+          collateralPriceFeed,
           rent: SYSVAR_RENT_PUBKEY,
           systemProgram: SystemProgram.programId
         }
@@ -1316,6 +1318,7 @@ export class Exchange {
     to,
     synthetic,
     collateral,
+    collateralPriceFeed,
     amount
   }: BorrowVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
@@ -1325,6 +1328,7 @@ export class Exchange {
       accounts: {
         synthetic,
         collateral,
+        collateralPriceFeed,
         owner,
         to,
         state: this.stateAddress,
@@ -1372,13 +1376,14 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async borrowVault({ owner, to, synthetic, collateral, amount, signers }: BorrowVault) {
+  public async borrowVault({ owner, to, synthetic, collateral, collateralPriceFeed, amount, signers }: BorrowVault) {
     await this.getState()
     const borrowVaultIx = await this.borrowVaultInstruction({
       owner,
       to,
       synthetic,
       collateral,
+      collateralPriceFeed,
       amount
     })
     return this.updatePricesAndSend([borrowVaultIx], signers, this.assetsList.headAssets >= 20)
@@ -1387,6 +1392,7 @@ export class Exchange {
     amount,
     owner,
     collateral,
+    collateralPriceFeed,
     synthetic,
     userCollateralAccount
   }: WithdrawVault) {
@@ -1400,6 +1406,7 @@ export class Exchange {
         userCollateralAccount,
         owner,
         collateral,
+        collateralPriceFeed,
         synthetic,
         state: this.stateAddress,
         vaultEntry: vaultEntryAddress,
@@ -2021,14 +2028,10 @@ export interface BorrowVaultInstruction {
   to: PublicKey
   synthetic: PublicKey
   collateral: PublicKey
+  collateralPriceFeed: PublicKey
   amount: BN
 }
-export interface BorrowVault {
-  owner: PublicKey
-  to: PublicKey
-  synthetic: PublicKey
-  collateral: PublicKey
-  amount: BN
+export interface BorrowVault extends BorrowVaultInstruction {
   signers: Array<Account | Keypair>
 }
 
@@ -2036,6 +2039,7 @@ export interface WithdrawVault {
   amount: BN
   owner: PublicKey
   collateral: PublicKey
+  collateralPriceFeed: PublicKey
   synthetic: PublicKey
   userCollateralAccount: PublicKey
 }
@@ -2066,6 +2070,7 @@ export interface CreateVault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
+  collateralPriceFeed: PublicKey
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal

@@ -45,7 +45,7 @@ import {
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Asset, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal } from '@synthetify/sdk/src/exchange'
 
 describe('vaults', () => {
@@ -62,6 +62,7 @@ describe('vaults', () => {
   let xusdToken: Token
   let assetsList: PublicKey
   let snyTokenFeed: PublicKey
+  let usdcPriceFeed: PublicKey
   let exchangeAuthority: PublicKey
   let snyReserve: PublicKey
   let stakingFundAccount: PublicKey
@@ -156,6 +157,7 @@ describe('vaults', () => {
       price: 1,
       wallet
     })
+    usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
 
@@ -187,6 +189,7 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         debtInterestRate,
         collateralRatio,
@@ -437,6 +440,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
           signers: [accountOwner]
         }),
@@ -473,6 +477,7 @@ describe('vaults', () => {
         owner: accountOwner.publicKey,
         to: userXusdTokenAccount,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         signers: [accountOwner]
       })
@@ -523,6 +528,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
           signers: [accountOwner]
         }),
@@ -538,25 +544,7 @@ describe('vaults', () => {
     })
   })
   describe('#withdrawVault', async () => {
-    it('withdraw without updating oracle price should failed', async () => {
-      const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
-      const usdc = assetsListData.collaterals[1]
-
-      await sleep(1000)
-      const withdrawIx = await exchange.withdrawVaultInstruction({
-        amount: new BN(1),
-        owner: accountOwner.publicKey,
-        collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress,
-        userCollateralAccount: userUsdcTokenAccount
-      })
-
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
-        ERRORS_EXCHANGE.OUTDATED_ORACLE
-      )
-    })
+    // withdraw without updating oracle price is impossible, because synthetic (xusd) has a fixed price
     it('withdraw over limit should failed', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -582,6 +570,7 @@ describe('vaults', () => {
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
@@ -637,6 +626,7 @@ describe('vaults', () => {
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
@@ -697,6 +687,7 @@ describe('vaults', () => {
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
@@ -896,6 +887,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdcCollateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
           signers: [accountOwner]
         }),
@@ -907,6 +899,7 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
@@ -984,6 +977,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdcCollateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
           signers: [accountOwner]
         }),
@@ -995,6 +989,7 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })

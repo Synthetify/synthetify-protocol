@@ -1579,7 +1579,7 @@ mod tests {
             let xsol_amount = Decimal::from_integer(300).to_scale(xsol_decimal);
 
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,
@@ -1602,7 +1602,7 @@ mod tests {
             let xsol_amount = Decimal::from_integer(1000).to_scale(xsol_decimal);
 
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,
@@ -1616,7 +1616,7 @@ mod tests {
             let btc_amount = Decimal::from_integer(1).to_scale(btc_decimal);
             let xsol_amount = Decimal::new(0, xsol_decimal);
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,

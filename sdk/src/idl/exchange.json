@@ -3533,5 +3533,8 @@
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "e9P7yZnZdYpvEWJbbbBbu8XEsYkFGuD3rMsVxMMfrf2"
+  }
 }
