@@ -1178,6 +1178,7 @@ export class Exchange {
     collateral,
     collateralReserve,
     collateralPriceFeed,
+    liquidationFund,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
@@ -1212,6 +1213,7 @@ export class Exchange {
           collateralReserve: collateralReserve,
           synthetic: synthetic,
           collateral: collateral,
+          liquidationFund,
           collateralPriceFeed,
           rent: SYSVAR_RENT_PUBKEY,
           systemProgram: SystemProgram.programId
@@ -1354,19 +1356,18 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
     const vaultData = await this.getVaultForPair(synthetic, collateral)
-    const collateralData = this.assetsList.collaterals.find((c) =>
-      c.collateralAddress.equals(collateral)
-    )
+    
     return (await this.program.instruction.liquidateVault(amount, {
       accounts: {
         state: this.stateAddress,
+        assetsList: this.state.assetsList,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
         collateralReserve: vaultData.collateralReserve,
-        liquidationFund: collateralData.liquidationFund,
+        liquidationFund: vaultData.liquidationFund,
         synthetic,
         collateral,
-        assetsList: this.state.assetsList,
+        collateralPriceFeed: vaultData.collateralPriceFeed,
         liquidatorSyntheticAccount,
         liquidatorCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1985,6 +1986,8 @@ export interface Vault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
+  collateralPriceFeed:  PublicKey
+  liquidationFund: PublicKey
   collateralRatio: Decimal
   liquidationThreshold: Decimal
   liquidationRatio: Decimal
@@ -2080,6 +2083,7 @@ export interface CreateVault {
   collateral: PublicKey
   collateralReserve: PublicKey
   collateralPriceFeed: PublicKey
+  liquidationFund: PublicKey
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal

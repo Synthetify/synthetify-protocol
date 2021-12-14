@@ -1034,6 +1034,12 @@ pub struct CreateVault<'info> {
         constraint = collateral_reserve.owner == state.load()?.exchange_authority
     )]
     pub collateral_reserve: Account<'info, TokenAccount>,
+    #[account(
+        constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
+        constraint = liquidation_fund.mint == collateral.key(),
+        constraint = liquidation_fund.key() != collateral_reserve.key()
+    )]
+    pub liquidation_fund: Account<'info, TokenAccount>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(
@@ -1328,6 +1334,7 @@ pub struct LiquidateVault<'info> {
         constraint = collateral_price_feed.data_len() == 3312,
     )]
     pub collateral_price_feed: AccountInfo<'info>,
+    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,

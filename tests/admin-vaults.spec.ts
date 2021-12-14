@@ -74,6 +74,7 @@ describe('ADMIN VAULTS', () => {
   let usdcToken: Token
   let usdcPriceFeed: PublicKey
   let usdcVaultReserve: PublicKey
+  let usdcVaultLiquidationFund: PublicKey
   let syntheticAddress: PublicKey
   let collateralAddress: PublicKey
   const accountOwner = Keypair.generate()
@@ -160,6 +161,7 @@ describe('ADMIN VAULTS', () => {
     usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+    usdcVaultLiquidationFund = await usdcToken.createAccount(exchangeAuthority)
 
     const assetsListData = await exchange.getAssetsList(assetsList)
     syntheticAddress = assetsListData.synthetics[0].assetAddress
@@ -191,6 +193,7 @@ describe('ADMIN VAULTS', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
+        liquidationFund: usdcVaultLiquidationFund,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         debtInterestRate,

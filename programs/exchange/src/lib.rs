@@ -1906,6 +1906,7 @@ pub mod exchange {
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
             // Liquidation parameters
+            vault.liquidation_fund = ctx.accounts.liquidation_fund.key();
             vault.liquidation_threshold = liquidation_threshold;
             vault.liquidation_ratio = liquidation_ratio;
             vault.liquidation_penalty_liquidator = penalty_to_liquidator;

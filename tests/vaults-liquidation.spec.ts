@@ -71,6 +71,7 @@ describe('vaults liquidation', () => {
   let CollateralTokenMinter: Account = wallet
   let ethToken: Token
   let ethVaultReserve: PublicKey
+  let ethVaultLiquidationFund: PublicKey
   let ethPriceFeed: PublicKey
 
   const accountOwner = Keypair.generate()
@@ -161,6 +162,7 @@ describe('vaults liquidation', () => {
     ethPriceFeed = feed
     ethToken = token
     ethVaultReserve = await ethToken.createAccount(exchangeAuthority)
+    ethVaultLiquidationFund = await ethToken.createAccount(exchangeAuthority)
 
     const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
       usdToken: xusdToken,
@@ -202,6 +204,7 @@ describe('vaults liquidation', () => {
       collateralReserve: ethVaultReserve,
       collateralPriceFeed: ethPriceFeed,
       collateral: eth.collateralAddress,
+      liquidationFund: ethVaultLiquidationFund,
       synthetic: xusd.assetAddress,
       debtInterestRate,
       collateralRatio,
@@ -249,6 +252,7 @@ describe('vaults liquidation', () => {
       owner: accountOwner.publicKey,
       to: xusdTokenAmount,
       collateral: eth.collateralAddress,
+      collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
       signers: [accountOwner]
     })
@@ -264,10 +268,8 @@ describe('vaults liquidation', () => {
       liquidatorSyntheticAccount: liquidatorXusdAccount,
       owner: accountOwner.publicKey
     })
-    const updatePricesIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-      ethAsset.feedAddress
-    ])
-    const approveIx = await Token.createApproveInstruction(
+
+    const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
       liquidatorXusdAccount,
       exchange.exchangeAuthority,
@@ -278,7 +280,7 @@ describe('vaults liquidation', () => {
     // Fail liquidation for safe user
     await assertThrowsAsync(
       signAndSend(
-        new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+        new Transaction().add(approveIx).add(liquidateVaultInstruction),
         [liquidator],
         connection
       ),
@@ -286,7 +288,7 @@ describe('vaults liquidation', () => {
     )
 
     const liquidatorXusdAccountBefore = await xusdToken.getAccountInfo(liquidatorXusdAccount)
-    const liquidationFundBefore = await ethToken.getAccountInfo(eth.liquidationFund)
+    const liquidationFundBefore = await ethToken.getAccountInfo(ethVaultLiquidationFund)
     const vaultDataBefore = await exchange.getVaultForPair(xusd.assetAddress, eth.collateralAddress)
     const vaultEntryDataBefore = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
@@ -300,7 +302,7 @@ describe('vaults liquidation', () => {
     await setFeedPrice(oracleProgram, 1750, ethPriceFeed)
     // Liquidate
     await signAndSend(
-      new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+      new Transaction().add(approveIx).add(liquidateVaultInstruction),
       [liquidator],
       connection
     )
@@ -318,7 +320,7 @@ describe('vaults liquidation', () => {
       )
     )
     // Liquidation fund should receive collateral
-    const liquidationFundAfter = await ethToken.getAccountInfo(eth.liquidationFund)
+    const liquidationFundAfter = await ethToken.getAccountInfo(ethVaultLiquidationFund)
     assert.ok(liquidationFundAfter.amount.eq(liquidationFundBefore.amount.add(new BN(228_571))))
 
     // Vault should adjust collateral and synthetic amounts

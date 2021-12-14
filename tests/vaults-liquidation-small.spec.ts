@@ -71,6 +71,7 @@ describe('vaults liquidation', () => {
   let CollateralTokenMinter: Account = wallet
   let ethToken: Token
   let ethVaultReserve: PublicKey
+  let ethVaultLiquidationFund: PublicKey
   let ethPriceFeed: PublicKey
 
   const accountOwner = Keypair.generate()
@@ -161,6 +162,7 @@ describe('vaults liquidation', () => {
     ethPriceFeed = feed
     ethToken = token
     ethVaultReserve = await ethToken.createAccount(exchangeAuthority)
+    ethVaultLiquidationFund = await ethToken.createAccount(exchangeAuthority)
 
     const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
       usdToken: xusdToken,
@@ -201,6 +203,8 @@ describe('vaults liquidation', () => {
     const { ix: createVaultInstruction } = await exchange.createVaultInstruction({
       collateralReserve: ethVaultReserve,
       collateral: eth.collateralAddress,
+      collateralPriceFeed: ethPriceFeed,
+      liquidationFund: ethVaultLiquidationFund,
       synthetic: xusd.assetAddress,
       debtInterestRate,
       collateralRatio,
@@ -249,6 +253,7 @@ describe('vaults liquidation', () => {
       owner: accountOwner.publicKey,
       to: xusdTokenAmount,
       collateral: eth.collateralAddress,
+      collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
       signers: [accountOwner]
     })
@@ -264,10 +269,7 @@ describe('vaults liquidation', () => {
       liquidatorSyntheticAccount: liquidatorXusdAccount,
       owner: accountOwner.publicKey
     })
-    const updatePricesIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-      ethAsset.feedAddress
-    ])
-    const approveIx = await Token.createApproveInstruction(
+    const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
       liquidatorXusdAccount,
       exchange.exchangeAuthority,
@@ -278,7 +280,7 @@ describe('vaults liquidation', () => {
     // Fail liquidation for safe user
     await assertThrowsAsync(
       signAndSend(
-        new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+        new Transaction().add(approveIx).add(liquidateVaultInstruction),
         [liquidator],
         connection
       ),
@@ -288,7 +290,7 @@ describe('vaults liquidation', () => {
     await setFeedPrice(oracleProgram, 900, ethPriceFeed)
     // Liquidate
     await signAndSend(
-      new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+      new Transaction().add(approveIx).add(liquidateVaultInstruction),
       [liquidator],
       connection
     )

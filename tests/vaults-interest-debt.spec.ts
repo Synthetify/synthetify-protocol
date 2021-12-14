@@ -73,6 +73,7 @@ describe('Vault interest borrow accumulation', () => {
   let CollateralTokenMinter: Account = wallet
   let btcToken: Token
   let btcVaultReserve: PublicKey
+  let btcVaultLiquidationFund: PublicKey
   let userBtcTokenAccount: PublicKey
   let userXsolTokenAccount: PublicKey
   let btcUserCollateralAmount: BN
@@ -164,6 +165,7 @@ describe('Vault interest borrow accumulation', () => {
     btcToken = token
 
     btcVaultReserve = await btcToken.createAccount(exchangeAuthority)
+    btcVaultLiquidationFund = await btcToken.createAccount(exchangeAuthority)
 
     xsolToken = await createToken({
       connection,
@@ -210,6 +212,7 @@ describe('Vault interest borrow accumulation', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: btcVaultReserve,
         collateral: btc.collateralAddress,
+        liquidationFund: btcVaultLiquidationFund,
         collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
         debtInterestRate,

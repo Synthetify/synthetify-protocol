@@ -1722,6 +1722,11 @@
           "isSigner": false
         },
         {
+          "name": "liquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "synthetic",
           "isMut": false,
           "isSigner": false
@@ -2151,7 +2156,7 @@
         },
         {
           "name": "assetsList",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -3533,8 +3538,5 @@
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
     }
-  ],
-  "metadata": {
-    "address": "e9P7yZnZdYpvEWJbbbBbu8XEsYkFGuD3rMsVxMMfrf2"
-  }
+  ]
 }

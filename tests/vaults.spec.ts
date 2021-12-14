@@ -71,6 +71,7 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
   let usdcVaultReserve: PublicKey
+  let usdcVaultLiquidationFund: PublicKey
   let userUsdcTokenAccount: PublicKey
   let userXusdTokenAccount: PublicKey
   let allUserCollateralAmount: BN
@@ -160,6 +161,7 @@ describe('vaults', () => {
     usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+    usdcVaultLiquidationFund = await usdcToken.createAccount(exchangeAuthority)
 
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
@@ -190,6 +192,7 @@ describe('vaults', () => {
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
         collateralPriceFeed: usdcPriceFeed,
+        liquidationFund: usdcVaultLiquidationFund,
         synthetic: xusd.assetAddress,
         debtInterestRate,
         collateralRatio,
