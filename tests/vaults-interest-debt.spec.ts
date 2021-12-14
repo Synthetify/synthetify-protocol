@@ -79,6 +79,7 @@ describe('Vault interest borrow accumulation', () => {
   let xsolBorrowAmount: BN
   let xsol: Synthetic
   let btc: Collateral
+  let btcPriceFeed: PublicKey
   const accountOwner = Keypair.generate()
 
   before(async () => {
@@ -149,7 +150,7 @@ describe('Vault interest borrow accumulation', () => {
     await exchange.getState()
 
     // create BTC collateral token
-    const { token } = await createCollateralToken({
+    const { token, feed } = await createCollateralToken({
       decimals: 8,
       price: 47857,
       collateralRatio: 65,
@@ -159,7 +160,9 @@ describe('Vault interest borrow accumulation', () => {
       oracleProgram,
       wallet
     })
+    btcPriceFeed = feed
     btcToken = token
+
     btcVaultReserve = await btcToken.createAccount(exchangeAuthority)
 
     xsolToken = await createToken({
@@ -207,6 +210,7 @@ describe('Vault interest borrow accumulation', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: btcVaultReserve,
         collateral: btc.collateralAddress,
+        collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
         debtInterestRate,
         collateralRatio,
@@ -252,6 +256,7 @@ describe('Vault interest borrow accumulation', () => {
         owner: accountOwner.publicKey,
         to: userXsolTokenAccount,
         collateral: btc.collateralAddress,
+        collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
         signers: [accountOwner]
       })

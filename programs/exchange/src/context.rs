@@ -1153,7 +1153,7 @@ pub struct BorrowVault<'info> {
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(
-        owner = oracle::ID,
+        owner = oracle::ID, // TODO: Default public key
         constraint = collateral_price_feed.key() == vault.load()?.collateral_price_feed,
         constraint = collateral_price_feed.data_len() == 3312
     )]

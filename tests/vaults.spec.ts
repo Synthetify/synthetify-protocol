@@ -563,9 +563,6 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
@@ -577,7 +574,7 @@ describe('vaults', () => {
 
       await assertThrowsAsync(
         signAndSend(
-          new Transaction().add(updateCollateralIx).add(withdrawIx),
+          new Transaction().add(withdrawIx),
           [accountOwner],
           connection
         ),
@@ -619,9 +616,6 @@ describe('vaults', () => {
         userUsdcTokenAccount
       )
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
@@ -631,7 +625,7 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount
       })
       await signAndSend(
-        new Transaction().add(updateCollateralIx).add(withdrawIx),
+        new Transaction().add(withdrawIx),
         [accountOwner],
         connection
       )
@@ -680,9 +674,6 @@ describe('vaults', () => {
       const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
@@ -692,7 +683,7 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount
       })
       await signAndSend(
-        new Transaction().add(updateCollateralIx).add(withdrawIx),
+        new Transaction().add(withdrawIx),
         [accountOwner],
         connection
       )

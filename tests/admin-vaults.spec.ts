@@ -72,6 +72,7 @@ describe('ADMIN VAULTS', () => {
   let nonce: number
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
+  let usdcPriceFeed: PublicKey
   let usdcVaultReserve: PublicKey
   let syntheticAddress: PublicKey
   let collateralAddress: PublicKey
@@ -156,6 +157,7 @@ describe('ADMIN VAULTS', () => {
       price: 1,
       wallet
     })
+    usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
 
@@ -189,6 +191,7 @@ describe('ADMIN VAULTS', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         debtInterestRate,
         collateralRatio,

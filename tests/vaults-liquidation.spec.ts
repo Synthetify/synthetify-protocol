@@ -200,6 +200,7 @@ describe('vaults liquidation', () => {
 
     const { ix: createVaultInstruction } = await exchange.createVaultInstruction({
       collateralReserve: ethVaultReserve,
+      collateralPriceFeed: ethPriceFeed,
       collateral: eth.collateralAddress,
       synthetic: xusd.assetAddress,
       debtInterestRate,

@@ -1377,7 +1377,7 @@ export class Exchange {
     })) as TransactionInstruction
   }
   public async borrowVault({ owner, to, synthetic, collateral, collateralPriceFeed, amount, signers }: BorrowVault) {
-    await this.getState()
+    await this.getState() // make sure state/asset list are loaded
     const borrowVaultIx = await this.borrowVaultInstruction({
       owner,
       to,
@@ -1386,7 +1386,16 @@ export class Exchange {
       collateralPriceFeed,
       amount
     })
-    return this.updatePricesAndSend([borrowVaultIx], signers, this.assetsList.headAssets >= 20)
+    const tx = new Transaction()
+
+    const syntheticStructure = this.assetsList.synthetics.find((s) => s.assetAddress.equals(synthetic)) as Synthetic
+    const syntheticFeedAddress = this.assetsList.assets[syntheticStructure.assetIndex].feedAddress
+
+    if (!syntheticFeedAddress.equals(PublicKey.default)) {
+      const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(this.state.assetsList, [syntheticFeedAddress])
+      tx.add(updateSyntheticPriceIx)
+    }
+    return await signAndSend(tx.add(borrowVaultIx), signers, this.connection)
   }
   public async withdrawVaultInstruction({
     amount,
