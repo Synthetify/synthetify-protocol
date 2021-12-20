@@ -25,6 +25,16 @@ pub fn check_feed_update(
     return Ok(());
 }
 
+pub fn check_value_collateral_price_feed(collateral_price_feed: &AccountInfo) -> Result<()> {
+    require!(
+        collateral_price_feed.key() == Pubkey::default() || (
+            collateral_price_feed.owner == &oracle::oracle::ID &&
+            collateral_price_feed.data_len() == 3312
+        ), InvalidOracleProgram
+    );
+    Ok(())
+}
+
 pub fn load_price_from_feed(
     price_feed: &AccountInfo
 ) -> Result<Decimal> {
@@ -378,6 +388,15 @@ pub fn get_user_sny_collateral_balance(
 mod tests {
     use super::*;
     use std::{cell::RefCell, u64};
+
+    // #[test]
+    // fn test_check_value_collateral_price_feed() {
+        
+    //     let account_info = AccountInfo {
+    //         key: &Pubkey::default(),
+    //     };
+    //     check_value_collateral_price_feed(&account_info);
+    // }
 
     #[test]
     fn adjust_staking_account_test() {
