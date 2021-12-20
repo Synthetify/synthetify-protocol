@@ -389,15 +389,6 @@ mod tests {
     use super::*;
     use std::{cell::RefCell, u64};
 
-    // #[test]
-    // fn test_check_value_collateral_price_feed() {
-        
-    //     let account_info = AccountInfo {
-    //         key: &Pubkey::default(),
-    //     };
-    //     check_value_collateral_price_feed(&account_info);
-    // }
-
     #[test]
     fn adjust_staking_account_test() {
         let staking_round_length = 100;
