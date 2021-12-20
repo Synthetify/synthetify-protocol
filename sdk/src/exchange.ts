@@ -97,6 +97,18 @@ export class Exchange {
         fn(account)
       })
   }
+  public onVaultChange(vault: PublicKey, fn: (account: Vault) => void) {
+    this.program.account.vault.subscribe(vault, 'recent').on('change', (account: Vault) => {
+      fn(account)
+    })
+  }
+  public onVaultEntryChange(vaultEntry: PublicKey, fn: (account: VaultEntry) => void) {
+    this.program.account.vaultEntry
+      .subscribe(vaultEntry, 'recent')
+      .on('change', (account: VaultEntry) => {
+        fn(account)
+      })
+  }
   public async init({
     admin,
     nonce,
