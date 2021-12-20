@@ -1885,6 +1885,8 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+
         require!(
             collateral_ratio.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
@@ -2011,6 +2013,8 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+
         let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
         let amount_borrow_limit = calculate_vault_borrow_limit(
             collateral_price,
@@ -2068,8 +2072,9 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
 
+        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_price,
             synthetic_asset,
@@ -2174,6 +2179,8 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+
         let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
 
         // Amount of synthetic safely collateralized

@@ -1042,10 +1042,6 @@ pub struct CreateVault<'info> {
     pub liquidation_fund: Account<'info, TokenAccount>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(
-        owner = oracle::ID,
-        constraint = collateral_price_feed.data_len() == 3312
-    )]
     pub collateral_price_feed: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     #[account(address = system_program::ID)]
@@ -1158,10 +1154,8 @@ pub struct BorrowVault<'info> {
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(
-        owner = oracle::ID, // TODO: Default public key
-        constraint = collateral_price_feed.key() == vault.load()?.collateral_price_feed,
-        constraint = collateral_price_feed.data_len() == 3312
+    #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
     )]
     pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut,
@@ -1212,10 +1206,8 @@ pub struct WithdrawVault<'info> {
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(
-        owner = oracle::ID,
-        constraint = collateral_price_feed.key() == vault.load()?.collateral_price_feed,
-        constraint = collateral_price_feed.data_len() == 3312
+    #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
     )]
     pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut, 
@@ -1325,16 +1317,13 @@ pub struct LiquidateVault<'info> {
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
+    )]
+    pub collateral_price_feed: AccountInfo<'info>,
+    #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
         constraint = assets_list.to_account_info().owner == program_id
     )]
-    #[account(
-        owner = oracle::ID,
-        constraint = collateral_price_feed.key() == vault.load()?.collateral_price_feed,
-        constraint = collateral_price_feed.data_len() == 3312,
-    )]
-    pub collateral_price_feed: AccountInfo<'info>,
-    #[account(mut)]
     pub assets_list: Loader<'info, AssetsList>,
     #[account(mut,
         constraint = &vault.load()?.collateral_reserve == collateral_reserve.to_account_info().key,
