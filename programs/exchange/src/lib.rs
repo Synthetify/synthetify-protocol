@@ -1890,9 +1890,16 @@ pub mod exchange {
         check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, oracle_type)?;
 
         require!(
+            collateral_ratio.scale == UNIFIED_PERCENT_SCALE &&
             collateral_ratio.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
         );
+        require!(
+            open_fee.scale == UNIFIED_PERCENT_SCALE &&
+            open_fee.lte(Decimal::from_percent(100))?,
+            ParameterOutOfRange
+        );
+
         // Init vault struct
         {
             vault.bump = bump;
