@@ -1863,6 +1863,7 @@ pub mod exchange {
     pub fn create_vault(
         ctx: Context<CreateVault>,
         bump: u8,
+        open_fee: Decimal,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
         max_borrow: Decimal,
@@ -1898,6 +1899,7 @@ pub mod exchange {
             vault.synthetic = *ctx.accounts.synthetic.to_account_info().key;
             vault.collateral = *ctx.accounts.collateral.to_account_info().key;
             vault.collateral_price_feed = *ctx.accounts.collateral_price_feed.key;
+            vault.open_fee = open_fee;
             vault.debt_interest_rate = debt_interest_rate;
             vault.collateral_ratio = collateral_ratio;
             vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
@@ -2024,12 +2026,16 @@ pub mod exchange {
             vault.collateral_ratio,
         );
 
-        let borrow_amount = match amount {
+        let mint_amount = match amount {
             u64::MAX => amount_borrow_limit
                 .sub(vault_entry.synthetic_amount)
                 .unwrap(),
             _ => Decimal::new(amount.into(), synthetic.supply.scale),
         };
+        let open_fee_amount = mint_amount.mul_up(vault.open_fee);
+        vault.accumulated_interest = vault.accumulated_interest.add(open_fee_amount).unwrap();
+
+        let borrow_amount = mint_amount.add(open_fee_amount)?;
         let amount_after_borrow = vault_entry.synthetic_amount.add(borrow_amount).unwrap();
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
@@ -2039,7 +2045,7 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
+        token::mint_to(mint_cpi_ctx, mint_amount.to_u64())?;
 
         Ok(())
     }

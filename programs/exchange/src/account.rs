@@ -287,6 +287,7 @@ pub struct Vault {
     pub synthetic: Pubkey,                       // 32
     pub collateral: Pubkey,                      // 32
     pub collateral_price_feed: Pubkey,           // 32
+    pub open_fee: Decimal,                       // 32
     pub debt_interest_rate: Decimal,             // 17
     pub collateral_ratio: Decimal,               // 17
     pub liquidation_threshold: Decimal,          // 17
