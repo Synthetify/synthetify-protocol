@@ -31,11 +31,12 @@ import { ERRORS, ERRORS_EXCHANGE } from '@synthetify/sdk/src/utils'
 import { calculateUserMaxDebt, percentToDecimal, SNY_DECIMALS } from '@synthetify/sdk/lib/utils'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 import { Collateral } from '@synthetify/sdk/lib/exchange'
+import { Exchange as ExchangeType, IDL } from '../target/types/exchange'
 
 describe('liquidation', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
-  const exchangeProgram = anchor.workspace.Exchange as Program
+  const exchangeProgram = anchor.workspace.Exchange as Program<ExchangeType>
   let exchange: Exchange
 
   const oracleProgram = anchor.workspace.Pyth as Program
@@ -343,7 +344,7 @@ describe('liquidation', () => {
         { val: liquidationFundAccountData.amount, scale: SNY_DECIMALS },
         {
           accounts: {
-            state: exchange.stateAddress,
+            state: exchange.stateAddress!,
             admin: EXCHANGE_ADMIN.publicKey,
             exchangeAuthority: exchangeAuthority,
             tokenProgram: TOKEN_PROGRAM_ID,
@@ -609,7 +610,7 @@ describe('liquidation', () => {
       })
       const liquidateIx = (await exchange.program.instruction.liquidate(maxAmount, {
         accounts: {
-          state: exchange.stateAddress,
+          state: exchange.stateAddress!,
           exchangeAuthority: exchange.exchangeAuthority,
           assetsList: fakeAssetList.assetsList,
           tokenProgram: TOKEN_PROGRAM_ID,

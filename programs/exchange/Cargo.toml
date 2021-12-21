@@ -22,8 +22,8 @@ localnet = []
 default = ["localnet"]
 
 [dependencies]
-anchor-lang = "0.16.2"
-anchor-spl = "0.16.2"
+anchor-lang = "0.18.2"
+anchor-spl = "0.18.2"
 thincollections = "0.5.3"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 pyth = { path = "../pyth", version = "0.1.0", features = ["cpi"] }

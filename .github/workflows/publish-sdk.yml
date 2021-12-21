@@ -7,8 +7,8 @@ on:
     paths:
       - 'sdk/**'
 env:
-  solana_verion: 1.7.11
-  anchor_version: 0.16.2
+  solana_verion: 1.8.11
+  anchor_version: 0.18.2
 
 jobs:
   install:

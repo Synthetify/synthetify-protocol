@@ -298,6 +298,23 @@ export const SWAPLINE_MAP: {
   ],
   [Network.TEST]: []
 }
+export const VAULTS_MAP: {
+  [key in Network]: Array<{ synthetic: PublicKey; collateral: PublicKey }>
+} = {
+  [Network.DEV]: [
+    {
+      synthetic: new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF'),
+      collateral: new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE')
+    },
+    {
+      synthetic: new PublicKey('HL5aKrMbm13a6VGNRSxJmy61nRsgySDacHVpLzCwHhL5'),
+      collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
+    }
+  ],
+  [Network.LOCAL]: [],
+  [Network.MAIN]: [],
+  [Network.TEST]: []
+}
 
 export const addressToAssetSymbol: { [key: string]: string } = {
   //Local
@@ -332,6 +349,7 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
   Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
   '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH',
+  '6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2': 'xLUNA',
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'USDC',
   CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5: 'renBTC',
   EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv: 'whFTT',
