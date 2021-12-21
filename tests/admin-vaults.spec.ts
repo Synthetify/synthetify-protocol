@@ -171,6 +171,7 @@ describe('ADMIN VAULTS', () => {
     let assetsListData
     let xusd: Synthetic
     let usdc: Collateral
+    let openFee: Decimal
     let debtInterestRate: Decimal
     let collateralRatio: Decimal
     let liquidationRatio: Decimal
@@ -183,6 +184,7 @@ describe('ADMIN VAULTS', () => {
       assetsListData = await exchange.getAssetsList(assetsList)
       xusd = assetsListData.synthetics[0]
       usdc = assetsListData.collaterals[1]
+      openFee = percentToDecimal(1)
       debtInterestRate = fromPercentToInterestRate(7)
       collateralRatio = percentToDecimal(80)
       liquidationRatio = percentToDecimal(50)
@@ -196,6 +198,7 @@ describe('ADMIN VAULTS', () => {
         liquidationFund: usdcVaultLiquidationFund,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
+        openFee,
         debtInterestRate,
         collateralRatio,
         maxBorrow,

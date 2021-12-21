@@ -1697,13 +1697,13 @@ export type Exchange = {
       "name": "createVault",
       "accounts": [
         {
-          "name": "state",
-          "isMut": false,
+          "name": "vault",
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "vault",
-          "isMut": true,
+          "name": "state",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -5252,13 +5252,13 @@ export const IDL: Exchange = {
       "name": "createVault",
       "accounts": [
         {
-          "name": "state",
-          "isMut": false,
+          "name": "vault",
+          "isMut": true,
           "isSigner": false
         },
         {
-          "name": "vault",
-          "isMut": true,
+          "name": "state",
+          "isMut": false,
           "isSigner": false
         },
         {

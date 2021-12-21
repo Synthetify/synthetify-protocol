@@ -172,6 +172,7 @@ describe('vaults', () => {
     let xusd: Synthetic
     let usdc: Collateral
     let debtInterestRate: Decimal
+    let openFee: Decimal
     let collateralRatio: Decimal
     let liquidationRatio: Decimal
     let liquidationThreshold: Decimal
@@ -182,6 +183,7 @@ describe('vaults', () => {
       assetsListData = await exchange.getAssetsList(assetsList)
       xusd = assetsListData.synthetics[0]
       usdc = assetsListData.collaterals[1]
+      openFee = percentToDecimal(1)
       debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
       collateralRatio = percentToDecimal(80)
       liquidationRatio = percentToDecimal(50)
@@ -194,6 +196,7 @@ describe('vaults', () => {
         collateralPriceFeed: usdcPriceFeed,
         liquidationFund: usdcVaultLiquidationFund,
         synthetic: xusd.assetAddress,
+        openFee,
         debtInterestRate,
         collateralRatio,
         maxBorrow,
@@ -576,11 +579,7 @@ describe('vaults', () => {
       })
 
       await assertThrowsAsync(
-        signAndSend(
-          new Transaction().add(withdrawIx),
-          [accountOwner],
-          connection
-        ),
+        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
@@ -627,11 +626,7 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(
-        new Transaction().add(withdrawIx),
-        [accountOwner],
-        connection
-      )
+      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -685,11 +680,7 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(
-        new Transaction().add(withdrawIx),
-        [accountOwner],
-        connection
-      )
+      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,

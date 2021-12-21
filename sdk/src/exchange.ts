@@ -1190,6 +1190,7 @@ export class Exchange {
     collateralReserve,
     collateralPriceFeed,
     liquidationFund,
+    openFee,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
@@ -1208,6 +1209,7 @@ export class Exchange {
     )
     const ix = await this.program.instruction.createVault(
       bump,
+      openFee,
       debtInterestRate,
       collateralRatio,
       maxBorrow,
@@ -1217,10 +1219,10 @@ export class Exchange {
       liquidationRatio,
       {
         accounts: {
-          state: this.stateAddress,
           vault: vaultAddress,
           admin: this.state.admin,
           assetsList: this.state.assetsList,
+          state: this.stateAddress as PublicKey,
           collateralReserve: collateralReserve,
           synthetic: synthetic,
           collateral: collateral,
@@ -1363,7 +1365,7 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
     const vaultData = await this.getVaultForPair(synthetic, collateral)
-    
+
     return (await this.program.instruction.liquidateVault(amount, {
       accounts: {
         state: this.stateAddress,
@@ -1384,7 +1386,15 @@ export class Exchange {
       }
     })) as TransactionInstruction
   }
-  public async borrowVault({ owner, to, synthetic, collateral, collateralPriceFeed, amount, signers }: BorrowVault) {
+  public async borrowVault({
+    owner,
+    to,
+    synthetic,
+    collateral,
+    collateralPriceFeed,
+    amount,
+    signers
+  }: BorrowVault) {
     await this.getState() // make sure state/asset list are loaded
     const borrowVaultIx = await this.borrowVaultInstruction({
       owner,
@@ -1396,11 +1406,16 @@ export class Exchange {
     })
     const tx = new Transaction()
 
-    const syntheticStructure = this.assetsList.synthetics.find((s) => s.assetAddress.equals(synthetic)) as Synthetic
+    const syntheticStructure = this.assetsList.synthetics.find((s) =>
+      s.assetAddress.equals(synthetic)
+    ) as Synthetic
     const syntheticFeedAddress = this.assetsList.assets[syntheticStructure.assetIndex].feedAddress
 
     if (!syntheticFeedAddress.equals(PublicKey.default)) {
-      const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(this.state.assetsList, [syntheticFeedAddress])
+      const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(
+        this.state.assetsList,
+        [syntheticFeedAddress]
+      )
       tx.add(updateSyntheticPriceIx)
     }
     return await signAndSend(tx.add(borrowVaultIx), signers, this.connection)
@@ -1987,7 +2002,7 @@ export interface Vault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
-  collateralPriceFeed:  PublicKey
+  collateralPriceFeed: PublicKey
   liquidationFund: PublicKey
   collateralRatio: Decimal
   liquidationThreshold: Decimal
@@ -2085,6 +2100,7 @@ export interface CreateVault {
   collateralReserve: PublicKey
   collateralPriceFeed: PublicKey
   liquidationFund: PublicKey
+  openFee: Decimal
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal

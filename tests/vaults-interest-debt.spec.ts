@@ -208,6 +208,7 @@ describe('Vault interest borrow accumulation', () => {
       const liquidationPenaltyExchange = percentToDecimal(5)
       const liquidationPenaltyLiquidator = percentToDecimal(5)
       const maxBorrow = { val: new BN(10).pow(new BN(16)), scale: xsol.maxSupply.scale }
+      const openFee = percentToDecimal(1)
 
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: btcVaultReserve,
@@ -217,6 +218,7 @@ describe('Vault interest borrow accumulation', () => {
         synthetic: xsol.assetAddress,
         debtInterestRate,
         collateralRatio,
+        openFee,
         maxBorrow,
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
