@@ -1697,13 +1697,13 @@ export type Exchange = {
       "name": "createVault",
       "accounts": [
         {
-          "name": "vault",
-          "isMut": true,
+          "name": "state",
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "state",
-          "isMut": false,
+          "name": "vault",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1804,6 +1804,10 @@ export type Exchange = {
           "type": {
             "defined": "Decimal"
           }
+        },
+        {
+          "name": "oracleType",
+          "type": "u8"
         }
       ]
     },
@@ -2960,6 +2964,10 @@ export type Exchange = {
             "type": "publicKey"
           },
           {
+            "name": "oracleType",
+            "type": "u8"
+          },
+          {
             "name": "openFee",
             "type": {
               "defined": "Decimal"
@@ -3347,6 +3355,20 @@ export type Exchange = {
           }
         ]
       }
+    },
+    {
+      "name": "OracleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth"
+          },
+          {
+            "name": "Chainlink"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -3549,6 +3571,11 @@ export type Exchange = {
       "code": 339,
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
+    },
+    {
+      "code": 340,
+      "name": "InvalidOracleType",
+      "msg": "Invalid oracle type"
     }
   ]
 };
@@ -5252,13 +5279,13 @@ export const IDL: Exchange = {
       "name": "createVault",
       "accounts": [
         {
-          "name": "vault",
-          "isMut": true,
+          "name": "state",
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "state",
-          "isMut": false,
+          "name": "vault",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -5359,6 +5386,10 @@ export const IDL: Exchange = {
           "type": {
             "defined": "Decimal"
           }
+        },
+        {
+          "name": "oracleType",
+          "type": "u8"
         }
       ]
     },
@@ -6515,6 +6546,10 @@ export const IDL: Exchange = {
             "type": "publicKey"
           },
           {
+            "name": "oracleType",
+            "type": "u8"
+          },
+          {
             "name": "openFee",
             "type": {
               "defined": "Decimal"
@@ -6902,6 +6937,20 @@ export const IDL: Exchange = {
           }
         ]
       }
+    },
+    {
+      "name": "OracleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth"
+          },
+          {
+            "name": "Chainlink"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -7104,6 +7153,11 @@ export const IDL: Exchange = {
       "code": 339,
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
+    },
+    {
+      "code": 340,
+      "name": "InvalidOracleType",
+      "msg": "Invalid oracle type"
     }
   ]
 };

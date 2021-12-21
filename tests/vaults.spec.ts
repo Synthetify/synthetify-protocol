@@ -46,7 +46,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Asset, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('vaults', () => {
   const provider = anchor.Provider.local()
@@ -203,7 +203,8 @@ describe('vaults', () => {
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       createVaultIx = ix
     })
@@ -239,6 +240,7 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
       assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
+      assert.ok(vault.oracleType === OracleType.Pyth)
     })
     it('create usdc/xusd vault should fail cause there can only be one vault per synthetic/collateral pair', async () => {
       await assertThrowsAsync(

@@ -1197,7 +1197,8 @@ export class Exchange {
     liquidationThreshold,
     liquidationPenaltyLiquidator,
     liquidationPenaltyExchange,
-    liquidationRatio
+    liquidationRatio,
+    oracleType
   }: CreateVault) {
     const [vaultAddress, bump] = await PublicKey.findProgramAddress(
       [
@@ -1217,6 +1218,7 @@ export class Exchange {
       liquidationPenaltyLiquidator,
       liquidationPenaltyExchange,
       liquidationRatio,
+      oracleType,
       {
         accounts: {
           vault: vaultAddress,
@@ -2016,6 +2018,7 @@ export interface Vault {
   collateralAmount: Decimal
   maxBorrow: Decimal
   lastUpdate: BN
+  oracleType: OracleType
 }
 export interface VaultEntry {
   owner: PublicKey
@@ -2108,6 +2111,7 @@ export interface CreateVault {
   liquidationPenaltyLiquidator: Decimal
   liquidationPenaltyExchange: Decimal
   liquidationRatio: Decimal
+  oracleType: OracleType
 }
 
 export interface CreateVaultEntry {
@@ -2178,4 +2182,8 @@ export interface SetHaltedSwapline {
   synthetic: PublicKey
   collateral: PublicKey
   halted: boolean
+}
+export enum OracleType {
+  Pyth = 0,
+  Chainlink = 1
 }

@@ -28,8 +28,8 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, Compare, DivUp, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
-        XUSD_SCALE, DivScale,
+        Add, Compare, DivScale, DivUp, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE,
+        UNIFIED_PERCENT_SCALE, XUSD_SCALE,
     };
 
     use super::*;
@@ -1550,7 +1550,7 @@ pub mod exchange {
             swapline_supply: Decimal {
                 val: 0,
                 scale: ctx.accounts.asset_address.decimals,
-            }
+            },
         };
         assets_list.append_synthetic(new_synthetic);
         Ok(())
@@ -1871,6 +1871,7 @@ pub mod exchange {
         penalty_to_liquidator: Decimal,
         penalty_to_exchange: Decimal,
         liquidation_ratio: Decimal,
+        oracle_type: u8,
     ) -> Result<()> {
         msg!("Synthetify: CREATE VAULT");
 
@@ -1886,7 +1887,7 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, oracle_type)?;
 
         require!(
             collateral_ratio.lte(Decimal::from_percent(100))?,
@@ -1899,6 +1900,7 @@ pub mod exchange {
             vault.synthetic = *ctx.accounts.synthetic.to_account_info().key;
             vault.collateral = *ctx.accounts.collateral.to_account_info().key;
             vault.collateral_price_feed = *ctx.accounts.collateral_price_feed.key;
+            vault.oracle_type = oracle_type;
             vault.open_fee = open_fee;
             vault.debt_interest_rate = debt_interest_rate;
             vault.collateral_ratio = collateral_ratio;
@@ -2015,9 +2017,10 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
         let amount_borrow_limit = calculate_vault_borrow_limit(
             collateral_price,
             synthetic_asset,
@@ -2068,7 +2071,7 @@ pub mod exchange {
         }) {
             Some(i) => i,
             None => return Err(ErrorCode::NoAssetFound.into()),
-        };        
+        };
 
         let synthetic_asset = assets[synthetics[synthetic_position].asset_index as usize];
         let synthetic = &mut synthetics[synthetic_position];
@@ -2078,9 +2081,10 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_price,
             synthetic_asset,
@@ -2185,9 +2189,10 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed)?;
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price = load_price_from_feed(&ctx.accounts.collateral_price_feed)?;
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
         // Amount of synthetic safely collateralized
         let amount_liquidation_limit = calculate_vault_borrow_limit(
@@ -2243,7 +2248,8 @@ pub mod exchange {
             .mul(synthetic_asset.price);
 
         // Amount seized in token
-        let seized_collateral_in_token = seized_collateral_in_usd.div_to_scale(collateral_price, ctx.accounts.collateral.decimals);
+        let seized_collateral_in_token = seized_collateral_in_usd
+            .div_to_scale(collateral_price, ctx.accounts.collateral.decimals);
 
         let collateral_to_exchange = seized_collateral_in_token
             .mul(vault.liquidation_penalty_exchange)
@@ -2597,6 +2603,8 @@ pub enum ErrorCode {
     InvalidOracleProgram = 38,
     #[msg("Invalid exchange account")]
     InvalidExchangeAccount = 39,
+    #[msg("Invalid oracle type")]
+    InvalidOracleType = 40,
 }
 
 // Access control modifiers.

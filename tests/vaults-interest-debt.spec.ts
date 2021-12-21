@@ -48,7 +48,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('Vault interest borrow accumulation', () => {
@@ -223,7 +223,8 @@ describe('Vault interest borrow accumulation', () => {
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     })

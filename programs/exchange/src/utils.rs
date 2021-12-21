@@ -25,22 +25,44 @@ pub fn check_feed_update(
     return Ok(());
 }
 
-pub fn check_value_collateral_price_feed(collateral_price_feed: &AccountInfo) -> Result<()> {
-    require!(
-        collateral_price_feed.key() == Pubkey::default() || (
-            collateral_price_feed.owner == &oracle::oracle::ID &&
-            collateral_price_feed.data_len() == 3312
-        ), InvalidOracleProgram
-    );
+pub fn check_value_collateral_price_feed(
+    collateral_price_feed: &AccountInfo,
+    oracle_type: u8,
+) -> Result<()> {
+    let oracle_type = to_oracle_type(oracle_type)?;
+    match oracle_type {
+        OracleType::Pyth => {
+            require!(
+                collateral_price_feed.key() == Pubkey::default()
+                    || (collateral_price_feed.owner == &oracle::oracle::ID
+                        && collateral_price_feed.data_len() == 3312),
+                InvalidOracleProgram
+            );
+        }
+        _ => {
+            return Err(ErrorCode::InvalidOracleType.into());
+        }
+    }
+
     Ok(())
 }
 
-pub fn load_price_from_feed(
-    price_feed: &AccountInfo
-) -> Result<Decimal> {
+pub fn load_price_from_feed(price_feed: &AccountInfo, oracle_type: u8) -> Result<Decimal> {
+    let oracle_type = to_oracle_type(oracle_type)?;
+    match oracle_type {
+        OracleType::Pyth => {
+            let loaded_price = load_pyth_price(price_feed)?;
+            Ok(loaded_price)
+        }
+        _ => {
+            return Err(ErrorCode::InvalidOracleType.into());
+        }
+    }
+}
+pub fn load_pyth_price(price_feed: &AccountInfo) -> Result<Decimal> {
     let price_feed = Price::load(price_feed)?;
     let offset = price_feed.expo.checked_add(PRICE_SCALE.into()).unwrap();
-    
+
     let scaled_price = match offset >= 0 {
         true => price_feed
             .agg
@@ -75,7 +97,6 @@ pub fn load_price_from_feed(
 
     return Ok(price);
 }
-
 pub fn div_up(a: u128, b: u128) -> u128 {
     return a
         .checked_add(b.checked_sub(1).unwrap())
@@ -383,7 +404,17 @@ pub fn get_user_sny_collateral_balance(
         None => return Decimal::from_sny(0),
     }
 }
-
+pub enum OracleType {
+    Pyth = 0,
+    Chainlink = 1,
+}
+pub fn to_oracle_type(value: u8) -> Result<OracleType> {
+    match value {
+        0 => Ok(OracleType::Pyth),
+        1 => Ok(OracleType::Chainlink),
+        _ => Err(ErrorCode::InvalidOracleType.into()),
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -49,7 +49,7 @@ import {
   toEffectiveFee
 } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('ADMIN VAULTS', () => {
   const provider = anchor.Provider.local()
@@ -205,7 +205,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       createVaultIx = ix
     })

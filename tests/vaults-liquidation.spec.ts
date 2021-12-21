@@ -46,7 +46,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('vaults liquidation', () => {
   const provider = anchor.Provider.local()
@@ -214,7 +214,8 @@ describe('vaults liquidation', () => {
       liquidationPenaltyExchange,
       liquidationPenaltyLiquidator,
       liquidationThreshold,
-      liquidationRatio
+      liquidationRatio,
+      oracleType: OracleType.Pyth
     })
     await signAndSend(new Transaction().add(createVaultInstruction), [EXCHANGE_ADMIN], connection)
     // create vaultEntry
