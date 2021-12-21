@@ -1,5 +1,5 @@
 import { DEV_NET, Network, TEST_NET, MAIN_NET } from './network'
-import idl from './idl/exchange.json'
+import { Exchange as ExchangeType, IDL } from './idl/exchange'
 import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, sleep, tou64 } from './utils'
@@ -24,8 +24,7 @@ export class Exchange {
   wallet: IWallet
   programId: PublicKey
   exchangeAuthority: PublicKey
-  idl: Idl = idl as Idl
-  program: Program
+  program: Program<ExchangeType>
   state: ExchangeState
   opts?: ConfirmOptions
   assetsList: AssetsList
@@ -48,22 +47,22 @@ export class Exchange {
       case Network.LOCAL:
         this.programId = programId
         this.exchangeAuthority = exchangeAuthority
-        this.program = new Program(idl as Idl, this.programId, provider)
+        this.program = new Program<ExchangeType>(IDL, this.programId, provider)
         break
       case Network.DEV:
         this.programId = DEV_NET.exchange
         this.exchangeAuthority = DEV_NET.exchangeAuthority
-        this.program = new Program(idl as Idl, this.programId, provider)
+        this.program = new Program<ExchangeType>(IDL, this.programId, provider)
         break
       case Network.TEST:
         this.programId = TEST_NET.exchange
         this.exchangeAuthority = TEST_NET.exchangeAuthority
-        this.program = new Program(idl as Idl, this.programId, provider)
+        this.program = new Program<ExchangeType>(IDL, this.programId, provider)
         break
       case Network.MAIN:
         this.programId = MAIN_NET.exchange
         this.exchangeAuthority = MAIN_NET.exchangeAuthority
-        this.program = new Program(idl as Idl, this.programId, provider)
+        this.program = new Program<ExchangeType>(IDL, this.programId, provider)
         break
       default:
         throw new Error('Not supported')
@@ -94,6 +93,18 @@ export class Exchange {
     this.program.account.exchangeAccount
       .subscribe(address, 'singleGossip')
       .on('change', (account: ExchangeAccount) => {
+        fn(account)
+      })
+  }
+  public onVaultChange(vault: PublicKey, fn: (account: Vault) => void) {
+    this.program.account.vault.subscribe(vault, 'recent').on('change', (account: Vault) => {
+      fn(account)
+    })
+  }
+  public onVaultEntryChange(vaultEntry: PublicKey, fn: (account: VaultEntry) => void) {
+    this.program.account.vaultEntry
+      .subscribe(vaultEntry, 'recent')
+      .on('change', (account: VaultEntry) => {
         fn(account)
       })
   }
@@ -465,8 +476,7 @@ export class Exchange {
         userCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
         owner: owner,
-        exchangeAccount: exchangeAccount,
-        managerProgram: this.programId
+        exchangeAccount: exchangeAccount
       }
     }) as TransactionInstruction)
   }
@@ -993,7 +1003,9 @@ export class Exchange {
 
   // Asset list
   public async getAssetsList(assetsList: PublicKey): Promise<AssetsList> {
-    const assetList = (await this.program.account.assetsList.fetch(assetsList)) as AssetsList
+    const assetList = (await this.program.account.assetsList.fetch(
+      assetsList
+    )) as unknown as AssetsList
     assetList.assets = assetList.assets.slice(0, assetList.headAssets)
     assetList.collaterals = assetList.collaterals.slice(0, assetList.headCollaterals)
     assetList.synthetics = assetList.synthetics.slice(0, assetList.headSynthetics)
@@ -1163,7 +1175,6 @@ export class Exchange {
         accounts: {
           admin: this.state.admin,
           state: this.stateAddress,
-          signer: this.state.admin,
           assetsList,
           assetAddress,
           liquidationFund,
@@ -1273,9 +1284,7 @@ export class Exchange {
         vault: vaultAddress,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
-        exchangeAuthority: this.exchangeAuthority,
-        rent: SYSVAR_RENT_PUBKEY,
-        systemProgram: SystemProgram.programId
+        exchangeAuthority: this.exchangeAuthority
       }
     })) as TransactionInstruction
   }
@@ -1332,9 +1341,7 @@ export class Exchange {
         vault: vaultAddress,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
-        exchangeAuthority: this.exchangeAuthority,
-        rent: SYSVAR_RENT_PUBKEY,
-        systemProgram: SystemProgram.programId
+        exchangeAuthority: this.exchangeAuthority
       }
     })) as TransactionInstruction
   }
@@ -1407,9 +1414,7 @@ export class Exchange {
         reserveAddress: vault.collateralReserve,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
-        exchangeAuthority: this.exchangeAuthority,
-        rent: SYSVAR_RENT_PUBKEY,
-        systemProgram: SystemProgram.programId
+        exchangeAuthority: this.exchangeAuthority
       }
     })
 
@@ -1436,12 +1441,9 @@ export class Exchange {
         state: this.stateAddress,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
-        reserveAddress: vault.collateralReserve,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
-        exchangeAuthority: this.exchangeAuthority,
-        rent: SYSVAR_RENT_PUBKEY,
-        systemProgram: SystemProgram.programId
+        exchangeAuthority: this.exchangeAuthority
       }
     })
 
@@ -1484,8 +1486,7 @@ export class Exchange {
         admin: this.state.admin,
         vault: vaultAddress,
         assetsList: this.state.assetsList,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        exchangeAuthority: this.exchangeAuthority
+        tokenProgram: TOKEN_PROGRAM_ID
       }
     })
 

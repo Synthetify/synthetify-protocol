@@ -8,22 +8,21 @@ import { createToken } from '../../tests/utils'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 
-const provider = Provider.local('https://api.devnet.solana.com', {
+const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const COLLATERAL_TOKEN = new PublicKey('GeXDUSYeCVn5opXJ3pFzQguiHjqSXaEifSoEzHVTu1rW')
-const SYNTHETIC_TOKEN = new PublicKey('6w9cNSAchLU4FSupCc2hMT3fkppABrZZPx6AZzojvzwe')
-const limit = new BN(1_000).muln(1_000_000)
+const COLLATERAL_TOKEN = new PublicKey('EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv')
+const SYNTHETIC_TOKEN = new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9')
+const limit = new BN(100_000).mul(new BN(100_000_000))
 
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
 
   const connection = provider.connection
   // @ts-expect-error
-  const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
+  const exchange = await Exchange.build(connection, Network.MAIN, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
-  const assetsList = await exchange.getAssetsList(state.assetsList)
   //@ts-expect-error
   const token = new Token(connection, COLLATERAL_TOKEN, TOKEN_PROGRAM_ID, provider.wallet.payer)
   const collateralReserve = await token.createAccount(exchange.exchangeAuthority)
@@ -37,7 +36,9 @@ const main = async () => {
   })
 
   const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  // // @ts-expect-error
+  // await signAndSend(new Transaction().add(ix), [provider.wallet.payer as Account], connection)
 
-  console.log(tx)
+  // console.log(tx)
 }
 main()

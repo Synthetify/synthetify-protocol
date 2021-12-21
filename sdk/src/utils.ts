@@ -262,10 +262,40 @@ export const SWAPLINE_MAP: {
     {
       synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
       collateral: new PublicKey('So11111111111111111111111111111111111111112')
+    },
+    {
+      synthetic: new PublicKey('6QARYJsmN7EfnUFPn8X1qFANhT2CssLU6DyTtCkE3JNX'),
+      collateral: new PublicKey('CzxkxsqcijCGLtP4jhCrjVofvjyyciRbe5XFJTEXG7Sj')
     }
   ],
   [Network.LOCAL]: [],
-  [Network.MAIN]: [],
+  [Network.MAIN]: [
+    // USDC<>xUSD
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')
+    },
+    // WSOL<>xSOL
+    {
+      synthetic: new PublicKey('BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov'),
+      collateral: new PublicKey('So11111111111111111111111111111111111111112')
+    },
+    // renBTC<>xBTC
+    {
+      synthetic: new PublicKey('HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D'),
+      collateral: new PublicKey('CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5')
+    },
+    // whETH<>xETH
+    {
+      synthetic: new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK'),
+      collateral: new PublicKey('7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs')
+    },
+    // whFTT<>xFTT
+    {
+      synthetic: new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9'),
+      collateral: new PublicKey('EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv')
+    }
+  ],
   [Network.TEST]: []
 }
 export const VAULTS_MAP: {
@@ -300,6 +330,7 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   '3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w': 'xSOL',
   BPyw7qZrDTiUdUTCUSMcuyZnYEf4P2yo92L15L3VoK7V: 'xFTT',
   '6QARYJsmN7EfnUFPn8X1qFANhT2CssLU6DyTtCkE3JNX': 'xETH',
+  CzxkxsqcijCGLtP4jhCrjVofvjyyciRbe5XFJTEXG7Sj: 'whETH',
   So11111111111111111111111111111111111111112: 'WSOL',
   oBNJxzeq1bkmSyULuqQoQtyHQMh8st8yfm4e7WqoJky: 'stSOL',
   HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG: 'USDC',
@@ -318,6 +349,10 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
   Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
   '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH',
+  '6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2': 'xLUNA',
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'USDC',
-  CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5: 'renBTC'
+  CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5: 'renBTC',
+  EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv: 'whFTT',
+  '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs': 'whETH',
+  mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So: 'mSOL'
 }
