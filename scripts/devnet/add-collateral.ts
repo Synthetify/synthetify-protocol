@@ -12,9 +12,9 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const FEED_ADDRESS = new PublicKey('JBu1AL4obBcCMqKBBxhpWCNUt136ijcuMZLFvTP7iWdB')
-const COLLATERAL_ADDRESS = new PublicKey('KNVfdSJyq1pRQk9AKKv1g5uyGuk6wpm4WG16Bjuwdma')
-const COLLATERAL_RATIO = 30
+const FEED_ADDRESS = new PublicKey('E4v1BBgoso9s64TQvmyownAVJbhbEPGyzA3qn4n46qj9')
+const COLLATERAL_ADDRESS = new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So')
+const COLLATERAL_RATIO = 50
 // const DECIMALS = 8
 
 const main = async () => {
@@ -46,7 +46,10 @@ const main = async () => {
     liquidationFund,
     reserveAccount,
     reserveBalance: toDecimal(new BN(0), tokenInfo.decimals),
-    maxCollateral: toDecimal(new BN(0), tokenInfo.decimals)
+    maxCollateral: toDecimal(
+      new BN(20_000).mul(new BN(10 ** tokenInfo.decimals)),
+      tokenInfo.decimals
+    )
   })
   // await signAndSend(new Transaction().add(ix), [payer], connection)
 
