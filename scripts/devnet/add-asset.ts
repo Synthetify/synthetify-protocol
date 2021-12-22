@@ -8,7 +8,7 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const FEED_ADDRESS = new PublicKey('5bmWuR1dgP4avtGYMNKLuxumZTVKGgoN2BCMXWDNL9nY')
+const FEED_ADDRESS = new PublicKey('EcV1X1gY2yb4KXxjVQtTHTbioum2gvmPnFk4zYAt7zne')
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
 

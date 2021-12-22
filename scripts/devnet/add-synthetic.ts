@@ -9,9 +9,9 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const FEED_ADDRESS = new PublicKey('5bmWuR1dgP4avtGYMNKLuxumZTVKGgoN2BCMXWDNL9nY')
+const FEED_ADDRESS = new PublicKey('EcV1X1gY2yb4KXxjVQtTHTbioum2gvmPnFk4zYAt7zne')
 const DECIMALS = 6
-const MAX_SUPPLY = new BN(1_000_000)
+const MAX_SUPPLY = new BN(50_000)
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection
@@ -29,7 +29,7 @@ const main = async () => {
   console.log('token', token.publicKey.toBase58())
   const ix = await exchange.addSyntheticInstruction({
     assetsList: state.assetsList,
-    maxSupply: MAX_SUPPLY,
+    maxSupply: MAX_SUPPLY.mul(new BN(10).pow(new BN(DECIMALS))),
     priceFeed: FEED_ADDRESS,
     assetAddress: token.publicKey
   })
