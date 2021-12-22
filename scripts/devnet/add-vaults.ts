@@ -2,6 +2,7 @@ import { BN, Provider } from '@project-serum/anchor'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PublicKey, Transaction } from '@solana/web3.js'
 import { Exchange, Network } from '@synthetify/sdk'
+import { OracleType } from '@synthetify/sdk/src/exchange'
 import { INTEREST_RATE_DECIMALS, percentToDecimal, toScale } from '@synthetify/sdk/src/utils'
 import { LedgerWalletProvider } from '../walletProvider/ledger'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
@@ -43,6 +44,7 @@ const createSnyXusdVault = async (exchange: Exchange, ledgerWallet: LedgerWallet
 
   const snyToken = new Token(connection, sny, TOKEN_PROGRAM_ID, wallet)
   const snyVaultReserve = await snyToken.createAccount(exchange.exchangeAuthority)
+  const snyVaultLiquidationFund = await snyToken.createAccount(exchange.exchangeAuthority)
 
   const { ix, vaultAddress } = await exchange.createVaultInstruction({
     collateral: sny,
@@ -51,10 +53,14 @@ const createSnyXusdVault = async (exchange: Exchange, ledgerWallet: LedgerWallet
     debtInterestRate,
     collateralRatio,
     maxBorrow,
+    collateralPriceFeed: new PublicKey('DEmEX28EgrdQEBwNXdfMsDoJWZXCHRS5pbgmJiTkjCRH'),
+    liquidationFund: snyVaultLiquidationFund,
+    openFee: percentToDecimal(1),
     liquidationPenaltyExchange,
     liquidationPenaltyLiquidator,
     liquidationThreshold,
-    liquidationRatio
+    liquidationRatio,
+    oracleType: OracleType.Pyth
   })
   console.log(`vaultAddress = ${vaultAddress.toString()}`)
 
@@ -74,6 +80,7 @@ const createUsdcXbtcVault = async (exchange: Exchange, ledgerWallet: LedgerWalle
 
   const usdcToken = new Token(connection, usdc, TOKEN_PROGRAM_ID, wallet)
   const usdcVaultReserve = await usdcToken.createAccount(exchange.exchangeAuthority)
+  const usdcVaultLiquidationFund = await usdcToken.createAccount(exchange.exchangeAuthority)
 
   const { ix, vaultAddress } = await exchange.createVaultInstruction({
     collateral: usdc,
@@ -82,10 +89,14 @@ const createUsdcXbtcVault = async (exchange: Exchange, ledgerWallet: LedgerWalle
     debtInterestRate,
     collateralRatio,
     maxBorrow,
+    collateralPriceFeed: PublicKey.default,
+    liquidationFund: usdcVaultLiquidationFund,
+    openFee: percentToDecimal(1),
     liquidationPenaltyExchange,
     liquidationPenaltyLiquidator,
     liquidationThreshold,
-    liquidationRatio
+    liquidationRatio,
+    oracleType: OracleType.Pyth
   })
   console.log(`vaultAddress = ${vaultAddress.toString()}`)
 
