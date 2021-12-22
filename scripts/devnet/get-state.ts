@@ -5,14 +5,14 @@ import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 import { percentToDecimal } from '@synthetify/sdk/lib/utils'
 
-const provider = Provider.local('https://api.devnet.solana.com', {
+const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
 const main = async () => {
   const connection = provider.connection
   // @ts-expect-error
-  const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
+  const exchange = await Exchange.build(connection, Network.MAIN, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
   const assetsList = await exchange.getAssetsList(state.assetsList)
   assetsList.collaterals.forEach((c) => {
