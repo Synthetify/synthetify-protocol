@@ -2006,6 +2006,7 @@ export interface Vault {
   collateralReserve: PublicKey
   collateralPriceFeed: PublicKey
   liquidationFund: PublicKey
+  openFee: Decimal
   collateralRatio: Decimal
   liquidationThreshold: Decimal
   liquidationRatio: Decimal

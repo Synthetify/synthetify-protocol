@@ -31,7 +31,8 @@ import {
   U64_MAX,
   eqDecimals,
   mulByDecimal,
-  almostEqual
+  almostEqual,
+  mulUpByUnifiedPercentage
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
@@ -489,6 +490,7 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         signers: [accountOwner]
       })
+      borrowAmount = borrowAmount.add(mulUpByUnifiedPercentage(borrowAmount, vault.openFee))
 
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -785,6 +787,54 @@ describe('vaults', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusdBefore = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
+
+      // CREATE ACCOUNT THAT WILL SEND SYNTHETIC NEEDED TO REPAY VAULT
+      {
+        const repayingAccount = Keypair.generate()
+        const repayingUsdcTokenAccount = await usdcToken.createAccount(repayingAccount.publicKey)
+        const repayingCollateralAmount = new BN(1000 * 10 ** 6) // 1000 USDC
+
+        await Promise.all([
+          connection.requestAirdrop(repayingAccount.publicKey, 10e9),
+          usdcToken.createAccount(repayingAccount.publicKey)
+        ])
+
+        await usdcToken.mintTo(
+          repayingUsdcTokenAccount,
+          wallet,
+          [],
+          tou64(repayingCollateralAmount)
+        )
+
+        const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
+          owner: repayingAccount.publicKey,
+          collateral: usdc.collateralAddress,
+          synthetic: xusdBefore.assetAddress
+        })
+        await signAndSend(new Transaction().add(createVaultEntryIx), [repayingAccount], connection)
+
+        await exchange.vaultDeposit({
+          amount: repayingCollateralAmount,
+          owner: repayingAccount.publicKey,
+          collateral: usdc.collateralAddress,
+          synthetic: xusdBefore.assetAddress,
+          userCollateralAccount: repayingUsdcTokenAccount,
+          reserveAddress: usdcVaultReserve,
+          collateralToken: usdcToken,
+          signers: [repayingAccount]
+        })
+
+        await exchange.borrowVault({
+          amount: new BN(100 * 10 ** 6), // 100 USDC,
+          owner: repayingAccount.publicKey,
+          to: userXusdTokenAccount,
+          collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
+          synthetic: xusdBefore.assetAddress,
+          signers: [repayingAccount]
+        })
+      }
+
       const vaultBefore = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
         usdc.collateralAddress
@@ -818,12 +868,18 @@ describe('vaults', () => {
       )
       const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
-      const expectedBorrowedSupply = toDecimal(new BN(0), xusdBefore.supply.scale)
-      assert.ok(eqDecimals(vaultAfter.mintAmount, expectedBorrowedSupply))
-      assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedBorrowedSupply))
-      assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedBorrowedSupply))
-      assert.ok(eqDecimals(xusdAfter.supply, expectedBorrowedSupply))
-      assert.ok(userXusdTokenAccountAfter.amount.eq(expectedBorrowedSupply.val))
+      const expectedUserSyntheticSupply = userXusdTokenAccountBefore.amount.sub(maxRepayAmount)
+      const expectedUserBorrowedSupply = toDecimal(new BN(0), xusdBefore.supply.scale)
+      const expectedGlobalBorrowedSupply = toDecimal(
+        vaultBefore.mintAmount.val.sub(maxRepayAmount),
+        xusdBefore.supply.scale
+      )
+
+      assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedUserBorrowedSupply))
+      assert.ok(userXusdTokenAccountAfter.amount.eq(expectedUserSyntheticSupply))
+      assert.ok(eqDecimals(vaultAfter.mintAmount, expectedGlobalBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedGlobalBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.supply, expectedGlobalBorrowedSupply))
     })
   })
   describe('#setHalted (exchange)', async () => {
