@@ -47,6 +47,7 @@ import {
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
 import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
+import { UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
 describe('vaults liquidation', () => {
   const provider = anchor.Provider.local()
@@ -246,7 +247,11 @@ describe('vaults liquidation', () => {
       signers: [accountOwner]
     })
 
-    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6) // 2000(ETH price) * 10(ETH amount) * 0.8(collateral ratio)
+    // 2000[ETH price] * 10[ETH amount] * 0.8[collateral ratio] / 1/(1+0.01)[1/(1+open fee)]
+    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6)
+      .muln(10 ** UNIFIED_PERCENT_SCALE)
+      .div(openFee.val.addn(10 ** UNIFIED_PERCENT_SCALE))
+
     const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
 
     // borrow xusd
