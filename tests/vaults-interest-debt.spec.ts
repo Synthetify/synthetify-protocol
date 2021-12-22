@@ -293,15 +293,21 @@ describe('Vault interest borrow accumulation', () => {
       // supply before adjustment
       // 831 XSOL
 
-      // new supply
-      // real     831.0001106735... XSOL
-      // expected 831.000110674 XSOL
+      // new supply (open fee + interest rate)
+      // real     839.3101117802... XSOL
+      // expected 839.310111781 XSOL
 
       // accumulatedInterestRate
       // real     1.0000001331811263318...
       // expected 1.000000133181126331
 
-      const expectedSupplyIncrease = toDecimal(new BN(110674), xsolBefore.supply.scale)
+      const expectedSupplyIncreaseFromOpenFee = new BN(831 * 10 ** 7) // 8.31 xsol
+      const expectedSupplyIncreaseFromInterest = new BN(111781) // 0.000111781 xsol
+
+      const expectedSupplyIncrease = toDecimal(
+        expectedSupplyIncreaseFromOpenFee.add(expectedSupplyIncreaseFromInterest),
+        xsolBefore.supply.scale
+      )
       const expectedNewSupply = toDecimal(
         xsolBorrowAmount.add(expectedSupplyIncrease.val),
         xsolBefore.supply.scale
@@ -326,7 +332,10 @@ describe('Vault interest borrow accumulation', () => {
       assert.ok(eqDecimals(vaultAfter.accumulatedInterest, expectedSupplyIncrease))
       assert.ok(eqDecimals(vaultAfter.accumulatedInterestRate, expectedAccumulatedInterestRate))
       assert.ok(
-        eqDecimals(vaultBefore.accumulatedInterest, toDecimal(new BN(0), xsolAfter.supply.scale))
+        eqDecimals(
+          vaultBefore.accumulatedInterest,
+          toDecimal(expectedSupplyIncreaseFromOpenFee, xsolAfter.supply.scale)
+        )
       )
       assert.ok(eqDecimals(vaultBefore.accumulatedInterestRate, fromPercentToInterestRate(100)))
 
@@ -335,11 +344,17 @@ describe('Vault interest borrow accumulation', () => {
         eqDecimals(vaultEntryAfter.lastAccumulatedInterestRate, expectedAccumulatedInterestRate)
       )
       assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedNewSupply))
-      assert.ok(vaultEntryBefore.syntheticAmount.val.eq(xsolBorrowAmount))
+      assert.ok(
+        vaultEntryBefore.syntheticAmount.val.eq(
+          xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee)
+        )
+      )
 
       // check synthetic supply
-      assert.ok(xsolBefore.supply.val.eq(xsolBorrowAmount))
-      assert.ok(xsolBefore.borrowedSupply.val.eq(xsolBorrowAmount))
+      assert.ok(xsolBefore.supply.val.eq(xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee)))
+      assert.ok(
+        xsolBefore.borrowedSupply.val.eq(xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee))
+      )
       assert.ok(eqDecimals(xsolAfter.supply, expectedNewSupply))
       assert.ok(eqDecimals(xsolAfter.borrowedSupply, expectedNewSupply))
     })
