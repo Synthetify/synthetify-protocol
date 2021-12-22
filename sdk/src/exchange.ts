@@ -1281,16 +1281,16 @@ export class Exchange {
       }
     }) as TransactionInstruction
   }
-  public async vaultDeposit({
-    amount,
-    owner,
-    synthetic,
-    collateral,
-    userCollateralAccount,
-    reserveAddress,
-    collateralToken,
-    signers
-  }: DepositVault) {
+  public async vaultDepositTransaction(vaultDepositInstruction: DepositVaultTransaction) {
+    const {
+      owner,
+      synthetic,
+      collateral,
+      userCollateralAccount,
+      reserveAddress,
+      amount,
+      collateralToken
+    } = vaultDepositInstruction
     const depositVaultIx = await this.vaultDepositInstruction({
       owner,
       synthetic,
@@ -1307,11 +1307,12 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    await signAndSend(
-      new Transaction().add(approveIx).add(depositVaultIx),
-      signers,
-      this.connection
-    )
+    return new Transaction().add(approveIx).add(depositVaultIx)
+  }
+
+  public async vaultDeposit(depositVault: DepositVault) {
+    const tx = await this.vaultDepositTransaction(depositVault)
+    await signAndSend(tx, depositVault.signers, this.connection)
   }
   public async borrowVaultInstruction({
     owner,
@@ -1375,38 +1376,38 @@ export class Exchange {
       }
     }) as TransactionInstruction
   }
-  public async borrowVault({
-    owner,
-    to,
-    synthetic,
-    collateral,
-    collateralPriceFeed,
-    amount,
-    signers
-  }: BorrowVault) {
-    const borrowVaultIx = await this.borrowVaultInstruction({
-      owner,
-      to,
-      synthetic,
-      collateral,
-      collateralPriceFeed,
-      amount
-    })
-    const tx = new Transaction()
-
+  public async updateVaultSyntheticPriceIx(
+    synthetic: PublicKey
+  ): Promise<TransactionInstruction | null> {
     const syntheticStructure = this.assetsList.synthetics.find((s) =>
       s.assetAddress.equals(synthetic)
     ) as Synthetic
     const syntheticFeedAddress = this.assetsList.assets[syntheticStructure.assetIndex].feedAddress
 
-    if (!syntheticFeedAddress.equals(PublicKey.default)) {
-      const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(
-        this.state.assetsList,
-        [syntheticFeedAddress]
-      )
-      tx.add(updateSyntheticPriceIx)
+    if (syntheticFeedAddress.equals(PublicKey.default)) {
+      return null
     }
-    return await signAndSend(tx.add(borrowVaultIx), signers, this.connection)
+    const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(
+      this.state.assetsList,
+      [syntheticFeedAddress]
+    )
+    return updateSyntheticPriceIx
+  }
+
+  public async borrowVaultTransaction(borrowVaultInstruction: BorrowVaultInstruction) {
+    const tx = new Transaction()
+    const updatePriceIx = await this.updateVaultSyntheticPriceIx(borrowVaultInstruction.synthetic)
+    if (updatePriceIx !== null) {
+      tx.add(updatePriceIx)
+    }
+    const borrowIx = await this.borrowVaultInstruction(borrowVaultInstruction)
+    tx.add(borrowIx)
+
+    return tx
+  }
+  public async borrowVault(borrowVault: BorrowVault) {
+    const tx = await this.borrowVaultTransaction(borrowVault)
+    return await signAndSend(tx, borrowVault.signers, this.connection)
   }
   public async withdrawVaultInstruction({
     amount,
@@ -1416,7 +1417,7 @@ export class Exchange {
     collateralPriceFeed,
     synthetic,
     userCollateralAccount
-  }: WithdrawVault) {
+  }: WithdrawVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
@@ -1438,6 +1439,17 @@ export class Exchange {
     })
 
     return ix
+  }
+  public async withdrawVaultTransaction(withdrawVaultTransaction: WithdrawVaultInstruction) {
+    const tx = new Transaction()
+    const updatePriceIx = await this.updateVaultSyntheticPriceIx(withdrawVaultTransaction.synthetic)
+    if (updatePriceIx !== null) {
+      tx.add(updatePriceIx)
+    }
+    const withdrawVaultIx = await this.withdrawVaultInstruction(withdrawVaultTransaction)
+    tx.add(withdrawVaultIx)
+
+    return tx
   }
   public async repayVaultInstruction({
     amount,
@@ -1466,14 +1478,9 @@ export class Exchange {
 
     return ix
   }
-  public async repayVault({
-    amount,
-    owner,
-    synthetic,
-    collateral,
-    userTokenAccountRepay,
-    signers
-  }: RepayVault) {
+  public async repayVaultTransaction(repayVaultInstruction: RepayVaultInstruction) {
+    const { amount, owner, synthetic, collateral, userTokenAccountRepay } = repayVaultInstruction
+
     const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
       userTokenAccountRepay,
@@ -1482,15 +1489,14 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const repayIx = await this.repayVaultInstruction({
-      amount,
-      owner,
-      synthetic,
-      collateral,
-      userTokenAccountRepay
-    })
+    const repayIx = await this.repayVaultInstruction(repayVaultInstruction)
 
-    await signAndSend(new Transaction().add(approveIx).add(repayIx), signers, this.connection)
+    return new Transaction().add(approveIx).add(repayIx)
+  }
+  public async repayVault(repayVault: RepayVault) {
+    const tx = await this.repayVaultTransaction(repayVault)
+
+    await signAndSend(tx, repayVault.signers, this.connection)
   }
   public async setVaultHaltedInstruction({ halted, collateral, synthetic }: SetVaultHalted) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
@@ -2016,14 +2022,10 @@ export interface VaultDepositInstruction {
   reserveAddress: PublicKey
   amount: BN
 }
-export interface DepositVault {
-  amount: BN
-  owner: PublicKey
-  synthetic: PublicKey
-  collateral: PublicKey
-  userCollateralAccount: PublicKey
-  reserveAddress: PublicKey
+export interface DepositVaultTransaction extends VaultDepositInstruction {
   collateralToken: Token
+}
+export interface DepositVault extends DepositVaultTransaction {
   signers: Array<Account | Keypair>
 }
 export interface LiquidateVaultInstruction {
@@ -2050,7 +2052,7 @@ export interface BorrowVault extends BorrowVaultInstruction {
   signers: Array<Account | Keypair>
 }
 
-export interface WithdrawVault {
+export interface WithdrawVaultInstruction {
   amount: BN
   owner: PublicKey
   collateral: PublicKey
