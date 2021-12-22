@@ -192,6 +192,8 @@ describe('Vault interest borrow accumulation', () => {
       priceFeed: xsolFeed
     })
     await signAndSend(new Transaction().add(addXsolSynthetic), [EXCHANGE_ADMIN], connection)
+
+    await exchange.getState()
   })
   describe('Prepare vault entry', async () => {
     before(async () => {

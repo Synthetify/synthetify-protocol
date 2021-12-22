@@ -46,7 +46,7 @@ import {
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Asset, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Asset, AssetsList, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('vaults', () => {
@@ -169,7 +169,7 @@ describe('vaults', () => {
     maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
   })
   describe('#createVault', async () => {
-    let assetsListData
+    let assetsListData: AssetsList
     let xusd: Synthetic
     let usdc: Collateral
     let debtInterestRate: Decimal
@@ -577,6 +577,7 @@ describe('vaults', () => {
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
@@ -626,6 +627,7 @@ describe('vaults', () => {
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
@@ -680,6 +682,7 @@ describe('vaults', () => {
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
@@ -942,6 +945,7 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount
@@ -1032,6 +1036,7 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount

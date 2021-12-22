@@ -266,6 +266,9 @@ describe('vaults liquidation', () => {
     const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
       amount: U64_MAX,
       collateral: eth.collateralAddress,
+      collateralReserve: ethVaultReserve,
+      liquidationFund: ethVaultLiquidationFund,
+      collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
       liquidator: liquidator.publicKey,
       liquidatorCollateralAccount,
