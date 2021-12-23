@@ -260,13 +260,13 @@ pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
 pub fn calculate_vault_borrow_limit(
-    collateral_asset: Asset,
+    collateral_price: Decimal,
     synthetic_asset: Asset,
     synthetic: Synthetic,
     collateral_amount: Decimal,
     collateral_ratio: Decimal,
 ) -> Decimal {
-    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let collateral_value = calculate_value_in_usd(collateral_price, collateral_amount);
     let max_debt = collateral_value.mul(collateral_ratio);
     let max_synthetic_amount =
         usd_to_token_amount(&synthetic_asset, max_debt, synthetic.supply.scale);
@@ -274,14 +274,14 @@ pub fn calculate_vault_borrow_limit(
     return max_synthetic_amount;
 }
 pub fn calculate_vault_withdraw_limit(
-    collateral_asset: Asset,
+    collateral_price: Decimal,
     synthetic_asset: Asset,
     collateral_amount: Decimal,
     synthetic_amount: Decimal,
     collateral_ratio: Decimal,
 ) -> Result<Decimal> {
     let vault_debt_value = calculate_value_in_usd(synthetic_asset.price, synthetic_amount);
-    let collateral_value = calculate_value_in_usd(collateral_asset.price, collateral_amount);
+    let collateral_value = calculate_value_in_usd(collateral_price, collateral_amount);
     let min_collateralized_value = vault_debt_value.div(collateral_ratio);
     let max_debt_value = collateral_value.mul(collateral_ratio);
 
@@ -290,11 +290,8 @@ pub fn calculate_vault_withdraw_limit(
     }
 
     let max_withdraw_value = collateral_value.sub(min_collateralized_value).unwrap();
-    let max_withdraw_amount = usd_to_token_amount(
-        &collateral_asset,
-        max_withdraw_value,
-        collateral_amount.scale,
-    );
+    let max_withdraw_amount = max_withdraw_value.div_to_scale(
+        collateral_price, collateral_amount.scale);
     return Ok(max_withdraw_amount);
 }
 
@@ -1539,10 +1536,7 @@ mod tests {
     #[test]
     fn test_calculate_vault_borrow_limit() {
         let btc_decimal = 8;
-        let btc_asset = Asset {
-            price: Decimal::from_integer(49_862).to_price(),
-            ..Default::default()
-        };
+        let btc_price = Decimal::from_integer(49_862).to_price();
         let xusd_asset = Asset {
             price: Decimal::from_integer(1).to_price(),
             ..Default::default()
@@ -1555,7 +1549,7 @@ mod tests {
         let collateral_ratio = Decimal::from_percent(70);
 
         let borrow_limit = calculate_vault_borrow_limit(
-            btc_asset,
+            btc_price,
             xusd_asset,
             xusd_synthetic,
             collateral_amount,
@@ -1585,7 +1579,7 @@ mod tests {
             let xsol_amount = Decimal::from_integer(300).to_scale(xsol_decimal);
 
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,
@@ -1608,7 +1602,7 @@ mod tests {
             let xsol_amount = Decimal::from_integer(1000).to_scale(xsol_decimal);
 
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,
@@ -1622,7 +1616,7 @@ mod tests {
             let btc_amount = Decimal::from_integer(1).to_scale(btc_decimal);
             let xsol_amount = Decimal::new(0, xsol_decimal);
             let vault_withdraw_limit = calculate_vault_withdraw_limit(
-                btc_asset,
+                btc_asset.price,
                 xsol_asset,
                 btc_amount,
                 xsol_amount,

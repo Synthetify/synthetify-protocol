@@ -28,8 +28,8 @@ pub mod exchange {
     };
 
     use crate::decimal::{
-        Add, Compare, DivUp, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE, UNIFIED_PERCENT_SCALE,
-        XUSD_SCALE,
+        Add, Compare, DivScale, DivUp, Mul, MulUp, Sub, PRICE_SCALE, SNY_SCALE,
+        UNIFIED_PERCENT_SCALE, XUSD_SCALE,
     };
 
     use super::*;
@@ -96,7 +96,6 @@ pub mod exchange {
     pub fn set_assets_list(ctx: Context<SetAssetsList>) -> Result<()> {
         msg!("Synthetify:Admin: SET ASSETS LIST");
         let state = &mut ctx.accounts.state.load_mut()?;
-        &ctx.accounts.assets_list.load()?;
 
         state.assets_list = *ctx.accounts.assets_list.to_account_info().key;
         Ok(())
@@ -1864,6 +1863,7 @@ pub mod exchange {
     pub fn create_vault(
         ctx: Context<CreateVault>,
         bump: u8,
+        open_fee: Decimal,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
         max_borrow: Decimal,
@@ -1871,6 +1871,7 @@ pub mod exchange {
         penalty_to_liquidator: Decimal,
         penalty_to_exchange: Decimal,
         liquidation_ratio: Decimal,
+        oracle_type: u8,
     ) -> Result<()> {
         msg!("Synthetify: CREATE VAULT");
 
@@ -1886,34 +1887,39 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let collateral = match assets_list.collaterals.iter().find(|x| {
-            x.collateral_address
-                .eq(ctx.accounts.collateral.to_account_info().key)
-        }) {
-            Some(c) => c,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, oracle_type)?;
 
         require!(
+            collateral_ratio.scale == UNIFIED_PERCENT_SCALE &&
             collateral_ratio.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
         );
+        require!(
+            open_fee.scale == UNIFIED_PERCENT_SCALE &&
+            open_fee.lte(Decimal::from_percent(100))?,
+            ParameterOutOfRange
+        );
+
         // Init vault struct
         {
             vault.bump = bump;
             vault.halted = false;
             vault.synthetic = *ctx.accounts.synthetic.to_account_info().key;
             vault.collateral = *ctx.accounts.collateral.to_account_info().key;
+            vault.collateral_price_feed = *ctx.accounts.collateral_price_feed.key;
+            vault.oracle_type = oracle_type;
+            vault.open_fee = open_fee;
             vault.debt_interest_rate = debt_interest_rate;
             vault.collateral_ratio = collateral_ratio;
             vault.accumulated_interest = Decimal::new(0, synthetic.max_supply.scale);
             vault.accumulated_interest_rate = Decimal::from_integer(1).to_interest_rate();
             vault.mint_amount = Decimal::new(0, synthetic.max_supply.scale);
-            vault.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+            vault.collateral_amount = Decimal::new(0, ctx.accounts.collateral.decimals);
             vault.max_borrow = max_borrow;
             vault.collateral_reserve = *ctx.accounts.collateral_reserve.to_account_info().key;
             vault.last_update = timestamp;
             // Liquidation parameters
+            vault.liquidation_fund = ctx.accounts.liquidation_fund.key();
             vault.liquidation_threshold = liquidation_threshold;
             vault.liquidation_ratio = liquidation_ratio;
             vault.liquidation_penalty_liquidator = penalty_to_liquidator;
@@ -1939,14 +1945,6 @@ pub mod exchange {
             Some(s) => s,
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
-        let collateral = match assets_list
-            .collaterals
-            .iter()
-            .find(|x| x.collateral_address.eq(&vault.collateral))
-        {
-            Some(c) => c,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
 
         adjust_vault_interest_rate(&mut vault, timestamp);
         // Init vault entry
@@ -1956,7 +1954,7 @@ pub mod exchange {
             vault_entry.vault = *ctx.accounts.vault.to_account_info().key;
             vault_entry.last_accumulated_interest_rate = vault.accumulated_interest_rate;
             vault_entry.synthetic_amount = Decimal::new(0, synthetic.max_supply.scale);
-            vault_entry.collateral_amount = Decimal::new(0, collateral.reserve_balance.scale);
+            vault_entry.collateral_amount = Decimal::new(0, ctx.accounts.collateral.decimals);
         }
 
         Ok(())
@@ -1971,15 +1969,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
-        let (_, collaterals, synthetics) = assets_list.split_borrow();
-
-        let collateral = match collaterals.iter().find(|x| {
-            x.collateral_address
-                .eq(ctx.accounts.collateral.to_account_info().key)
-        }) {
-            Some(c) => c,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
+        let synthetics = &mut assets_list.synthetics;
 
         let synthetic = match synthetics.iter_mut().find(|x| {
             x.asset_address
@@ -1993,7 +1983,7 @@ pub mod exchange {
 
         let amount_decimal = Decimal {
             val: amount.into(),
-            scale: collateral.reserve_balance.scale,
+            scale: ctx.accounts.collateral.decimals,
         };
         vault_entry.collateral_amount = vault_entry.collateral_amount.add(amount_decimal)?;
         vault.collateral_amount = vault.collateral_amount.add(amount_decimal)?;
@@ -2016,7 +2006,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, _, synthetics) = assets_list.split_borrow();
 
         let synthetic_position = match synthetics.iter_mut().position(|x| {
             x.asset_address
@@ -2026,42 +2016,36 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let collateral_position = match collaterals.iter().position(|x| {
-            x.collateral_address
-                .eq(ctx.accounts.collateral.to_account_info().key)
-        }) {
-            Some(i) => i,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
-
         let synthetic = &mut synthetics[synthetic_position];
-        let collateral = &mut collaterals[collateral_position];
         let synthetic_asset = assets[synthetic.asset_index as usize];
-        let collateral_asset = assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
-            return Err(ErrorCode::OutdatedOracle.into());
-        }
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
         let amount_borrow_limit = calculate_vault_borrow_limit(
-            collateral_asset,
+            collateral_price,
             synthetic_asset,
             *synthetic,
             vault_entry.collateral_amount,
             vault.collateral_ratio,
         );
 
-        let borrow_amount = match amount {
+        let mint_amount = match amount {
             u64::MAX => amount_borrow_limit
                 .sub(vault_entry.synthetic_amount)
                 .unwrap(),
             _ => Decimal::new(amount.into(), synthetic.supply.scale),
         };
+        let open_fee_amount = mint_amount.mul_up(vault.open_fee);
+        vault.accumulated_interest = vault.accumulated_interest.add(open_fee_amount).unwrap();
+
+        let borrow_amount = mint_amount.add(open_fee_amount)?;
         let amount_after_borrow = vault_entry.synthetic_amount.add(borrow_amount).unwrap();
         if amount_borrow_limit.lt(amount_after_borrow)? {
             return Err(ErrorCode::UserBorrowLimit.into());
@@ -2071,7 +2055,7 @@ pub mod exchange {
         let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
         let signer = &[&seeds[..]];
         let mint_cpi_ctx = CpiContext::from(&*ctx.accounts).with_signer(signer);
-        token::mint_to(mint_cpi_ctx, borrow_amount.to_u64())?;
+        token::mint_to(mint_cpi_ctx, mint_amount.to_u64())?;
 
         Ok(())
     }
@@ -2086,7 +2070,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, _, synthetics) = assets_list.split_borrow();
 
         let synthetic_position = match synthetics.iter_mut().position(|x| {
             x.asset_address
@@ -2096,16 +2080,7 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let collateral_position = match collaterals.iter().position(|x| {
-            x.collateral_address
-                .eq(ctx.accounts.collateral.to_account_info().key)
-        }) {
-            Some(i) => i,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
-
         let synthetic_asset = assets[synthetics[synthetic_position].asset_index as usize];
-        let collateral_asset = assets[collaterals[collateral_position].asset_index as usize];
         let synthetic = &mut synthetics[synthetic_position];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
@@ -2113,12 +2088,12 @@ pub mod exchange {
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
-            return Err(ErrorCode::OutdatedOracle.into());
-        }
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
-            collateral_asset,
+            collateral_price,
             synthetic_asset,
             vault_entry.collateral_amount,
             vault_entry.synthetic_amount,
@@ -2203,7 +2178,7 @@ pub mod exchange {
         let assets_list = &mut ctx.accounts.assets_list.load_mut()?;
         let vault_entry = &mut ctx.accounts.vault_entry.load_mut()?;
         let vault = &mut ctx.accounts.vault.load_mut()?;
-        let (assets, collaterals, synthetics) = assets_list.split_borrow();
+        let (assets, _, synthetics) = assets_list.split_borrow();
 
         let synthetic_position = match synthetics.iter_mut().position(|x| {
             x.asset_address
@@ -2213,31 +2188,22 @@ pub mod exchange {
             None => return Err(ErrorCode::NoAssetFound.into()),
         };
 
-        let collateral_position = match collaterals.iter().position(|x| {
-            x.collateral_address
-                .eq(ctx.accounts.collateral.to_account_info().key)
-        }) {
-            Some(i) => i,
-            None => return Err(ErrorCode::NoAssetFound.into()),
-        };
-
         let synthetic = &mut synthetics[synthetic_position];
-        let collateral = &mut collaterals[collateral_position];
         let synthetic_asset = &assets[synthetic.asset_index as usize];
-        let collateral_asset = &assets[collateral.asset_index as usize];
 
         adjust_vault_entry_interest_debt(vault, vault_entry, synthetic, timestamp);
 
         if synthetic_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
             return Err(ErrorCode::OutdatedOracle.into());
         }
-        if collateral_asset.last_update < slot.checked_sub(state.max_delay.into()).unwrap() {
-            return Err(ErrorCode::OutdatedOracle.into());
-        }
+        check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
+
+        let collateral_price =
+            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
         // Amount of synthetic safely collateralized
         let amount_liquidation_limit = calculate_vault_borrow_limit(
-            *collateral_asset,
+            collateral_price,
             *synthetic_asset,
             *synthetic,
             vault_entry.collateral_amount,
@@ -2289,11 +2255,8 @@ pub mod exchange {
             .mul(synthetic_asset.price);
 
         // Amount seized in token
-        let seized_collateral_in_token = usd_to_token_amount(
-            &collateral_asset,
-            seized_collateral_in_usd,
-            collateral.reserve_balance.scale,
-        );
+        let seized_collateral_in_token = seized_collateral_in_usd
+            .div_to_scale(collateral_price, ctx.accounts.collateral.decimals);
 
         let collateral_to_exchange = seized_collateral_in_token
             .mul(vault.liquidation_penalty_exchange)
@@ -2337,15 +2300,6 @@ pub mod exchange {
             token::transfer(transfer, collateral_to_liquidator.to_u64())?;
         }
         {
-            if !ctx
-                .accounts
-                .liquidation_fund
-                .to_account_info()
-                .key
-                .eq(&collateral.liquidation_fund)
-            {
-                return Err(ErrorCode::ExchangeLiquidationAccount.into());
-            }
             // Transfer collateral to liquidation_fund
             let exchange_accounts = Transfer {
                 from: ctx.accounts.collateral_reserve.to_account_info(),
@@ -2656,6 +2610,8 @@ pub enum ErrorCode {
     InvalidOracleProgram = 38,
     #[msg("Invalid exchange account")]
     InvalidExchangeAccount = 39,
+    #[msg("Invalid oracle type")]
+    InvalidOracleType = 40,
 }
 
 // Access control modifiers.

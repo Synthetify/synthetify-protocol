@@ -1,6 +1,6 @@
 import { DEV_NET, Network, TEST_NET, MAIN_NET } from './network'
 import { Exchange as ExchangeType, IDL } from './idl/exchange'
-import { BN, Idl, Program, Provider, utils } from '@project-serum/anchor'
+import { BN, Idl, Program, Provider, utils, Wallet } from '@project-serum/anchor'
 import { IWallet } from '.'
 import { calculateDebt, DEFAULT_PUBLIC_KEY, signAndSend, sleep, tou64 } from './utils'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
@@ -1188,24 +1188,23 @@ export class Exchange {
     synthetic,
     collateral,
     collateralReserve,
+    collateralPriceFeed,
+    liquidationFund,
+    openFee,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
     liquidationThreshold,
     liquidationPenaltyLiquidator,
     liquidationPenaltyExchange,
-    liquidationRatio
+    liquidationRatio,
+    oracleType
   }: CreateVault) {
-    const [vaultAddress, bump] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
-        synthetic.toBuffer(),
-        collateral.toBuffer()
-      ],
-      this.program.programId
-    )
-    const ix = await this.program.instruction.createVault(
+    const { vaultAddress, bump } = await this.getVaultAddress(synthetic, collateral)
+
+    const ix = this.program.instruction.createVault(
       bump,
+      openFee,
       debtInterestRate,
       collateralRatio,
       maxBorrow,
@@ -1213,15 +1212,18 @@ export class Exchange {
       liquidationPenaltyLiquidator,
       liquidationPenaltyExchange,
       liquidationRatio,
+      oracleType,
       {
         accounts: {
-          state: this.stateAddress,
           vault: vaultAddress,
           admin: this.state.admin,
           assetsList: this.state.assetsList,
+          state: this.stateAddress,
           collateralReserve: collateralReserve,
           synthetic: synthetic,
           collateral: collateral,
+          liquidationFund,
+          collateralPriceFeed,
           rent: SYSVAR_RENT_PUBKEY,
           systemProgram: SystemProgram.programId
         }
@@ -1230,23 +1232,14 @@ export class Exchange {
     return { ix, vaultAddress }
   }
   public async createVaultEntryInstruction({ owner, synthetic, collateral }: CreateVaultEntry) {
-    const [vaultAddress] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(utils.bytes.utf8.encode('vaultv1')),
-        synthetic.toBuffer(),
-        collateral.toBuffer()
-      ],
-      this.program.programId
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+    const { vaultEntryAddress, bump } = await this.getVaultEntryAddress(
+      synthetic,
+      collateral,
+      owner
     )
-    const [vaultEntryAddress, bump] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from(utils.bytes.utf8.encode('vault_entryv1')),
-        owner.toBuffer(),
-        vaultAddress.toBuffer()
-      ],
-      this.program.programId
-    )
-    const ix = await this.program.instruction.createVaultEntry(bump, {
+
+    const ix = this.program.instruction.createVaultEntry(bump, {
       accounts: {
         owner: owner,
         vaultEntry: vaultEntryAddress,
@@ -1272,7 +1265,7 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    return (await this.program.instruction.depositVault(amount, {
+    return this.program.instruction.depositVault(amount, {
       accounts: {
         synthetic,
         collateral,
@@ -1286,18 +1279,18 @@ export class Exchange {
         assetsList: this.state.assetsList,
         exchangeAuthority: this.exchangeAuthority
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
-  public async vaultDeposit({
-    amount,
-    owner,
-    synthetic,
-    collateral,
-    userCollateralAccount,
-    reserveAddress,
-    collateralToken,
-    signers
-  }: DepositVault) {
+  public async vaultDepositTransaction(vaultDepositInstruction: DepositVaultTransaction) {
+    const {
+      owner,
+      synthetic,
+      collateral,
+      userCollateralAccount,
+      reserveAddress,
+      amount,
+      collateralToken
+    } = vaultDepositInstruction
     const depositVaultIx = await this.vaultDepositInstruction({
       owner,
       synthetic,
@@ -1314,26 +1307,29 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    await signAndSend(
-      new Transaction().add(approveIx).add(depositVaultIx),
-      signers,
-      this.connection
-    )
+    return new Transaction().add(approveIx).add(depositVaultIx)
+  }
+
+  public async vaultDeposit(depositVault: DepositVault) {
+    const tx = await this.vaultDepositTransaction(depositVault)
+    await signAndSend(tx, depositVault.signers, this.connection)
   }
   public async borrowVaultInstruction({
     owner,
     to,
     synthetic,
     collateral,
+    collateralPriceFeed,
     amount
   }: BorrowVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    return (await this.program.instruction.borrowVault(amount, {
+    return this.program.instruction.borrowVault(amount, {
       accounts: {
         synthetic,
         collateral,
+        collateralPriceFeed,
         owner,
         to,
         state: this.stateAddress,
@@ -1343,12 +1339,15 @@ export class Exchange {
         assetsList: this.state.assetsList,
         exchangeAuthority: this.exchangeAuthority
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
   public async liquidateVaultInstruction({
     owner,
     synthetic,
     collateral,
+    collateralReserve,
+    liquidationFund,
+    collateralPriceFeed,
     amount,
     liquidator,
     liquidatorCollateralAccount,
@@ -1356,20 +1355,18 @@ export class Exchange {
   }: LiquidateVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
-    const vaultData = await this.getVaultForPair(synthetic, collateral)
-    const collateralData = this.assetsList.collaterals.find((c) =>
-      c.collateralAddress.equals(collateral)
-    )
-    return (await this.program.instruction.liquidateVault(amount, {
+
+    return this.program.instruction.liquidateVault(amount, {
       accounts: {
         state: this.stateAddress,
+        assetsList: this.state.assetsList,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
-        collateralReserve: vaultData.collateralReserve,
-        liquidationFund: collateralData.liquidationFund,
+        collateralReserve,
+        liquidationFund,
         synthetic,
         collateral,
-        assetsList: this.state.assetsList,
+        collateralPriceFeed,
         liquidatorSyntheticAccount,
         liquidatorCollateralAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1377,41 +1374,64 @@ export class Exchange {
         liquidator,
         exchangeAuthority: this.exchangeAuthority
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
-  public async borrowVault({ owner, to, synthetic, collateral, amount, signers }: BorrowVault) {
-    await this.getState()
-    const borrowVaultIx = await this.borrowVaultInstruction({
-      owner,
-      to,
-      synthetic,
-      collateral,
-      amount
-    })
-    return this.updatePricesAndSend([borrowVaultIx], signers, this.assetsList.headAssets >= 20)
+  public async updateVaultSyntheticPriceIx(
+    synthetic: PublicKey
+  ): Promise<TransactionInstruction | null> {
+    const syntheticStructure = this.assetsList.synthetics.find((s) =>
+      s.assetAddress.equals(synthetic)
+    ) as Synthetic
+    const syntheticFeedAddress = this.assetsList.assets[syntheticStructure.assetIndex].feedAddress
+
+    if (syntheticFeedAddress.equals(PublicKey.default)) {
+      return null
+    }
+    const updateSyntheticPriceIx = await this.updateSelectedPricesInstruction(
+      this.state.assetsList,
+      [syntheticFeedAddress]
+    )
+    return updateSyntheticPriceIx
+  }
+
+  public async borrowVaultTransaction(borrowVaultInstruction: BorrowVaultInstruction) {
+    const tx = new Transaction()
+    const updatePriceIx = await this.updateVaultSyntheticPriceIx(borrowVaultInstruction.synthetic)
+    if (updatePriceIx !== null) {
+      tx.add(updatePriceIx)
+    }
+    const borrowIx = await this.borrowVaultInstruction(borrowVaultInstruction)
+    tx.add(borrowIx)
+
+    return tx
+  }
+  public async borrowVault(borrowVault: BorrowVault) {
+    const tx = await this.borrowVaultTransaction(borrowVault)
+    return await signAndSend(tx, borrowVault.signers, this.connection)
   }
   public async withdrawVaultInstruction({
     amount,
     owner,
     collateral,
+    reserveAddress,
+    collateralPriceFeed,
     synthetic,
     userCollateralAccount
-  }: WithdrawVault) {
+  }: WithdrawVaultInstruction) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    const vault = await this.getVaultForPair(synthetic, collateral)
-
-    const ix = await this.program.instruction.withdrawVault(amount, {
+    const ix = this.program.instruction.withdrawVault(amount, {
       accounts: {
         userCollateralAccount,
         owner,
         collateral,
+        collateralPriceFeed,
         synthetic,
         state: this.stateAddress,
         vaultEntry: vaultEntryAddress,
         vault: vaultAddress,
-        reserveAddress: vault.collateralReserve,
+        reserveAddress,
         tokenProgram: TOKEN_PROGRAM_ID,
         assetsList: this.state.assetsList,
         exchangeAuthority: this.exchangeAuthority
@@ -1419,6 +1439,17 @@ export class Exchange {
     })
 
     return ix
+  }
+  public async withdrawVaultTransaction(withdrawVaultTransaction: WithdrawVaultInstruction) {
+    const tx = new Transaction()
+    const updatePriceIx = await this.updateVaultSyntheticPriceIx(withdrawVaultTransaction.synthetic)
+    if (updatePriceIx !== null) {
+      tx.add(updatePriceIx)
+    }
+    const withdrawVaultIx = await this.withdrawVaultInstruction(withdrawVaultTransaction)
+    tx.add(withdrawVaultIx)
+
+    return tx
   }
   public async repayVaultInstruction({
     amount,
@@ -1430,9 +1461,7 @@ export class Exchange {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
     const { vaultEntryAddress } = await this.getVaultEntryAddress(synthetic, collateral, owner)
 
-    const vault = await this.getVaultForPair(synthetic, collateral)
-
-    const ix = await this.program.instruction.repayVault(amount, {
+    const ix = this.program.instruction.repayVault(amount, {
       accounts: {
         owner,
         synthetic,
@@ -1449,14 +1478,9 @@ export class Exchange {
 
     return ix
   }
-  public async repayVault({
-    amount,
-    owner,
-    synthetic,
-    collateral,
-    userTokenAccountRepay,
-    signers
-  }: RepayVault) {
+  public async repayVaultTransaction(repayVaultInstruction: RepayVaultInstruction) {
+    const { amount, owner, synthetic, collateral, userTokenAccountRepay } = repayVaultInstruction
+
     const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
       userTokenAccountRepay,
@@ -1465,20 +1489,19 @@ export class Exchange {
       [],
       tou64(amount)
     )
-    const repayIx = await this.repayVaultInstruction({
-      amount,
-      owner,
-      synthetic,
-      collateral,
-      userTokenAccountRepay
-    })
+    const repayIx = await this.repayVaultInstruction(repayVaultInstruction)
 
-    await signAndSend(new Transaction().add(approveIx).add(repayIx), signers, this.connection)
+    return new Transaction().add(approveIx).add(repayIx)
+  }
+  public async repayVault(repayVault: RepayVault) {
+    const tx = await this.repayVaultTransaction(repayVault)
+
+    await signAndSend(tx, repayVault.signers, this.connection)
   }
   public async setVaultHaltedInstruction({ halted, collateral, synthetic }: SetVaultHalted) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    const ix = await this.program.instruction.setVaultHalted(halted, {
+    const ix = this.program.instruction.setVaultHalted(halted, {
       accounts: {
         synthetic,
         collateral,
@@ -1498,7 +1521,7 @@ export class Exchange {
   ): Promise<TransactionInstruction> {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.setVaultDebtInterestRate(debtInterestRate, {
+    return this.program.instruction.setVaultDebtInterestRate(debtInterestRate, {
       accounts: {
         synthetic,
         collateral,
@@ -1506,7 +1529,7 @@ export class Exchange {
         admin: this.state.admin,
         vault: vaultAddress
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
   public async setVaultLiquidationThresholdInstruction(
     liquidationThreshold: Decimal,
@@ -1514,7 +1537,7 @@ export class Exchange {
   ) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.setVaultLiquidationThreshold(liquidationThreshold, {
+    return this.program.instruction.setVaultLiquidationThreshold(liquidationThreshold, {
       accounts: {
         synthetic,
         collateral,
@@ -1522,7 +1545,7 @@ export class Exchange {
         admin: this.state.admin,
         vault: vaultAddress
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
   public async setVaultSetLiquidationRatioInstruction(
     liquidationRatio: Decimal,
@@ -1530,7 +1553,7 @@ export class Exchange {
   ) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.setVaultSetLiquidationRatio(liquidationRatio, {
+    return this.program.instruction.setVaultSetLiquidationRatio(liquidationRatio, {
       accounts: {
         synthetic,
         collateral,
@@ -1538,7 +1561,7 @@ export class Exchange {
         admin: this.state.admin,
         vault: vaultAddress
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
   public async setVaultLiquidationPenaltyLiquidatorInstruction(
     liquidationPenaltyLiquidator: Decimal,
@@ -1546,7 +1569,7 @@ export class Exchange {
   ) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.setVaultLiquidationPenaltyLiquidator(
+    return this.program.instruction.setVaultLiquidationPenaltyLiquidator(
       liquidationPenaltyLiquidator,
       {
         accounts: {
@@ -1557,7 +1580,7 @@ export class Exchange {
           vault: vaultAddress
         }
       }
-    )) as TransactionInstruction
+    ) as TransactionInstruction
   }
   public async setVaultLiquidationPenaltyExchangeInstruction(
     liquidationPenaltyExchange: Decimal,
@@ -1565,26 +1588,7 @@ export class Exchange {
   ) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.setVaultLiquidationPenaltyExchange(
-      liquidationPenaltyExchange,
-      {
-        accounts: {
-          synthetic,
-          collateral,
-          state: this.stateAddress,
-          admin: this.state.admin,
-          vault: vaultAddress
-        }
-      }
-    )) as TransactionInstruction
-  }
-  public async setVaultMaxBorrowInstruction(
-    maxBorrow: Decimal,
-    { synthetic, collateral }: SetVaultParameter
-  ) {
-    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
-
-    return (await this.program.instruction.setVaultMaxBorrow(maxBorrow, {
+    return this.program.instruction.setVaultLiquidationPenaltyExchange(liquidationPenaltyExchange, {
       accounts: {
         synthetic,
         collateral,
@@ -1592,7 +1596,23 @@ export class Exchange {
         admin: this.state.admin,
         vault: vaultAddress
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
+  }
+  public async setVaultMaxBorrowInstruction(
+    maxBorrow: Decimal,
+    { synthetic, collateral }: SetVaultParameter
+  ) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    return this.program.instruction.setVaultMaxBorrow(maxBorrow, {
+      accounts: {
+        synthetic,
+        collateral,
+        state: this.stateAddress,
+        admin: this.state.admin,
+        vault: vaultAddress
+      }
+    }) as TransactionInstruction
   }
   public async withdrawVaultAccumulatedInterestInstruction({
     synthetic,
@@ -1602,7 +1622,7 @@ export class Exchange {
   }: WithdrawVaultAccumulatedInterest) {
     const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
 
-    return (await this.program.instruction.withdrawVaultAccumulatedInterest(amount, {
+    return this.program.instruction.withdrawVaultAccumulatedInterest(amount, {
       accounts: {
         synthetic,
         collateral,
@@ -1614,7 +1634,7 @@ export class Exchange {
         exchangeAuthority: this.exchangeAuthority,
         tokenProgram: TOKEN_PROGRAM_ID
       }
-    })) as TransactionInstruction
+    }) as TransactionInstruction
   }
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
@@ -1970,6 +1990,9 @@ export interface Vault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
+  collateralPriceFeed: PublicKey
+  liquidationFund: PublicKey
+  openFee: Decimal
   collateralRatio: Decimal
   liquidationThreshold: Decimal
   liquidationRatio: Decimal
@@ -1982,6 +2005,7 @@ export interface Vault {
   collateralAmount: Decimal
   maxBorrow: Decimal
   lastUpdate: BN
+  oracleType: OracleType
 }
 export interface VaultEntry {
   owner: PublicKey
@@ -1998,14 +2022,10 @@ export interface VaultDepositInstruction {
   reserveAddress: PublicKey
   amount: BN
 }
-export interface DepositVault {
-  amount: BN
-  owner: PublicKey
-  synthetic: PublicKey
-  collateral: PublicKey
-  userCollateralAccount: PublicKey
-  reserveAddress: PublicKey
+export interface DepositVaultTransaction extends VaultDepositInstruction {
   collateralToken: Token
+}
+export interface DepositVault extends DepositVaultTransaction {
   signers: Array<Account | Keypair>
 }
 export interface LiquidateVaultInstruction {
@@ -2015,6 +2035,9 @@ export interface LiquidateVaultInstruction {
   liquidatorCollateralAccount: PublicKey
   synthetic: PublicKey
   collateral: PublicKey
+  collateralReserve: PublicKey
+  liquidationFund: PublicKey
+  collateralPriceFeed: PublicKey
   amount: BN
 }
 export interface BorrowVaultInstruction {
@@ -2022,21 +2045,19 @@ export interface BorrowVaultInstruction {
   to: PublicKey
   synthetic: PublicKey
   collateral: PublicKey
+  collateralPriceFeed: PublicKey
   amount: BN
 }
-export interface BorrowVault {
-  owner: PublicKey
-  to: PublicKey
-  synthetic: PublicKey
-  collateral: PublicKey
-  amount: BN
+export interface BorrowVault extends BorrowVaultInstruction {
   signers: Array<Account | Keypair>
 }
 
-export interface WithdrawVault {
+export interface WithdrawVaultInstruction {
   amount: BN
   owner: PublicKey
   collateral: PublicKey
+  reserveAddress: PublicKey
+  collateralPriceFeed: PublicKey
   synthetic: PublicKey
   userCollateralAccount: PublicKey
 }
@@ -2067,6 +2088,9 @@ export interface CreateVault {
   synthetic: PublicKey
   collateral: PublicKey
   collateralReserve: PublicKey
+  collateralPriceFeed: PublicKey
+  liquidationFund: PublicKey
+  openFee: Decimal
   debtInterestRate: Decimal
   collateralRatio: Decimal
   maxBorrow: Decimal
@@ -2074,6 +2098,7 @@ export interface CreateVault {
   liquidationPenaltyLiquidator: Decimal
   liquidationPenaltyExchange: Decimal
   liquidationRatio: Decimal
+  oracleType: OracleType
 }
 
 export interface CreateVaultEntry {
@@ -2144,4 +2169,8 @@ export interface SetHaltedSwapline {
   synthetic: PublicKey
   collateral: PublicKey
   halted: boolean
+}
+export enum OracleType {
+  Pyth = 0,
+  Chainlink = 1
 }

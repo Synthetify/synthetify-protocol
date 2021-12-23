@@ -1034,8 +1034,15 @@ pub struct CreateVault<'info> {
         constraint = collateral_reserve.owner == state.load()?.exchange_authority
     )]
     pub collateral_reserve: Account<'info, TokenAccount>,
+    #[account(
+        constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
+        constraint = liquidation_fund.mint == collateral.key(),
+        constraint = liquidation_fund.key() != collateral_reserve.key()
+    )]
+    pub liquidation_fund: Account<'info, TokenAccount>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
+    pub collateral_price_feed: AccountInfo<'info>,
     pub rent: Sysvar<'info, Rent>,
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
@@ -1148,6 +1155,10 @@ pub struct BorrowVault<'info> {
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
+    )]
+    pub collateral_price_feed: AccountInfo<'info>,
+    #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
         constraint = assets_list.to_account_info().owner == program_id
     )]
@@ -1195,6 +1206,10 @@ pub struct WithdrawVault<'info> {
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
+    #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
+    )]
+    pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut, 
         constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key,
         constraint = &reserve_address.owner == exchange_authority.key,
@@ -1302,6 +1317,10 @@ pub struct LiquidateVault<'info> {
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
     #[account(mut,
+        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
+    )]
+    pub collateral_price_feed: AccountInfo<'info>,
+    #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
         constraint = assets_list.to_account_info().owner == program_id
     )]
@@ -1327,6 +1346,7 @@ pub struct LiquidateVault<'info> {
     #[account(mut,
         constraint = &liquidation_fund.owner == &state.load()?.exchange_authority,
         constraint = &liquidation_fund.mint == collateral.to_account_info().key,
+        constraint = liquidation_fund.key() == vault.load()?.liquidation_fund,
         constraint = liquidation_fund.to_account_info().key != collateral_reserve.to_account_info().key
     )]
     pub liquidation_fund: Box<Account<'info, TokenAccount>>,

@@ -48,7 +48,7 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 import { ORACLE_OFFSET } from '@synthetify/sdk'
 
 describe('Vault interest borrow accumulation', () => {
@@ -73,12 +73,14 @@ describe('Vault interest borrow accumulation', () => {
   let CollateralTokenMinter: Account = wallet
   let btcToken: Token
   let btcVaultReserve: PublicKey
+  let btcVaultLiquidationFund: PublicKey
   let userBtcTokenAccount: PublicKey
   let userXsolTokenAccount: PublicKey
   let btcUserCollateralAmount: BN
   let xsolBorrowAmount: BN
   let xsol: Synthetic
   let btc: Collateral
+  let btcPriceFeed: PublicKey
   const accountOwner = Keypair.generate()
 
   before(async () => {
@@ -149,7 +151,7 @@ describe('Vault interest borrow accumulation', () => {
     await exchange.getState()
 
     // create BTC collateral token
-    const { token } = await createCollateralToken({
+    const { token, feed } = await createCollateralToken({
       decimals: 8,
       price: 47857,
       collateralRatio: 65,
@@ -159,8 +161,11 @@ describe('Vault interest borrow accumulation', () => {
       oracleProgram,
       wallet
     })
+    btcPriceFeed = feed
     btcToken = token
+
     btcVaultReserve = await btcToken.createAccount(exchangeAuthority)
+    btcVaultLiquidationFund = await btcToken.createAccount(exchangeAuthority)
 
     xsolToken = await createToken({
       connection,
@@ -187,6 +192,8 @@ describe('Vault interest borrow accumulation', () => {
       priceFeed: xsolFeed
     })
     await signAndSend(new Transaction().add(addXsolSynthetic), [EXCHANGE_ADMIN], connection)
+
+    await exchange.getState()
   })
   describe('Prepare vault entry', async () => {
     before(async () => {
@@ -203,18 +210,23 @@ describe('Vault interest borrow accumulation', () => {
       const liquidationPenaltyExchange = percentToDecimal(5)
       const liquidationPenaltyLiquidator = percentToDecimal(5)
       const maxBorrow = { val: new BN(10).pow(new BN(16)), scale: xsol.maxSupply.scale }
+      const openFee = percentToDecimal(1)
 
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: btcVaultReserve,
         collateral: btc.collateralAddress,
+        liquidationFund: btcVaultLiquidationFund,
+        collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
         debtInterestRate,
         collateralRatio,
+        openFee,
         maxBorrow,
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     })
@@ -252,6 +264,7 @@ describe('Vault interest borrow accumulation', () => {
         owner: accountOwner.publicKey,
         to: userXsolTokenAccount,
         collateral: btc.collateralAddress,
+        collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
         signers: [accountOwner]
       })
@@ -282,15 +295,21 @@ describe('Vault interest borrow accumulation', () => {
       // supply before adjustment
       // 831 XSOL
 
-      // new supply
-      // real     831.0001106735... XSOL
-      // expected 831.000110674 XSOL
+      // new supply (open fee + interest rate)
+      // real     839.3101117802... XSOL
+      // expected 839.310111781 XSOL
 
       // accumulatedInterestRate
       // real     1.0000001331811263318...
       // expected 1.000000133181126331
 
-      const expectedSupplyIncrease = toDecimal(new BN(110674), xsolBefore.supply.scale)
+      const expectedSupplyIncreaseFromOpenFee = new BN(831 * 10 ** 7) // 8.31 xsol
+      const expectedSupplyIncreaseFromInterest = new BN(111781) // 0.000111781 xsol
+
+      const expectedSupplyIncrease = toDecimal(
+        expectedSupplyIncreaseFromOpenFee.add(expectedSupplyIncreaseFromInterest),
+        xsolBefore.supply.scale
+      )
       const expectedNewSupply = toDecimal(
         xsolBorrowAmount.add(expectedSupplyIncrease.val),
         xsolBefore.supply.scale
@@ -315,7 +334,10 @@ describe('Vault interest borrow accumulation', () => {
       assert.ok(eqDecimals(vaultAfter.accumulatedInterest, expectedSupplyIncrease))
       assert.ok(eqDecimals(vaultAfter.accumulatedInterestRate, expectedAccumulatedInterestRate))
       assert.ok(
-        eqDecimals(vaultBefore.accumulatedInterest, toDecimal(new BN(0), xsolAfter.supply.scale))
+        eqDecimals(
+          vaultBefore.accumulatedInterest,
+          toDecimal(expectedSupplyIncreaseFromOpenFee, xsolAfter.supply.scale)
+        )
       )
       assert.ok(eqDecimals(vaultBefore.accumulatedInterestRate, fromPercentToInterestRate(100)))
 
@@ -324,11 +346,17 @@ describe('Vault interest borrow accumulation', () => {
         eqDecimals(vaultEntryAfter.lastAccumulatedInterestRate, expectedAccumulatedInterestRate)
       )
       assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedNewSupply))
-      assert.ok(vaultEntryBefore.syntheticAmount.val.eq(xsolBorrowAmount))
+      assert.ok(
+        vaultEntryBefore.syntheticAmount.val.eq(
+          xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee)
+        )
+      )
 
       // check synthetic supply
-      assert.ok(xsolBefore.supply.val.eq(xsolBorrowAmount))
-      assert.ok(xsolBefore.borrowedSupply.val.eq(xsolBorrowAmount))
+      assert.ok(xsolBefore.supply.val.eq(xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee)))
+      assert.ok(
+        xsolBefore.borrowedSupply.val.eq(xsolBorrowAmount.add(expectedSupplyIncreaseFromOpenFee))
+      )
       assert.ok(eqDecimals(xsolAfter.supply, expectedNewSupply))
       assert.ok(eqDecimals(xsolAfter.borrowedSupply, expectedNewSupply))
     })

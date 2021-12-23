@@ -479,8 +479,15 @@ export const skipTimestamps = async (
 export const mulByPercentage = (a: BN, percentage: BN) => {
   return a.mul(percentage).div(new BN(100))
 }
+export const mulUpByUnifiedPercentage = (value: BN, percent: Decimal): BN => {
+  const denominator = getDenominator(percent)
+  return value.mul(percent.val).add(denominator.subn(1)).div(denominator)
+}
 export const mulByDecimal = (a: BN, b: Decimal) => {
   return a.mul(b.val).div(new BN(10 ** b.scale))
+}
+export const getDenominator = (decimal: Decimal): BN => {
+  return new BN(10).pow(new BN(decimal.scale))
 }
 
 export const waitForBeggingOfASlot = async (connection: Connection) => {

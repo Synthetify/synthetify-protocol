@@ -46,7 +46,8 @@ import {
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '@synthetify/sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
+import { UNIFIED_PERCENT_SCALE } from '@synthetify/sdk/lib/utils'
 
 describe('vaults liquidation', () => {
   const provider = anchor.Provider.local()
@@ -71,6 +72,7 @@ describe('vaults liquidation', () => {
   let CollateralTokenMinter: Account = wallet
   let ethToken: Token
   let ethVaultReserve: PublicKey
+  let ethVaultLiquidationFund: PublicKey
   let ethPriceFeed: PublicKey
 
   const accountOwner = Keypair.generate()
@@ -161,6 +163,7 @@ describe('vaults liquidation', () => {
     ethPriceFeed = feed
     ethToken = token
     ethVaultReserve = await ethToken.createAccount(exchangeAuthority)
+    ethVaultLiquidationFund = await ethToken.createAccount(exchangeAuthority)
 
     const liquidatorData = await createAccountWithCollateralAndMaxMintUsd({
       usdToken: xusdToken,
@@ -189,6 +192,7 @@ describe('vaults liquidation', () => {
     const ethAsset = assetsListData.assets[eth.assetIndex]
     const xusdAsset = assetsListData.assets[xusd.assetIndex]
 
+    const openFee = percentToDecimal(1)
     const debtInterestRate = toScale(percentToDecimal(0), INTEREST_RATE_DECIMALS) // zero interest for sake of tests
     const collateralRatio = percentToDecimal(80)
     const liquidationThreshold = percentToDecimal(90)
@@ -200,15 +204,19 @@ describe('vaults liquidation', () => {
 
     const { ix: createVaultInstruction } = await exchange.createVaultInstruction({
       collateralReserve: ethVaultReserve,
+      collateralPriceFeed: ethPriceFeed,
       collateral: eth.collateralAddress,
+      liquidationFund: ethVaultLiquidationFund,
       synthetic: xusd.assetAddress,
+      openFee,
       debtInterestRate,
       collateralRatio,
       maxBorrow,
       liquidationPenaltyExchange,
       liquidationPenaltyLiquidator,
       liquidationThreshold,
-      liquidationRatio
+      liquidationRatio,
+      oracleType: OracleType.Pyth
     })
     await signAndSend(new Transaction().add(createVaultInstruction), [EXCHANGE_ADMIN], connection)
     // create vaultEntry
@@ -239,7 +247,11 @@ describe('vaults liquidation', () => {
       signers: [accountOwner]
     })
 
-    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6) // 2000(ETH price) * 10(ETH amount) * 0.8(collateral ratio)
+    // 2000[ETH price] * 10[ETH amount] * 0.8[collateral ratio] / 1/(1+0.01)[1/(1+open fee)]
+    const borrowAmount = new BN(2000 * 10 * 0.8 * 1e6)
+      .muln(10 ** UNIFIED_PERCENT_SCALE)
+      .div(openFee.val.addn(10 ** UNIFIED_PERCENT_SCALE))
+
     const xusdTokenAmount = await xusdToken.createAccount(accountOwner.publicKey)
 
     // borrow xusd
@@ -248,6 +260,7 @@ describe('vaults liquidation', () => {
       owner: accountOwner.publicKey,
       to: xusdTokenAmount,
       collateral: eth.collateralAddress,
+      collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
       signers: [accountOwner]
     })
@@ -257,16 +270,17 @@ describe('vaults liquidation', () => {
     const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
       amount: U64_MAX,
       collateral: eth.collateralAddress,
+      collateralReserve: ethVaultReserve,
+      liquidationFund: ethVaultLiquidationFund,
+      collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
       liquidator: liquidator.publicKey,
       liquidatorCollateralAccount,
       liquidatorSyntheticAccount: liquidatorXusdAccount,
       owner: accountOwner.publicKey
     })
-    const updatePricesIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-      ethAsset.feedAddress
-    ])
-    const approveIx = await Token.createApproveInstruction(
+
+    const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
       liquidatorXusdAccount,
       exchange.exchangeAuthority,
@@ -277,7 +291,7 @@ describe('vaults liquidation', () => {
     // Fail liquidation for safe user
     await assertThrowsAsync(
       signAndSend(
-        new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+        new Transaction().add(approveIx).add(liquidateVaultInstruction),
         [liquidator],
         connection
       ),
@@ -285,7 +299,7 @@ describe('vaults liquidation', () => {
     )
 
     const liquidatorXusdAccountBefore = await xusdToken.getAccountInfo(liquidatorXusdAccount)
-    const liquidationFundBefore = await ethToken.getAccountInfo(eth.liquidationFund)
+    const liquidationFundBefore = await ethToken.getAccountInfo(ethVaultLiquidationFund)
     const vaultDataBefore = await exchange.getVaultForPair(xusd.assetAddress, eth.collateralAddress)
     const vaultEntryDataBefore = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
@@ -299,7 +313,7 @@ describe('vaults liquidation', () => {
     await setFeedPrice(oracleProgram, 1750, ethPriceFeed)
     // Liquidate
     await signAndSend(
-      new Transaction().add(approveIx).add(updatePricesIx).add(liquidateVaultInstruction),
+      new Transaction().add(approveIx).add(liquidateVaultInstruction),
       [liquidator],
       connection
     )
@@ -317,7 +331,7 @@ describe('vaults liquidation', () => {
       )
     )
     // Liquidation fund should receive collateral
-    const liquidationFundAfter = await ethToken.getAccountInfo(eth.liquidationFund)
+    const liquidationFundAfter = await ethToken.getAccountInfo(ethVaultLiquidationFund)
     assert.ok(liquidationFundAfter.amount.eq(liquidationFundBefore.amount.add(new BN(228_571))))
 
     // Vault should adjust collateral and synthetic amounts

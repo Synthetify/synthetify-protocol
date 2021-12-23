@@ -49,7 +49,7 @@ import {
   toEffectiveFee
 } from '@synthetify/sdk/src/utils'
 import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('ADMIN VAULTS', () => {
   const provider = anchor.Provider.local()
@@ -72,7 +72,9 @@ describe('ADMIN VAULTS', () => {
   let nonce: number
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
+  let usdcPriceFeed: PublicKey
   let usdcVaultReserve: PublicKey
+  let usdcVaultLiquidationFund: PublicKey
   let syntheticAddress: PublicKey
   let collateralAddress: PublicKey
   const accountOwner = Keypair.generate()
@@ -156,8 +158,10 @@ describe('ADMIN VAULTS', () => {
       price: 1,
       wallet
     })
+    usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+    usdcVaultLiquidationFund = await usdcToken.createAccount(exchangeAuthority)
 
     const assetsListData = await exchange.getAssetsList(assetsList)
     syntheticAddress = assetsListData.synthetics[0].assetAddress
@@ -167,6 +171,7 @@ describe('ADMIN VAULTS', () => {
     let assetsListData
     let xusd: Synthetic
     let usdc: Collateral
+    let openFee: Decimal
     let debtInterestRate: Decimal
     let collateralRatio: Decimal
     let liquidationRatio: Decimal
@@ -179,6 +184,7 @@ describe('ADMIN VAULTS', () => {
       assetsListData = await exchange.getAssetsList(assetsList)
       xusd = assetsListData.synthetics[0]
       usdc = assetsListData.collaterals[1]
+      openFee = percentToDecimal(1)
       debtInterestRate = fromPercentToInterestRate(7)
       collateralRatio = percentToDecimal(80)
       liquidationRatio = percentToDecimal(50)
@@ -189,14 +195,18 @@ describe('ADMIN VAULTS', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
+        liquidationFund: usdcVaultLiquidationFund,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
+        openFee,
         debtInterestRate,
         collateralRatio,
         maxBorrow,
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       createVaultIx = ix
     })

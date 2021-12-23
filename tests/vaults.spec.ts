@@ -31,7 +31,8 @@ import {
   U64_MAX,
   eqDecimals,
   mulByDecimal,
-  almostEqual
+  almostEqual,
+  mulUpByUnifiedPercentage
 } from './utils'
 import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
 import {
@@ -45,8 +46,8 @@ import {
   XUSD_DECIMALS
 } from '@synthetify/sdk/lib/utils'
 import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
-import { Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
-import { Decimal } from '@synthetify/sdk/src/exchange'
+import { Asset, AssetsList, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
+import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
 describe('vaults', () => {
   const provider = anchor.Provider.local()
@@ -62,6 +63,7 @@ describe('vaults', () => {
   let xusdToken: Token
   let assetsList: PublicKey
   let snyTokenFeed: PublicKey
+  let usdcPriceFeed: PublicKey
   let exchangeAuthority: PublicKey
   let snyReserve: PublicKey
   let stakingFundAccount: PublicKey
@@ -70,6 +72,7 @@ describe('vaults', () => {
   let CollateralTokenMinter: Account = wallet
   let usdcToken: Token
   let usdcVaultReserve: PublicKey
+  let usdcVaultLiquidationFund: PublicKey
   let userUsdcTokenAccount: PublicKey
   let userXusdTokenAccount: PublicKey
   let allUserCollateralAmount: BN
@@ -156,18 +159,21 @@ describe('vaults', () => {
       price: 1,
       wallet
     })
+    usdcPriceFeed = feed
     usdcToken = token
     usdcVaultReserve = await usdcToken.createAccount(exchangeAuthority)
+    usdcVaultLiquidationFund = await usdcToken.createAccount(exchangeAuthority)
 
     const assetsListData = await exchange.getAssetsList(assetsList)
     const xusd = assetsListData.synthetics[0]
     maxBorrow = { val: new BN(1_000_000_000), scale: xusd.maxSupply.scale }
   })
   describe('#createVault', async () => {
-    let assetsListData
+    let assetsListData: AssetsList
     let xusd: Synthetic
     let usdc: Collateral
     let debtInterestRate: Decimal
+    let openFee: Decimal
     let collateralRatio: Decimal
     let liquidationRatio: Decimal
     let liquidationThreshold: Decimal
@@ -178,6 +184,7 @@ describe('vaults', () => {
       assetsListData = await exchange.getAssetsList(assetsList)
       xusd = assetsListData.synthetics[0]
       usdc = assetsListData.collaterals[1]
+      openFee = percentToDecimal(1)
       debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
       collateralRatio = percentToDecimal(80)
       liquidationRatio = percentToDecimal(50)
@@ -187,14 +194,18 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultInstruction({
         collateralReserve: usdcVaultReserve,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
+        liquidationFund: usdcVaultLiquidationFund,
         synthetic: xusd.assetAddress,
+        openFee,
         debtInterestRate,
         collateralRatio,
         maxBorrow,
         liquidationPenaltyExchange,
         liquidationPenaltyLiquidator,
         liquidationThreshold,
-        liquidationRatio
+        liquidationRatio,
+        oracleType: OracleType.Pyth
       })
       createVaultIx = ix
     })
@@ -230,6 +241,7 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.mintAmount, toDecimal(new BN(0), XUSD_DECIMALS)))
       assert.ok(eqDecimals(vault.maxBorrow, maxBorrow))
       assert.ok(almostEqual(vault.lastUpdate, new BN(timestamp), new BN(5)))
+      assert.ok(vault.oracleType === OracleType.Pyth)
     })
     it('create usdc/xusd vault should fail cause there can only be one vault per synthetic/collateral pair', async () => {
       await assertThrowsAsync(
@@ -437,6 +449,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
           signers: [accountOwner]
         }),
@@ -473,9 +486,11 @@ describe('vaults', () => {
         owner: accountOwner.publicKey,
         to: userXusdTokenAccount,
         collateral: usdc.collateralAddress,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         signers: [accountOwner]
       })
+      borrowAmount = borrowAmount.add(mulUpByUnifiedPercentage(borrowAmount, vault.openFee))
 
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -523,6 +538,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
           signers: [accountOwner]
         }),
@@ -538,25 +554,7 @@ describe('vaults', () => {
     })
   })
   describe('#withdrawVault', async () => {
-    it('withdraw without updating oracle price should failed', async () => {
-      const assetsListData = await exchange.getAssetsList(assetsList)
-      const xusd = assetsListData.synthetics[0]
-      const usdc = assetsListData.collaterals[1]
-
-      await sleep(1000)
-      const withdrawIx = await exchange.withdrawVaultInstruction({
-        amount: new BN(1),
-        owner: accountOwner.publicKey,
-        collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress,
-        userCollateralAccount: userUsdcTokenAccount
-      })
-
-      await assertThrowsAsync(
-        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
-        ERRORS_EXCHANGE.OUTDATED_ORACLE
-      )
-    })
+    // withdraw without updating oracle price is impossible, because synthetic (xusd) has a fixed price
     it('withdraw over limit should failed', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
@@ -575,23 +573,18 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
 
       await assertThrowsAsync(
-        signAndSend(
-          new Transaction().add(updateCollateralIx).add(withdrawIx),
-          [accountOwner],
-          connection
-        ),
+        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
@@ -630,21 +623,16 @@ describe('vaults', () => {
         userUsdcTokenAccount
       )
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(
-        new Transaction().add(updateCollateralIx).add(withdrawIx),
-        [accountOwner],
-        connection
-      )
+      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
@@ -690,21 +678,16 @@ describe('vaults', () => {
       const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
 
-      const updateCollateralIx = await exchange.updateSelectedPricesInstruction(assetsList, [
-        assetsListData.assets[usdc.assetIndex].feedAddress
-      ])
       const withdrawIx = await exchange.withdrawVaultInstruction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
+        reserveAddress: usdcVaultReserve,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
-      await signAndSend(
-        new Transaction().add(updateCollateralIx).add(withdrawIx),
-        [accountOwner],
-        connection
-      )
+      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
@@ -807,6 +790,54 @@ describe('vaults', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusdBefore = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
+
+      // CREATE ACCOUNT THAT WILL SEND SYNTHETIC NEEDED TO REPAY VAULT
+      {
+        const repayingAccount = Keypair.generate()
+        const repayingUsdcTokenAccount = await usdcToken.createAccount(repayingAccount.publicKey)
+        const repayingCollateralAmount = new BN(1000 * 10 ** 6) // 1000 USDC
+
+        await Promise.all([
+          connection.requestAirdrop(repayingAccount.publicKey, 10e9),
+          usdcToken.createAccount(repayingAccount.publicKey)
+        ])
+
+        await usdcToken.mintTo(
+          repayingUsdcTokenAccount,
+          wallet,
+          [],
+          tou64(repayingCollateralAmount)
+        )
+
+        const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
+          owner: repayingAccount.publicKey,
+          collateral: usdc.collateralAddress,
+          synthetic: xusdBefore.assetAddress
+        })
+        await signAndSend(new Transaction().add(createVaultEntryIx), [repayingAccount], connection)
+
+        await exchange.vaultDeposit({
+          amount: repayingCollateralAmount,
+          owner: repayingAccount.publicKey,
+          collateral: usdc.collateralAddress,
+          synthetic: xusdBefore.assetAddress,
+          userCollateralAccount: repayingUsdcTokenAccount,
+          reserveAddress: usdcVaultReserve,
+          collateralToken: usdcToken,
+          signers: [repayingAccount]
+        })
+
+        await exchange.borrowVault({
+          amount: new BN(100 * 10 ** 6), // 100 USDC,
+          owner: repayingAccount.publicKey,
+          to: userXusdTokenAccount,
+          collateral: usdc.collateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
+          synthetic: xusdBefore.assetAddress,
+          signers: [repayingAccount]
+        })
+      }
+
       const vaultBefore = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
         usdc.collateralAddress
@@ -840,12 +871,18 @@ describe('vaults', () => {
       )
       const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
-      const expectedBorrowedSupply = toDecimal(new BN(0), xusdBefore.supply.scale)
-      assert.ok(eqDecimals(vaultAfter.mintAmount, expectedBorrowedSupply))
-      assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedBorrowedSupply))
-      assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedBorrowedSupply))
-      assert.ok(eqDecimals(xusdAfter.supply, expectedBorrowedSupply))
-      assert.ok(userXusdTokenAccountAfter.amount.eq(expectedBorrowedSupply.val))
+      const expectedUserSyntheticSupply = userXusdTokenAccountBefore.amount.sub(maxRepayAmount)
+      const expectedUserBorrowedSupply = toDecimal(new BN(0), xusdBefore.supply.scale)
+      const expectedGlobalBorrowedSupply = toDecimal(
+        vaultBefore.mintAmount.val.sub(maxRepayAmount),
+        xusdBefore.supply.scale
+      )
+
+      assert.ok(eqDecimals(vaultEntryAfter.syntheticAmount, expectedUserBorrowedSupply))
+      assert.ok(userXusdTokenAccountAfter.amount.eq(expectedUserSyntheticSupply))
+      assert.ok(eqDecimals(vaultAfter.mintAmount, expectedGlobalBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.borrowedSupply, expectedGlobalBorrowedSupply))
+      assert.ok(eqDecimals(xusdAfter.supply, expectedGlobalBorrowedSupply))
     })
   })
   describe('#setHalted (exchange)', async () => {
@@ -896,6 +933,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdcCollateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
           signers: [accountOwner]
         }),
@@ -907,6 +945,8 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        reserveAddress: usdcVaultReserve,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })
@@ -984,6 +1024,7 @@ describe('vaults', () => {
           owner: accountOwner.publicKey,
           to: userXusdTokenAccount,
           collateral: usdcCollateralAddress,
+          collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
           signers: [accountOwner]
         }),
@@ -995,6 +1036,8 @@ describe('vaults', () => {
         amount: new BN(0),
         owner: accountOwner.publicKey,
         collateral: usdcCollateralAddress,
+        reserveAddress: usdcVaultReserve,
+        collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
         userCollateralAccount: userUsdcTokenAccount
       })

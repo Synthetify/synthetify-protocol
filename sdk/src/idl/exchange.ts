@@ -1722,12 +1722,22 @@ export type Exchange = {
           "isSigner": false
         },
         {
+          "name": "liquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "synthetic",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
           "isMut": false,
           "isSigner": false
         },
@@ -1746,6 +1756,12 @@ export type Exchange = {
         {
           "name": "bump",
           "type": "u8"
+        },
+        {
+          "name": "openFee",
+          "type": {
+            "defined": "Decimal"
+          }
         },
         {
           "name": "debtInterestRate",
@@ -1788,6 +1804,10 @@ export type Exchange = {
           "type": {
             "defined": "Decimal"
           }
+        },
+        {
+          "name": "oracleType",
+          "type": "u8"
         }
       ]
     },
@@ -1942,6 +1962,11 @@ export type Exchange = {
           "isSigner": false
         },
         {
+          "name": "collateralPriceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
@@ -2000,6 +2025,11 @@ export type Exchange = {
         {
           "name": "collateral",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2127,6 +2157,11 @@ export type Exchange = {
         {
           "name": "collateral",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2925,6 +2960,20 @@ export type Exchange = {
             "type": "publicKey"
           },
           {
+            "name": "collateralPriceFeed",
+            "type": "publicKey"
+          },
+          {
+            "name": "oracleType",
+            "type": "u8"
+          },
+          {
+            "name": "openFee",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
             "name": "debtInterestRate",
             "type": {
               "defined": "Decimal"
@@ -2971,6 +3020,10 @@ export type Exchange = {
             "type": {
               "defined": "Decimal"
             }
+          },
+          {
+            "name": "liquidationFund",
+            "type": "publicKey"
           },
           {
             "name": "collateralReserve",
@@ -3302,6 +3355,20 @@ export type Exchange = {
           }
         ]
       }
+    },
+    {
+      "name": "OracleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth"
+          },
+          {
+            "name": "Chainlink"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -3504,6 +3571,11 @@ export type Exchange = {
       "code": 339,
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
+    },
+    {
+      "code": 340,
+      "name": "InvalidOracleType",
+      "msg": "Invalid oracle type"
     }
   ]
 };
@@ -5232,12 +5304,22 @@ export const IDL: Exchange = {
           "isSigner": false
         },
         {
+          "name": "liquidationFund",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "synthetic",
           "isMut": false,
           "isSigner": false
         },
         {
           "name": "collateral",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
           "isMut": false,
           "isSigner": false
         },
@@ -5256,6 +5338,12 @@ export const IDL: Exchange = {
         {
           "name": "bump",
           "type": "u8"
+        },
+        {
+          "name": "openFee",
+          "type": {
+            "defined": "Decimal"
+          }
         },
         {
           "name": "debtInterestRate",
@@ -5298,6 +5386,10 @@ export const IDL: Exchange = {
           "type": {
             "defined": "Decimal"
           }
+        },
+        {
+          "name": "oracleType",
+          "type": "u8"
         }
       ]
     },
@@ -5452,6 +5544,11 @@ export const IDL: Exchange = {
           "isSigner": false
         },
         {
+          "name": "collateralPriceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "assetsList",
           "isMut": true,
           "isSigner": false
@@ -5510,6 +5607,11 @@ export const IDL: Exchange = {
         {
           "name": "collateral",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -5637,6 +5739,11 @@ export const IDL: Exchange = {
         {
           "name": "collateral",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralPriceFeed",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -6435,6 +6542,20 @@ export const IDL: Exchange = {
             "type": "publicKey"
           },
           {
+            "name": "collateralPriceFeed",
+            "type": "publicKey"
+          },
+          {
+            "name": "oracleType",
+            "type": "u8"
+          },
+          {
+            "name": "openFee",
+            "type": {
+              "defined": "Decimal"
+            }
+          },
+          {
             "name": "debtInterestRate",
             "type": {
               "defined": "Decimal"
@@ -6481,6 +6602,10 @@ export const IDL: Exchange = {
             "type": {
               "defined": "Decimal"
             }
+          },
+          {
+            "name": "liquidationFund",
+            "type": "publicKey"
           },
           {
             "name": "collateralReserve",
@@ -6812,6 +6937,20 @@ export const IDL: Exchange = {
           }
         ]
       }
+    },
+    {
+      "name": "OracleType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pyth"
+          },
+          {
+            "name": "Chainlink"
+          }
+        ]
+      }
     }
   ],
   "errors": [
@@ -7014,6 +7153,11 @@ export const IDL: Exchange = {
       "code": 339,
       "name": "InvalidExchangeAccount",
       "msg": "Invalid exchange account"
+    },
+    {
+      "code": 340,
+      "name": "InvalidOracleType",
+      "msg": "Invalid oracle type"
     }
   ]
 };
