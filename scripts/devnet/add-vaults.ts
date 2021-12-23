@@ -19,7 +19,7 @@ const connection = provider.connection
 const sny = new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE')
 const xusd = new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF')
 const xsol = new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w')
-const xsolPriceFeed = new PublicKey('J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix')
+const snyPriceFeed = new PublicKey('DEmEX28EgrdQEBwNXdfMsDoJWZXCHRS5pbgmJiTkjCRH')
 const xsolDecimal = 9
 
 const main = async () => {
@@ -57,7 +57,7 @@ const createSnyXsolVault = async (exchange: Exchange, ledgerWallet: LedgerWallet
     debtInterestRate,
     collateralRatio,
     maxBorrow,
-    collateralPriceFeed: xsolPriceFeed,
+    collateralPriceFeed: snyPriceFeed,
     liquidationFund: snyVaultLiquidationFund,
     openFee: percentToDecimal(1),
     liquidationPenaltyExchange,
