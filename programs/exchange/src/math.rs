@@ -259,6 +259,25 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
+pub fn calculate_vault_borrow_limit_open_fee(
+    collateral_price: Decimal,
+    synthetic_asset: Asset,
+    synthetic: Synthetic,
+    collateral_amount: Decimal,
+    collateral_ratio: Decimal,
+    open_fee: Decimal
+) -> Decimal {
+    let vault_borrow_limit = calculate_vault_borrow_limit(
+        collateral_price,
+        synthetic_asset,
+        synthetic,
+        collateral_amount,
+        collateral_ratio,
+    );
+    let open_factor = open_fee.add(Decimal::from_percent(100)).unwrap();
+    vault_borrow_limit.div(open_factor)
+}
+
 pub fn calculate_vault_borrow_limit(
     collateral_price: Decimal,
     synthetic_asset: Asset,
@@ -1556,6 +1575,33 @@ mod tests {
             collateral_ratio,
         );
         let expected_borrow_limit = Decimal::new(698068, 1).to_usd();
+        assert_eq!(borrow_limit, expected_borrow_limit);
+    }
+    #[test]
+    fn test_calculate_vault_borrow_limit_open_fee() {
+        let btc_decimal = 8;
+        let btc_price = Decimal::from_integer(49_862).to_price();
+        let xusd_asset = Asset {
+            price: Decimal::from_integer(1).to_price(),
+            ..Default::default()
+        };
+        let xusd_synthetic = Synthetic {
+            supply: Decimal::from_integer(100).to_usd(),
+            ..Default::default()
+        };
+        let open_fee = Decimal::from_unified_percent(100); // 0.1%
+        let collateral_amount = Decimal::from_integer(2).to_scale(btc_decimal);
+        let collateral_ratio = Decimal::from_percent(70);
+
+        let borrow_limit = calculate_vault_borrow_limit_open_fee(
+            btc_price,
+            xusd_asset,
+            xusd_synthetic,
+            collateral_amount,
+            collateral_ratio,
+            open_fee
+        );
+        let expected_borrow_limit = Decimal::new(69737062937, 6);
         assert_eq!(borrow_limit, expected_borrow_limit);
     }
 
