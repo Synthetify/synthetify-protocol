@@ -28,16 +28,19 @@ export class Exchange {
   state: ExchangeState
   opts?: ConfirmOptions
   assetsList: AssetsList
-  stateAddress?: PublicKey
+  stateAddress: PublicKey
 
   private constructor(
     connection: Connection,
     network: Network,
     wallet: IWallet,
-    exchangeAuthority?: PublicKey,
-    programId?: PublicKey,
+    exchangeAuthority = PublicKey.default,
+    programId = PublicKey.default,
     opts?: ConfirmOptions
   ) {
+    this.stateAddress = PublicKey.default
+    this.assetsList = {} as AssetsList
+    this.state = {} as ExchangeState
     this.connection = connection
     this.network = network
     this.wallet = wallet
@@ -713,7 +716,9 @@ export class Exchange {
     tokenToSettle
   }: SettleSyntheticInstruction) {
     const assetsList = await this.getAssetsList(this.state.assetsList)
-    const synthetic = assetsList.synthetics.find((s) => s.assetAddress.equals(tokenToSettle))
+    const synthetic = assetsList.synthetics.find((s) =>
+      s.assetAddress.equals(tokenToSettle)
+    ) as Synthetic
     const feedAddress = assetsList.assets[synthetic.assetIndex].feedAddress
     const priceFeed = { pubkey: feedAddress, isWritable: false, isSigner: false }
 
