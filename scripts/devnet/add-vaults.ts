@@ -18,8 +18,9 @@ const connection = provider.connection
 
 const sny = new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE')
 const xusd = new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF')
-const usdc = new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
-const xbtc = new PublicKey('HL5aKrMbm13a6VGNRSxJmy61nRsgySDacHVpLzCwHhL5')
+const xsol = new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w')
+const snyPriceFeed = new PublicKey('DEmEX28EgrdQEBwNXdfMsDoJWZXCHRS5pbgmJiTkjCRH')
+const xsolDecimal = 9
 
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
@@ -29,18 +30,21 @@ const main = async () => {
   console.log(`ledger: ${ledgerWallet.publicKey?.toString()}`)
   console.log(`admin: ${state.admin.toString()}`)
 
-  await createSnyXusdVault(exchange, ledgerWallet)
-  await createUsdcXbtcVault(exchange, ledgerWallet)
+  await createSnyXsolVault(exchange, ledgerWallet)
+  await createXusdXsolVault(exchange, ledgerWallet)
 }
 
-const createSnyXusdVault = async (exchange: Exchange, ledgerWallet: LedgerWalletProvider) => {
-  const maxBorrow = { val: new BN(100_000_000_000), scale: 6 } // 100_000 USD
-  const debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
+const createSnyXsolVault = async (exchange: Exchange, ledgerWallet: LedgerWalletProvider) => {
+  const maxBorrow = {
+    val: new BN(100_000).mul(new BN(10)).pow(new BN(xsolDecimal)),
+    scale: xsolDecimal
+  } // 100_000 SOL
+  const debtInterestRate = toScale(percentToDecimal(4), INTEREST_RATE_DECIMALS)
   const collateralRatio = percentToDecimal(30)
   const liquidationRatio = percentToDecimal(20)
   const liquidationThreshold = percentToDecimal(50)
-  const liquidationPenaltyExchange = percentToDecimal(5)
-  const liquidationPenaltyLiquidator = percentToDecimal(5)
+  const liquidationPenaltyExchange = percentToDecimal(2)
+  const liquidationPenaltyLiquidator = percentToDecimal(8)
 
   const snyToken = new Token(connection, sny, TOKEN_PROGRAM_ID, wallet)
   const snyVaultReserve = await snyToken.createAccount(exchange.exchangeAuthority)
@@ -48,12 +52,12 @@ const createSnyXusdVault = async (exchange: Exchange, ledgerWallet: LedgerWallet
 
   const { ix, vaultAddress } = await exchange.createVaultInstruction({
     collateral: sny,
-    synthetic: xusd,
+    synthetic: xsol,
     collateralReserve: snyVaultReserve,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
-    collateralPriceFeed: new PublicKey('DEmEX28EgrdQEBwNXdfMsDoJWZXCHRS5pbgmJiTkjCRH'),
+    collateralPriceFeed: snyPriceFeed,
     liquidationFund: snyVaultLiquidationFund,
     openFee: percentToDecimal(1),
     liquidationPenaltyExchange,
@@ -68,29 +72,28 @@ const createSnyXusdVault = async (exchange: Exchange, ledgerWallet: LedgerWallet
   const vault = await exchange.getVaultForPair(xusd, sny)
   console.log(vault)
 }
-const createUsdcXbtcVault = async (exchange: Exchange, ledgerWallet: LedgerWalletProvider) => {
-  const btcDecimal = 10
-  const maxBorrow = { val: new BN(10).pow(new BN(btcDecimal)).muln(100), scale: btcDecimal } // 100 BTC
-  const debtInterestRate = toScale(percentToDecimal(7), INTEREST_RATE_DECIMALS)
-  const collateralRatio = percentToDecimal(50)
+const createXusdXsolVault = async (exchange: Exchange, ledgerWallet: LedgerWalletProvider) => {
+  const maxBorrow = { val: new BN(10).pow(new BN(xsolDecimal)).muln(100_000), scale: xsolDecimal } // 100_000 xSOL
+  const debtInterestRate = toScale(percentToDecimal(5), INTEREST_RATE_DECIMALS)
+  const collateralRatio = percentToDecimal(70)
   const liquidationRatio = percentToDecimal(20)
-  const liquidationThreshold = percentToDecimal(75)
-  const liquidationPenaltyExchange = percentToDecimal(5)
-  const liquidationPenaltyLiquidator = percentToDecimal(5)
+  const liquidationThreshold = percentToDecimal(85)
+  const liquidationPenaltyExchange = percentToDecimal(2)
+  const liquidationPenaltyLiquidator = percentToDecimal(8)
 
-  const usdcToken = new Token(connection, usdc, TOKEN_PROGRAM_ID, wallet)
-  const usdcVaultReserve = await usdcToken.createAccount(exchange.exchangeAuthority)
-  const usdcVaultLiquidationFund = await usdcToken.createAccount(exchange.exchangeAuthority)
+  const xusdToken = new Token(connection, xusd, TOKEN_PROGRAM_ID, wallet)
+  const xusdVaultReserve = await xusdToken.createAccount(exchange.exchangeAuthority)
+  const xusdVaultLiquidationFund = await xusdToken.createAccount(exchange.exchangeAuthority)
 
   const { ix, vaultAddress } = await exchange.createVaultInstruction({
-    collateral: usdc,
-    synthetic: xbtc,
-    collateralReserve: usdcVaultReserve,
+    collateral: xusd,
+    synthetic: xsol,
+    collateralReserve: xusdVaultReserve,
     debtInterestRate,
     collateralRatio,
     maxBorrow,
     collateralPriceFeed: PublicKey.default,
-    liquidationFund: usdcVaultLiquidationFund,
+    liquidationFund: xusdVaultLiquidationFund,
     openFee: percentToDecimal(1),
     liquidationPenaltyExchange,
     liquidationPenaltyLiquidator,
