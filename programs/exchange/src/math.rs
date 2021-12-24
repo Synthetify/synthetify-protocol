@@ -259,23 +259,12 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
-pub fn calculate_vault_borrow_limit_open_fee(
-    collateral_price: Decimal,
-    synthetic_asset: Asset,
-    synthetic: Synthetic,
-    collateral_amount: Decimal,
-    collateral_ratio: Decimal,
+pub fn calculate_vault_max_borrow_based_max_debt(
+    max_debt: Decimal,
     open_fee: Decimal
 ) -> Decimal {
-    let vault_borrow_limit = calculate_vault_borrow_limit(
-        collateral_price,
-        synthetic_asset,
-        synthetic,
-        collateral_amount,
-        collateral_ratio,
-    );
     let open_factor = open_fee.add(Decimal::from_percent(100)).unwrap();
-    vault_borrow_limit.div(open_factor)
+    max_debt.div(open_factor)
 }
 
 pub fn calculate_vault_borrow_limit(
@@ -1593,7 +1582,7 @@ mod tests {
         let collateral_amount = Decimal::from_integer(2).to_scale(btc_decimal);
         let collateral_ratio = Decimal::from_percent(70);
 
-        let borrow_limit = calculate_vault_borrow_limit_open_fee(
+        let borrow_limit = calculate_vault_max_borrow_based_max_debt(
             btc_price,
             xusd_asset,
             xusd_synthetic,
