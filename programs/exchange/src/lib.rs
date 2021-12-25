@@ -24,7 +24,8 @@ pub mod exchange {
         calculate_max_debt_in_usd, calculate_max_withdraw_in_usd,
         calculate_new_shares_by_rounding_up, calculate_swap_out_amount, calculate_swap_tax,
         calculate_user_debt_in_usd, calculate_value_in_usd, calculate_vault_borrow_limit,
-        calculate_vault_withdraw_limit, usd_to_token_amount,
+        calculate_vault_max_borrow_based_max_debt, calculate_vault_withdraw_limit,
+        usd_to_token_amount,
     };
 
     use crate::decimal::{
@@ -1890,13 +1891,12 @@ pub mod exchange {
         check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, oracle_type)?;
 
         require!(
-            collateral_ratio.scale == UNIFIED_PERCENT_SCALE &&
-            collateral_ratio.lte(Decimal::from_percent(100))?,
+            collateral_ratio.scale == UNIFIED_PERCENT_SCALE
+                && collateral_ratio.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
         );
         require!(
-            open_fee.scale == UNIFIED_PERCENT_SCALE &&
-            open_fee.lte(Decimal::from_percent(100))?,
+            open_fee.scale == UNIFIED_PERCENT_SCALE && open_fee.lte(Decimal::from_percent(100))?,
             ParameterOutOfRange
         );
 
@@ -2037,9 +2037,13 @@ pub mod exchange {
         );
 
         let mint_amount = match amount {
-            u64::MAX => amount_borrow_limit
-                .sub(vault_entry.synthetic_amount)
-                .unwrap(),
+            u64::MAX => {
+                let mint_amount_with_open_fee = amount_borrow_limit
+                    .sub(vault_entry.synthetic_amount)
+                    .unwrap();
+
+                calculate_vault_max_borrow_based_max_debt(mint_amount_with_open_fee, vault.open_fee)
+            }
             _ => Decimal::new(amount.into(), synthetic.supply.scale),
         };
         let open_fee_amount = mint_amount.mul_up(vault.open_fee);
