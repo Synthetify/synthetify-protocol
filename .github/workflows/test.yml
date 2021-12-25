@@ -35,6 +35,7 @@ jobs:
             'npm run test:swapline-decimal',
             'npm run test:vaults',
             'npm run test:vaultsliquidation',
+            'npm run test:vaults-external-collateral'
             'npm run test:vaultsliquidation-small',
             'npm run test:vaults-interest',
             'npm run test:admin-vaults',
