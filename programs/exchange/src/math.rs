@@ -259,10 +259,7 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
-pub fn calculate_vault_max_borrow_based_max_debt(
-    max_debt: Decimal,
-    open_fee: Decimal
-) -> Decimal {
+pub fn calculate_vault_max_borrow_based_max_debt(max_debt: Decimal, open_fee: Decimal) -> Decimal {
     let open_factor = open_fee.add(Decimal::from_percent(100)).unwrap();
     max_debt.div(open_factor)
 }
@@ -298,8 +295,8 @@ pub fn calculate_vault_withdraw_limit(
     }
 
     let max_withdraw_value = collateral_value.sub(min_collateralized_value).unwrap();
-    let max_withdraw_amount = max_withdraw_value.div_to_scale(
-        collateral_price, collateral_amount.scale);
+    let max_withdraw_amount =
+        max_withdraw_value.div_to_scale(collateral_price, collateral_amount.scale);
     return Ok(max_withdraw_amount);
 }
 
@@ -1567,31 +1564,39 @@ mod tests {
         assert_eq!(borrow_limit, expected_borrow_limit);
     }
     #[test]
-    fn test_calculate_vault_borrow_limit_open_fee() {
-        let btc_decimal = 8;
-        let btc_price = Decimal::from_integer(49_862).to_price();
-        let xusd_asset = Asset {
-            price: Decimal::from_integer(1).to_price(),
-            ..Default::default()
-        };
-        let xusd_synthetic = Synthetic {
-            supply: Decimal::from_integer(100).to_usd(),
-            ..Default::default()
-        };
-        let open_fee = Decimal::from_unified_percent(100); // 0.1%
-        let collateral_amount = Decimal::from_integer(2).to_scale(btc_decimal);
-        let collateral_ratio = Decimal::from_percent(70);
+    fn test_calculate_vault_max_borrow_based_max_debt() {
+        // accuracy trunc
+        {
+            let open_fee = Decimal::from_unified_percent(100); // 0.1%
+            let max_debt_amount = Decimal::new(698068, 1).to_usd();
 
-        let borrow_limit = calculate_vault_max_borrow_based_max_debt(
-            btc_price,
-            xusd_asset,
-            xusd_synthetic,
-            collateral_amount,
-            collateral_ratio,
-            open_fee
-        );
-        let expected_borrow_limit = Decimal::new(69737062937, 6);
-        assert_eq!(borrow_limit, expected_borrow_limit);
+            let max_borrow_amount =
+                calculate_vault_max_borrow_based_max_debt(max_debt_amount, open_fee);
+            let recalculated_max_debt = max_borrow_amount
+                .mul_up(open_fee)
+                .add(max_borrow_amount)
+                .unwrap();
+
+            let expected_max_borrow_amount = Decimal::new(69737062937, 6);
+            assert_eq!(max_borrow_amount, expected_max_borrow_amount);
+            assert_eq!(max_debt_amount, recalculated_max_debt);
+        }
+        // no accuracy loss
+        {
+            let open_fee = Decimal::from_unified_percent(100); // 0.1%
+            let max_debt_amount = Decimal::from_integer(67067).to_scale(9);
+
+            let max_borrow_amount =
+                calculate_vault_max_borrow_based_max_debt(max_debt_amount, open_fee);
+            let recalculated_max_debt = max_borrow_amount
+                .mul_up(open_fee)
+                .add(max_borrow_amount)
+                .unwrap();
+
+            let expected_max_borrow_amount = Decimal::from_integer(67_000).to_scale(9);
+            assert_eq!(max_borrow_amount, expected_max_borrow_amount);
+            assert_eq!(max_debt_amount, recalculated_max_debt);
+        }
     }
 
     #[test]
