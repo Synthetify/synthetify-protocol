@@ -34,7 +34,7 @@ import {
   almostEqual,
   mulUpByUnifiedPercentage
 } from './utils'
-import { createPriceFeed, getFeedData, setFeedTrading } from './oracleUtils'
+import { createPriceFeed, getFeedData, setFeedPrice, setFeedTrading } from './oracleUtils'
 import {
   decimalToPercent,
   divUp,
@@ -867,6 +867,10 @@ describe('vaults', () => {
     })
   })
   describe('Liquidation flow', async () => {
+    const liquidator = Keypair.generate()
+    let liquidatorInvtTokenAccount: PublicKey
+    let liquidatorXusdTokenAccount: PublicKey
+
     it('should borrow max', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusdBeforeBorrow = assetsListData.synthetics[0]
@@ -935,7 +939,67 @@ describe('vaults', () => {
         )
       )
     })
-    it('prepare state to liquidation', async () => {})
-    it('liquidate', async () => {})
+    it('prepare liquidator', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusdBefore = assetsListData.synthetics[0]
+
+      const [invtTokenAccount, xusdTokenAccount] = await Promise.all([
+        invtToken.createAccount(liquidator.publicKey),
+        xusdToken.createAccount(liquidator.publicKey),
+        connection.requestAirdrop(liquidator.publicKey, 10e9)
+      ])
+      liquidatorInvtTokenAccount = invtTokenAccount
+      liquidatorXusdTokenAccount = xusdTokenAccount
+
+      const invtTokenAmount = tou64(2000 * 10 ** 6) // 2000 INVT
+      await invtToken.mintTo(liquidatorInvtTokenAccount, wallet, [], invtTokenAmount)
+
+      const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
+        owner: liquidator.publicKey,
+        collateral: invtToken.publicKey,
+        synthetic: xusdBefore.assetAddress
+      })
+      await signAndSend(new Transaction().add(createVaultEntryIx), [liquidator], connection)
+      await exchange.vaultDeposit({
+        amount: invtTokenAmount,
+        owner: liquidator.publicKey,
+        collateral: invtToken.publicKey,
+        synthetic: xusdBefore.assetAddress,
+        userCollateralAccount: liquidatorInvtTokenAccount,
+        reserveAddress: invtVaultReserve,
+        collateralToken: invtToken,
+        signers: [liquidator]
+      })
+      await exchange.borrowVault({
+        amount: new BN(4734681), // ~4,73 INVT,
+        owner: liquidator.publicKey,
+        to: liquidatorXusdTokenAccount,
+        collateral: invtToken.publicKey,
+        collateralPriceFeed: invtPriceFeed,
+        synthetic: xusdBefore.assetAddress,
+        signers: [liquidator]
+      })
+    })
+    // it('liquidate', async () => {
+    //   const assetsListData = await exchange.getAssetsList(assetsList)
+    //   const xusdBeforeLiquidate = assetsListData.synthetics[0]
+
+    //   // user is safe
+    //   // successfully liquidate
+    //   await setFeedPrice(oracleProgram, 2, invtPriceFeed)
+
+    //   const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
+    //     amount: U64_MAX,
+    //     collateral: invtToken.publicKey,
+    //     collateralReserve: invtVaultReserve,
+    //     liquidationFund: invtVaultLiquidationFund,
+    //     collateralPriceFeed: invtPriceFeed,
+    //     synthetic: xusdBeforeLiquidate.assetAddress,
+    //     liquidator: liquidator.publicKey,
+    //     liquidatorCollateralAccount,
+    //     liquidatorSyntheticAccount: liquidatorXusdAccount,
+    //     owner: accountOwner.publicKey
+    //   })
+    // })
   })
 })
