@@ -866,4 +866,76 @@ describe('vaults', () => {
       assert.ok(eqDecimals(xusdAfter.supply, expectedGlobalBorrowedSupply))
     })
   })
+  describe('Liquidation flow', async () => {
+    it('should borrow max', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusdBeforeBorrow = assetsListData.synthetics[0]
+
+      const userXusdTokenAccountBeforeBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
+      // console.log((await xusdToken.getAccountInfo(userXusdTokenAccount)).amount.toString())
+      const vaultBeforeBorrow = await exchange.getVaultForPair(
+        xusdBeforeBorrow.assetAddress,
+        invtToken.publicKey
+      )
+      const vaultEntryBeforeBorrow = await exchange.getVaultEntryForOwner(
+        xusdBeforeBorrow.assetAddress,
+        invtToken.publicKey,
+        accountOwner.publicKey
+      )
+
+      await exchange.borrowVault({
+        amount: U64_MAX,
+        owner: accountOwner.publicKey,
+        to: userXusdTokenAccount,
+        collateral: invtToken.publicKey,
+        collateralPriceFeed: invtPriceFeed,
+        synthetic: xusdBeforeBorrow.assetAddress,
+        signers: [accountOwner]
+      })
+
+      const xusdAfterBorrow = (await exchange.getAssetsList(assetsList)).synthetics[0]
+      const userXusdTokenAccountAfterBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
+      // console.log((await xusdToken.getAccountInfo(userXusdTokenAccount)).amount.toString())
+      const vaultAfterBorrow = await exchange.getVaultForPair(
+        xusdBeforeBorrow.assetAddress,
+        invtToken.publicKey
+      )
+      const vaultEntryAfterBorrow = await exchange.getVaultEntryForOwner(
+        xusdBeforeBorrow.assetAddress,
+        invtToken.publicKey,
+        accountOwner.publicKey
+      )
+
+      // debt   = 4782028 xusd
+      // borrow = 4734681 xusd (debt/(1+open_fee)
+      const expectedDebtAmount = new BN(4782028)
+      const expectedBorrowAmount = new BN(4734681)
+
+      // vault after borrow
+      assert.ok(
+        vaultAfterBorrow.mintAmount.val.eq(vaultBeforeBorrow.mintAmount.val.add(expectedDebtAmount))
+      )
+      // vault entry after borrow
+      assert.ok(
+        vaultEntryAfterBorrow.syntheticAmount.val.eq(
+          vaultEntryBeforeBorrow.syntheticAmount.val.add(expectedDebtAmount)
+        )
+      )
+      // synthetic supply after borrow
+      assert.ok(xusdAfterBorrow.supply.val.eq(xusdBeforeBorrow.supply.val.add(expectedDebtAmount)))
+      assert.ok(
+        xusdAfterBorrow.borrowedSupply.val.eq(
+          xusdBeforeBorrow.borrowedSupply.val.add(expectedDebtAmount)
+        )
+      )
+      // user synthetic balance after borrow
+      assert.ok(
+        userXusdTokenAccountAfterBorrow.amount.eq(
+          userXusdTokenAccountBeforeBorrow.amount.add(expectedBorrowAmount)
+        )
+      )
+    })
+    it('prepare state to liquidation', async () => {})
+    it('liquidate', async () => {})
+  })
 })
