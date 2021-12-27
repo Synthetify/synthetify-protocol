@@ -877,7 +877,6 @@ describe('vaults', () => {
       const xusdBeforeBorrow = assetsListData.synthetics[0]
 
       const userXusdTokenAccountBeforeBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
-      // console.log((await xusdToken.getAccountInfo(userXusdTokenAccount)).amount.toString())
       const vaultBeforeBorrow = await exchange.getVaultForPair(
         xusdBeforeBorrow.assetAddress,
         invtToken.publicKey
@@ -900,7 +899,6 @@ describe('vaults', () => {
 
       const xusdAfterBorrow = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const userXusdTokenAccountAfterBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
-      // console.log((await xusdToken.getAccountInfo(userXusdTokenAccount)).amount.toString())
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusdBeforeBorrow.assetAddress,
         invtToken.publicKey
@@ -986,11 +984,22 @@ describe('vaults', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusdBefore = assetsListData.synthetics[0]
 
+      const vaultBefore = await exchange.getVaultForPair(
+        xusdBefore.assetAddress,
+        invtToken.publicKey
+      )
       const ownerVaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
         accountOwner.publicKey
       )
+      const liquidatorCollateralAccountBefore = await invtToken.getAccountInfo(
+        liquidatorInvtTokenAccount
+      )
+      const liquidatorSyntheticAccountBefore = await xusdToken.getAccountInfo(
+        liquidatorXusdTokenAccount
+      )
+      const liquidationFundBefore = await invtToken.getAccountInfo(invtVaultLiquidationFund)
 
       const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
         amount: U64_MAX,
@@ -1034,49 +1043,83 @@ describe('vaults', () => {
         connection
       )
 
-      // await signAndSend(
-      //   new Transaction().add(approveIx).add(liquidateVaultInstruction),
-      //   [liquidator],
-      //   connection
-      // )
-
-      // // previous liquidation set user as safe
-      // await assertThrowsAsync(
-      //   signAndSend(
-      //     new Transaction().add(approveIx).add(liquidateVaultInstruction),
-      //     [liquidator],
-      //     connection
-      //   ),
-      //   ERRORS_EXCHANGE.INVALID_LIQUIDATION
-      // )
-
+      const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
+      const vaultAfter = await exchange.getVaultForPair(
+        xusdBefore.assetAddress,
+        invtToken.publicKey
+      )
       const ownerVaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
         accountOwner.publicKey
       )
+      const liquidatorCollateralAccountAfter = await invtToken.getAccountInfo(
+        liquidatorInvtTokenAccount
+      )
+      const liquidatorSyntheticAccountAfter = await xusdToken.getAccountInfo(
+        liquidatorXusdTokenAccount
+      )
+      const liquidationFundAfter = await invtToken.getAccountInfo(invtVaultLiquidationFund)
 
       const expectedBurnedAmount = ownerDebtAmount.divn(2)
       // const collateralToLiquidator = expectedBurnedAmount.divn(newInvtPrice)
-      const baseCollateral = expectedBurnedAmount.divn(newInvtPrice)
-      const penaltyCollateral = divUp(baseCollateral.muln(5), new BN(100))
-      const expectedCollateralToLiquidator = baseCollateral.add(penaltyCollateral)
-      const expectedCollateralToExchange = penaltyCollateral
+      const baseTransferredCollateral = expectedBurnedAmount.divn(newInvtPrice)
+      const expectedCollateralPenaltyToLiquidator = divUp(
+        baseTransferredCollateral.muln(5),
+        new BN(100)
+      )
+      const expectedCollateralTransferToLiquidator = baseTransferredCollateral.add(
+        expectedCollateralPenaltyToLiquidator
+      )
+      const expectedCollateralToExchange = expectedCollateralPenaltyToLiquidator.subn(1)
 
-      // const expectedCollateralLiquidated = divUp(
-      //   expectedBurnedAmount.divn(newInvtPrice).muln(11),
-      //   new BN(10)
-      // )
+      // Liquidator should receive collateral
+      assert.ok(
+        liquidatorCollateralAccountBefore.amount
+          .add(expectedCollateralTransferToLiquidator)
+          .eq(liquidatorCollateralAccountAfter.amount)
+      )
+      // Liquidator should repay synthetic
+      assert.ok(
+        liquidatorSyntheticAccountAfter.amount.eq(
+          liquidatorSyntheticAccountBefore.amount.sub(expectedBurnedAmount)
+        )
+      )
+      // Liquidation fund should receive collateral
+      assert.ok(
+        liquidationFundAfter.amount.eq(
+          liquidationFundBefore.amount.add(expectedCollateralToExchange)
+        )
+      )
+      // Vault should adjust collateral and synthetic amounts
+      assert.ok(
+        vaultAfter.collateralAmount.val.eq(
+          vaultBefore.collateralAmount.val
+            .sub(expectedCollateralTransferToLiquidator)
+            .sub(expectedCollateralToExchange)
+        )
+      )
+      assert.ok(vaultAfter.mintAmount.val.eq(vaultBefore.mintAmount.val.sub(expectedBurnedAmount)))
+      // Vault entry should adjust collateral and synthetic amounts
 
-      console.log(`expectedCollateralToLiquidator: ${expectedCollateralToLiquidator.toString()}`)
-      console.log(`expectedCollateralToExchange: ${expectedCollateralToExchange.toString()}`)
-      console.log(`expectedBurnedAmount: ${expectedBurnedAmount.toString()}`)
+      assert.ok(
+        ownerVaultEntryAfter.collateralAmount.val.eq(
+          ownerVaultEntryBefore.collateralAmount.val
+            .sub(expectedCollateralTransferToLiquidator)
+            .sub(expectedCollateralToExchange)
+        )
+      )
+      assert.ok(
+        ownerVaultEntryAfter.syntheticAmount.val.eq(
+          ownerVaultEntryBefore.syntheticAmount.val.sub(expectedBurnedAmount)
+        )
+      )
 
-      console.log(`collateral amount = ${ownerVaultEntryBefore.collateralAmount.val.toString()}`)
-      console.log(`synthetic amount = ${ownerVaultEntryBefore.syntheticAmount.val.toString()}`)
-
-      console.log(`collateral amount = ${ownerVaultEntryAfter.collateralAmount.val.toString()}`)
-      console.log(`synthetic amount = ${ownerVaultEntryAfter.syntheticAmount.val.toString()}`)
+      // Synthetic should be burned so supply should decrease
+      assert.ok(xusdAfter.supply.val.eq(xusdBefore.supply.val.sub(expectedBurnedAmount)))
+      assert.ok(
+        xusdAfter.borrowedSupply.val.eq(xusdBefore.borrowedSupply.val.sub(expectedBurnedAmount))
+      )
     })
     it('withdraw liquidation penalty by admin', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
