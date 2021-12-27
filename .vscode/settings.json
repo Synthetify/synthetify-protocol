@@ -2,6 +2,9 @@
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "typescript.tsdk": "node_modules/typescript/lib",
+  "[rust]": {
+    "editor.defaultFormatter": "matklad.rust-analyzer"
+  },
   "cSpell.words": [
     "accountv",
     "addn",
@@ -40,6 +43,7 @@
     "Synthetify",
     "Sysvar",
     "toolchain",
+    "trunc",
     "twac",
     "twap",
     "undercollateralized",

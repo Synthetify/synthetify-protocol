@@ -23,6 +23,7 @@
     "test:vaultsliquidation": "anchor test --skip-build tests/vaults-liquidation.spec.ts",
     "test:vaultsliquidation-small": "anchor test --skip-build tests/vaults-liquidation-small.spec.ts",
     "test:vaults-interest": "anchor test --skip-build tests/vaults-interest-debt.spec.ts",
+    "test:vaults-external-collateral": "anchor test --skip-build tests/vault-external-collateral.spec.ts",
     "test:admin-vaults": "anchor test --skip-build tests/admin-vaults.spec.ts",
     "build": "cd sdk && npm run build",
     "program:mainnet": "anchor build -- --features \"mainnet\"",

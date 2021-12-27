@@ -1641,6 +1641,30 @@ export class Exchange {
       }
     }) as TransactionInstruction
   }
+  public async withdrawVaultLiquidationPenaltyInstruction({
+    synthetic,
+    collateral,
+    liquidationFund,
+    to,
+    amount
+  }: WithdrawVaultLiquidationPenalty) {
+    const { vaultAddress } = await this.getVaultAddress(synthetic, collateral)
+
+    return this.program.instruction.withdrawVaultLiquidationPenalty(amount, {
+      accounts: {
+        synthetic,
+        collateral,
+        to,
+        liquidationFund,
+        state: this.stateAddress,
+        admin: this.state.admin,
+        vault: vaultAddress,
+        exchangeAuthority: this.exchangeAuthority,
+        tokenProgram: TOKEN_PROGRAM_ID
+      }
+    }) as TransactionInstruction
+  }
+
   public async updatePrices(assetsList: PublicKey) {
     const assetsListData = await this.getAssetsList(assetsList)
     const feedAddresses = assetsListData.assets
@@ -2167,6 +2191,13 @@ export interface VaultEntryId {
 export interface WithdrawVaultAccumulatedInterest {
   synthetic: PublicKey
   collateral: PublicKey
+  to: PublicKey
+  amount: BN
+}
+export interface WithdrawVaultLiquidationPenalty {
+  synthetic: PublicKey
+  collateral: PublicKey
+  liquidationFund: PublicKey
   to: PublicKey
   amount: BN
 }

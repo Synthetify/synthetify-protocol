@@ -259,6 +259,11 @@ pub fn calculate_debt_interest_rate(debt_interest_rate: u16) -> Decimal {
 pub fn calculate_minute_interest_rate(apr: Decimal) -> Decimal {
     Decimal::from_interest_rate(apr.val.checked_div(MINUTES_IN_YEAR.into()).unwrap())
 }
+pub fn calculate_vault_max_borrow_based_max_debt(max_debt: Decimal, open_fee: Decimal) -> Decimal {
+    let open_factor = open_fee.add(Decimal::from_percent(100)).unwrap();
+    max_debt.div(open_factor)
+}
+
 pub fn calculate_vault_borrow_limit(
     collateral_price: Decimal,
     synthetic_asset: Asset,
@@ -290,8 +295,8 @@ pub fn calculate_vault_withdraw_limit(
     }
 
     let max_withdraw_value = collateral_value.sub(min_collateralized_value).unwrap();
-    let max_withdraw_amount = max_withdraw_value.div_to_scale(
-        collateral_price, collateral_amount.scale);
+    let max_withdraw_amount =
+        max_withdraw_value.div_to_scale(collateral_price, collateral_amount.scale);
     return Ok(max_withdraw_amount);
 }
 
@@ -1557,6 +1562,41 @@ mod tests {
         );
         let expected_borrow_limit = Decimal::new(698068, 1).to_usd();
         assert_eq!(borrow_limit, expected_borrow_limit);
+    }
+    #[test]
+    fn test_calculate_vault_max_borrow_based_max_debt() {
+        // accuracy trunc
+        {
+            let open_fee = Decimal::from_unified_percent(100); // 0.1%
+            let max_debt_amount = Decimal::new(698068, 1).to_usd();
+
+            let max_borrow_amount =
+                calculate_vault_max_borrow_based_max_debt(max_debt_amount, open_fee);
+            let recalculated_max_debt = max_borrow_amount
+                .mul_up(open_fee)
+                .add(max_borrow_amount)
+                .unwrap();
+
+            let expected_max_borrow_amount = Decimal::new(69737062937, 6);
+            assert_eq!(max_borrow_amount, expected_max_borrow_amount);
+            assert_eq!(max_debt_amount, recalculated_max_debt);
+        }
+        // no accuracy loss
+        {
+            let open_fee = Decimal::from_unified_percent(100); // 0.1%
+            let max_debt_amount = Decimal::from_integer(67067).to_scale(9);
+
+            let max_borrow_amount =
+                calculate_vault_max_borrow_based_max_debt(max_debt_amount, open_fee);
+            let recalculated_max_debt = max_borrow_amount
+                .mul_up(open_fee)
+                .add(max_borrow_amount)
+                .unwrap();
+
+            let expected_max_borrow_amount = Decimal::from_integer(67_000).to_scale(9);
+            assert_eq!(max_borrow_amount, expected_max_borrow_amount);
+            assert_eq!(max_debt_amount, recalculated_max_debt);
+        }
     }
 
     #[test]
