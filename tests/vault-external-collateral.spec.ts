@@ -870,6 +870,7 @@ describe('vaults', () => {
     const liquidator = Keypair.generate()
     let liquidatorInvtTokenAccount: PublicKey
     let liquidatorXusdTokenAccount: PublicKey
+    let ownerDebtAmount: BN
 
     it('should borrow max', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
@@ -914,6 +915,7 @@ describe('vaults', () => {
       // borrow = 4734681 xusd (debt/(1+open_fee)
       const expectedDebtAmount = new BN(4782028)
       const expectedBorrowAmount = new BN(4734681)
+      ownerDebtAmount = expectedDebtAmount
 
       // vault after borrow
       assert.ok(
@@ -971,7 +973,7 @@ describe('vaults', () => {
         signers: [liquidator]
       })
       await exchange.borrowVault({
-        amount: new BN(4734681), // ~4,73 INVT,
+        amount: new BN(ownerDebtAmount),
         owner: liquidator.publicKey,
         to: liquidatorXusdTokenAccount,
         collateral: invtToken.publicKey,
@@ -980,26 +982,155 @@ describe('vaults', () => {
         signers: [liquidator]
       })
     })
-    // it('liquidate', async () => {
-    //   const assetsListData = await exchange.getAssetsList(assetsList)
-    //   const xusdBeforeLiquidate = assetsListData.synthetics[0]
+    it('liquidate', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusdBefore = assetsListData.synthetics[0]
 
-    //   // user is safe
-    //   // successfully liquidate
-    //   await setFeedPrice(oracleProgram, 2, invtPriceFeed)
+      const ownerVaultEntryBefore = await exchange.getVaultEntryForOwner(
+        xusdBefore.assetAddress,
+        invtToken.publicKey,
+        accountOwner.publicKey
+      )
 
-    //   const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
-    //     amount: U64_MAX,
-    //     collateral: invtToken.publicKey,
-    //     collateralReserve: invtVaultReserve,
-    //     liquidationFund: invtVaultLiquidationFund,
-    //     collateralPriceFeed: invtPriceFeed,
-    //     synthetic: xusdBeforeLiquidate.assetAddress,
-    //     liquidator: liquidator.publicKey,
-    //     liquidatorCollateralAccount,
-    //     liquidatorSyntheticAccount: liquidatorXusdAccount,
-    //     owner: accountOwner.publicKey
-    //   })
-    // })
+      const liquidateVaultInstruction = await exchange.liquidateVaultInstruction({
+        amount: U64_MAX,
+        collateral: invtToken.publicKey,
+        collateralReserve: invtVaultReserve,
+        liquidationFund: invtVaultLiquidationFund,
+        collateralPriceFeed: invtPriceFeed,
+        synthetic: xusdBefore.assetAddress,
+        liquidator: liquidator.publicKey,
+        liquidatorCollateralAccount: liquidatorInvtTokenAccount,
+        liquidatorSyntheticAccount: liquidatorXusdTokenAccount,
+        owner: accountOwner.publicKey
+      })
+
+      const approveIx = Token.createApproveInstruction(
+        TOKEN_PROGRAM_ID,
+        liquidatorXusdTokenAccount,
+        exchange.exchangeAuthority,
+        liquidator.publicKey,
+        [],
+        tou64(U64_MAX)
+      )
+
+      // owner is safe
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(approveIx).add(liquidateVaultInstruction),
+          [liquidator],
+          connection
+        ),
+        ERRORS_EXCHANGE.INVALID_LIQUIDATION
+      )
+
+      const newInvtPrice = 2
+      await setFeedPrice(oracleProgram, newInvtPrice, invtPriceFeed)
+
+      // successfully liquidate
+      await signAndSend(
+        new Transaction().add(approveIx).add(liquidateVaultInstruction),
+        [liquidator],
+        connection
+      )
+
+      // await signAndSend(
+      //   new Transaction().add(approveIx).add(liquidateVaultInstruction),
+      //   [liquidator],
+      //   connection
+      // )
+
+      // // previous liquidation set user as safe
+      // await assertThrowsAsync(
+      //   signAndSend(
+      //     new Transaction().add(approveIx).add(liquidateVaultInstruction),
+      //     [liquidator],
+      //     connection
+      //   ),
+      //   ERRORS_EXCHANGE.INVALID_LIQUIDATION
+      // )
+
+      const ownerVaultEntryAfter = await exchange.getVaultEntryForOwner(
+        xusdBefore.assetAddress,
+        invtToken.publicKey,
+        accountOwner.publicKey
+      )
+
+      const expectedBurnedAmount = ownerDebtAmount.divn(2)
+      // const collateralToLiquidator = expectedBurnedAmount.divn(newInvtPrice)
+      const baseCollateral = expectedBurnedAmount.divn(newInvtPrice)
+      const penaltyCollateral = divUp(baseCollateral.muln(5), new BN(100))
+      const expectedCollateralToLiquidator = baseCollateral.add(penaltyCollateral)
+      const expectedCollateralToExchange = penaltyCollateral
+
+      // const expectedCollateralLiquidated = divUp(
+      //   expectedBurnedAmount.divn(newInvtPrice).muln(11),
+      //   new BN(10)
+      // )
+
+      console.log(`expectedCollateralToLiquidator: ${expectedCollateralToLiquidator.toString()}`)
+      console.log(`expectedCollateralToExchange: ${expectedCollateralToExchange.toString()}`)
+      console.log(`expectedBurnedAmount: ${expectedBurnedAmount.toString()}`)
+
+      console.log(`collateral amount = ${ownerVaultEntryBefore.collateralAmount.val.toString()}`)
+      console.log(`synthetic amount = ${ownerVaultEntryBefore.syntheticAmount.val.toString()}`)
+
+      console.log(`collateral amount = ${ownerVaultEntryAfter.collateralAmount.val.toString()}`)
+      console.log(`synthetic amount = ${ownerVaultEntryAfter.syntheticAmount.val.toString()}`)
+    })
+    it('withdraw liquidation penalty by admin', async () => {
+      const assetsListData = await exchange.getAssetsList(assetsList)
+      const xusd = assetsListData.synthetics[0]
+
+      const account = Keypair.generate()
+      const penaltyTargetAccount = await invtToken.createAccount(account.publicKey)
+
+      const withdrawTargetAmountBefore = (await invtToken.getAccountInfo(penaltyTargetAccount))
+        .amount
+      const vaultLiquidationFundAmountBefore = (
+        await invtToken.getAccountInfo(invtVaultLiquidationFund)
+      ).amount
+
+      const withdrawVaultLiquidationPenaltyIx =
+        await exchange.withdrawVaultLiquidationPenaltyInstruction({
+          amount: vaultLiquidationFundAmountBefore,
+          collateral: invtToken.publicKey,
+          synthetic: xusd.assetAddress,
+          liquidationFund: invtVaultLiquidationFund,
+          to: penaltyTargetAccount
+        })
+
+      await assertThrowsAsync(
+        signAndSend(
+          new Transaction().add(withdrawVaultLiquidationPenaltyIx),
+          [liquidator],
+          connection
+        ),
+        ERRORS.SIGNATURE
+      )
+
+      await signAndSend(
+        new Transaction().add(withdrawVaultLiquidationPenaltyIx),
+        [EXCHANGE_ADMIN],
+        connection
+      )
+
+      const withdrawTargetAmountAfter = (await invtToken.getAccountInfo(penaltyTargetAccount))
+        .amount
+      const vaultLiquidationFundAmountAfter = (
+        await invtToken.getAccountInfo(invtVaultLiquidationFund)
+      ).amount
+
+      // liquidation balances
+      assert.isFalse(vaultLiquidationFundAmountBefore.eqn(0))
+      assert.ok(vaultLiquidationFundAmountAfter.eqn(0))
+
+      // transfer
+      assert.ok(
+        withdrawTargetAmountBefore
+          .add(vaultLiquidationFundAmountBefore)
+          .eq(withdrawTargetAmountAfter)
+      )
+    })
   })
 })
