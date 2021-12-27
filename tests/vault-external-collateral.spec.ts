@@ -50,7 +50,7 @@ import { ERRORS_EXCHANGE, toEffectiveFee } from '@synthetify/sdk/src/utils'
 import { Asset, AssetsList, Collateral, PriceStatus, Synthetic } from '../sdk/lib/exchange'
 import { Decimal, OracleType } from '@synthetify/sdk/src/exchange'
 
-describe('vaults', () => {
+describe('vaults external collateral', () => {
   const provider = anchor.Provider.local()
   const connection = provider.connection
   const exchangeProgram = anchor.workspace.Exchange as Program
