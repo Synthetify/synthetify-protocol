@@ -2529,6 +2529,29 @@ pub mod exchange {
 
         Ok(())
     }
+
+    #[access_control(admin(&ctx.accounts.state, &ctx.accounts.admin))]
+    pub fn withdraw_vault_liquidation_penalty(
+        ctx: Context<WithdrawVaultLiquidationPenalty>,
+        amount: u64,
+    ) -> Result<()> {
+        msg!("Synthetify:Admin: WITHDRAW VAULT LIQUIDATION PENALTY");
+        let state = ctx.accounts.state.load()?;
+
+        let seeds = &[SYNTHETIFY_EXCHANGE_SEED.as_bytes(), &[state.nonce]];
+        let signer_seeds = &[&seeds[..]];
+
+        // Transfer
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.liquidation_fund.to_account_info(),
+            to: ctx.accounts.to.to_account_info(),
+            authority: ctx.accounts.exchange_authority.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
+        token::transfer(cpi_ctx, amount.try_into().unwrap())?;
+        Ok(())
+    }
 }
 
 // some error code may be unused (future use)

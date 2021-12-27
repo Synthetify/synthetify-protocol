@@ -1483,3 +1483,36 @@ impl<'a, 'b, 'c, 'info> From<&WithdrawVaultAccumulatedInterest<'info>>
         CpiContext::new(cpi_program, cpi_accounts)
     }
 }
+#[derive(Accounts)]
+pub struct WithdrawVaultLiquidationPenalty<'info> {
+    #[account(
+        seeds = [b"statev1".as_ref()], bump = state.load()?.bump,
+        constraint = state.to_account_info().owner == program_id
+    )]
+    pub state: Loader<'info, State>,
+    #[account(signer)]
+    pub admin: AccountInfo<'info>,
+    #[account(
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        bump=vault.load()?.bump,
+        constraint = vault.to_account_info().owner == program_id
+    )]
+    pub vault: Loader<'info, Vault>,
+    pub synthetic: Account<'info, anchor_spl::token::Mint>,
+    pub collateral: Account<'info, anchor_spl::token::Mint>,
+    #[account(constraint = exchange_authority.key == &state.load()?.exchange_authority)]
+    pub exchange_authority: AccountInfo<'info>,
+    #[account(mut,
+        constraint = &to.mint == collateral.to_account_info().key,
+        constraint = to.key() != liquidation_fund.key()
+    )]
+    pub to: Account<'info, TokenAccount>, // withdraw to any account
+    #[account(mut,
+        constraint = liquidation_fund.key() == vault.load()?.liquidation_fund,
+        constraint = liquidation_fund.mint == collateral.key(),
+        constraint = &liquidation_fund.owner == exchange_authority.key
+    )]
+    pub liquidation_fund: Account<'info, TokenAccount>,
+    #[account(address = token::ID)]
+    pub token_program: AccountInfo<'info>,
+}
