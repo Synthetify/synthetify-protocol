@@ -321,16 +321,16 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
       assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
-      await exchange.vaultDeposit({
+      const vaultDepositTx = await exchange.vaultDepositTransaction({
         amount: invtUserCollateralAmount,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken,
-        signers: [accountOwner]
+        collateralToken: invtToken
       })
+      await signAndSend(new Transaction().add(vaultDepositTx), [accountOwner], connection)
 
       const userInvtTokenAccountInfoAfterDeposit = await invtToken.getAccountInfo(
         userInvtTokenAccount
@@ -390,16 +390,16 @@ describe('vaults', () => {
       assert.ok(eqDecimals(vault.collateralAmount, expectedCollateralAmount))
       assert.ok(eqDecimals(vaultEntry.collateralAmount, expectedCollateralAmount))
 
-      await exchange.vaultDeposit({
+      const vaultDepositTx = await exchange.vaultDepositTransaction({
         amount: depositAmount,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken,
-        signers: [accountOwner]
+        collateralToken: invtToken
       })
+      await signAndSend(new Transaction().add(vaultDepositTx), [accountOwner], connection)
 
       invtUserCollateralAmount = invtUserCollateralAmount.add(depositAmount)
       const userInvtTokenAccountInfoAfterDeposit = await invtToken.getAccountInfo(
@@ -436,16 +436,17 @@ describe('vaults', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
 
+      const vaultBorrowTx = await exchange.borrowVaultTransaction({
+        amount: new BN(233 * 10 ** 6), // 223 XUSD
+        owner: accountOwner.publicKey,
+        collateral: invtToken.publicKey,
+        synthetic: xusd.assetAddress,
+        to: userXusdTokenAccount,
+        collateralPriceFeed: invtPriceFeed
+      })
+
       await assertThrowsAsync(
-        exchange.borrowVault({
-          amount: new BN(233 * 10 ** 6), // 223 XUSD
-          owner: accountOwner.publicKey,
-          to: userXusdTokenAccount,
-          collateral: invtToken.publicKey,
-          collateralPriceFeed: invtPriceFeed,
-          synthetic: xusd.assetAddress,
-          signers: [accountOwner]
-        }),
+        signAndSend(new Transaction().add(vaultBorrowTx), [accountOwner], connection),
         ERRORS_EXCHANGE.USER_BORROW_LIMIT
       )
     })
@@ -473,15 +474,15 @@ describe('vaults', () => {
         (decimalToPercent(vault.collateralRatio) - 20) / 100
       )
 
-      await exchange.borrowVault({
+      const vaultBorrowTx = await exchange.borrowVaultTransaction({
         amount: borrowAmount,
         owner: accountOwner.publicKey,
         to: userXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusd.assetAddress,
-        signers: [accountOwner]
+        synthetic: xusd.assetAddress
       })
+      await signAndSend(new Transaction().add(vaultBorrowTx), [accountOwner], connection)
       borrowAmount = borrowAmount.add(mulUpByUnifiedPercentage(borrowAmount, vault.openFee))
 
       const vaultAfterBorrow = await exchange.getVaultForPair(
@@ -523,16 +524,17 @@ describe('vaults', () => {
         connection
       )
 
+      const vaultBorrowTx = await exchange.borrowVaultTransaction({
+        amount: new BN(1),
+        owner: accountOwner.publicKey,
+        to: userXusdTokenAccount,
+        collateral: invtToken.publicKey,
+        collateralPriceFeed: invtPriceFeed,
+        synthetic: xusd.assetAddress
+      })
+
       await assertThrowsAsync(
-        exchange.borrowVault({
-          amount: new BN(1),
-          owner: accountOwner.publicKey,
-          to: userXusdTokenAccount,
-          collateral: invtToken.publicKey,
-          collateralPriceFeed: invtPriceFeed,
-          synthetic: xusd.assetAddress,
-          signers: [accountOwner]
-        }),
+        signAndSend(new Transaction().add(vaultBorrowTx), [accountOwner], connection),
         ERRORS_EXCHANGE.VAULT_BORROW_LIMIT
       )
 
@@ -561,7 +563,7 @@ describe('vaults', () => {
         invtToken.publicKey,
         accountOwner.publicKey
       )
-      const withdrawIx = await exchange.withdrawVaultInstruction({
+      const withdrawTx = await exchange.withdrawVaultTransaction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
@@ -571,7 +573,7 @@ describe('vaults', () => {
         userCollateralAccount: userInvtTokenAccount
       })
       await assertThrowsAsync(
-        signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection),
+        signAndSend(withdrawTx, [accountOwner], connection),
         ERRORS_EXCHANGE.VAULT_WITHDRAW_LIMIT
       )
       const userInvtTokenAccountInfoAfter = await invtToken.getAccountInfo(userInvtTokenAccount)
@@ -608,7 +610,7 @@ describe('vaults', () => {
       const userInvtTokenAccountBeforeWithdraw = await invtToken.getAccountInfo(
         userInvtTokenAccount
       )
-      const withdrawIx = await exchange.withdrawVaultInstruction({
+      const withdrawTx = await exchange.withdrawVaultTransaction({
         amount: toWithdraw,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
@@ -617,7 +619,8 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount
       })
-      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
+      await signAndSend(withdrawTx, [accountOwner], connection)
+
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
         invtToken.publicKey
@@ -659,7 +662,7 @@ describe('vaults', () => {
       const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
       const userInvtTokenAccountBefore = await invtToken.getAccountInfo(userInvtTokenAccount)
       const vaultInvtTokenAccountBefore = await invtToken.getAccountInfo(invtVaultReserve)
-      const withdrawIx = await exchange.withdrawVaultInstruction({
+      const withdrawTx = await exchange.withdrawVaultTransaction({
         amount: withdrawAmount,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
@@ -668,7 +671,7 @@ describe('vaults', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount
       })
-      await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
+      await signAndSend(withdrawTx, [accountOwner], connection)
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
@@ -728,14 +731,14 @@ describe('vaults', () => {
       const userXusdTokenAccountBeforeRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const repayAmount = vaultEntryBeforeRepay.syntheticAmount.val.divn(2)
 
-      await exchange.repayVault({
+      const repayTx = await exchange.repayVaultTransaction({
         amount: repayAmount,
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusdBefore.assetAddress,
-        userTokenAccountRepay: userXusdTokenAccount,
-        signers: [accountOwner]
+        userTokenAccountRepay: userXusdTokenAccount
       })
+      await signAndSend(repayTx, [accountOwner], connection)
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfterRepay = await exchange.getVaultForPair(
@@ -797,26 +800,26 @@ describe('vaults', () => {
         })
         await signAndSend(new Transaction().add(createVaultEntryIx), [repayingAccount], connection)
 
-        await exchange.vaultDeposit({
+        const vaultDepositTx = await exchange.vaultDepositTransaction({
           amount: repayingCollateralAmount,
           owner: repayingAccount.publicKey,
           collateral: invtToken.publicKey,
           synthetic: xusdBefore.assetAddress,
           userCollateralAccount: repayingInvtTokenAccount,
           reserveAddress: invtVaultReserve,
-          collateralToken: invtToken,
-          signers: [repayingAccount]
+          collateralToken: invtToken
         })
+        await signAndSend(vaultDepositTx, [repayingAccount], connection)
 
-        await exchange.borrowVault({
+        const borrowVaultTx = await exchange.borrowVaultTransaction({
           amount: new BN(100 * 10 ** 6), // 100 INVT,
           owner: repayingAccount.publicKey,
           to: userXusdTokenAccount,
           collateral: invtToken.publicKey,
           collateralPriceFeed: invtPriceFeed,
-          synthetic: xusdBefore.assetAddress,
-          signers: [repayingAccount]
+          synthetic: xusdBefore.assetAddress
         })
+        await signAndSend(borrowVaultTx, [repayingAccount], connection)
       }
 
       const vaultBefore = await exchange.getVaultForPair(
@@ -831,14 +834,14 @@ describe('vaults', () => {
       const userXusdTokenAccountBefore = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const maxRepayAmount = vaultEntryBefore.syntheticAmount.val
 
-      await exchange.repayVault({
+      const repayVaultTx = await exchange.repayVaultTransaction({
         amount: maxRepayAmount.addn(1),
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusdBefore.assetAddress,
-        userTokenAccountRepay: userXusdTokenAccount,
-        signers: [accountOwner]
+        userTokenAccountRepay: userXusdTokenAccount
       })
+      await signAndSend(repayVaultTx, [accountOwner], connection)
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfter = await exchange.getVaultForPair(
@@ -887,15 +890,15 @@ describe('vaults', () => {
         accountOwner.publicKey
       )
 
-      await exchange.borrowVault({
+      const borrowVaultTx = await exchange.borrowVaultTransaction({
         amount: U64_MAX,
         owner: accountOwner.publicKey,
         to: userXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusdBeforeBorrow.assetAddress,
-        signers: [accountOwner]
+        synthetic: xusdBeforeBorrow.assetAddress
       })
+      await signAndSend(borrowVaultTx, [accountOwner], connection)
 
       const xusdAfterBorrow = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const userXusdTokenAccountAfterBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
@@ -960,25 +963,26 @@ describe('vaults', () => {
         synthetic: xusdBefore.assetAddress
       })
       await signAndSend(new Transaction().add(createVaultEntryIx), [liquidator], connection)
-      await exchange.vaultDeposit({
+      const vaultDepositTx = await exchange.vaultDepositTransaction({
         amount: invtTokenAmount,
         owner: liquidator.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusdBefore.assetAddress,
         userCollateralAccount: liquidatorInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken,
-        signers: [liquidator]
+        collateralToken: invtToken
       })
-      await exchange.borrowVault({
+      await signAndSend(vaultDepositTx, [liquidator], connection)
+
+      const borrowVaultTx = await exchange.borrowVaultTransaction({
         amount: new BN(ownerDebtAmount),
         owner: liquidator.publicKey,
         to: liquidatorXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusdBefore.assetAddress,
-        signers: [liquidator]
+        synthetic: xusdBefore.assetAddress
       })
+      await signAndSend(borrowVaultTx, [liquidator], connection)
     })
     it('liquidate', async () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
