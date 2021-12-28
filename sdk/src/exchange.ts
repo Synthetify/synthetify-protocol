@@ -1384,6 +1384,7 @@ export class Exchange {
   public async updateVaultSyntheticPriceIx(
     synthetic: PublicKey
   ): Promise<TransactionInstruction | null> {
+    await this.getState() // ensure state is loaded
     const syntheticStructure = this.assetsList.synthetics.find((s) =>
       s.assetAddress.equals(synthetic)
     ) as Synthetic
