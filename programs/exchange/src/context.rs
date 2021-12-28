@@ -1154,9 +1154,7 @@ pub struct BorrowVault<'info> {
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(mut,
-        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
-    )]
+    #[account(constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),)]
     pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,
@@ -1206,9 +1204,7 @@ pub struct WithdrawVault<'info> {
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(mut,
-        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
-    )]
+    #[account(constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),)]
     pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut, 
         constraint = &vault.load()?.collateral_reserve == reserve_address.to_account_info().key,
@@ -1316,9 +1312,7 @@ pub struct LiquidateVault<'info> {
     #[account(mut)]
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
     pub collateral: Account<'info, anchor_spl::token::Mint>,
-    #[account(mut,
-        constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),
-    )]
+    #[account(constraint = vault.load()?.collateral_price_feed == collateral_price_feed.key(),)]
     pub collateral_price_feed: AccountInfo<'info>,
     #[account(mut,
         constraint = assets_list.to_account_info().key == &state.load()?.assets_list,

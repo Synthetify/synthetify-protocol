@@ -1963,7 +1963,7 @@ export type Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2029,7 +2029,7 @@ export type Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -2161,7 +2161,7 @@ export type Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -5601,7 +5601,7 @@ export const IDL: Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -5667,7 +5667,7 @@ export const IDL: Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -5799,7 +5799,7 @@ export const IDL: Exchange = {
         },
         {
           "name": "collateralPriceFeed",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
