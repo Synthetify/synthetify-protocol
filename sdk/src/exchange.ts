@@ -1224,6 +1224,7 @@ export class Exchange {
 
     const ix = this.program.instruction.createVault(
       bump,
+      vaultType,
       openFee,
       debtInterestRate,
       collateralRatio,
