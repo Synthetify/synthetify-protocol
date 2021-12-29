@@ -2026,8 +2026,11 @@ pub mod exchange {
         }
         check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price =
-            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
+        let collateral_price = load_price_from_feed(
+            &ctx.accounts.collateral_price_feed,
+            vault.oracle_type,
+            assets,
+        )?;
         let amount_borrow_limit = calculate_vault_borrow_limit(
             collateral_price,
             synthetic_asset,
@@ -2094,8 +2097,11 @@ pub mod exchange {
         }
         check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price =
-            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
+        let collateral_price = load_price_from_feed(
+            &ctx.accounts.collateral_price_feed,
+            vault.oracle_type,
+            assets,
+        )?;
         let vault_withdraw_limit = calculate_vault_withdraw_limit(
             collateral_price,
             synthetic_asset,
@@ -2202,8 +2208,11 @@ pub mod exchange {
         }
         check_value_collateral_price_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
 
-        let collateral_price =
-            load_price_from_feed(&ctx.accounts.collateral_price_feed, vault.oracle_type)?;
+        let collateral_price = load_price_from_feed(
+            &ctx.accounts.collateral_price_feed,
+            vault.oracle_type,
+            assets,
+        )?;
 
         // Amount of synthetic safely collateralized
         let amount_liquidation_limit = calculate_vault_borrow_limit(

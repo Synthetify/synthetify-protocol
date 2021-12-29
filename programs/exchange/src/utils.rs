@@ -47,7 +47,20 @@ pub fn check_value_collateral_price_feed(
     Ok(())
 }
 
-pub fn load_price_from_feed(price_feed: &AccountInfo, oracle_type: u8) -> Result<Decimal> {
+pub fn load_price_from_feed(
+    price_feed: &AccountInfo,
+    oracle_type: u8,
+    assets: &[Asset; 255],
+) -> Result<Decimal> {
+    if price_feed.key().eq(&Pubkey::default()) {
+        let asset = match assets.iter().find(|x| x.feed_address.eq(&price_feed.key())) {
+            Some(a) => a,
+            None => return Err(ErrorCode::NoAssetFound.into()),
+        };
+
+        return Ok(asset.price);
+    }
+
     let oracle_type = to_oracle_type(oracle_type)?;
     match oracle_type {
         OracleType::Pyth => {
