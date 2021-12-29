@@ -82,6 +82,7 @@ describe('Vault interest borrow accumulation', () => {
   let btc: Collateral
   let btcPriceFeed: PublicKey
   const accountOwner = Keypair.generate()
+  const vaultType = 0
 
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
@@ -226,7 +227,8 @@ describe('Vault interest borrow accumulation', () => {
         liquidationPenaltyLiquidator,
         liquidationThreshold,
         liquidationRatio,
-        oracleType: OracleType.Pyth
+        oracleType: OracleType.Pyth,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     })
@@ -234,7 +236,8 @@ describe('Vault interest borrow accumulation', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: accountOwner.publicKey,
         collateral: btc.collateralAddress,
-        synthetic: xsol.assetAddress
+        synthetic: xsol.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [accountOwner], connection)
     })
@@ -252,7 +255,8 @@ describe('Vault interest borrow accumulation', () => {
         userCollateralAccount: userBtcTokenAccount,
         reserveAddress: btcVaultReserve,
         collateralToken: btcToken,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
     })
     it('should borrow xsol synthetic', async () => {
@@ -266,7 +270,8 @@ describe('Vault interest borrow accumulation', () => {
         collateral: btc.collateralAddress,
         collateralPriceFeed: btcPriceFeed,
         synthetic: xsol.assetAddress,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
     })
   })
@@ -276,11 +281,16 @@ describe('Vault interest borrow accumulation', () => {
     it('should increase synthetic supply', async () => {
       const assetsListDataBefore = await exchange.getAssetsList(assetsList)
       const xsolBefore = assetsListDataBefore.synthetics[1]
-      const vaultBefore = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xsol.assetAddress,
         btc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       await skipTimestamps(adjustmentPeriod, connection)
@@ -288,7 +298,8 @@ describe('Vault interest borrow accumulation', () => {
       const triggerIx = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
         owner: accountOwner.publicKey,
         collateral: btc.collateralAddress,
-        synthetic: xsol.assetAddress
+        synthetic: xsol.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(triggerIx), [EXCHANGE_ADMIN], connection)
 
@@ -321,11 +332,16 @@ describe('Vault interest borrow accumulation', () => {
 
       const assetsListDataAfter = await exchange.getAssetsList(assetsList)
       const xsolAfter = assetsListDataAfter.synthetics[1]
-      const vaultAfter = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xsol.assetAddress,
         btc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       // check vault
@@ -373,7 +389,8 @@ describe('Vault interest borrow accumulation', () => {
         collateral: btc.collateralAddress,
         synthetic: xsol.assetAddress,
         to: adminXsolTokenAccount,
-        amount: firstWithdrawAmount
+        amount: firstWithdrawAmount,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -381,14 +398,19 @@ describe('Vault interest borrow accumulation', () => {
       )
     })
     it('withdraw over limit should fail', async () => {
-      const vault = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const overLimit = vault.accumulatedInterest.val.add(new BN(1))
 
       const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
         collateral: btc.collateralAddress,
         synthetic: xsol.assetAddress,
         to: adminXsolTokenAccount,
-        amount: overLimit
+        amount: overLimit,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -399,18 +421,27 @@ describe('Vault interest borrow accumulation', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xsolBefore = assetsListData.synthetics[1]
 
-      const vaultBefore = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
 
       const ix = await exchange.withdrawVaultAccumulatedInterestInstruction({
         collateral: btc.collateralAddress,
         synthetic: xsol.assetAddress,
         to: adminXsolTokenAccount,
-        amount: firstWithdrawAmount
+        amount: firstWithdrawAmount,
+        vaultType
       })
 
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const xsolAdminAccountInfo = await xsolToken.getAccountInfo(adminXsolTokenAccount)
       const xsolAfter = assetsListData.synthetics[1]
       const expectedVaultAccumulatedInterestAfter = toDecimal(
@@ -433,7 +464,11 @@ describe('Vault interest borrow accumulation', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xsolBefore = assetsListData.synthetics[1]
 
-      const vaultBefore = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const xsolAdminAccountInfoBefore = await xsolToken.getAccountInfo(adminXsolTokenAccount)
       const toWithdraw = new BN('ffffffffffffffff', 16)
 
@@ -441,12 +476,17 @@ describe('Vault interest borrow accumulation', () => {
         collateral: btc.collateralAddress,
         synthetic: xsol.assetAddress,
         to: adminXsolTokenAccount,
-        amount: toWithdraw
+        amount: toWithdraw,
+        vaultType
       })
 
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(xsol.assetAddress, btc.collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        xsol.assetAddress,
+        btc.collateralAddress,
+        vaultType
+      )
       const xsolAdminAccountInfoAfter = await xsolToken.getAccountInfo(adminXsolTokenAccount)
       const xsolAfter = assetsListData.synthetics[1]
       const expectedAdminBalance = xsolAdminAccountInfoBefore.amount.add(

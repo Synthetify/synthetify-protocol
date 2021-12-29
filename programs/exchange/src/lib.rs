@@ -1864,6 +1864,7 @@ pub mod exchange {
     pub fn create_vault(
         ctx: Context<CreateVault>,
         bump: u8,
+        vault_type: u8,
         open_fee: Decimal,
         debt_interest_rate: Decimal,
         collateral_ratio: Decimal,
@@ -1924,6 +1925,7 @@ pub mod exchange {
             vault.liquidation_ratio = liquidation_ratio;
             vault.liquidation_penalty_liquidator = penalty_to_liquidator;
             vault.liquidation_penalty_exchange = penalty_to_exchange;
+            vault.vault_type = vault_type;
         }
 
         Ok(())

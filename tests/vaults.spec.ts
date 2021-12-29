@@ -79,6 +79,7 @@ describe('vaults', () => {
   let borrowAmount: BN
   let maxBorrow: Decimal
   const accountOwner = Keypair.generate()
+  const vaultType = 0
 
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
@@ -205,7 +206,8 @@ describe('vaults', () => {
         liquidationPenaltyLiquidator,
         liquidationThreshold,
         liquidationRatio,
-        oracleType: OracleType.Pyth
+        oracleType: OracleType.Pyth,
+        vaultType
       })
       createVaultIx = ix
     })
@@ -219,7 +221,11 @@ describe('vaults', () => {
     it('should create usdc/xusd vault', async () => {
       const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
       await signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
 
       assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
       assert.ok(vault.synthetic.equals(xusd.assetAddress))
@@ -258,18 +264,21 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [accountOwner], connection)
 
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const { vaultAddress } = await exchange.getVaultAddress(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
       assert.ok(vaultEntry.vault.equals(vaultAddress))
@@ -292,7 +301,8 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: accountOwner.publicKey,
         collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await assertThrowsAsync(signAndSend(new Transaction().add(ix), [accountOwner], connection))
     })
@@ -309,11 +319,16 @@ describe('vaults', () => {
 
       const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       const expectedCollateralAmount = toDecimal(new BN(0), usdc.reserveBalance.scale)
@@ -334,7 +349,8 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount,
         reserveAddress: usdcVaultReserve,
         collateralToken: usdcToken,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
 
       const userUsdcTokenAccountInfoAfterDeposit = await usdcToken.getAccountInfo(
@@ -345,12 +361,14 @@ describe('vaults', () => {
       )
       const vaultAfterDeposit = await exchange.getVaultForPair(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedCollateralAmountAfterDeposit = toDecimal(
         allUserCollateralAmount,
@@ -380,11 +398,16 @@ describe('vaults', () => {
 
       const userUsdcTokenAccountInfo = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const usdcVaultReserveTokenAccountInfo = await usdcToken.getAccountInfo(usdcVaultReserve)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedCollateralAmount = toDecimal(allUserCollateralAmount, usdc.reserveBalance.scale)
 
@@ -404,7 +427,8 @@ describe('vaults', () => {
         userCollateralAccount: userUsdcTokenAccount,
         reserveAddress: usdcVaultReserve,
         collateralToken: usdcToken,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
 
       allUserCollateralAmount = allUserCollateralAmount.add(depositAmount)
@@ -416,12 +440,14 @@ describe('vaults', () => {
       )
       const vaultAfterDeposit = await exchange.getVaultForPair(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedVaultDecimal = toDecimal(allUserCollateralAmount, vault.collateralAmount.scale)
 
@@ -451,7 +477,8 @@ describe('vaults', () => {
           collateral: usdc.collateralAddress,
           collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.USER_BORROW_LIMIT
       )
@@ -461,11 +488,16 @@ describe('vaults', () => {
       const xusd = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
 
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const borrowAmountBeforeBorrow = toDecimal(new BN(0), xusd.supply.scale)
 
@@ -488,18 +520,21 @@ describe('vaults', () => {
         collateral: usdc.collateralAddress,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
       borrowAmount = borrowAmount.add(mulUpByUnifiedPercentage(borrowAmount, vault.openFee))
 
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfterBorrow = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const xusdAfterBorrow = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const expectedBorrowAmount = toDecimal(borrowAmount, xusd.supply.scale)
@@ -517,13 +552,18 @@ describe('vaults', () => {
       const xusd = assetsListData.synthetics[0]
       const usdc = assetsListData.collaterals[1]
 
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
 
       const changeVaultBorrowLimitIx = await exchange.setVaultMaxBorrowInstruction(
         toDecimal(new BN(1e2), vault.maxBorrow.scale),
         {
           collateral: usdc.collateralAddress,
-          synthetic: xusd.assetAddress
+          synthetic: xusd.assetAddress,
+          vaultType
         }
       )
       await signAndSend(
@@ -540,7 +580,8 @@ describe('vaults', () => {
           collateral: usdc.collateralAddress,
           collateralPriceFeed: usdcPriceFeed,
           synthetic: xusd.assetAddress,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.VAULT_BORROW_LIMIT
       )
@@ -548,7 +589,8 @@ describe('vaults', () => {
       // clean after test - return to previous max borrow
       const cleanUpTx = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
         collateral: usdc.collateralAddress,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(cleanUpTx), [EXCHANGE_ADMIN], connection)
     })
@@ -566,11 +608,16 @@ describe('vaults', () => {
       const usdcVaultReserveTokenAccountInfoBefore = await usdcToken.getAccountInfo(
         usdcVaultReserve
       )
-      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       const withdrawIx = await exchange.withdrawVaultInstruction({
@@ -580,7 +627,8 @@ describe('vaults', () => {
         reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userUsdcTokenAccount
+        userCollateralAccount: userUsdcTokenAccount,
+        vaultType
       })
 
       await assertThrowsAsync(
@@ -589,11 +637,16 @@ describe('vaults', () => {
       )
       const userUsdcTokenAccountInfoAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const usdcVaultReserveTokenAccountInfoAfter = await usdcToken.getAccountInfo(usdcVaultReserve)
-      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       assert.ok(userUsdcTokenAccountInfoBefore.amount.eq(userUsdcTokenAccountInfoAfter.amount))
       assert.ok(
@@ -611,12 +664,14 @@ describe('vaults', () => {
 
       const vaultBeforeWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryBeforeWithdraw = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const toWithdraw = new BN(1e6).muln(10)
       const userUsdcTokenAccountBeforeWithdraw = await usdcToken.getAccountInfo(
@@ -630,18 +685,21 @@ describe('vaults', () => {
         reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userUsdcTokenAccount
+        userCollateralAccount: userUsdcTokenAccount,
+        vaultType
       })
       await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfterWithdraw = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userUsdcTokenAccountAfterWithdraw = await usdcToken.getAccountInfo(userUsdcTokenAccount)
 
@@ -672,9 +730,14 @@ describe('vaults', () => {
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
-      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const userUsdcTokenAccountBefore = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountBefore = await usdcToken.getAccountInfo(usdcVaultReserve)
 
@@ -685,16 +748,22 @@ describe('vaults', () => {
         reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userUsdcTokenAccount
+        userCollateralAccount: userUsdcTokenAccount,
+        vaultType
       })
       await signAndSend(new Transaction().add(withdrawIx), [accountOwner], connection)
 
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
-      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
       const userUsdcTokenAccountAfter = await usdcToken.getAccountInfo(userUsdcTokenAccount)
       const vaultUsdcTokenAccountAfter = await usdcToken.getAccountInfo(usdcVaultReserve)
 
@@ -736,12 +805,14 @@ describe('vaults', () => {
 
       const vaultBeforeRepay = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryBeforeRepay = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountBeforeRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const repayAmount = vaultEntryBeforeRepay.syntheticAmount.val.divn(2)
@@ -752,18 +823,21 @@ describe('vaults', () => {
         collateral: usdc.collateralAddress,
         synthetic: xusdBefore.assetAddress,
         userTokenAccountRepay: userXusdTokenAccount,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfterRepay = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfterRepay = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountAfterRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
@@ -812,7 +886,8 @@ describe('vaults', () => {
         const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
           owner: repayingAccount.publicKey,
           collateral: usdc.collateralAddress,
-          synthetic: xusdBefore.assetAddress
+          synthetic: xusdBefore.assetAddress,
+          vaultType
         })
         await signAndSend(new Transaction().add(createVaultEntryIx), [repayingAccount], connection)
 
@@ -824,7 +899,8 @@ describe('vaults', () => {
           userCollateralAccount: repayingUsdcTokenAccount,
           reserveAddress: usdcVaultReserve,
           collateralToken: usdcToken,
-          signers: [repayingAccount]
+          signers: [repayingAccount],
+          vaultType
         })
 
         await exchange.borrowVault({
@@ -834,18 +910,21 @@ describe('vaults', () => {
           collateral: usdc.collateralAddress,
           collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdBefore.assetAddress,
-          signers: [repayingAccount]
+          signers: [repayingAccount],
+          vaultType
         })
       }
 
       const vaultBefore = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountBefore = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const maxRepayAmount = vaultEntryBefore.syntheticAmount.val
@@ -856,18 +935,21 @@ describe('vaults', () => {
         collateral: usdc.collateralAddress,
         synthetic: xusdBefore.assetAddress,
         userTokenAccountRepay: userXusdTokenAccount,
-        signers: [accountOwner]
+        signers: [accountOwner],
+        vaultType
       })
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfter = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        usdc.collateralAddress
+        usdc.collateralAddress,
+        vaultType
       )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         usdc.collateralAddress,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
@@ -904,7 +986,8 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: newAccountOwner.publicKey,
         collateral: usdcCollateralAddress,
-        synthetic: xusdAssetAddress
+        synthetic: xusdAssetAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [newAccountOwner], connection),
@@ -921,7 +1004,8 @@ describe('vaults', () => {
           userCollateralAccount: userUsdcTokenAccount,
           reserveAddress: usdcVaultReserve,
           collateralToken: usdcToken,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )
@@ -935,7 +1019,8 @@ describe('vaults', () => {
           collateral: usdcCollateralAddress,
           collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )
@@ -948,7 +1033,8 @@ describe('vaults', () => {
         reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
-        userCollateralAccount: userUsdcTokenAccount
+        userCollateralAccount: userUsdcTokenAccount,
+        vaultType
       })
 
       await assertThrowsAsync(
@@ -964,7 +1050,8 @@ describe('vaults', () => {
           collateral: usdcCollateralAddress,
           synthetic: xusdAssetAddress,
           userTokenAccountRepay: userXusdTokenAccount,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )
@@ -987,7 +1074,8 @@ describe('vaults', () => {
       const ixVaultHalt = await exchange.setVaultHaltedInstruction({
         collateral: usdcCollateralAddress,
         synthetic: xusdAssetAddress,
-        halted: true
+        halted: true,
+        vaultType
       })
       await signAndSend(new Transaction().add(ixVaultHalt), [EXCHANGE_ADMIN], connection)
     })
@@ -995,7 +1083,8 @@ describe('vaults', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: newAccountOwner.publicKey,
         collateral: usdcCollateralAddress,
-        synthetic: xusdAssetAddress
+        synthetic: xusdAssetAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [newAccountOwner], connection),
@@ -1012,7 +1101,8 @@ describe('vaults', () => {
           userCollateralAccount: userUsdcTokenAccount,
           reserveAddress: usdcVaultReserve,
           collateralToken: usdcToken,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )
@@ -1026,7 +1116,8 @@ describe('vaults', () => {
           collateral: usdcCollateralAddress,
           collateralPriceFeed: usdcPriceFeed,
           synthetic: xusdAssetAddress,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )
@@ -1039,7 +1130,8 @@ describe('vaults', () => {
         reserveAddress: usdcVaultReserve,
         collateralPriceFeed: usdcPriceFeed,
         synthetic: xusdAssetAddress,
-        userCollateralAccount: userUsdcTokenAccount
+        userCollateralAccount: userUsdcTokenAccount,
+        vaultType
       })
 
       await assertThrowsAsync(
@@ -1055,7 +1147,8 @@ describe('vaults', () => {
           collateral: usdcCollateralAddress,
           synthetic: xusdAssetAddress,
           userTokenAccountRepay: userXusdTokenAccount,
-          signers: [accountOwner]
+          signers: [accountOwner],
+          vaultType
         }),
         ERRORS_EXCHANGE.HALTED
       )

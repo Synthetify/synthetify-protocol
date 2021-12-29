@@ -282,7 +282,7 @@ pub struct Decimal {
 #[account(zero_copy)]
 #[derive(Default, Debug)]
 pub struct Vault {
-    // 390
+    // 391
     pub halted: bool,                            // 1
     pub synthetic: Pubkey,                       // 32
     pub collateral: Pubkey,                      // 32
@@ -304,6 +304,7 @@ pub struct Vault {
     pub max_borrow: Decimal,                     // 17
     pub last_update: i64,                        // 8
     pub bump: u8,                                // 1
+    pub vault_type: u8,                          // 1
 }
 #[account(zero_copy)]
 #[derive(PartialEq, Default, Debug)]

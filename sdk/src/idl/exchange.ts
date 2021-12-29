@@ -1758,6 +1758,10 @@ export type Exchange = {
           "type": "u8"
         },
         {
+          "name": "vaultType",
+          "type": "u8"
+        },
+        {
           "name": "openFee",
           "type": {
             "defined": "Decimal"
@@ -3109,6 +3113,10 @@ export type Exchange = {
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultType",
             "type": "u8"
           }
         ]
@@ -5396,6 +5404,10 @@ export const IDL: Exchange = {
           "type": "u8"
         },
         {
+          "name": "vaultType",
+          "type": "u8"
+        },
+        {
           "name": "openFee",
           "type": {
             "defined": "Decimal"
@@ -6747,6 +6759,10 @@ export const IDL: Exchange = {
           },
           {
             "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultType",
             "type": "u8"
           }
         ]
