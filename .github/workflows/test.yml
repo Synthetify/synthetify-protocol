@@ -124,7 +124,6 @@ jobs:
           npm run build
         working-directory: ./sdk
       - name: install
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: |
           export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           npm install
