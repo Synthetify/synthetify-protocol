@@ -1012,7 +1012,7 @@ impl<'a, 'b, 'c, 'info> From<&SwapSettledSynthetic<'info>>
 
 
 #[derive(Accounts)]
-#[instruction(bump: u8)]
+#[instruction(bump: u8,vault_type: u8)]
 pub struct CreateVault<'info> {
     #[account(
         seeds = [b"statev1".as_ref()],
@@ -1020,7 +1020,7 @@ pub struct CreateVault<'info> {
         constraint = state.to_account_info().owner == program_id
     )]
     pub state: Loader<'info, State>,
-    #[account(init, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()], bump=bump, payer=admin )]
+    #[account(init, seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault_type.to_le_bytes()], bump=bump, payer=admin )]
     pub vault: Loader<'info, Vault>,
     #[account(mut, signer)]
     pub admin: AccountInfo<'info>,
@@ -1062,7 +1062,7 @@ pub struct CreateVaultEntry<'info> {
     pub owner: AccountInfo<'info>,
     #[account(mut,
         constraint = vault.to_account_info().owner == program_id,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump 
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump 
     )]
     pub vault: Loader<'info, Vault>,
     #[account(
@@ -1090,7 +1090,7 @@ pub struct DepositVault<'info> {
     )]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id 
     )]
     pub vault: Loader<'info, Vault>,
@@ -1147,7 +1147,7 @@ pub struct BorrowVault<'info> {
     )]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
     pub vault: Loader<'info, Vault>,
@@ -1198,7 +1198,7 @@ pub struct WithdrawVault<'info> {
     )]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
     pub vault: Loader<'info, Vault>,
@@ -1255,7 +1255,7 @@ pub struct RepayVault<'info> {
     )]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
     pub vault: Loader<'info, Vault>,
@@ -1305,7 +1305,7 @@ pub struct LiquidateVault<'info> {
     )]
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump ,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump ,
         constraint = vault.to_account_info().owner == program_id
     )]
     pub vault: Loader<'info, Vault>,
@@ -1371,7 +1371,7 @@ pub struct TriggerVaultEntryDebtAdjustment<'info> {
     pub vault_entry: Loader<'info, VaultEntry>,
     #[account(mut,
         constraint = vault.to_account_info().owner == program_id,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump
     )]
     pub vault: Loader<'info, Vault>,
     pub synthetic: Account<'info, anchor_spl::token::Mint>,
@@ -1395,7 +1395,7 @@ pub struct SetVaultHalted<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],bump=vault.load()?.bump,
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
     pub vault: Loader<'info, Vault>,
@@ -1421,7 +1421,7 @@ pub struct SetVaultParameter<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],
         bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
@@ -1440,7 +1440,7 @@ pub struct WithdrawVaultAccumulatedInterest<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(mut,
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],
         bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]
@@ -1487,7 +1487,7 @@ pub struct WithdrawVaultLiquidationPenalty<'info> {
     #[account(signer)]
     pub admin: AccountInfo<'info>,
     #[account(
-        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref()],
+        seeds = [b"vaultv1", synthetic.to_account_info().key.as_ref(), collateral.to_account_info().key.as_ref(), &vault.load()?.vault_type.to_le_bytes()],
         bump=vault.load()?.bump,
         constraint = vault.to_account_info().owner == program_id
     )]

@@ -82,6 +82,7 @@ describe('vaults external collateral', () => {
   let borrowAmount: BN
   let maxBorrow: Decimal
   const accountOwner = Keypair.generate()
+  const vaultType = 0
 
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
@@ -205,7 +206,8 @@ describe('vaults external collateral', () => {
         liquidationPenaltyLiquidator,
         liquidationThreshold,
         liquidationRatio,
-        oracleType: OracleType.Pyth
+        oracleType: OracleType.Pyth,
+        vaultType
       })
       createVaultIx = ix
     })
@@ -219,7 +221,11 @@ describe('vaults external collateral', () => {
     it('should create invt/xusd vault', async () => {
       const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
       await signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
 
       assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), invtTokenDecimal)))
       assert.ok(vault.synthetic.equals(xusd.assetAddress))
@@ -257,18 +263,21 @@ describe('vaults external collateral', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [accountOwner], connection)
 
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const { vaultAddress } = await exchange.getVaultAddress(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       assert.ok(vaultEntry.owner.equals(accountOwner.publicKey))
       assert.ok(vaultEntry.vault.equals(vaultAddress))
@@ -288,7 +297,8 @@ describe('vaults external collateral', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await assertThrowsAsync(signAndSend(new Transaction().add(ix), [accountOwner], connection))
     })
@@ -304,11 +314,16 @@ describe('vaults external collateral', () => {
 
       const userInvtTokenAccountInfo = await invtToken.getAccountInfo(userInvtTokenAccount)
       const invtVaultReserveTokenAccountInfo = await invtToken.getAccountInfo(invtVaultReserve)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       const expectedCollateralAmount = toDecimal(new BN(0), invtTokenDecimal)
@@ -328,7 +343,8 @@ describe('vaults external collateral', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken
+        collateralToken: invtToken,
+        vaultType
       })
       await signAndSend(new Transaction().add(vaultDepositTx), [accountOwner], connection)
 
@@ -340,12 +356,14 @@ describe('vaults external collateral', () => {
       )
       const vaultAfterDeposit = await exchange.getVaultForPair(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedCollateralAmountAfterDeposit = toDecimal(
         invtUserCollateralAmount,
@@ -374,11 +392,16 @@ describe('vaults external collateral', () => {
 
       const userInvtTokenAccountInfo = await invtToken.getAccountInfo(userInvtTokenAccount)
       const invtVaultReserveTokenAccountInfo = await invtToken.getAccountInfo(invtVaultReserve)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedCollateralAmount = toDecimal(invtUserCollateralAmount, invtTokenDecimal)
 
@@ -397,7 +420,8 @@ describe('vaults external collateral', () => {
         synthetic: xusd.assetAddress,
         userCollateralAccount: userInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken
+        collateralToken: invtToken,
+        vaultType
       })
       await signAndSend(new Transaction().add(vaultDepositTx), [accountOwner], connection)
 
@@ -410,12 +434,14 @@ describe('vaults external collateral', () => {
       )
       const vaultAfterDeposit = await exchange.getVaultForPair(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterDeposit = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const expectedVaultDecimal = toDecimal(invtUserCollateralAmount, vault.collateralAmount.scale)
 
@@ -442,7 +468,8 @@ describe('vaults external collateral', () => {
         collateral: invtToken.publicKey,
         synthetic: xusd.assetAddress,
         to: userXusdTokenAccount,
-        collateralPriceFeed: invtPriceFeed
+        collateralPriceFeed: invtPriceFeed,
+        vaultType
       })
 
       await assertThrowsAsync(
@@ -454,11 +481,16 @@ describe('vaults external collateral', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
 
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const vaultEntry = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const borrowAmountBeforeBorrow = toDecimal(new BN(0), xusd.supply.scale)
 
@@ -480,19 +512,22 @@ describe('vaults external collateral', () => {
         to: userXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(vaultBorrowTx), [accountOwner], connection)
       borrowAmount = borrowAmount.add(mulUpByUnifiedPercentage(borrowAmount, vault.openFee))
 
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterBorrow = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const xusdAfterBorrow = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const expectedBorrowAmount = toDecimal(borrowAmount, xusd.supply.scale)
@@ -509,13 +544,18 @@ describe('vaults external collateral', () => {
       const assetsListData = await exchange.getAssetsList(assetsList)
       const xusd = assetsListData.synthetics[0]
 
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
 
       const changeVaultBorrowLimitIx = await exchange.setVaultMaxBorrowInstruction(
         toDecimal(new BN(1e2), vault.maxBorrow.scale),
         {
           collateral: invtToken.publicKey,
-          synthetic: xusd.assetAddress
+          synthetic: xusd.assetAddress,
+          vaultType
         }
       )
       await signAndSend(
@@ -530,7 +570,8 @@ describe('vaults external collateral', () => {
         to: userXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
 
       await assertThrowsAsync(
@@ -541,7 +582,8 @@ describe('vaults external collateral', () => {
       // clean after test - return to previous max borrow
       const cleanUpTx = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
         collateral: invtToken.publicKey,
-        synthetic: xusd.assetAddress
+        synthetic: xusd.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(cleanUpTx), [EXCHANGE_ADMIN], connection)
     })
@@ -557,11 +599,16 @@ describe('vaults external collateral', () => {
       const invtVaultReserveTokenAccountInfoBefore = await invtToken.getAccountInfo(
         invtVaultReserve
       )
-      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vaultBefore = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const withdrawTx = await exchange.withdrawVaultTransaction({
         amount: withdrawAmount,
@@ -570,7 +617,8 @@ describe('vaults external collateral', () => {
         reserveAddress: invtVaultReserve,
         collateralPriceFeed: invtPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userInvtTokenAccount
+        userCollateralAccount: userInvtTokenAccount,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(withdrawTx, [accountOwner], connection),
@@ -578,11 +626,16 @@ describe('vaults external collateral', () => {
       )
       const userInvtTokenAccountInfoAfter = await invtToken.getAccountInfo(userInvtTokenAccount)
       const invtVaultReserveTokenAccountInfoAfter = await invtToken.getAccountInfo(invtVaultReserve)
-      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vaultAfter = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       assert.ok(userInvtTokenAccountInfoBefore.amount.eq(userInvtTokenAccountInfoAfter.amount))
       assert.ok(
@@ -598,12 +651,14 @@ describe('vaults external collateral', () => {
       const xusd = assetsListData.synthetics[0]
       const vaultBeforeWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryBeforeWithdraw = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       const toWithdraw = new BN(1e6).muln(10) // 10 INVT
@@ -617,18 +672,21 @@ describe('vaults external collateral', () => {
         reserveAddress: invtVaultReserve,
         collateralPriceFeed: invtPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userInvtTokenAccount
+        userCollateralAccount: userInvtTokenAccount,
+        vaultType
       })
       await signAndSend(withdrawTx, [accountOwner], connection)
 
       const vaultAfterWithdraw = await exchange.getVaultForPair(
         xusd.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterWithdraw = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userInvtTokenAccountAfterWithdraw = await invtToken.getAccountInfo(userInvtTokenAccount)
       assert.ok(
@@ -657,9 +715,14 @@ describe('vaults external collateral', () => {
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
-      const vaultBefore = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vaultBefore = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const userInvtTokenAccountBefore = await invtToken.getAccountInfo(userInvtTokenAccount)
       const vaultInvtTokenAccountBefore = await invtToken.getAccountInfo(invtVaultReserve)
       const withdrawTx = await exchange.withdrawVaultTransaction({
@@ -669,15 +732,21 @@ describe('vaults external collateral', () => {
         reserveAddress: invtVaultReserve,
         collateralPriceFeed: invtPriceFeed,
         synthetic: xusd.assetAddress,
-        userCollateralAccount: userInvtTokenAccount
+        userCollateralAccount: userInvtTokenAccount,
+        vaultType
       })
       await signAndSend(withdrawTx, [accountOwner], connection)
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusd.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
-      const vaultAfter = await exchange.getVaultForPair(xusd.assetAddress, invtToken.publicKey)
+      const vaultAfter = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        invtToken.publicKey,
+        vaultType
+      )
       const userInvtTokenAccountAfter = await invtToken.getAccountInfo(userInvtTokenAccount)
       const vaultInvtTokenAccountAfter = await invtToken.getAccountInfo(invtVaultReserve)
       // WHAT'S WRONG WITH THAT - collateral price != synthetic price
@@ -721,12 +790,14 @@ describe('vaults external collateral', () => {
 
       const vaultBeforeRepay = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryBeforeRepay = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountBeforeRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const repayAmount = vaultEntryBeforeRepay.syntheticAmount.val.divn(2)
@@ -736,19 +807,22 @@ describe('vaults external collateral', () => {
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusdBefore.assetAddress,
-        userTokenAccountRepay: userXusdTokenAccount
+        userTokenAccountRepay: userXusdTokenAccount,
+        vaultType
       })
       await signAndSend(repayTx, [accountOwner], connection)
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfterRepay = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterRepay = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountAfterRepay = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
@@ -796,7 +870,8 @@ describe('vaults external collateral', () => {
         const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
           owner: repayingAccount.publicKey,
           collateral: invtToken.publicKey,
-          synthetic: xusdBefore.assetAddress
+          synthetic: xusdBefore.assetAddress,
+          vaultType
         })
         await signAndSend(new Transaction().add(createVaultEntryIx), [repayingAccount], connection)
 
@@ -807,7 +882,8 @@ describe('vaults external collateral', () => {
           synthetic: xusdBefore.assetAddress,
           userCollateralAccount: repayingInvtTokenAccount,
           reserveAddress: invtVaultReserve,
-          collateralToken: invtToken
+          collateralToken: invtToken,
+          vaultType
         })
         await signAndSend(vaultDepositTx, [repayingAccount], connection)
 
@@ -817,19 +893,22 @@ describe('vaults external collateral', () => {
           to: userXusdTokenAccount,
           collateral: invtToken.publicKey,
           collateralPriceFeed: invtPriceFeed,
-          synthetic: xusdBefore.assetAddress
+          synthetic: xusdBefore.assetAddress,
+          vaultType
         })
         await signAndSend(borrowVaultTx, [repayingAccount], connection)
       }
 
       const vaultBefore = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountBefore = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const maxRepayAmount = vaultEntryBefore.syntheticAmount.val
@@ -839,19 +918,22 @@ describe('vaults external collateral', () => {
         owner: accountOwner.publicKey,
         collateral: invtToken.publicKey,
         synthetic: xusdBefore.assetAddress,
-        userTokenAccountRepay: userXusdTokenAccount
+        userTokenAccountRepay: userXusdTokenAccount,
+        vaultType
       })
       await signAndSend(repayVaultTx, [accountOwner], connection)
 
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfter = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const userXusdTokenAccountAfter = await xusdToken.getAccountInfo(userXusdTokenAccount)
 
@@ -882,12 +964,14 @@ describe('vaults external collateral', () => {
       const userXusdTokenAccountBeforeBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const vaultBeforeBorrow = await exchange.getVaultForPair(
         xusdBeforeBorrow.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryBeforeBorrow = await exchange.getVaultEntryForOwner(
         xusdBeforeBorrow.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       const borrowVaultTx = await exchange.borrowVaultTransaction({
@@ -896,7 +980,8 @@ describe('vaults external collateral', () => {
         to: userXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusdBeforeBorrow.assetAddress
+        synthetic: xusdBeforeBorrow.assetAddress,
+        vaultType
       })
       await signAndSend(borrowVaultTx, [accountOwner], connection)
 
@@ -904,12 +989,14 @@ describe('vaults external collateral', () => {
       const userXusdTokenAccountAfterBorrow = await xusdToken.getAccountInfo(userXusdTokenAccount)
       const vaultAfterBorrow = await exchange.getVaultForPair(
         xusdBeforeBorrow.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const vaultEntryAfterBorrow = await exchange.getVaultEntryForOwner(
         xusdBeforeBorrow.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
 
       // debt   = 4782028 xusd
@@ -960,7 +1047,8 @@ describe('vaults external collateral', () => {
       const { ix: createVaultEntryIx } = await exchange.createVaultEntryInstruction({
         owner: liquidator.publicKey,
         collateral: invtToken.publicKey,
-        synthetic: xusdBefore.assetAddress
+        synthetic: xusdBefore.assetAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(createVaultEntryIx), [liquidator], connection)
       const vaultDepositTx = await exchange.vaultDepositTransaction({
@@ -970,7 +1058,8 @@ describe('vaults external collateral', () => {
         synthetic: xusdBefore.assetAddress,
         userCollateralAccount: liquidatorInvtTokenAccount,
         reserveAddress: invtVaultReserve,
-        collateralToken: invtToken
+        collateralToken: invtToken,
+        vaultType
       })
       await signAndSend(vaultDepositTx, [liquidator], connection)
 
@@ -980,7 +1069,8 @@ describe('vaults external collateral', () => {
         to: liquidatorXusdTokenAccount,
         collateral: invtToken.publicKey,
         collateralPriceFeed: invtPriceFeed,
-        synthetic: xusdBefore.assetAddress
+        synthetic: xusdBefore.assetAddress,
+        vaultType
       })
       await signAndSend(borrowVaultTx, [liquidator], connection)
     })
@@ -990,12 +1080,14 @@ describe('vaults external collateral', () => {
 
       const vaultBefore = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const ownerVaultEntryBefore = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const liquidatorCollateralAccountBefore = await invtToken.getAccountInfo(
         liquidatorInvtTokenAccount
@@ -1015,7 +1107,8 @@ describe('vaults external collateral', () => {
         liquidator: liquidator.publicKey,
         liquidatorCollateralAccount: liquidatorInvtTokenAccount,
         liquidatorSyntheticAccount: liquidatorXusdTokenAccount,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        vaultType
       })
 
       const approveIx = Token.createApproveInstruction(
@@ -1050,12 +1143,14 @@ describe('vaults external collateral', () => {
       const xusdAfter = (await exchange.getAssetsList(assetsList)).synthetics[0]
       const vaultAfter = await exchange.getVaultForPair(
         xusdBefore.assetAddress,
-        invtToken.publicKey
+        invtToken.publicKey,
+        vaultType
       )
       const ownerVaultEntryAfter = await exchange.getVaultEntryForOwner(
         xusdBefore.assetAddress,
         invtToken.publicKey,
-        accountOwner.publicKey
+        accountOwner.publicKey,
+        vaultType
       )
       const liquidatorCollateralAccountAfter = await invtToken.getAccountInfo(
         liquidatorInvtTokenAccount
@@ -1144,7 +1239,8 @@ describe('vaults external collateral', () => {
           collateral: invtToken.publicKey,
           synthetic: xusd.assetAddress,
           liquidationFund: invtVaultLiquidationFund,
-          to: penaltyTargetAccount
+          to: penaltyTargetAccount,
+          vaultType
         })
 
       await assertThrowsAsync(

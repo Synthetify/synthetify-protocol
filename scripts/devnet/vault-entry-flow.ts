@@ -29,7 +29,7 @@ const snyXusdFlow = async () => {
 
   const snyToken = new Token(connection, new PublicKey(sny), TOKEN_PROGRAM_ID, wallet)
   const xUsdToken = new Token(connection, new PublicKey(xusd), TOKEN_PROGRAM_ID, wallet)
-
+  const vaultType = 0
   const [ownerSny, ownerXUsd, _] = await Promise.all([
     snyToken.createAccount(owner.publicKey),
     xUsdToken.createAccount(owner.publicKey),
@@ -40,19 +40,20 @@ const snyXusdFlow = async () => {
   const toBorrowAmount = new BN(10).pow(new BN(6)).muln(100) // 100 USD
 
   await snyToken.mintTo(ownerSny, DEVNET_ADMIN_ACCOUNT, [], tou64(snyAmount))
-  const vault = await exchange.getVaultForPair(xusd, sny)
+  const vault = await exchange.getVaultForPair(xusd, sny, vaultType)
 
   const { ix } = await exchange.createVaultEntryInstruction({
     owner: owner.publicKey,
     synthetic: xusd,
-    collateral: sny
+    collateral: sny,
+    vaultType
   })
   await signAndSend(new Transaction().add(ix), [owner], connection)
 
   while (true) {
     try {
       await sleep(2000)
-      await exchange.getVaultEntryForOwner(xusd, sny, owner.publicKey)
+      await exchange.getVaultEntryForOwner(xusd, sny, owner.publicKey, vaultType)
       break
     } catch (e) {}
   }
@@ -65,7 +66,8 @@ const snyXusdFlow = async () => {
     amount: snyAmount,
     userCollateralAccount: ownerSny,
     reserveAddress: vault.collateralReserve,
-    collateralToken: snyToken
+    collateralToken: snyToken,
+    vaultType
   })
 
   await signAndSend(depositTx, [owner], connection)
@@ -77,7 +79,8 @@ const snyXusdFlow = async () => {
     owner: owner.publicKey,
     amount: toBorrowAmount,
     collateralPriceFeed: vault.collateralPriceFeed,
-    to: ownerXUsd
+    to: ownerXUsd,
+    vaultType
   })
 
   await signAndSend(borrowVaultTx, [owner], connection)
@@ -88,7 +91,8 @@ const snyXusdFlow = async () => {
     synthetic: xusd,
     owner: owner.publicKey,
     amount: toBorrowAmount,
-    userTokenAccountRepay: ownerXUsd
+    userTokenAccountRepay: ownerXUsd,
+    vaultType
   })
 
   await signAndSend(repayVaultTransaction, [owner], connection)
@@ -99,9 +103,10 @@ const snyXusdFlow = async () => {
     synthetic: xusd,
     owner: owner.publicKey,
     amount: new BN('ffffffffffffffff', 16),
-    userCollateralAccount: ownerXUsd,
+    userCollateralAccount: ownerSny,
     reserveAddress: vault.collateralReserve,
-    collateralPriceFeed: vault.collateralPriceFeed
+    collateralPriceFeed: vault.collateralPriceFeed,
+    vaultType
   })
   await signAndSend(withdrawTx, [owner], connection)
 }

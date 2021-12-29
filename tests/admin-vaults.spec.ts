@@ -78,6 +78,7 @@ describe('ADMIN VAULTS', () => {
   let syntheticAddress: PublicKey
   let collateralAddress: PublicKey
   const accountOwner = Keypair.generate()
+  const vaultType = 0
 
   before(async () => {
     await connection.requestAirdrop(accountOwner.publicKey, 10e9)
@@ -206,7 +207,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyLiquidator,
         liquidationThreshold,
         liquidationRatio,
-        oracleType: OracleType.Pyth
+        oracleType: OracleType.Pyth,
+        vaultType
       })
       createVaultIx = ix
     })
@@ -220,7 +222,11 @@ describe('ADMIN VAULTS', () => {
     it('should create usdc/xusd vault', async () => {
       const timestamp = (await connection.getBlockTime(await connection.getSlot())) as number
       await signAndSend(new Transaction().add(createVaultIx), [EXCHANGE_ADMIN], connection)
-      const vault = await exchange.getVaultForPair(xusd.assetAddress, usdc.collateralAddress)
+      const vault = await exchange.getVaultForPair(
+        xusd.assetAddress,
+        usdc.collateralAddress,
+        vaultType
+      )
 
       assert.ok(eqDecimals(vault.collateralAmount, toDecimal(new BN(0), usdc.reserveBalance.scale)))
       assert.ok(vault.synthetic.equals(xusd.assetAddress))
@@ -244,7 +250,8 @@ describe('ADMIN VAULTS', () => {
       const { ix } = await exchange.createVaultEntryInstruction({
         collateral: collateralAddress,
         synthetic: syntheticAddress,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [accountOwner], connection)
     })
@@ -252,7 +259,8 @@ describe('ADMIN VAULTS', () => {
       const ix = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
         collateral: collateralAddress,
         synthetic: syntheticAddress,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [accountOwner], connection),
@@ -263,7 +271,8 @@ describe('ADMIN VAULTS', () => {
       const ix = await exchange.triggerVaultEntryDebtAdjustmentInstruction({
         collateral: collateralAddress,
         synthetic: syntheticAddress,
-        owner: accountOwner.publicKey
+        owner: accountOwner.publicKey,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
     })
@@ -273,21 +282,31 @@ describe('ADMIN VAULTS', () => {
       const ix = await exchange.setVaultHaltedInstruction({
         halted: true,
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(signAndSend(new Transaction().add(ix), [wallet], connection))
     })
     it('should set vault halted', async () => {
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
 
       const ix = await exchange.setVaultHaltedInstruction({
         halted: true,
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.halted, vaultBefore.halted)
       assert.equal(vaultAfter.halted, true)
     })
@@ -298,7 +317,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -306,16 +326,25 @@ describe('ADMIN VAULTS', () => {
       )
     })
     it('should set vault debt interest rate', async () => {
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       const debtInterestRate = fromPercentToInterestRate(30)
 
       const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.debtInterestRate, vaultBefore.debtInterestRate)
       assert.ok(eqDecimals(vaultAfter.debtInterestRate, debtInterestRate))
     })
@@ -324,7 +353,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultDebtInterestRateInstruction(debtInterestRate, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -338,7 +368,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -350,7 +381,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -362,7 +394,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -371,14 +404,23 @@ describe('ADMIN VAULTS', () => {
     })
     it('should set vault liquidation threshold', async () => {
       const liquidationThreshold = percentToDecimal(85)
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       const ix = await exchange.setVaultLiquidationThresholdInstruction(liquidationThreshold, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.liquidationThreshold, vaultBefore.liquidationThreshold)
       assert.ok(eqDecimals(vaultAfter.liquidationThreshold, liquidationThreshold))
     })
@@ -389,7 +431,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultSetLiquidationRatioInstruction(liquidationRatio, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -401,7 +444,8 @@ describe('ADMIN VAULTS', () => {
 
       const ix = await exchange.setVaultSetLiquidationRatioInstruction(liquidationRatio, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -410,15 +454,24 @@ describe('ADMIN VAULTS', () => {
     })
     it('should set vault liquidation ratio', async () => {
       const liquidationRatio = percentToDecimal(25)
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
 
       const ix = await exchange.setVaultSetLiquidationRatioInstruction(liquidationRatio, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.liquidationRatio, vaultBefore.liquidationRatio)
       assert.ok(eqDecimals(vaultAfter.liquidationRatio, liquidationRatio))
     })
@@ -431,7 +484,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyLiquidator,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await assertThrowsAsync(
@@ -446,7 +500,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyLiquidator,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await assertThrowsAsync(
@@ -456,18 +511,27 @@ describe('ADMIN VAULTS', () => {
     })
     it('should set vault liquidation penalty liquidator', async () => {
       const liquidationPenaltyLiquidator = percentToDecimal(15)
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
 
       const ix = await exchange.setVaultLiquidationPenaltyLiquidatorInstruction(
         liquidationPenaltyLiquidator,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(
         vaultAfter.liquidationPenaltyLiquidator,
         vaultBefore.liquidationPenaltyLiquidator
@@ -483,7 +547,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyExchange,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await assertThrowsAsync(
@@ -498,7 +563,8 @@ describe('ADMIN VAULTS', () => {
         liquidationPenaltyExchange,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await assertThrowsAsync(
@@ -508,30 +574,44 @@ describe('ADMIN VAULTS', () => {
     })
     it('should set vault liquidation penalty exchange', async () => {
       const liquidationPenaltyExchange = percentToDecimal(15)
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
 
       const ix = await exchange.setVaultLiquidationPenaltyExchangeInstruction(
         liquidationPenaltyExchange,
         {
           collateral: collateralAddress,
-          synthetic: syntheticAddress
+          synthetic: syntheticAddress,
+          vaultType
         }
       )
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.liquidationPenaltyExchange, vaultBefore.liquidationPenaltyExchange)
       assert.ok(eqDecimals(vaultAfter.liquidationPenaltyExchange, liquidationPenaltyExchange))
     })
   })
   describe('#setVaultMaxBorrow', async () => {
     it('should failed without admin signature', async () => {
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale)
 
       const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [wallet], connection),
@@ -539,12 +619,17 @@ describe('ADMIN VAULTS', () => {
       )
     })
     it('should fail cause invalid max borrow scale', async () => {
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale - 1)
 
       const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await assertThrowsAsync(
         signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection),
@@ -552,16 +637,25 @@ describe('ADMIN VAULTS', () => {
       )
     })
     it('should set vault max borrow', async () => {
-      const vaultBefore = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultBefore = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       const maxBorrow = toDecimal(new BN(1e9), vaultBefore.maxBorrow.scale)
 
       const ix = await exchange.setVaultMaxBorrowInstruction(maxBorrow, {
         collateral: collateralAddress,
-        synthetic: syntheticAddress
+        synthetic: syntheticAddress,
+        vaultType
       })
       await signAndSend(new Transaction().add(ix), [EXCHANGE_ADMIN], connection)
 
-      const vaultAfter = await exchange.getVaultForPair(syntheticAddress, collateralAddress)
+      const vaultAfter = await exchange.getVaultForPair(
+        syntheticAddress,
+        collateralAddress,
+        vaultType
+      )
       assert.notEqual(vaultAfter.maxBorrow, vaultBefore.maxBorrow)
       assert.ok(eqDecimals(vaultAfter.maxBorrow, maxBorrow))
     })

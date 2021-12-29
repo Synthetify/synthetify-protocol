@@ -75,6 +75,7 @@ describe('vaults liquidation', () => {
   let ethPriceFeed: PublicKey
 
   const accountOwner = Keypair.generate()
+  const vaultType = 0
   let liquidator: Account
   let liquidatorXusdAccount: PublicKey
 
@@ -215,14 +216,16 @@ describe('vaults liquidation', () => {
       liquidationPenaltyLiquidator,
       liquidationThreshold,
       liquidationRatio,
-      oracleType: OracleType.Pyth
+      oracleType: OracleType.Pyth,
+      vaultType
     })
     await signAndSend(new Transaction().add(createVaultInstruction), [EXCHANGE_ADMIN], connection)
     // create vaultEntry
     const { ix: createVaultEntryInstruction } = await exchange.createVaultEntryInstruction({
       owner: accountOwner.publicKey,
       collateral: eth.collateralAddress,
-      synthetic: xusd.assetAddress
+      synthetic: xusd.assetAddress,
+      vaultType
     })
     await signAndSend(
       new Transaction().add(createVaultEntryInstruction),
@@ -243,7 +246,8 @@ describe('vaults liquidation', () => {
       userCollateralAccount: userEthTokenAccount,
       reserveAddress: ethVaultReserve,
       collateralToken: ethToken,
-      signers: [accountOwner]
+      signers: [accountOwner],
+      vaultType
     })
 
     //  0.8 USD
@@ -258,7 +262,8 @@ describe('vaults liquidation', () => {
       collateral: eth.collateralAddress,
       collateralPriceFeed: ethPriceFeed,
       synthetic: xusd.assetAddress,
-      signers: [accountOwner]
+      signers: [accountOwner],
+      vaultType
     })
     //liquidate
     const liquidatorCollateralAccount = await ethToken.createAccount(liquidator.publicKey)
@@ -273,7 +278,8 @@ describe('vaults liquidation', () => {
       liquidator: liquidator.publicKey,
       liquidatorCollateralAccount,
       liquidatorSyntheticAccount: liquidatorXusdAccount,
-      owner: accountOwner.publicKey
+      owner: accountOwner.publicKey,
+      vaultType
     })
     const approveIx = Token.createApproveInstruction(
       TOKEN_PROGRAM_ID,
@@ -306,7 +312,8 @@ describe('vaults liquidation', () => {
     const vaultEntryDataAfter = await exchange.getVaultEntryForOwner(
       xusd.assetAddress,
       eth.collateralAddress,
-      accountOwner.publicKey
+      accountOwner.publicKey,
+      vaultType
     )
     assert.ok(vaultEntryDataAfter.syntheticAmount.val.eq(new BN(0)))
   })
