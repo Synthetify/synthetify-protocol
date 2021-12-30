@@ -299,20 +299,23 @@ export const SWAPLINE_MAP: {
   [Network.TEST]: []
 }
 export const VAULTS_MAP: {
-  [key in Network]: Array<{ synthetic: PublicKey; collateral: PublicKey }>
+  [key in Network]: Array<{ synthetic: PublicKey; collateral: PublicKey; vaultType: number }>
 } = {
   [Network.DEV]: [
     {
-      synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
-      collateral: new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF')
+      synthetic: new PublicKey('HL5aKrMbm13a6VGNRSxJmy61nRsgySDacHVpLzCwHhL5'),
+      collateral: new PublicKey('76qqFEokX3VgTxXX8dZYkDMijFtoYbJcxZZU4DgrDnUF'),
+      vaultType: 0
     },
     {
       synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
-      collateral: new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE')
+      collateral: new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE'),
+      vaultType: 0
     },
     {
-      synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
-      collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
+      synthetic: new PublicKey('BPyw7qZrDTiUdUTCUSMcuyZnYEf4P2yo92L15L3VoK7V'),
+      collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG'),
+      vaultType: 1
     }
   ],
   [Network.LOCAL]: [],
