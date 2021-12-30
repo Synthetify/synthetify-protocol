@@ -2102,6 +2102,7 @@ export interface Vault {
   maxBorrow: Decimal
   lastUpdate: BN
   oracleType: OracleType
+  vaultType: number
 }
 export interface VaultEntry {
   owner: PublicKey
