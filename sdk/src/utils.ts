@@ -313,6 +313,11 @@ export const VAULTS_MAP: {
       vaultType: 0
     },
     {
+      synthetic: new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w'),
+      collateral: new PublicKey('91qzpKj8nwYkssvG52moAtUUiWV5w4CuHwhkPQtBWTDE'),
+      vaultType: 1
+    },
+    {
       synthetic: new PublicKey('BPyw7qZrDTiUdUTCUSMcuyZnYEf4P2yo92L15L3VoK7V'),
       collateral: new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG'),
       vaultType: 1

@@ -26,7 +26,6 @@ const xsol = new PublicKey('3zPcvFVBuV4f8hnwpWAsextaqFs73jB6JWvmYq5K7X2w')
 const xbtc = new PublicKey('HL5aKrMbm13a6VGNRSxJmy61nRsgySDacHVpLzCwHhL5')
 const usdc = new PublicKey('HgexCyLCZUydm7YcJWeZRMK9HzsU17NJQvJGnMuzGVKG')
 const xftt = new PublicKey('BPyw7qZrDTiUdUTCUSMcuyZnYEf4P2yo92L15L3VoK7V')
-// const btcPriceFeed = new PublicKey('HovQMDrbAgAYPCmHVSrezcSmkMtXSSUsLDFANExrZh2J')
 const snyPriceFeed = new PublicKey('DEmEX28EgrdQEBwNXdfMsDoJWZXCHRS5pbgmJiTkjCRH')
 const xFTTDecimal = 8
 const xsolDecimal = 9
@@ -36,13 +35,13 @@ const main = async () => {
   // @ts-expect-error
   const exchange = await Exchange.build(connection, Network.DEV, DEVNET_ADMIN_ACCOUNT)
   const state = await exchange.getState()
-
   console.log(`admin: ${state.admin.toString()}`)
 
-  // await createSnyXsolType0Vault(exchange, wallet)
+  await createSnyXsolType0Vault(exchange, wallet)
   await createSnyXsolType1Vault(exchange, wallet)
-  // await createXusdXbtcType0Vault(exchange, wallet)
-  // await createUsdcXFTType1Vault(exchange, wallet)
+  await createXusdXbtcType0Vault(exchange, wallet)
+  await createUsdcXFTType1Vault(exchange, wallet)
+  await fetchVault(exchange)
 }
 
 const createSnyXsolType1Vault = async (exchange: Exchange, wallet: Account) => {
@@ -79,7 +78,7 @@ const createSnyXsolType1Vault = async (exchange: Exchange, wallet: Account) => {
   console.log(`vaultAddress = ${vaultAddress.toString()}`)
 
   await signAndSend(new Transaction().add(ix), [wallet], connection)
-  const vault = await exchange.getVaultForPair(xusd, sny, vaultType)
+  const vault = await exchange.getVaultForPair(xsol, sny, vaultType)
   console.log(vault)
 }
 
@@ -201,7 +200,7 @@ const createUsdcXFTType1Vault = async (exchange: Exchange, wallet: Account) => {
 }
 
 const fetchVault = async (exchange: Exchange) => {
-  const vault = await exchange.getVaultForPair(xsol, sny, 0)
+  const vault = await exchange.getVaultForPair(xsol, sny, 1)
   console.log(vault)
 }
 
