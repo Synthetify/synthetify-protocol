@@ -329,6 +329,16 @@ export const VAULTS_MAP: {
       synthetic: new PublicKey('BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov'),
       collateral: new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So'),
       vaultType: 0
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov'),
+      vaultType: 0
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So'),
+      vaultType: 0
     }
   ],
   [Network.TEST]: []
