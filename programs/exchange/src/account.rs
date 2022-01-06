@@ -282,13 +282,13 @@ pub struct Decimal {
 #[account(zero_copy)]
 #[derive(Default, Debug)]
 pub struct Vault {
-    // 391
+    // 376
     pub halted: bool,                            // 1
     pub synthetic: Pubkey,                       // 32
     pub collateral: Pubkey,                      // 32
     pub collateral_price_feed: Pubkey,           // 32
     pub oracle_type: u8,                         // 1
-    pub open_fee: Decimal,                       // 32
+    pub open_fee: Decimal,                       // 17
     pub debt_interest_rate: Decimal,             // 17
     pub collateral_ratio: Decimal,               // 17
     pub liquidation_threshold: Decimal,          // 17
