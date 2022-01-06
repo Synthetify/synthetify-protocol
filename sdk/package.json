@@ -1,12 +1,12 @@
 {
   "name": "@synthetify/sdk",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "author": "Norbert Bodziony",
   "scripts": {
-    "prebuild": "rm -rf ./src/idl && cp -r ../target/types/ ./src/idl",
+    "prebuild": "rm -rf ./src/idl && cp -r ../target/types/ ./src/idl && cp ../target/idl/exchange.json ./src/idl/exchange.json",
     "build": "tsc"
   },
   "keywords": [],
