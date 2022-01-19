@@ -159,6 +159,7 @@ export const calculateDebt = (assetsList: AssetsList) => {
       acc.add(
         synthetic.supply.val
           .sub(synthetic.swaplineSupply.val)
+          .sub(synthetic.borrowedSupply.val)
           .mul(assetsList.assets[synthetic.assetIndex].price.val)
           .div(new BN(10 ** (synthetic.supply.scale + ORACLE_OFFSET - ACCURACY)))
       ),
