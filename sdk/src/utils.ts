@@ -340,6 +340,76 @@ export const VAULTS_MAP: {
       synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
       collateral: new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So'),
       vaultType: 0
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('82Afat35Wr9v4fsZfSqGh8dnXFjxeaiQBfm5G9TK1BNj'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('HtxznfExBatdX28kMFDvmvU1rXVwiG3JSWcNPdFQ4PLh'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      collateral: new PublicKey('HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('HWxpSV3QAGzLQzGAtvhSYAEr7sTQugQygnni1gnUGh1D'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('82Afat35Wr9v4fsZfSqGh8dnXFjxeaiQBfm5G9TK1BNj'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
+    },
+    {
+      synthetic: new PublicKey('HtxznfExBatdX28kMFDvmvU1rXVwiG3JSWcNPdFQ4PLh'),
+      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
+      vaultType: 3
     }
   ],
   [Network.TEST]: []
