@@ -3,20 +3,20 @@ import { PublicKey, Transaction, Keypair, TransactionInstruction } from '@solana
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
-import EXCHANGE_IDL from '@synthetify/sdk/lib/idl/exchange.json'
+import { IDL } from '@synthetify/sdk/lib/idl/exchange'
 import { ExchangeAccount } from '@synthetify/sdk/lib/exchange'
 
-const provider = Provider.local('https://api.devnet.solana.com', {
+const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
 const main = async () => {
   // @ts-expect-error
   const wallet = provider.wallet.payer as Keypair
-  const coder = new AccountsCoder(EXCHANGE_IDL as Idl)
+  const coder = new AccountsCoder(IDL as Idl)
   const connection = provider.connection
   // @ts-expect-error
-  const exchange = await Exchange.build(connection, Network.DEV, wallet)
+  const exchange = await Exchange.build(connection, Network.MAIN, wallet)
   const { staking } = await exchange.getState()
 
   // fetching all exchange accounts
@@ -32,7 +32,7 @@ const main = async () => {
       .map((fetched) => {
         // parsing accounts
         const { userStakingData, debtShares } = coder.decode<ExchangeAccount>(
-          'ExchangeAccount',
+          'exchangeAccount',
           fetched.account.data
         )
         const { lastUpdate } = userStakingData

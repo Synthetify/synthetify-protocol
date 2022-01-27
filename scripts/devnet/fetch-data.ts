@@ -3,7 +3,7 @@ import { PublicKey, Transaction, Keypair, TransactionInstruction } from '@solana
 import { BN, Exchange, Network, signAndSend } from '@synthetify/sdk'
 import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
-import EXCHANGE_IDL from '@synthetify/sdk/lib/idl/exchange.json'
+import EXCHANGE_IDL from '../../target/idl/exchange.json'
 import { ExchangeAccount } from '@synthetify/sdk/lib/exchange'
 import fs from 'fs'
 
