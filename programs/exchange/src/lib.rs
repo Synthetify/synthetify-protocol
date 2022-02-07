@@ -2494,7 +2494,7 @@ pub mod exchange {
         let vault = &mut ctx.accounts.vault.load_mut()?;
 
         require!(
-            vault.max_borrow.scale == max_borrow.scale,
+            vault.mint_amount.scale == max_borrow.scale,
             ParameterOutOfRange
         );
 
