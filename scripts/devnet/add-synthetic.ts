@@ -9,9 +9,9 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const FEED_ADDRESS = new PublicKey('EcV1X1gY2yb4KXxjVQtTHTbioum2gvmPnFk4zYAt7zne')
-const DECIMALS = 6
-const MAX_SUPPLY = new BN(50_000)
+const FEED_ADDRESS = new PublicKey('FsSM3s38PX9K7Dn6eGzuE29S2Dsk1Sss1baytTQdCaQj')
+const DECIMALS = 9
+const MAX_SUPPLY = new BN(5_000_000)
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection
