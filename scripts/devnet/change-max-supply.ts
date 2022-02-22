@@ -12,7 +12,7 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   skipPreflight: true
 })
 const ASSET_ADDRESS = new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9')
-const NEW_MAX_COLLATERAL_AMOUNT = new BN(10000)
+const NEW_MAX_COLLATERAL_AMOUNT = new BN(80000)
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
   const connection = provider.connection

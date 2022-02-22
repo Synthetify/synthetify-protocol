@@ -5,7 +5,7 @@ import { DEVNET_ADMIN_ACCOUNT } from './admin'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 import { percentToDecimal, toDecimal } from '@synthetify/sdk/lib/utils'
 
-const provider = Provider.local('https://api.devnet.solana.com', {
+const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })

@@ -12,9 +12,9 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const COLLATERAL_TOKEN = new PublicKey('EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv')
-const SYNTHETIC_TOKEN = new PublicKey('Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9')
-const limit = new BN(100_000).mul(new BN(100_000_000))
+const COLLATERAL_TOKEN = new PublicKey('7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs')
+const SYNTHETIC_TOKEN = new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK')
+const limit = new BN(3000).mul(new BN(100_000_000))
 
 const main = async () => {
   const ledgerWallet = await getLedgerWallet()
