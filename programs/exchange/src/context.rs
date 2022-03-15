@@ -440,9 +440,9 @@ pub struct SetAdmin<'info> {
     pub state: Loader<'info, State>,
     #[account(signer)]
     pub admin: AccountInfo<'info>,
-    #[account(owner = system_program::ID)]
     pub new_admin: AccountInfo<'info>,
 }
+
 #[derive(Accounts)]
 pub struct SetSettlementSlot<'info> {
     #[account(mut,
