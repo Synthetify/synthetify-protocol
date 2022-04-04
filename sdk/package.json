@@ -1,6 +1,6 @@
 {
   "name": "@synthetify/sdk",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
