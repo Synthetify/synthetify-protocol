@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::RefMut;
 use std::convert::TryInto;
+use std::str::FromStr;
 
 use crate::decimal::{Add, Compare, Div, Mul, MulUp, PowAccuracy, Sub, PRICE_SCALE};
 use crate::math::{calculate_compounded_interest, calculate_debt, calculate_minute_interest_rate};
@@ -72,8 +73,8 @@ pub fn load_price_from_feed(
         }
     }
 }
-pub fn load_pyth_price(price_feed: &AccountInfo) -> Result<Decimal> {
-    let price_feed = Price::load(price_feed)?;
+pub fn load_pyth_price(price_feed_account: &AccountInfo) -> Result<Decimal> {
+    let price_feed = Price::load(price_feed_account)?;
     let offset = price_feed.expo.checked_add(PRICE_SCALE.into()).unwrap();
 
     let scaled_price = match offset >= 0 {
@@ -104,7 +105,10 @@ pub fn load_pyth_price(price_feed: &AccountInfo) -> Result<Decimal> {
     let confidence: i64 = scaled_confidence.try_into().unwrap();
     let confidence_40x = confidence.checked_mul(40).unwrap();
     if confidence_40x > scaled_price {
-        return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+        let luna_oracle = Pubkey::from_str("5bmWuR1dgP4avtGYMNKLuxumZTVKGgoN2BCMXWDNL9nY").unwrap();
+        if !price_feed_account.to_account_info().key.eq(&luna_oracle) {
+            return Err(ErrorCode::PriceConfidenceOutOfRange.into());
+        }
     };
     let price = Decimal::from_price(scaled_price.try_into().unwrap());
 
