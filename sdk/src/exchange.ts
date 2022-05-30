@@ -816,8 +816,8 @@ export class Exchange {
       tx.feePayer = this.wallet.publicKey
       tx.recentBlockhash = blockhash.blockhash
     })
-    await this.wallet.signAllTransactions(txs)
-    return txs
+    const signedTx = await this.wallet.signAllTransactions(txs)
+    return signedTx
   }
   private async updatePricesAndSend(ixs: TransactionInstruction[], signers, split?: boolean) {
     const updateIx = await this.updatePricesInstruction(this.state.assetsList)
