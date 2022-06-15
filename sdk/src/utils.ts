@@ -358,11 +358,6 @@ export const VAULTS_MAP: {
     },
     {
       synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
-      collateral: new PublicKey('6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2'),
-      vaultType: 3
-    },
-    {
-      synthetic: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
       collateral: new PublicKey('82Afat35Wr9v4fsZfSqGh8dnXFjxeaiQBfm5G9TK1BNj'),
       vaultType: 3
     },
@@ -393,11 +388,6 @@ export const VAULTS_MAP: {
     },
     {
       synthetic: new PublicKey('8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK'),
-      collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
-      vaultType: 3
-    },
-    {
-      synthetic: new PublicKey('6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2'),
       collateral: new PublicKey('83LGLCm7QKpYZbX8q4W2kYWbtt8NJBwbVwEepzkVnJ9y'),
       vaultType: 3
     },
@@ -448,7 +438,6 @@ export const addressToAssetSymbol: { [key: string]: string } = {
   BdUJucPJyjkHxLMv6ipKNUhSeY3DWrVtgxAES1iSBAov: 'xSOL',
   Fr3W7NPVvdVbwMcHgA7Gx2wUxP43txdsn3iULJGFbKz9: 'xFTT',
   '8bqjz8DeSuim1sEAsQatjJN4zseyxSPdhHQcuuhL8PCK': 'xETH',
-  '6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2': 'xLUNA',
   EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'USDC',
   CDJWUqTcYTVAKXAVXoQZFes5JUFc7owSeq7eMQcDSbo5: 'renBTC',
   EzfgjvkSwthhgHaceR3LnKXUoRkP6NUhfghdaHAj1tUv: 'whFTT',
