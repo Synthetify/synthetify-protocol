@@ -13,7 +13,6 @@ const provider = Provider.local('https://api.mainnet-beta.solana.com', {
   skipPreflight: true
 })
 const ASSET_ADDRESS = new PublicKey('6MeoZEcUMhAB788YXTQN4x7K8MnwSt6RHWsLkuq9GJb2')
-const NEW_MAX_COLLATERAL_AMOUNT = new BN(1000)
 const main = async () => {
   const connection = provider.connection
   // @ts-expect-error
@@ -21,17 +20,8 @@ const main = async () => {
 
   const exchange = await Exchange.build(connection, Network.MAIN, payer)
   const state = await exchange.getState()
-  const token = new Token(connection, ASSET_ADDRESS, TOKEN_PROGRAM_ID, payer)
-  // const assetsList = await exchange.getAssetsList(state.assetsList)
 
-  const tokenInfo = await token.getMintInfo()
-  const ix = await exchange.setAssetMaxSupplyInstruction({
-    assetAddress: ASSET_ADDRESS,
-    newMaxSupply: toDecimal(
-      NEW_MAX_COLLATERAL_AMOUNT.mul(new BN(10 ** tokenInfo.decimals)),
-      tokenInfo.decimals
-    )
-  })
+  const ix = await exchange.setSettlementSlotInstruction(ASSET_ADDRESS, new BN(122498700))
   console.log(serializeInstructionToBase64(ix))
   // const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
   // await signAndSend(new Transaction().add(ix), [payer], connection)

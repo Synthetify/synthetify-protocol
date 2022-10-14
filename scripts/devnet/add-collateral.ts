@@ -7,19 +7,18 @@ import { MINTER } from '../../migrations/minter'
 import { createToken } from '../../tests/utils'
 import { getLedgerWallet, signAndSendLedger } from '../walletProvider/wallet'
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { serializeInstructionToBase64 } from '@solana/spl-governance'
 
-const provider = Provider.local('https://api.mainnet-beta.solana.com', {
+const provider = Provider.local('https://ssc-dao.genesysgo.net', {
   // preflightCommitment: 'max',
   skipPreflight: true
 })
-const FEED_ADDRESS = new PublicKey('E4v1BBgoso9s64TQvmyownAVJbhbEPGyzA3qn4n46qj9')
-const COLLATERAL_ADDRESS = new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So')
-const COLLATERAL_RATIO = 50
+const FEED_ADDRESS = new PublicKey('Bt1hEbY62aMriY1SyQqbeZbm8VmSbQVGBFzSzMuVNWzN')
+const COLLATERAL_ADDRESS = new PublicKey('7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj')
+const COLLATERAL_RATIO = 70
 // const DECIMALS = 8
 
 const main = async () => {
-  const ledgerWallet = await getLedgerWallet()
-
   const connection = provider.connection
   //@ts-expect-error
   const payer = provider.wallet.payer as Account
@@ -35,7 +34,9 @@ const main = async () => {
   const token = new Token(connection, COLLATERAL_ADDRESS, TOKEN_PROGRAM_ID, payer)
   const tokenInfo = await token.getMintInfo()
   const liquidationFund = await token.createAccount(exchange.exchangeAuthority)
+  console.log(liquidationFund.toString())
   const reserveAccount = await token.createAccount(exchange.exchangeAuthority)
+  console.log(reserveAccount.toString())
 
   await sleep(1000)
   const ix = await exchange.addCollateralInstruction({
@@ -47,13 +48,14 @@ const main = async () => {
     reserveAccount,
     reserveBalance: toDecimal(new BN(0), tokenInfo.decimals),
     maxCollateral: toDecimal(
-      new BN(20_000).mul(new BN(10 ** tokenInfo.decimals)),
+      new BN(1_000_000).mul(new BN(10 ** tokenInfo.decimals)),
       tokenInfo.decimals
     )
   })
+  console.log(serializeInstructionToBase64(ix))
   // await signAndSend(new Transaction().add(ix), [payer], connection)
 
-  const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
-  console.log(tx)
+  // const tx = await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+  // console.log(tx)
 }
 main()

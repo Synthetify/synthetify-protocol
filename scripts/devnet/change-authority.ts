@@ -11,19 +11,30 @@ const provider = Provider.local('https://ssc-dao.genesysgo.net', {
   // preflightCommitment: 'max',
   skipPreflight: false
 })
-// const NEW_ADMIN = new PublicKey('Gk7yoeFWGmXzTv8mST8WR1FyW4sJU5m2q7Dfvs3v2gzg')
+const NEW_ADMIN = new PublicKey('Aijh3RvCTyxcxi3BXaNj9qSQkXXsGnHAmywuQBC2YSv4')
+const SNY_TOKEN = new PublicKey('4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y')
 const main = async () => {
   const connection = provider.connection
   const ledgerWallet = await getLedgerWallet()
   // const ledgerWallet = await getLedgerWallet()
-
-  // @ts-expect-error
-  const exchange = await Exchange.build(connection, Network.MAIN, DEVNET_ADMIN_ACCOUNT)
-  const state = await exchange.getState()
-
-  await sleep(1000)
-  const ix = await exchange.setMaxDelayInstruction(15)
+  console.log(ledgerWallet.pubKey?.toString())
+  const ix = Token.createSetAuthorityInstruction(
+    TOKEN_PROGRAM_ID,
+    SNY_TOKEN,
+    NEW_ADMIN,
+    'MintTokens',
+    ledgerWallet.pubKey!,
+    []
+  )
+  // // @ts-expect-error
+  // const exchange = await Exchange.build(connection, Network.MAIN, DEVNET_ADMIN_ACCOUNT)
+  // const state = await exchange.getState()
+  // console.log(ledgerWallet.pubKey?.toString())
+  // console.log(state.admin?.toString())
+  // await sleep(1000)
+  // const ix = await exchange.setAdmin(NEW_ADMIN)
   await signAndSendLedger(new Transaction().add(ix), connection, ledgerWallet)
+
   // await signAndSend(new Transaction().add(ix), [provider.wallet.payer as Account], connection)
 }
 main()
